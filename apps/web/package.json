@@ -9,6 +9,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.1.1",
     "@saloncitrine/shared": "*",
     "@saloncitrine/theme": "*",
     "@supabase/supabase-js": "^2.110.0",
