@@ -1,12 +1,19 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
-import { MOCK_TIME_SLOTS } from "../data/mock";
+import {
+  formatAvailableDateLabel,
+  getAvailableDates,
+  getAvailableSlots,
+  resolveSelectedDate,
+} from "../lib/availability";
 import { getServiceById, getStaffBySlug } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
+const requestedDate = Astro.url.searchParams.get("date");
+
 const [service, stylist] = await Promise.all([
   getServiceById(serviceId),
   getStaffBySlug(stylistSlug),
@@ -16,11 +23,11 @@ if (!service || !stylist) {
   return Astro.redirect(withBase());
 }
 
-const dates = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date();
-  d.setDate(d.getDate() + i + 1);
-  return d;
-});
+const availableDates = await getAvailableDates(stylist.id, service.id);
+const selectedDate = resolveSelectedDate(availableDates, requestedDate);
+const slots = selectedDate
+  ? await getAvailableSlots(stylist.id, service.id, selectedDate)
+  : [];
 ---
 
 <BookingLayout title="Choose date & time" step={2}>
@@ -29,55 +36,90 @@ const dates = Array.from({ length: 7 }, (_, i) => {
     {service.name} with <strong>{stylist.name}</strong>
   </p>
 
-  <form
-    class="datetime-form"
-    method="get"
-    action={withBase("details/")}
-  >
-    <input type="hidden" name="service" value={service.id} />
-    <input type="hidden" name="stylist" value={stylist.slug} />
+  {
+    availableDates.length === 0 ? (
+      <p class="empty">
+        No open times in the next few weeks.{" "}
+        <a href={`${withBase()}?stylist=${stylist.slug}`}>
+          Try another service or professional
+        </a>
+      </p>
+    ) : (
+      <>
+        <form
+          class="date-form"
+          method="get"
+          action={withBase("datetime/")}
+        >
+          <input type="hidden" name="service" value={service.id} />
+          <input type="hidden" name="stylist" value={stylist.slug} />
 
-    <fieldset class="field">
-      <legend>Date</legend>
-      <div class="date-grid">
-        {
-          dates.map((date) => (
-            <label class="date-option">
-              <input
-                type="radio"
-                name="date"
-                value={date.toISOString().slice(0, 10)}
-                required
-              />
-              <span>
-                {date.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            </label>
-          ))
-        }
-      </div>
-    </fieldset>
+          <fieldset class="field">
+            <legend>Date</legend>
+            <div class="date-grid">
+              {
+                availableDates.map((date) => (
+                  <label class="date-option">
+                    <input
+                      type="radio"
+                      name="date"
+                      value={date}
+                      checked={date === selectedDate}
+                      onchange="this.form.submit()"
+                    />
+                    <span>{formatAvailableDateLabel(date)}</span>
+                  </label>
+                ))
+              }
+            </div>
+          </fieldset>
+        </form>
 
-    <fieldset class="field">
-      <legend>Time</legend>
-      <div class="time-grid">
-        {
-          MOCK_TIME_SLOTS.map((slot) => (
-            <label class="time-option">
-              <input type="radio" name="time" value={slot} required />
-              <span>{slot}</span>
-            </label>
-          ))
-        }
-      </div>
-    </fieldset>
+        <form
+          class="datetime-form"
+          method="get"
+          action={withBase("details/")}
+        >
+          <input type="hidden" name="service" value={service.id} />
+          <input type="hidden" name="stylist" value={stylist.slug} />
+          <input type="hidden" name="date" value={selectedDate} />
 
-    <Button type="submit" variant="primary">Continue</Button>
-  </form>
+          <fieldset class="field">
+            <legend>Time</legend>
+            {
+              slots.length === 0 ? (
+                <p class="empty-slots">No times left on this day.</p>
+              ) : (
+                <div class="time-grid">
+                  {
+                    slots.map((slot) => (
+                      <label class="time-option">
+                        <input
+                          type="radio"
+                          name="time"
+                          value={slot.label}
+                          required
+                        />
+                        <span>{slot.label}</span>
+                      </label>
+                    ))
+                  }
+                </div>
+              )
+            }
+          </fieldset>
+
+          {
+            slots.length > 0 && (
+              <Button type="submit" variant="primary">
+                Continue
+              </Button>
+            )
+          }
+        </form>
+      </>
+    )
+  }
 
   <p class="back">
     <a href={`${withBase()}?stylist=${stylist.slug}`}>← Back to services</a>
@@ -134,6 +176,14 @@ const dates = Array.from({ length: 7 }, (_, i) => {
     border-color: var(--color-citrine);
     background: var(--color-citrine);
     color: var(--color-black);
+  }
+
+  .empty,
+  .empty-slots {
+    padding: 1rem;
+    background: var(--color-light);
+    color: var(--color-gray);
+    text-align: center;
   }
 
   .back {

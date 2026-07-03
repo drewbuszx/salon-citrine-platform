@@ -67,6 +67,8 @@ Copy `.env.example` to `.env` and fill in keys as integrations are wired (not re
 ## Database (packages/db)
 
 - `migrations/0001_init.sql` — core schema: staff, services, staff_services, staff_schedules, blocked_times, clients, appointments, appointment_services, email_logs, sms_logs, policies. RLS enabled on every table.
+- `migrations/0002_public_read_staff_services.sql` — anon read on staff_services for booking catalog.
+- `migrations/0003_public_read_availability.sql` — anon read on blocked_times + `appointment_availability` view for slot conflict checks.
 - `seed/seed.sql` — generated seed: 7 staff (GlossGenius tokens + slugs), business hours, policies, full service menu from `menu-services.json`.
 - Regenerate after editing `seed/data/menu-services.json`:
 
@@ -75,6 +77,13 @@ npm run db:generate-seed
 ```
 
 Apply against a Supabase project with the Supabase CLI or `psql`.
+
+Dev helper — clear test appointments so availability shows full schedules:
+
+```bash
+# Supabase SQL editor, or:
+psql $DATABASE_URL -f packages/db/scripts/wipe-test-appointments.sql
+```
 
 ## Current status
 
@@ -95,7 +104,7 @@ Static placeholder pages wired to `@saloncitrine/theme`:
 
 1. `/book/` — service selection (supports `?stylist=` deep link)
 2. `/book/stylist/` — stylist selection
-3. `/book/datetime/` — date & time (mock slots)
+3. `/book/datetime/` — date & time (real availability from Supabase)
 4. `/book/details/` — guest details + cancellation policy modal (Escape closes, focus trap)
 5. `/book/confirm/` — placeholder confirmation
 
