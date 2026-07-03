@@ -207,14 +207,13 @@ export async function getAvailableSlots(
   return computeSlotsForDate(ctx, dateStr);
 }
 
-export async function getAvailableDates(
+export async function getAvailableDatesInRange(
   staffId: string,
   serviceId: string,
-  fromDate?: string,
-  daysAhead: number = DEFAULT_DAYS_AHEAD,
+  startDate: string,
+  endDate: string,
 ): Promise<string[]> {
-  const startDate = fromDate ?? todayInTimezone();
-  const endDate = addDaysToDateString(startDate, daysAhead - 1);
+  if (startDate > endDate) return [];
 
   const rangeStart = localDateTimeToUtc(startDate, "00:00");
   const rangeEnd = localDateTimeToUtc(addDaysToDateString(endDate, 1), "00:00");
@@ -229,13 +228,24 @@ export async function getAvailableDates(
   const dates: string[] = [];
   let cursor = startDate;
 
-  for (let i = 0; i < daysAhead; i++) {
-    const slots = computeSlotsForDate(ctx, cursor);
-    if (slots.length > 0) dates.push(cursor);
+  while (cursor <= endDate) {
+    const daySlots = computeSlotsForDate(ctx, cursor);
+    if (daySlots.length > 0) dates.push(cursor);
     cursor = addDaysToDateString(cursor, 1);
   }
 
   return dates;
+}
+
+export async function getAvailableDates(
+  staffId: string,
+  serviceId: string,
+  fromDate?: string,
+  daysAhead: number = DEFAULT_DAYS_AHEAD,
+): Promise<string[]> {
+  const startDate = fromDate ?? todayInTimezone();
+  const endDate = addDaysToDateString(startDate, daysAhead - 1);
+  return getAvailableDatesInRange(staffId, serviceId, startDate, endDate);
 }
 
 /** Format a date string for the date picker UI. */

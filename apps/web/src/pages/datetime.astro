@@ -4,17 +4,27 @@ export const prerender = false;
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import {
-  formatAvailableDateLabel,
-  getAvailableDates,
+  getAvailableDatesInRange,
   getAvailableSlots,
-  resolveSelectedDate,
 } from "../lib/availability";
+import {
+  bookingHorizonEnd,
+  buildCalendarGrid,
+  calendarGridBounds,
+  formatMonthYear,
+  monthToParam,
+  parseYearMonth,
+  shiftMonth,
+  WEEKDAY_LABELS,
+} from "../lib/calendar-utils";
+import { todayInTimezone } from "../lib/datetime-utils";
 import { getServiceById, getStaffBySlug } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const requestedDate = Astro.url.searchParams.get("date");
+const requestedMonth = Astro.url.searchParams.get("month");
 
 const [service, stylist] = await Promise.all([
   getServiceById(serviceId),
@@ -25,21 +35,64 @@ if (!service || !stylist) {
   return Astro.redirect(withBase());
 }
 
-const availableDates = await getAvailableDates(stylist.id, service.id);
-const selectedDate = resolveSelectedDate(availableDates, requestedDate);
+const today = todayInTimezone();
+const horizonEnd = bookingHorizonEnd(today);
+const horizonAvailable = await getAvailableDatesInRange(
+  stylist.id,
+  service.id,
+  today,
+  horizonEnd,
+);
+const hasAnyAvailability = horizonAvailable.length > 0;
+const selectedDate =
+  requestedDate && horizonAvailable.includes(requestedDate)
+    ? requestedDate
+    : undefined;
+
+const { year, month } = parseYearMonth(
+  requestedMonth,
+  selectedDate ?? today,
+);
+const calendarCells = buildCalendarGrid(year, month, today);
+const gridBounds = calendarGridBounds(year, month);
+const monthAvailable = new Set(
+  horizonAvailable.filter(
+    (date) => date >= gridBounds.start && date <= gridBounds.end,
+  ),
+);
+
 const slots = selectedDate
   ? await getAvailableSlots(stylist.id, service.id, selectedDate)
   : [];
+
+const monthTitle = formatMonthYear(year, month);
+const prevMonth = shiftMonth(year, month, -1);
+const nextMonth = shiftMonth(year, month, 1);
+const todayMonth = parseYearMonth(null, today);
+const horizonMonth = parseYearMonth(null, horizonEnd);
+const canGoPrev =
+  monthToParam(prevMonth.year, prevMonth.month) >=
+  monthToParam(todayMonth.year, todayMonth.month);
+const canGoNext =
+  monthToParam(nextMonth.year, nextMonth.month) <=
+  monthToParam(horizonMonth.year, horizonMonth.month);
+
+const datesApiUrl = withBase("api/availability/dates.json");
+const slotsApiUrl = withBase("api/availability/slots.json");
+const detailsUrl = withBase("details/");
+const datetimeUrl = withBase("datetime/");
 ---
 
 <BookingLayout title="Choose date & time" step={2}>
-  <h1>Choose date & time</h1>
-  <p class="lead">
-    {service.name} with <strong>{stylist.name}</strong>
-  </p>
+  <header class="page-header">
+    <h1>Choose date & time</h1>
+    <p class="lead">
+      {service.name} with <strong>{stylist.name}</strong>
+    </p>
+  </header>
 
   {
-    availableDates.length === 0 ? (
+    !hasAnyAvailability ? (
       <p class="empty">
         No open times in the next few weeks.{" "}
         <a href={`${withBase()}?stylist=${stylist.slug}`}>
@@ -47,79 +100,153 @@ const slots = selectedDate
         </a>
       </p>
     ) : (
-      <>
-        <form
-          class="date-form"
-          method="get"
-          action={withBase("datetime/")}
-        >
-          <input type="hidden" name="service" value={service.id} />
-          <input type="hidden" name="stylist" value={stylist.slug} />
+      <div
+        class="datetime-picker"
+        data-datetime-picker
+        data-staff-id={stylist.id}
+        data-service-id={service.id}
+        data-stylist-slug={stylist.slug}
+        data-service-param={service.id}
+        data-dates-api={datesApiUrl}
+        data-slots-api={slotsApiUrl}
+        data-details-url={detailsUrl}
+        data-datetime-url={datetimeUrl}
+        data-today={today}
+        data-horizon-end={horizonEnd}
+        data-year={year}
+        data-month={month}
+        data-selected-date={selectedDate ?? ""}
+      >
+        <section class="calendar" aria-label="Choose a date">
+          <div class="calendar__nav">
+            <button
+              type="button"
+              class="calendar__nav-btn"
+              data-cal-prev
+              disabled={!canGoPrev}
+              aria-label="Previous month"
+            >
+              <span aria-hidden="true">‹</span>
+            </button>
+            <h2 class="calendar__title" data-cal-title>{monthTitle}</h2>
+            <button
+              type="button"
+              class="calendar__nav-btn"
+              data-cal-next
+              disabled={!canGoNext}
+              aria-label="Next month"
+            >
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
 
-          <fieldset class="field">
-            <legend>Date</legend>
-            <div class="date-grid">
-              {
-                availableDates.map((date) => (
-                  <label class="date-option">
-                    <input
-                      type="radio"
-                      name="date"
-                      value={date}
-                      checked={date === selectedDate}
-                      onchange="this.form.submit()"
-                    />
-                    <span>{formatAvailableDateLabel(date)}</span>
-                  </label>
-                ))
-              }
-            </div>
-          </fieldset>
-        </form>
+          <div class="calendar__weekdays" aria-hidden="true">
+            {WEEKDAY_LABELS.map((label) => (
+              <span class="calendar__weekday">{label}</span>
+            ))}
+          </div>
 
-        <form
-          class="datetime-form"
-          method="get"
-          action={withBase("details/")}
-        >
-          <input type="hidden" name="service" value={service.id} />
-          <input type="hidden" name="stylist" value={stylist.slug} />
-          <input type="hidden" name="date" value={selectedDate} />
-
-          <fieldset class="field">
-            <legend>Time</legend>
+          <div class="calendar__grid" data-cal-grid role="grid" aria-label={monthTitle}>
             {
-              slots.length === 0 ? (
-                <p class="empty-slots">No times left on this day.</p>
+              calendarCells.map((cell) => {
+                const isAvailable = monthAvailable.has(cell.date);
+                const isSelected = cell.date === selectedDate;
+                const isDisabled =
+                  !cell.isCurrentMonth ||
+                  cell.isPast ||
+                  cell.date > horizonEnd ||
+                  !isAvailable;
+
+                return (
+                  <button
+                    type="button"
+                    class:list={[
+                      "calendar__day",
+                      {
+                        "calendar__day--outside": !cell.isCurrentMonth,
+                        "calendar__day--today": cell.isToday,
+                        "calendar__day--selected": isSelected,
+                        "calendar__day--available": isAvailable && !isDisabled,
+                        "calendar__day--disabled": isDisabled,
+                      },
+                    ]}
+                    role="gridcell"
+                    data-date={cell.date}
+                    data-available={isAvailable ? "true" : "false"}
+                    disabled={isDisabled}
+                    aria-label={cell.date}
+                    aria-selected={isSelected}
+                    aria-current={cell.isToday ? "date" : undefined}
+                  >
+                    <span class="calendar__day-num">{cell.day}</span>
+                  </button>
+                );
+              })
+            }
+          </div>
+        </section>
+
+        <section class="time-section" aria-label="Choose a time">
+          <h3 class="time-section__heading">Available times</h3>
+
+          <div class="time-section__body" data-time-panel>
+            {
+              !selectedDate ? (
+                <p class="time-section__empty" data-time-empty>
+                  Select a date to see available times.
+                </p>
+              ) : slots.length === 0 ? (
+                <p class="time-section__empty" data-time-empty>
+                  No times left on this day.
+                </p>
               ) : (
-                <div class="time-grid">
-                  {
-                    slots.map((slot) => (
-                      <label class="time-option">
-                        <input
-                          type="radio"
-                          name="time"
-                          value={slot.label}
-                          required
-                        />
-                        <span>{slot.label}</span>
-                      </label>
-                    ))
-                  }
-                </div>
+                <>
+                  <p class="time-section__empty" data-time-empty hidden>
+                    Select a date to see available times.
+                  </p>
+                  <form
+                    class="time-form"
+                    method="get"
+                    action={detailsUrl}
+                    data-time-form
+                  >
+                    <input type="hidden" name="service" value={service.id} />
+                    <input type="hidden" name="stylist" value={stylist.slug} />
+                    <input
+                      type="hidden"
+                      name="date"
+                      value={selectedDate}
+                      data-time-date-input
+                    />
+
+                    <div class="time-grid" data-time-grid role="radiogroup" aria-label="Available times">
+                      {
+                        slots.map((slot) => (
+                          <label class="time-option">
+                            <input
+                              type="radio"
+                              name="time"
+                              value={slot.label}
+                              required
+                            />
+                            <span>{slot.label}</span>
+                          </label>
+                        ))
+                      }
+                    </div>
+
+                    <div class="time-form__actions">
+                      <Button type="submit" variant="primary">
+                        Continue
+                      </Button>
+                    </div>
+                  </form>
+                </>
               )
             }
-          </fieldset>
-
-          {
-            slots.length > 0 && (
-              <Button type="submit" variant="primary">
-                Continue
-              </Button>
-            )
-          }
-        </form>
-      </>
+          </div>
+        </section>
+      </div>
     )
   }
 
@@ -128,60 +255,568 @@ const slots = selectedDate
   </p>
 </BookingLayout>
 
+<script>
+  function monthParam(year, month) {
+    return `${year}-${String(month).padStart(2, "0")}`;
+  }
+
+  function parseMonthParam(value) {
+    const match = /^(\d{4})-(\d{2})$/.exec(value ?? "");
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (month < 1 || month > 12) return null;
+    return { year, month };
+  }
+
+  function shiftMonth(year, month, delta) {
+    const dt = new Date(Date.UTC(year, month - 1 + delta, 1));
+    return { year: dt.getUTCFullYear(), month: dt.getUTCMonth() + 1 };
+  }
+
+  function calendarGridBounds(year, month) {
+    const firstOfMonth = `${year}-${String(month).padStart(2, "0")}-01`;
+    const noon = new Date(`${firstOfMonth}T12:00:00.000Z`);
+    const dow = noon.getUTCDay();
+    const startDate = new Date(Date.UTC(year, month - 1, 1 - dow));
+    const endDate = new Date(startDate);
+    endDate.setUTCDate(endDate.getUTCDate() + 41);
+    const fmt = (d) => d.toISOString().slice(0, 10);
+    return { start: fmt(startDate), end: fmt(endDate) };
+  }
+
+  function formatMonthYear(year, month) {
+    const anchor = `${year}-${String(month).padStart(2, "0")}-15T12:00:00.000Z`;
+    return new Date(anchor).toLocaleDateString("en-US", {
+      timeZone: "America/Indiana/Indianapolis",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  function buildCells(year, month, today) {
+    const { start } = calendarGridBounds(year, month);
+    const cells = [];
+    const startParts = start.split("-").map(Number);
+    let cursor = new Date(Date.UTC(startParts[0], startParts[1] - 1, startParts[2]));
+
+    for (let i = 0; i < 42; i++) {
+      const date = cursor.toISOString().slice(0, 10);
+      const y = cursor.getUTCFullYear();
+      const m = cursor.getUTCMonth() + 1;
+      const d = cursor.getUTCDate();
+      cells.push({
+        date,
+        day: d,
+        isCurrentMonth: y === year && m === month,
+        isToday: date === today,
+        isPast: date < today,
+      });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return cells;
+  }
+
+  function monthBoundsFromToday(today) {
+    const parts = today.split("-").map(Number);
+    return { year: parts[0], month: parts[1] };
+  }
+
+  function monthBoundsFromDate(dateStr) {
+    const parts = dateStr.split("-").map(Number);
+    return { year: parts[0], month: parts[1] };
+  }
+
+  function canNavigatePrev(year, month, today) {
+    const prev = shiftMonth(year, month, -1);
+    const min = monthBoundsFromToday(today);
+    return monthParam(prev.year, prev.month) >= monthParam(min.year, min.month);
+  }
+
+  function canNavigateNext(year, month, horizonEnd) {
+    const next = shiftMonth(year, month, 1);
+    const max = monthBoundsFromDate(horizonEnd);
+    return monthParam(next.year, next.month) <= monthParam(max.year, max.month);
+  }
+
+  function syncUrl(root, selectedDate) {
+    const params = new URLSearchParams(window.location.search);
+    params.set("service", root.dataset.serviceParam ?? "");
+    params.set("stylist", root.dataset.stylistSlug ?? "");
+    params.set("month", monthParam(Number(root.dataset.year), Number(root.dataset.month)));
+    if (selectedDate) {
+      params.set("date", selectedDate);
+    } else {
+      params.delete("date");
+    }
+    const next = `${root.dataset.datetimeUrl}?${params.toString()}`;
+    window.history.replaceState({}, "", next);
+  }
+
+  function renderTimePanel(panel, selectedDate, slots, detailsUrl, serviceId, stylistSlug) {
+    panel.innerHTML = "";
+
+    if (!selectedDate) {
+      const empty = document.createElement("p");
+      empty.className = "time-section__empty";
+      empty.dataset.timeEmpty = "";
+      empty.textContent = "Select a date to see available times.";
+      panel.appendChild(empty);
+      return;
+    }
+
+    if (!slots.length) {
+      const empty = document.createElement("p");
+      empty.className = "time-section__empty";
+      empty.dataset.timeEmpty = "";
+      empty.textContent = "No times left on this day.";
+      panel.appendChild(empty);
+      return;
+    }
+
+    const form = document.createElement("form");
+    form.className = "time-form";
+    form.method = "get";
+    form.action = detailsUrl;
+    form.dataset.timeForm = "";
+
+    form.innerHTML = `
+      <input type="hidden" name="service" value="${serviceId}" />
+      <input type="hidden" name="stylist" value="${stylistSlug}" />
+      <input type="hidden" name="date" value="${selectedDate}" data-time-date-input />
+    `;
+
+    const grid = document.createElement("div");
+    grid.className = "time-grid";
+    grid.dataset.timeGrid = "";
+    grid.setAttribute("role", "radiogroup");
+    grid.setAttribute("aria-label", "Available times");
+
+    for (const slot of slots) {
+      const label = document.createElement("label");
+      label.className = "time-option";
+      label.innerHTML = `
+        <input type="radio" name="time" value="${slot.label}" required />
+        <span>${slot.label}</span>
+      `;
+      grid.appendChild(label);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "time-form__actions";
+    const button = document.createElement("button");
+    button.type = "submit";
+    button.className = "sc-button sc-button--primary";
+    button.textContent = "Continue";
+    actions.appendChild(button);
+
+    form.appendChild(grid);
+    form.appendChild(actions);
+    panel.appendChild(form);
+  }
+
+  function renderCalendar(root, year, month, availableDates, selectedDate) {
+    const today = root.dataset.today ?? "";
+    const horizonEnd = root.dataset.horizonEnd ?? "";
+    const title = root.querySelector("[data-cal-title]");
+    const grid = root.querySelector("[data-cal-grid]");
+    const prevBtn = root.querySelector("[data-cal-prev]");
+    const nextBtn = root.querySelector("[data-cal-next]");
+    if (!title || !grid || !prevBtn || !nextBtn) return;
+
+    root.dataset.year = String(year);
+    root.dataset.month = String(month);
+    title.textContent = formatMonthYear(year, month);
+
+    prevBtn.disabled = !canNavigatePrev(year, month, today);
+    nextBtn.disabled = !canNavigateNext(year, month, horizonEnd);
+
+    const available = new Set(availableDates);
+    const cells = buildCells(year, month, today);
+    grid.innerHTML = "";
+
+    for (const cell of cells) {
+      const isAvailable = available.has(cell.date);
+      const isSelected = cell.date === selectedDate;
+      const isDisabled =
+        !cell.isCurrentMonth ||
+        cell.isPast ||
+        cell.date > horizonEnd ||
+        !isAvailable;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "calendar__day";
+      btn.dataset.date = cell.date;
+      btn.dataset.available = isAvailable ? "true" : "false";
+      btn.setAttribute("role", "gridcell");
+      btn.setAttribute("aria-label", cell.date);
+      btn.setAttribute("aria-selected", String(isSelected));
+
+      if (!cell.isCurrentMonth) btn.classList.add("calendar__day--outside");
+      if (cell.isToday) {
+        btn.classList.add("calendar__day--today");
+        btn.setAttribute("aria-current", "date");
+      }
+      if (isSelected) btn.classList.add("calendar__day--selected");
+      if (isAvailable && !isDisabled) btn.classList.add("calendar__day--available");
+      if (isDisabled) {
+        btn.classList.add("calendar__day--disabled");
+        btn.disabled = true;
+      }
+
+      const num = document.createElement("span");
+      num.className = "calendar__day-num";
+      num.textContent = String(cell.day);
+      btn.appendChild(num);
+      grid.appendChild(btn);
+    }
+  }
+
+  async function fetchMonthAvailability(root, year, month) {
+    const today = root.dataset.today ?? "";
+    const horizonEnd = root.dataset.horizonEnd ?? "";
+    const { start, end } = calendarGridBounds(year, month);
+    const queryStart = start < today ? today : start;
+    const queryEnd = end > horizonEnd ? horizonEnd : end;
+
+    if (queryStart > queryEnd) return [];
+
+    const params = new URLSearchParams({
+      staff: root.dataset.staffId ?? "",
+      service: root.dataset.serviceId ?? "",
+      start: queryStart,
+      end: queryEnd,
+    });
+
+    const response = await fetch(`${root.dataset.datesApi}?${params.toString()}`);
+    if (!response.ok) throw new Error("Failed to load dates");
+    const payload = await response.json();
+    return payload.dates ?? [];
+  }
+
+  async function fetchSlots(root, date) {
+    const params = new URLSearchParams({
+      staff: root.dataset.staffId ?? "",
+      service: root.dataset.serviceId ?? "",
+      date,
+    });
+    const response = await fetch(`${root.dataset.slotsApi}?${params.toString()}`);
+    if (!response.ok) throw new Error("Failed to load slots");
+    const payload = await response.json();
+    return payload.slots ?? [];
+  }
+
+  const root = document.querySelector("[data-datetime-picker]");
+  if (!root) {
+    // picker not rendered (no availability)
+  } else {
+    let selectedDate = root.dataset.selectedDate || "";
+    let loadingMonth = false;
+
+    const panel = root.querySelector("[data-time-panel]");
+    const detailsUrl = root.dataset.detailsUrl ?? "";
+    const serviceId = root.dataset.serviceParam ?? "";
+    const stylistSlug = root.dataset.stylistSlug ?? "";
+
+    async function selectDate(date) {
+      selectedDate = date;
+      root.dataset.selectedDate = date;
+      syncUrl(root, selectedDate);
+
+      const year = Number(root.dataset.year);
+      const month = Number(root.dataset.month);
+      const availableDates = await fetchMonthAvailability(root, year, month);
+      renderCalendar(root, year, month, availableDates, selectedDate);
+
+      if (!panel) return;
+      panel.setAttribute("aria-busy", "true");
+      try {
+        const slots = await fetchSlots(root, date);
+        renderTimePanel(panel, date, slots, detailsUrl, serviceId, stylistSlug);
+      } catch {
+        renderTimePanel(panel, date, [], detailsUrl, serviceId, stylistSlug);
+      } finally {
+        panel.removeAttribute("aria-busy");
+      }
+    }
+
+    async function changeMonth(delta) {
+      if (loadingMonth) return;
+      const year = Number(root.dataset.year);
+      const month = Number(root.dataset.month);
+      const next = shiftMonth(year, month, delta);
+      const today = root.dataset.today ?? "";
+      const horizonEnd = root.dataset.horizonEnd ?? "";
+
+      if (delta < 0 && !canNavigatePrev(year, month, today)) return;
+      if (delta > 0 && !canNavigateNext(year, month, horizonEnd)) return;
+
+      loadingMonth = true;
+      root.setAttribute("aria-busy", "true");
+      try {
+        const availableDates = await fetchMonthAvailability(
+          root,
+          next.year,
+          next.month,
+        );
+        renderCalendar(root, next.year, next.month, availableDates, selectedDate);
+        syncUrl(root, selectedDate);
+      } finally {
+        loadingMonth = false;
+        root.removeAttribute("aria-busy");
+      }
+    }
+
+    root.querySelector("[data-cal-prev]")?.addEventListener("click", () => {
+      changeMonth(-1);
+    });
+
+    root.querySelector("[data-cal-next]")?.addEventListener("click", () => {
+      changeMonth(1);
+    });
+
+    root.querySelector("[data-cal-grid]")?.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const button = target.closest("[data-date]");
+      if (!(button instanceof HTMLButtonElement)) return;
+      if (button.disabled || button.dataset.available !== "true") return;
+      selectDate(button.dataset.date ?? "");
+    });
+  }
+</script>
+
 <style>
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+
   .lead {
+    margin: 0;
     color: var(--color-gray);
   }
 
-  .field {
-    border: none;
-    margin: 0 0 1.75rem;
-    padding: 0;
+  .datetime-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
   }
 
-  .field legend {
+  .calendar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .calendar__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .calendar__title {
+    margin: 0;
+    flex: 1;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-size: clamp(1.25rem, 3vw, 1.5rem);
+    font-weight: 500;
+  }
+
+  .calendar__nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    background: var(--color-booking-card-bg);
+    color: var(--color-text);
+    font-size: 1.5rem;
+    line-height: 1;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .calendar__nav-btn:hover:not(:disabled),
+  .calendar__nav-btn:focus-visible {
+    border-color: var(--color-citrine);
+    outline: none;
+  }
+
+  .calendar__nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .calendar__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+  }
+
+  .calendar__weekday {
+    padding: 0.35rem 0;
+    text-align: center;
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .calendar__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.35rem;
+  }
+
+  .calendar__day {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease,
+      color 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .calendar__day-num {
+    position: relative;
+    z-index: 1;
+  }
+
+  .calendar__day--outside {
+    opacity: 0.35;
+  }
+
+  .calendar__day--today:not(.calendar__day--selected) {
+    border-color: var(--color-sage);
+  }
+
+  .calendar__day--available:not(.calendar__day--disabled) {
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .calendar__day--available:not(.calendar__day--disabled)::after {
+    content: "";
+    position: absolute;
+    bottom: 0.35rem;
+    left: 50%;
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: 50%;
+    background: var(--color-citrine);
+    transform: translateX(-50%);
+  }
+
+  .calendar__day--available:not(.calendar__day--disabled):hover,
+  .calendar__day--available:not(.calendar__day--disabled):focus-visible {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.12);
+    outline: none;
+  }
+
+  .calendar__day--selected {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-weight: 600;
+  }
+
+  .calendar__day--selected::after {
+    display: none;
+  }
+
+  .calendar__day--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .time-section {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .time-section__heading {
+    margin: 0 0 1rem;
     font-family: var(--font-sans);
     font-size: 0.75rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    margin-bottom: 0.75rem;
+    font-weight: 400;
   }
 
-  .date-grid,
+  .time-section__empty {
+    margin: 0;
+    padding: 1.25rem 1rem;
+    background: var(--color-light);
+    color: var(--color-gray);
+    text-align: center;
+    font-size: 1rem;
+  }
+
   .time-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
     gap: 0.5rem;
+    margin-bottom: 1.5rem;
   }
 
-  .date-option input,
   .time-option input {
     position: absolute;
     opacity: 0;
     pointer-events: none;
   }
 
-  .date-option span,
   .time-option span {
     display: block;
-    padding: 0.65rem 0.5rem;
+    padding: 0.7rem 0.5rem;
     border: 1px solid var(--color-border);
     text-align: center;
     font-family: var(--font-sans);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
   }
 
-  .date-option input:checked + span,
   .time-option input:checked + span {
     border-color: var(--color-citrine);
     background: var(--color-citrine);
     color: var(--color-black);
+    font-weight: 500;
   }
 
-  .empty,
-  .empty-slots {
+  .time-option span:hover {
+    border-color: var(--color-citrine);
+  }
+
+  .time-form__actions {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .empty {
     padding: 1rem;
     background: var(--color-light);
     color: var(--color-gray);
@@ -190,5 +825,20 @@ const slots = selectedDate
 
   .back {
     margin-top: 1.5rem;
+  }
+
+  @media (min-width: 480px) {
+    .calendar__grid {
+      gap: 0.5rem;
+    }
+
+    .calendar__day {
+      min-height: 3rem;
+      font-size: 1rem;
+    }
+
+    .time-grid {
+      grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    }
   }
 </style>
