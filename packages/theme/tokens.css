@@ -23,6 +23,7 @@
   --color-text: #0a0a0a;
   --color-border: rgba(0, 0, 0, 0.08);
   --color-border-subtle: rgba(0, 0, 0, 0.06);
+  --color-header-border: var(--color-text);
 
   /* On-brand sections (dusty rose / sage / charcoal backgrounds) */
   --color-on-brand-section: #ffffff;
@@ -44,10 +45,18 @@
   --font-nav: "Serling Galleria", var(--font-serif);
   --font-basic-title: "Basic Title", var(--font-sans);
 
+  /* Booking flow surfaces */
+  --color-cream: #f7f2ea;
+  --color-cream-deep: #efe6d8;
+  --color-booking-panel-bg: rgba(255, 255, 255, 0.92);
+  --color-booking-card-bg: rgba(255, 255, 255, 0.88);
+
   /* Layout */
+  --header-logo-height: clamp(3.5rem, 10vw, 5rem);
+  --header-logo-padding-bottom: 0.225rem;
   --book-bar-height: 56px;
-  --max-width: 1200px;
-  --section-padding: clamp(2rem, 5.5vw, 4rem);
+  --max-width: 720px;
+  --section-padding: clamp(1.25rem, 4vw, 2.5rem);
 }
 
 [data-theme="dark"] {
@@ -57,6 +66,7 @@
   --color-text: #ececec;
   --color-border: rgba(255, 255, 255, 0.12);
   --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-header-border: rgba(255, 255, 255, 0.2);
   --color-book-bar-bg: var(--color-citrine);
   --color-book-bar-text: var(--color-black);
   --color-book-bar-hover-bg: var(--color-black);

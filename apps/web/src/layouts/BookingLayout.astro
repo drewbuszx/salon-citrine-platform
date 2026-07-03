@@ -6,10 +6,14 @@ import { withBase } from "../lib/paths";
 
 interface Props {
   title: string;
-  step: 1 | 2 | 3 | 4 | 5;
+  step: 1 | 2 | 3 | 4;
 }
 
 const { title, step } = Astro.props;
+const logoSrc = `${import.meta.env.BASE_URL}images/salon-citrine-logo.png`.replace(
+  /\/+/g,
+  "/",
+);
 ---
 
 <!doctype html>
@@ -21,50 +25,73 @@ const { title, step } = Astro.props;
     <title>{title} · Book · {BUSINESS.name}</title>
   </head>
   <body>
-    <header class="booking-header">
-      <a class="booking-header__brand" href={withBase()}>
-        {BUSINESS.name}
-      </a>
-      <p class="booking-header__tagline">{BUSINESS.tagline}</p>
-    </header>
+    <div class="booking-shell">
+      <header class="booking-header">
+        <a class="booking-header__brand" href={withBase()}>
+          <img
+            class="booking-header__logo"
+            src={logoSrc}
+            alt={BUSINESS.name}
+            width="280"
+            height="80"
+          />
+        </a>
+        <p class="booking-header__tagline">{BUSINESS.tagline}</p>
+      </header>
 
-    <main class="booking-main">
-      <BookingSteps current={step} />
-      <div class="booking-content">
-        <slot />
-      </div>
-    </main>
+      <main class="booking-main">
+        <BookingSteps current={step} />
+        <div class="booking-content">
+          <slot />
+        </div>
+      </main>
 
-    <footer class="booking-footer">
-      <p>
-        Questions? Call <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phone}</a>
-      </p>
-    </footer>
+      <footer class="booking-footer">
+        <p>
+          Questions? Call <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phone}</a>
+        </p>
+      </footer>
+    </div>
   </body>
 </html>
 
 <style>
+  .booking-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
   .booking-header {
-    padding: 1.25rem var(--section-padding);
+    padding: 1.5rem var(--section-padding) 1.25rem;
     border-bottom: 1px solid var(--color-border);
     text-align: center;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(8px);
   }
 
   .booking-header__brand {
-    font-family: var(--font-nav);
-    font-size: 1.5rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: inline-block;
     text-decoration: none;
   }
 
+  .booking-header__logo {
+    width: min(220px, 58vw);
+    height: auto;
+    margin-inline: auto;
+  }
+
   .booking-header__tagline {
-    margin: 0.35rem 0 0;
-    font-size: 0.95rem;
+    margin: 0.5rem 0 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--color-gray);
   }
 
   .booking-main {
+    flex: 1;
     width: min(var(--max-width), 100%);
     margin: 0 auto;
     padding: var(--section-padding);
@@ -73,6 +100,10 @@ const { title, step } = Astro.props;
 
   .booking-content {
     margin-top: 1.5rem;
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    background: var(--color-booking-panel-bg);
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: 0 8px 40px rgba(60, 61, 60, 0.05);
   }
 
   .booking-footer {
@@ -80,6 +111,7 @@ const { title, step } = Astro.props;
     text-align: center;
     font-size: 0.9rem;
     color: var(--color-gray);
+    background: rgba(255, 255, 255, 0.72);
   }
 
   .booking-footer a {
