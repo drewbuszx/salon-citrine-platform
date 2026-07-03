@@ -25,8 +25,8 @@ const error = Astro.url.searchParams.get("error");
 ---
 
 <TeamLayout title="Block time" activeNav="block-time">
-  <h1>Block time</h1>
-  <p class="lead">
+  <h1 class="page-title">Block time</h1>
+  <p class="page-lead">
     {
       managerView
         ? "Block calendar time for any provider."
@@ -43,12 +43,12 @@ const error = Astro.url.searchParams.get("error");
     ) : null
   }
 
-  <form class="block-form" method="post" action={teamUrl("/api/block-time")}>
+  <form class="form-stack form-stack--medium" method="post" action={teamUrl("/api/block-time")}>
     {
       managerView ? (
-        <label>
+        <label class="form-label">
           Provider
-          <select name="staff_id" required>
+          <select class="form-input" name="staff_id" required>
             {
               staffOptions.map((member) => (
                 <option value={member.id}>{member.name}</option>
@@ -61,87 +61,27 @@ const error = Astro.url.searchParams.get("error");
       )
     }
 
-    <label>
+    <label class="form-label">
       Starts
-      <input name="starts_at" type="datetime-local" required />
+      <input class="form-input" name="starts_at" type="datetime-local" required />
     </label>
 
-    <label>
+    <label class="form-label">
       Ends
-      <input name="ends_at" type="datetime-local" required />
+      <input class="form-input" name="ends_at" type="datetime-local" required />
     </label>
 
-    <label>
+    <label class="form-label">
       Reason (optional)
-      <input name="reason" type="text" maxlength="200" placeholder="Lunch, meeting…" />
+      <input
+        class="form-input"
+        name="reason"
+        type="text"
+        maxlength="200"
+        placeholder="Lunch, meeting…"
+      />
     </label>
 
-    <button type="submit">Save block</button>
+    <button class="btn-primary" type="submit">Save block</button>
   </form>
 </TeamLayout>
-
-<style>
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  .lead {
-    color: var(--color-gray);
-  }
-
-  .notice {
-    padding: 0.65rem 0.75rem;
-    font-size: 0.9rem;
-    margin: 1rem 0;
-  }
-
-  .notice--success {
-    border: 1px solid var(--color-citrine);
-    background: rgba(255, 210, 80, 0.15);
-  }
-
-  .notice--error {
-    border: 1px solid #c44;
-    background: rgba(200, 60, 60, 0.08);
-    color: #922;
-  }
-
-  .block-form {
-    display: grid;
-    gap: 1rem;
-    max-width: 28rem;
-    margin-top: 1.5rem;
-  }
-
-  label {
-    display: grid;
-    gap: 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  input,
-  select {
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    text-transform: none;
-    letter-spacing: normal;
-    font-size: 1rem;
-  }
-
-  button {
-    justify-self: start;
-    padding: 0.7rem 1rem;
-    border: none;
-    background: var(--color-charcoal);
-    color: var(--color-white);
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-</style>

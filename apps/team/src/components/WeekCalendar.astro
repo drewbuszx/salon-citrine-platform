@@ -180,18 +180,26 @@ function cellEvents(staffId: string, dayIndex: number) {
   .calendar__btn {
     padding: 0.4rem 0.75rem;
     border: 1px solid var(--color-border);
-    background: var(--color-bg);
+    background: var(--color-booking-card-bg);
     font-family: var(--font-sans);
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     text-decoration: none;
     color: inherit;
+    transition: opacity 0.2s ease;
+  }
+
+  .calendar__btn:hover,
+  .calendar__btn:focus-visible {
+    opacity: 0.75;
+    outline: none;
   }
 
   .calendar__scroll {
     overflow-x: auto;
     border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
   }
 
   .calendar__grid {
@@ -246,7 +254,7 @@ function cellEvents(staffId: string, dayIndex: number) {
   .calendar__cell {
     min-height: 3rem;
     min-width: 6rem;
-    background: var(--color-bg);
+    background: var(--color-booking-card-bg);
   }
 
   .calendar__appt {
@@ -278,7 +286,7 @@ function cellEvents(staffId: string, dayIndex: number) {
   .calendar__day-card {
     border: 1px solid var(--color-border);
     padding: 0.75rem;
-    background: var(--color-bg);
+    background: var(--color-booking-card-bg);
   }
 
   .calendar__day-card h3 {

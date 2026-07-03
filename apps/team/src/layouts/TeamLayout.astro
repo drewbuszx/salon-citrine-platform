@@ -36,18 +36,26 @@ const isAuthenticated = Boolean(user && staff);
       })();
     </script>
   </head>
-  <body class:list={[{ "team-shell--login": !isAuthenticated }]}>
-    {
-      isAuthenticated ? (
-        <TeamHeader activeNav={activeNav} staffName={staff.name} staffRole={staff.role} />
-      ) : (
-        <SiteHeaderMinimal />
-      )
-    }
+  <body class:list={[{ "team-shell--authenticated": isAuthenticated }]}>
+    <div class="team-shell">
+      <SiteHeaderMinimal />
 
-    <main class="team-main">
-      <slot />
-    </main>
+      {
+        isAuthenticated ? (
+          <TeamHeader
+            activeNav={activeNav}
+            staffName={staff.name}
+            staffRole={staff.role}
+          />
+        ) : null
+      }
+
+      <main class="team-main">
+        <div class="team-content">
+          <slot />
+        </div>
+      </main>
+    </div>
 
     <script>
       const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
@@ -79,15 +87,3 @@ const isAuthenticated = Boolean(user && staff);
     </script>
   </body>
 </html>
-
-<style>
-  .team-shell--login {
-    padding-top: var(--header-height);
-  }
-
-  .team-main {
-    width: min(var(--max-width), 100%);
-    margin: 0 auto;
-    padding: var(--section-padding);
-  }
-</style>

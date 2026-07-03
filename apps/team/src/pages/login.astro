@@ -12,86 +12,28 @@ const message =
 ---
 
 <TeamLayout title="Sign in">
-  <section class="login">
-    <h1>Team sign in</h1>
-    <p class="login__lead">Salon Citrine staff only</p>
+  <section class="form-stack form-stack--narrow">
+    <h1 class="page-title">Team sign in</h1>
+    <p class="page-lead">Salon Citrine staff only</p>
 
-    {message ? <p class="login__error" role="alert">{message}</p> : null}
+    {message ? <p class="notice notice--error" role="alert">{message}</p> : null}
 
-    <form class="login__form" method="post" action={teamUrl("/api/auth/login")}>
-      <label>
+    <form class="form-stack" method="post" action={teamUrl("/api/auth/login")}>
+      <label class="form-label">
         Email
-        <input name="email" type="email" autocomplete="username" required />
+        <input class="form-input" name="email" type="email" autocomplete="username" required />
       </label>
-      <label>
+      <label class="form-label">
         Password
         <input
+          class="form-input"
           name="password"
           type="password"
           autocomplete="current-password"
           required
         />
       </label>
-      <button type="submit">Sign in</button>
+      <button class="btn-primary" type="submit">Sign in</button>
     </form>
   </section>
 </TeamLayout>
-
-<style>
-  .login {
-    max-width: 24rem;
-    margin: 2rem auto;
-  }
-
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  .login__lead {
-    color: var(--color-gray);
-  }
-
-  .login__error {
-    padding: 0.65rem 0.75rem;
-    border: 1px solid #c44;
-    background: rgba(200, 60, 60, 0.08);
-    color: #922;
-    font-size: 0.9rem;
-  }
-
-  .login__form {
-    display: grid;
-    gap: 1rem;
-    margin-top: 1.5rem;
-  }
-
-  label {
-    display: grid;
-    gap: 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  input {
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    text-transform: none;
-    letter-spacing: normal;
-    font-size: 1rem;
-  }
-
-  button {
-    padding: 0.7rem 1rem;
-    border: none;
-    background: var(--color-charcoal);
-    color: var(--color-white);
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-</style>

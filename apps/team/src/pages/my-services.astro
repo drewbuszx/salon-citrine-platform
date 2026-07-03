@@ -55,8 +55,8 @@ const returnTo = teamUrl("/my-services");
 ---
 
 <TeamLayout title="My services" activeNav="my-services">
-  <h1>My services</h1>
-  <p class="lead">
+  <h1 class="page-title">My services</h1>
+  <p class="page-lead">
     Choose which services you offer are for returning clients only. New clients
     will see a notice before booking those services with you.
   </p>
@@ -76,13 +76,13 @@ const returnTo = teamUrl("/my-services");
         Failed to load your services.
       </p>
     ) : services.length === 0 ? (
-      <p class="empty">No services are assigned to your profile yet.</p>
+      <p class="empty-state">No services are assigned to your profile yet.</p>
     ) : (
-      <div class="my-services">
+      <div class="card-grid my-services">
         {
           services.map((service) => (
             <form
-              class="my-services__row"
+              class="card-row card-row--2 my-services__row"
               method="post"
               action={teamUrl("/api/staff-services")}
             >
@@ -91,7 +91,7 @@ const returnTo = teamUrl("/my-services");
               <input type="hidden" name="return_to" value={returnTo} />
 
               <div class="my-services__info">
-                <span class="my-services__category">{service.category}</span>
+                <span class="label-meta">{service.category}</span>
                 <span class="my-services__name">{service.name}</span>
                 <span class="my-services__meta">{service.durationMinutes} min</span>
               </div>
@@ -115,69 +115,13 @@ const returnTo = teamUrl("/my-services");
 </TeamLayout>
 
 <style>
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  .lead {
-    color: var(--color-gray);
-    max-width: 40rem;
-  }
-
-  .notice {
-    padding: 0.65rem 0.75rem;
-    font-size: 0.9rem;
-    margin: 1rem 0;
-  }
-
-  .notice--success {
-    border: 1px solid var(--color-citrine);
-    background: rgba(255, 210, 80, 0.15);
-  }
-
-  .notice--error {
-    border: 1px solid #c44;
-    background: rgba(200, 60, 60, 0.08);
-    color: #922;
-  }
-
-  .empty {
-    margin-top: 1.5rem;
-    color: var(--color-gray);
-  }
-
   .my-services {
-    display: grid;
-    gap: 0.75rem;
     margin-top: 1.5rem;
-  }
-
-  .my-services__row {
-    display: grid;
-    gap: 0.75rem;
-    align-items: center;
-    padding: 0.85rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-  }
-
-  @media (min-width: 40rem) {
-    .my-services__row {
-      grid-template-columns: 1fr auto;
-    }
   }
 
   .my-services__info {
     display: grid;
     gap: 0.15rem;
-  }
-
-  .my-services__category {
-    font-family: var(--font-sans);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-gray);
   }
 
   .my-services__name {

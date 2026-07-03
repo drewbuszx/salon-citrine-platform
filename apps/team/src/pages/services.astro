@@ -46,8 +46,8 @@ for (const row of staffServices ?? []) {
 ---
 
 <TeamLayout title="Services" activeNav="services">
-  <h1>Services</h1>
-  <p class="lead">
+  <h1 class="page-title">Services</h1>
+  <p class="page-lead">
     Update service durations and returning-clients-only settings per stylist.
   </p>
 
@@ -67,23 +67,24 @@ for (const row of staffServices ?? []) {
       </p>
     ) : (
       <>
-        <section class="section">
+        <section class="page-section">
           <h2>Service durations</h2>
-          <div class="services">
+          <div class="card-grid">
             {
               (services ?? []).map((service) => (
                 <form
-                  class="services__row"
+                  class="card-row card-row--3"
                   method="post"
                   action={teamUrl(`/api/services/${service.id}`)}
                 >
                   <div class="services__info">
-                    <span class="services__category">{service.category}</span>
+                    <span class="label-meta">{service.category}</span>
                     <span class="services__name">{service.name}</span>
                   </div>
-                  <label class="services__duration">
+                  <label class="form-label services__duration">
                     Minutes
                     <input
+                      class="form-input services__duration-input"
                       name="duration_minutes"
                       type="number"
                       min="15"
@@ -92,16 +93,18 @@ for (const row of staffServices ?? []) {
                       required
                     />
                   </label>
-                  <button type="submit">Save</button>
+                  <button class="btn-primary btn-primary--compact" type="submit">
+                    Save
+                  </button>
                 </form>
               ))
             }
           </div>
         </section>
 
-        <section class="section">
+        <section class="page-section">
           <h2>Returning clients only</h2>
-          <p class="section__lead">
+          <p class="page-section__lead">
             Per stylist and service. When enabled, online booking shows a
             returning-clients notice before the cart.
           </p>
@@ -118,7 +121,7 @@ for (const row of staffServices ?? []) {
                 return (
                   <div class="matrix__group">
                     <h3 class="matrix__staff">{member.name}</h3>
-                    <div class="matrix__rows">
+                    <div class="card-grid">
                       {
                         memberServices.map((service) => {
                           const key = `${member.id}:${service.id}`;
@@ -127,7 +130,7 @@ for (const row of staffServices ?? []) {
 
                           return (
                             <form
-                              class="matrix__row"
+                              class="card-row card-row--2"
                               method="post"
                               action={teamUrl("/api/staff-services")}
                             >
@@ -147,11 +150,9 @@ for (const row of staffServices ?? []) {
                                 value={returnTo}
                               />
 
-                              <div class="matrix__service">
-                                <span class="matrix__category">
-                                  {service.category}
-                                </span>
-                                <span class="matrix__name">{service.name}</span>
+                              <div class="services__info">
+                                <span class="label-meta">{service.category}</span>
+                                <span class="services__name">{service.name}</span>
                               </div>
 
                               <label class="matrix__toggle">
@@ -181,122 +182,27 @@ for (const row of staffServices ?? []) {
 </TeamLayout>
 
 <style>
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  .lead {
-    color: var(--color-gray);
-  }
-
-  .section {
-    margin-top: 2rem;
-  }
-
-  .section h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.2rem;
-  }
-
-  .section__lead {
-    margin: 0 0 1rem;
-    color: var(--color-gray);
-    font-size: 0.95rem;
-  }
-
-  .notice {
-    padding: 0.65rem 0.75rem;
-    font-size: 0.9rem;
-    margin: 1rem 0;
-  }
-
-  .notice--success {
-    border: 1px solid var(--color-citrine);
-    background: rgba(255, 210, 80, 0.15);
-  }
-
-  .notice--error {
-    border: 1px solid #c44;
-    background: rgba(200, 60, 60, 0.08);
-    color: #922;
-  }
-
-  .services,
-  .matrix__rows {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .services__row,
-  .matrix__row {
-    display: grid;
-    gap: 0.75rem;
-    align-items: end;
-    padding: 0.85rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-  }
-
-  @media (min-width: 40rem) {
-    .services__row {
-      grid-template-columns: 1fr auto auto;
-    }
-
-    .matrix__row {
-      grid-template-columns: 1fr auto;
-      align-items: center;
-    }
-  }
-
-  .services__info,
-  .matrix__service {
+  .services__info {
     display: grid;
     gap: 0.15rem;
   }
 
-  .services__category,
-  .matrix__category {
-    font-family: var(--font-sans);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--color-gray);
-  }
-
-  .services__name,
-  .matrix__name {
+  .services__name {
     font-size: 1rem;
   }
 
   .services__duration {
-    display: grid;
-    gap: 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    margin: 0;
   }
 
-  .services__duration input {
+  .services__duration-input {
     width: 6rem;
     padding: 0.5rem 0.65rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    font-size: 1rem;
-    text-transform: none;
-    letter-spacing: normal;
   }
 
-  .services__row button {
+  .btn-primary--compact {
     padding: 0.55rem 0.85rem;
-    border: none;
-    background: var(--color-charcoal);
-    color: var(--color-white);
-    font-family: var(--font-sans);
     font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    cursor: pointer;
   }
 
   .matrix {
@@ -307,7 +213,7 @@ for (const row of staffServices ?? []) {
   .matrix__group {
     border: 1px solid var(--color-border);
     padding: 1rem;
-    background: var(--color-bg);
+    background: var(--color-booking-card-bg);
   }
 
   .matrix__staff {

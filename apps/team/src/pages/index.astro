@@ -26,8 +26,8 @@ try {
 ---
 
 <TeamLayout title="Calendar" activeNav="calendar">
-  <h1>{managerView ? "Salon calendar" : "My schedule"}</h1>
-  <p class="lead">
+  <h1 class="page-title">{managerView ? "Salon calendar" : "My schedule"}</h1>
+  <p class="page-lead">
     {
       managerView
         ? "All providers · week view"
@@ -43,14 +43,3 @@ try {
     singleColumn={!managerView}
   />
 </TeamLayout>
-
-<style>
-  h1 {
-    font-size: 1.75rem;
-  }
-
-  .lead {
-    color: var(--color-gray);
-    margin-top: 0;
-  }
-</style>
