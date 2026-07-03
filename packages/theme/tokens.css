@@ -1,0 +1,64 @@
+/*
+ * @saloncitrine/theme — brand tokens
+ * Extracted from the marketing site (saloncitrineindy, src/styles/global.css)
+ * so the booking platform is immediately recognizable as Salon Citrine.
+ * Light/dark theming via [data-theme], matching the marketing site.
+ */
+
+:root,
+[data-theme="light"] {
+  /* Core palette */
+  --color-black: #0a0a0a;
+  --color-white: #ffffff;
+  --color-citrine: #e7ac46;
+  --color-citrine-dark: #d3a946;
+  --color-dusty-rose: #ae948f;
+  --color-sage: #8d9e88;
+  --color-charcoal: #3c3d3c;
+
+  /* Surfaces & text */
+  --color-gray: #666666;
+  --color-light: #f5f5f5;
+  --color-bg: #ffffff;
+  --color-text: #0a0a0a;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* On-brand sections (dusty rose / sage / charcoal backgrounds) */
+  --color-on-brand-section: #ffffff;
+  --color-on-brand-section-muted: rgba(255, 255, 255, 0.68);
+  --color-charcoal-muted: rgba(255, 255, 255, 0.68);
+  --color-charcoal-border: rgba(255, 255, 255, 0.14);
+  --color-charcoal-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-charcoal-card: rgba(255, 255, 255, 0.06);
+
+  /* Book bar (citrine bottom CTA bar) */
+  --color-book-bar-bg: var(--color-citrine);
+  --color-book-bar-text: var(--color-black);
+  --color-book-bar-hover-bg: var(--color-black);
+  --color-book-bar-hover-text: var(--color-citrine);
+
+  /* Typography */
+  --font-sans: "Oswald", "Arial Narrow", "Helvetica Neue", sans-serif;
+  --font-serif: "Cormorant Garamond", "Times New Roman", serif;
+  --font-nav: "Serling Galleria", var(--font-serif);
+  --font-basic-title: "Basic Title", var(--font-sans);
+
+  /* Layout */
+  --book-bar-height: 56px;
+  --max-width: 1200px;
+  --section-padding: clamp(2rem, 5.5vw, 4rem);
+}
+
+[data-theme="dark"] {
+  --color-gray: #aaaaaa;
+  --color-light: #262626;
+  --color-bg: #181818;
+  --color-text: #ececec;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-book-bar-bg: var(--color-citrine);
+  --color-book-bar-text: var(--color-black);
+  --color-book-bar-hover-bg: var(--color-black);
+  --color-book-bar-hover-text: var(--color-citrine);
+}

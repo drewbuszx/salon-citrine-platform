@@ -1,0 +1,442 @@
+[
+  {
+    "name": "Haircuts",
+    "services": [
+      {
+        "name": "NEW CLIENT HAIRCUT",
+        "price": "$55+",
+        "description": "First time at Salon Citrine? Welcome! This is the service for you, as it gives your stylist more time to consult & familiarize themselves with your hair. Shampoo & blowout included."
+      },
+      {
+        "name": "HAIRCUT",
+        "price": "$55+",
+        "description": "For returning clients only! Your classic haircut to maintain your current shape. Shampoo & blowout included.\n*Not for new shapes requiring more than 4+ inches off*"
+      },
+      {
+        "name": "TRANSFORMATIVE HAIRCUT",
+        "price": "$65+",
+        "description": "Intended for big changes such as taking more than 3\" off and creating new shape. *GREAT for a  new Shag / Mullet / Bob or Pixie*"
+      },
+      {
+        "name": "CLIPPER CUT",
+        "price": "$45+",
+        "description": "Maintaining your personalized tapered look, typically with clippers, but not limited to.\nShampoo & style included."
+      },
+      {
+        "name": "DRY CUT",
+        "price": "$60+",
+        "description": "Maintenance haircut with no shampoo, style, or product.  Come in with clean, dry hair down."
+      },
+      {
+        "name": "FRINGE / UNDERCUT MAINTENANCE",
+        "price": "$30+",
+        "description": "This is the ideal freshen up between haircuts. *Good for Bang trims, undercut trims, & neckline cleanups*"
+      },
+      {
+        "name": "BABY'S FIRST HAIRCUT",
+        "price": "$20+",
+        "description": "Is it time to get rid of the baby mullet, or simply get it out of their eyes? We're here for you. For 0-2 year olds."
+      },
+      {
+        "name": "LITTLE KID'S HAIRCUT",
+        "price": "$35+",
+        "description": "2-5 year olds. *No shampoo experience included."
+      },
+      {
+        "name": "BIG KID'S HAIRCUT",
+        "price": "$45+",
+        "description": "6-11 year olds, shampoo experience included if they want!"
+      },
+      {
+        "name": "DETANGLE",
+        "price": "$65+",
+        "description": "Need some help getting through mats or stubborn tangles, we got you!"
+      }
+    ]
+  },
+  {
+    "name": "Color- Dimensional Color",
+    "services": [
+      {
+        "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+        "price": "$150+",
+        "description": "Full head of dimensional color. Plus a blowout! \n\n*Good for highlights/lowlights/balayage*"
+      },
+      {
+        "name": "FULL DIMENSIONAL COLOR & CUT",
+        "price": "$200+",
+        "description": "Full head of dimensional color. Plus a custom haircut! \n\n*Good for highlights/lowlights/balayage*"
+      },
+      {
+        "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+        "price": "$90+",
+        "description": "Intended to freshen up existing dimensional hair. Plus a blowout.\n\n*Good for highlights/balayage*"
+      },
+      {
+        "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+        "price": "$140+",
+        "description": "Intended to freshen up existing dimensional hair.  Plus a custom haircut. \n\n*Good for highlights/balayage*"
+      },
+      {
+        "name": "MINI LIGHTS & BLOWOUT",
+        "price": "$80+",
+        "description": "Intended to brighten around the face or along the part. Plus a blowout.\n*Good for face framing highlights/money piece, or color blocking*"
+      },
+      {
+        "name": "MINI LIGHTS & CUT",
+        "price": "$130+",
+        "description": "Intended to brighten around the face or along the part. Plus a custom Haircut.\n*Good for face framing highlights/ \"Money piece\"*"
+      }
+    ]
+  },
+  {
+    "name": "Color- Bleach & Tone",
+    "services": [
+      {
+        "name": "ALL OVER BLEACH AND TONE & BLOWOUT",
+        "price": "$300+",
+        "description": "Solid blonde look, achieved by lightening from scalp to ends and toning to desired tone. Plus a blowout!"
+      },
+      {
+        "name": "ALL OVER BLEACH AND TONE & HAIRCUT",
+        "price": "$375+",
+        "description": "Solid blonde look, achieved by lightening from scalp to ends and toning to desired tone. Plus a custom haircut!"
+      },
+      {
+        "name": "BLEACH ROOT TOUCH UP & BLOWOUT",
+        "price": "$150+",
+        "description": "Intended to touch up the roots from previous bleach and toned hair. Plus a blowout!\n\n*ONLY for roots 1\" or under. If longer, book an All Over Bleach & Tone*"
+      },
+      {
+        "name": "BLEACH ROOT TOUCH UP & HAIRCUT",
+        "price": "$225+",
+        "description": "Intended to touch up the roots from previous bleach and toned hair. Plus a custom haircut!  \n\n*ONLY for roots 1\" or under. If longer, book an All Over Bleach & Tone*"
+      }
+    ]
+  },
+  {
+    "name": "Color- Single Color & Root Touch Ups",
+    "services": [
+      {
+        "name": "ALL OVER COLOR WITH BLOWOUT",
+        "price": "$100+",
+        "description": "One solid color from scalp to ends, typically darker. *NOT for dimensional color or going lighter* Plus a blowout!"
+      },
+      {
+        "name": "ALL OVER COLOR WITH HAIRCUT",
+        "price": "$150+",
+        "description": "One solid color from scalp to ends, typically darker. *NOT for dimensional color or going lighter* Plus a custom haircut!"
+      },
+      {
+        "name": "ROOT TOUCH UP WITH A BLOWOUT",
+        "price": "$80+",
+        "description": "One solid color intended to touch up all over color. Plus a blowout! \n\n*NOT for highlights or dimensional lightening*"
+      },
+      {
+        "name": "ROOT TOUCH UP WITH A HAIRCUT",
+        "price": "$130+",
+        "description": "One solid color intended to touch up all over color. Plus a Haircut!\n\n*NOT for highlights or dimensional lightening*"
+      },
+      {
+        "name": "GLOSS WITH A BLOWOUT",
+        "price": "$80+",
+        "description": "Semi permanent color, intended to slightly tint natural color or refresh the tone of previously lightened hair. Plus a blowout."
+      },
+      {
+        "name": "GLOSS WITH A HAIRCUT",
+        "price": "$105+",
+        "description": "Semi permanent color, intended to slightly tint natural color or refresh the tone of previously lightened hair. Plus a custom haircut!"
+      }
+    ]
+  },
+  {
+    "name": "Color- Vivids / Fashion Colors",
+    "services": [
+      {
+        "name": "COLOR CONSULTATION",
+        "price": "$20",
+        "description": "Not sure what service to schedule for? Curious if your hair goals are achievable? This is for you!\n\n*MUST BE SCHEDULED BEFORE BIG COLOR TRANSFORMATIONS*\n*Fee goes towards final service if scheduled at consultation*"
+      },
+      {
+        "name": "VIVID TRANSFORMATION",
+        "price": "$250+",
+        "description": "!! THIS SERVICE REQUIRES A COLOR CONSULTATION BEFORE SCHEDULING !!\n** Consults over text accepted as well as in person **\n*! Final price equals out to $100/hour.\nIntended for full transformation with vivids. Two step process where hair is lifted and then vivid color is applied."
+      }
+    ]
+  },
+  {
+    "name": "Hair Treatments",
+    "services": [
+      {
+        "name": "ADD-ON: HOT TOWEL TREATMENT",
+        "price": "$5",
+        "description": "*NOT A STANDALONE SERVICE.*\nAdd a hot towel & aromatherapy to your shampoo experience."
+      },
+      {
+        "name": "ADD-ON: DEEP CONDITION",
+        "price": "$20+",
+        "description": "*NOT A STANDALONE SERVICE.*\nDoes your hair need some extra moisture or strengthening? Book this for a custom deep condition and pampering moment!"
+      },
+      {
+        "name": "ADD-ON: MALIBU TREATMENT",
+        "price": "$30+",
+        "description": "Amazing treatments for pre-color, mineral & buildup removal, post swim or vacation, and more. \n*NOT A STANDALONE SERVICE.*"
+      },
+      {
+        "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+        "price": "$40+",
+        "description": "Feel rejuvenated with this scalp & hair treatment!\nFully unwind with a warm, weighted eye mask & cozy aromas. \n»Start off with a stimulating dry brushing. Remove buildup with a double cleanse & scalp scrub. Relax & re-energize with a Jade  comb & thorough massage. Finish with a balancing & hydrating deep condition with a hot towel!\n*Ear plugs available for ultimate relaxation*\n\n*NOT A STANDALONE SERVICE.*"
+      },
+      {
+        "name": "ADD-ON: K-18 TREATMENT",
+        "price": "$40+",
+        "description": "Repair and protect. This can be done with a color service or as a stand alone treatment.\n*Must schedule blowout if scheduling a stand alone treatment*"
+      },
+      {
+        "name": "ADD-ON: STYLING EDUCATION",
+        "price": "$10+",
+        "description": "Some extra 1 on 1 styling education for you!\n*NOT A STANDALONE SERVICE.*"
+      },
+      {
+        "name": "HAIR TINSEL",
+        "price": "$10+",
+        "description": "Make your hair sparkle! \nWe have a variety of colors and application methods available- *If you're wanting a specific color or application method, please leave a note or contact us before appt*\n*Price includes 1 application, additional applications are $5 each"
+      },
+      {
+        "name": "BLOWOUT",
+        "price": "$50+",
+        "description": "Start with a relaxing shampoo and scalp massage and leave with a beautiful style!"
+      },
+      {
+        "name": "SILK PRESS",
+        "price": "$100+",
+        "description": "Scalp cleanse, deep condition, blow dry & flat iron."
+      },
+      {
+        "name": "KERATIN COMPLEX TREATMENT",
+        "price": "$300+",
+        "description": "Transform and revitalize your hair with our Keratin Complex Treatment. This professional service nourishes, and smooths your hair, leaving it sleek, shiny, and frizz-free for weeks. Not sure if this is the service for you? Schedule a complimentary consultation!"
+      }
+    ]
+  },
+  {
+    "name": "Hair Consultations",
+    "services": [
+      {
+        "name": "CONSULTATION FOR KERATIN COMPLEX",
+        "price": "Complimentary",
+        "description": "Curious about getting a keratin treatment? Book this to learn more and see how we can help you!"
+      },
+      {
+        "name": "EXTENSIONS CONSULTATION",
+        "price": "Complimentary",
+        "description": "Curious if extensions are right for you? Book this to learn more!"
+      }
+    ]
+  },
+  {
+    "name": "Waxing Services",
+    "services": [
+      {
+        "name": "NOSTRIL",
+        "price": "$15+",
+        "description": "Get those pesky nose hairs taken care of!"
+      },
+      {
+        "name": "BACK WAX",
+        "price": "$75",
+        "description": null
+      },
+      {
+        "name": "BIKINI WAX",
+        "price": "$45",
+        "description": null
+      },
+      {
+        "name": "BRAZILIAN WAX",
+        "price": "$80",
+        "description": null
+      },
+      {
+        "name": "BROW MAINTENANCE",
+        "price": "$15",
+        "description": "Quick clean up!"
+      },
+      {
+        "name": "BROW SHAPING",
+        "price": "$20",
+        "description": "Brows needing a little more TLC, include some tweezing and trimming to get things together."
+      },
+      {
+        "name": "BUTTOCKS",
+        "price": "$45",
+        "description": null
+      },
+      {
+        "name": "CHEST WAX",
+        "price": "$75",
+        "description": null
+      },
+      {
+        "name": "CHIN",
+        "price": "$15",
+        "description": null
+      },
+      {
+        "name": "EAR",
+        "price": "$15",
+        "description": null
+      },
+      {
+        "name": "FULL ARM WAX",
+        "price": "$75",
+        "description": null
+      },
+      {
+        "name": "FULL LEG WAX",
+        "price": "$95",
+        "description": null
+      },
+      {
+        "name": "HAIR REDUCTION ENZYME ADD ON",
+        "price": "$25",
+        "description": "This enzyme treatment is specially developed for all skin types to help remove unwanted hair growth. The enzyme contains a natural fruit enzyme, papain, which has the ability to gently dissolve keratin (protein constituent of hair), stabilized in an anhydrous gel.\n\nThis can be added to any waxing service. This enzyme only works on areas that have been freshly waxed. We will apply the initial application in the treatment room, and you take the rest home to reapply for the next 36 hours. \n\nAlthough this blocks out 10 mins on the schedule, it doesn't actually add any additional time to your service."
+      },
+      {
+        "name": "HALF ARM WAX",
+        "price": "$45",
+        "description": null
+      },
+      {
+        "name": "HALF LEG",
+        "price": "$55",
+        "description": null
+      },
+      {
+        "name": "LIP",
+        "price": "$12",
+        "description": null
+      },
+      {
+        "name": "LIP AND CHIN",
+        "price": "$20",
+        "description": null
+      },
+      {
+        "name": "UNDERARM WAX",
+        "price": "$35",
+        "description": null
+      },
+      {
+        "name": "FULL FACE WAX",
+        "price": "$40",
+        "description": "A full face wax can include brow, lip, chin as well as the sides of the face, and under the jawline."
+      }
+    ]
+  },
+  {
+    "name": "Skincare Services",
+    "services": [
+      {
+        "name": "BESPOKE KOREAN FACIAL- 60 MINUTES",
+        "price": "$125",
+        "description": "Enjoy a personalized facial experience where every step is tailored to your unique skincare concerns and goals, ensuring that you get the most out of your visit with individualized protocols and targeted treatments."
+      },
+      {
+        "name": "ACNE FACIAL- INITIAL VISIT",
+        "price": "$300",
+        "description": "Our Acne Facial combines advanced techniques and carefully chosen products to combat blemishes, breakouts, and congestion for clearer, healthier skin. With a focus on preserving the integrity of the epidermis, our Korean-inspired approach minimizes unnecessary stimulation to the skin's defense and immune systems.\nProper homecare is required to achieve the desired results, so cost of the first treatment includes professional product for use at home."
+      },
+      {
+        "name": "ACNE FACIAL-RETURNING CLIENT",
+        "price": "$175",
+        "description": "Our Acne Facial combines advanced techniques and carefully chosen products to combat blemishes, breakouts, and congestion for clearer, healthier skin. With a focus on preserving the integrity of the epidermis, our Korean-inspired approach minimizes unnecessary stimulation to the skin's defense and immune systems."
+      },
+      {
+        "name": "BESPOKE KOREAN FACIAL- 30 MINUTES",
+        "price": "$75",
+        "description": "Enjoy a personalized facial experience where every step is tailored to your unique skincare concerns and goals, ensuring that you get the most out of your visit with individualized protocols and targeted treatments. These facials can include one or more of the following treatments, depending on time"
+      },
+      {
+        "name": "BESPOKE KOREAN FACIAL- 90 MINUTES",
+        "price": "$175",
+        "description": "Enjoy a personalized facial experience where every step is tailored to your unique skincare concerns and goals, ensuring that you get the most out of your visit with individualized protocols and targeted treatments."
+      },
+      {
+        "name": "GLOW PEEL",
+        "price": "$125",
+        "description": "This gentle brightening and rejuvenating peel leaves skin glowing, lightening hyperpigmentation, and working beneath the skin’s surface to repair free radical damage at the cellular level.  Glow Peel features a gently acidic 2.9pH profile, with 40% glycolic acid to exfoliate surface skin cells and reveal healthy, vibrant skin beneath. Often referred to as a “lunchtime peel,” Glow Peel requires no downtime, leaving skin softer, smoother, and brighter in under an hour."
+      },
+      {
+        "name": "GREEN SEA SPICULE PEEL-1ST PEEL",
+        "price": "$250",
+        "description": "Spicule Peels are a resurfacing treatment that is natural, safe for all fitzpatricks, and safe during pregnancy. This is ideal for treating texture issues (particularly acne scarring) and hyperpigmentation. This peel works by driving spicules into the skin, which stimulates collagen, exfoliates, and pulls pigment, all while delivering a polypharmacy of vitamins and nutrients into the skin. \n\nThis peel requires 2 weeks of at home prep, and the cost of the service includes the required homecare products for both pre & post peel."
+      },
+      {
+        "name": "GREEN SEA PEEL-RETURNING CLIENT",
+        "price": "$175",
+        "description": "Choose this for all additional GSP treatments after your initial Green Sea Peel."
+      },
+      {
+        "name": "ILLUMIN BIPHASIC CHEMICAL PEEL",
+        "price": "$125",
+        "description": "The Illumin peel is best for treating acne, scar reduction, hyperpigmentation, and balancing overactive sebum. This is an advanced treatment, and cannot be done on your first visit."
+      },
+      {
+        "name": "KOREAN NEEDLE-FREE FILLER FACIAL",
+        "price": "$200",
+        "description": "This non-invasive, anti-aging skincare treatment softens fine lines & wrinkles by plumping the skin and adding volume back to the face & neck . Poly L-Lactic Acid is applied topically with a blend of other anti-aging ingredients and driven in with a patented delivery system. Collagen stimulation continues for 3 weeks after a single treatment, and up to 5 months after a series of 3-5 treatment done a week apart."
+      },
+      {
+        "name": "LAZER PEEL",
+        "price": "$175",
+        "description": "The LaZer Peel is a medium-depth peel (pH 1.7). This peel is incredible for tackling stubborn hyperpigmentation including Melasma. \n\nThis is a strong peel that will require some downtime, and is only available to regular clients, due to the importance of following all pre and post peel care requirements for best results. This cannot be booked for your first visit."
+      },
+      {
+        "name": "SUNBURN RX EXPRESS",
+        "price": "$75",
+        "description": "Get a quick and rejuvenating Sunburn RX Express treatment that uses Korean skincare products to soothe, hydrate, and heal sunburnt skin in just 30 minutes, leaving you with a refreshed complexion and relief from discomfort. Embrace the revitalizing effects and enjoy a renewed glow"
+      },
+      {
+        "name": "CLEAR PEEL",
+        "price": "$125",
+        "description": "This incredible formula helps treat acne and reduce inflammation.  This peel helps to calm redness, soothe irritation, and combat the oxidative stress that can contribute to acne and post-inflammatory hyperpigmentation."
+      },
+      {
+        "name": "SKINCARE CONSULTATION",
+        "price": "Complimentary",
+        "description": "Don’t know where to start? Book a complimentary 15 minute skincare consultation!"
+      }
+    ]
+  },
+  {
+    "name": "Makeup Services",
+    "services": [
+      {
+        "name": "MAKEUP APPLICATION (BEAUTY MAKEUP)",
+        "price": "$125+",
+        "description": "Elevate your beauty experience! I specialize in creating personalized looks that celebrate your individuality!"
+      },
+      {
+        "name": "FX/BODY PAINTING MAKEUP",
+        "price": "$250+",
+        "description": "Every day is Halloween in Irvington! SFX and Body Painting Makeup Appointments are your ticket to a world of stunning transformations, from otherworldly creatures to realistic injury simulations. Whether you dream of becoming an alien, monster, or fantastical being, I can bring your vision to life! These appointments will require a (free) consultation, as well as additional cost for materials, depending on design. Application can be on or off site, depending on need."
+      },
+      {
+        "name": "MAKEUP CONSULTATION",
+        "price": "Complimentary",
+        "description": "Before diving into the good stuff, let's sit down for a Makeup Consultation! This consultation not only sets the stage for a personalized experience but also ensures you're confident in your service choice. This is required before booking any makeup application service."
+      },
+      {
+        "name": "MAKEUP LESSON",
+        "price": "$150+",
+        "description": "Want some help with your makeup game? Let's work together to level up! We can take a look at what you're already doing, what products you're using, what's working for you, what isn't and from that, we'll create a makeup routine that works for you. We can also discuss application and \"how-to\" at each step along the way! These lessons are for you, always 1 on 1, and we can address whatever you'd like."
+      },
+      {
+        "name": "PERSONAL SHOPPING",
+        "price": "$50+",
+        "description": null
+      }
+    ]
+  }
+]

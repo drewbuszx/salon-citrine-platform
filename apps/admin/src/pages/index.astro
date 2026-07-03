@@ -1,0 +1,21 @@
+---
+import AdminLayout from "../layouts/AdminLayout.astro";
+import WeekCalendar from "../components/WeekCalendar.astro";
+---
+
+<AdminLayout title="Calendar">
+  <h1>Staff calendar</h1>
+  <p class="lead">All providers · week view</p>
+  <WeekCalendar />
+</AdminLayout>
+
+<style>
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .lead {
+    color: var(--color-gray);
+    margin-top: 0;
+  }
+</style>

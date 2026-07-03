@@ -1,0 +1,136 @@
+---
+import BookingLayout from "../layouts/BookingLayout.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+import {
+  MOCK_SERVICES,
+  groupServicesByCategory,
+  formatPrice,
+  getStaffBySlug,
+} from "../data/mock";
+
+const stylistSlug = Astro.url.searchParams.get("stylist");
+const preselectedStylist = getStaffBySlug(stylistSlug);
+const grouped = groupServicesByCategory(MOCK_SERVICES);
+---
+
+<BookingLayout title="Choose a service" step={1}>
+  {
+    preselectedStylist && (
+      <p class="prefill">
+        Booking with <strong>{preselectedStylist.name}</strong>
+      </p>
+    )
+  }
+
+  <h1>Choose a service</h1>
+  <p class="lead">Prices shown are starting rates where noted (+).</p>
+
+  {
+    [...grouped.entries()].map(([category, services]) => (
+      <section class="category">
+        <h2 class="category__title">{category}</h2>
+        <ul class="service-list">
+          {services.map((service) => (
+            <li>
+              <a
+                class="service-card"
+                href={`${import.meta.env.BASE_URL}stylist/?service=${service.id}${stylistSlug ? `&stylist=${stylistSlug}` : ""}`}
+              >
+                <span class="service-card__name">{service.name}</span>
+                <span class="service-card__meta">
+                  {formatPrice(service)} · {service.durationMinutes} min
+                </span>
+                {service.requiresConsultation && (
+                  <span class="service-card__badge">Consultation required</span>
+                )}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+
+  <p class="note">
+    Full menu ({MOCK_SERVICES.length} sample services shown) — complete catalog
+    loads from Supabase in Phase 1.
+  </p>
+</BookingLayout>
+
+<style>
+  .prefill {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background: var(--color-light);
+    border-left: 3px solid var(--color-citrine);
+  }
+
+  .lead {
+    color: var(--color-gray);
+    margin-top: 0;
+  }
+
+  .category {
+    margin-top: 2rem;
+  }
+
+  .category__title {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .service-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .service-card {
+    display: block;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .service-card:hover,
+  .service-card:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-light);
+  }
+
+  .service-card__name {
+    display: block;
+    font-weight: 600;
+  }
+
+  .service-card__meta {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+    color: var(--color-gray);
+  }
+
+  .service-card__badge {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--color-sage);
+    color: var(--color-white);
+  }
+
+  .note {
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    color: var(--color-gray);
+  }
+</style>

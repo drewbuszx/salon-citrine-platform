@@ -1,0 +1,25 @@
+/*
+ * @saloncitrine/theme — fonts
+ * Cormorant Garamond (body serif) + Oswald (labels/sans) via Google Fonts.
+ * Serling Galleria (nav) and Basic Title (CTAs) are licensed local fonts:
+ * copy them from the marketing site's public/fonts/ into each app's
+ * public/fonts/ directory (they are not committed to this package).
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Oswald:wght@400;500;600;700&display=swap");
+
+@font-face {
+  font-family: "Serling Galleria";
+  src: url("/fonts/SerlingGalleria-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Basic Title";
+  src: url("/fonts/BasicTitle.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

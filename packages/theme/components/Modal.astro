@@ -1,0 +1,61 @@
+---
+/**
+ * Stub — Salon Citrine modal.
+ * Will replicate the marketing site's cancellation policy modal
+ * (BookingModal.astro): keyboard focus trap, Escape closes, backdrop
+ * dismiss, body scroll lock. Used before final booking confirmation.
+ */
+interface Props {
+  id: string;
+  labelledBy: string;
+}
+
+const { id, labelledBy } = Astro.props;
+---
+
+<div class="sc-modal" id={id} hidden aria-hidden="true">
+  <div class="sc-modal__backdrop"></div>
+  <div
+    class="sc-modal__dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby={labelledBy}
+    tabindex="-1"
+  >
+    <slot />
+  </div>
+</div>
+
+<style>
+  .sc-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 2rem);
+  }
+
+  .sc-modal[hidden] {
+    display: none;
+  }
+
+  .sc-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .sc-modal__dialog {
+    position: relative;
+    width: min(32rem, 100%);
+    max-height: min(85vh, 36rem);
+    overflow-y: auto;
+    padding: clamp(1.5rem, 4vw, 2.25rem);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.25);
+    outline: none;
+  }
+</style>

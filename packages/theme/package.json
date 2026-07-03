@@ -1,0 +1,17 @@
+{
+  "name": "@saloncitrine/theme",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Salon Citrine brand tokens, fonts, and shared UI components",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./fonts.css": "./fonts.css",
+    "./components/*": "./components/*"
+  },
+  "files": [
+    "tokens.css",
+    "fonts.css",
+    "components"
+  ]
+}

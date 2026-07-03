@@ -1,0 +1,13 @@
+{
+  "name": "@saloncitrine/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared Zod schemas and business constants for Salon Citrine",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}

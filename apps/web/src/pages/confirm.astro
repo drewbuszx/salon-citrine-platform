@@ -1,0 +1,113 @@
+---
+import BookingLayout from "../layouts/BookingLayout.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+import { BUSINESS } from "@saloncitrine/shared";
+import {
+  formatPrice,
+  getServiceById,
+  getStaffBySlug,
+} from "../data/mock";
+
+const serviceId = Astro.url.searchParams.get("service");
+const stylistSlug = Astro.url.searchParams.get("stylist");
+const date = Astro.url.searchParams.get("date");
+const time = Astro.url.searchParams.get("time");
+const firstName = Astro.url.searchParams.get("firstName");
+const lastName = Astro.url.searchParams.get("lastName");
+const email = Astro.url.searchParams.get("email");
+const policyAck = Astro.url.searchParams.get("policyAck");
+
+const service = getServiceById(serviceId);
+const stylist = getStaffBySlug(stylistSlug);
+
+if (
+  !service ||
+  !stylist ||
+  !date ||
+  !time ||
+  !firstName ||
+  !lastName ||
+  !email ||
+  policyAck !== "true"
+) {
+  return Astro.redirect(`${import.meta.env.BASE_URL}details/?${Astro.url.searchParams.toString()}`);
+}
+
+const confirmationId = `SC-${Date.now().toString(36).toUpperCase()}`;
+---
+
+<BookingLayout title="Booking confirmed" step={5}>
+  <div class="confirm">
+    <p class="confirm__kicker">You're booked!</p>
+    <h1>Confirmation {confirmationId}</h1>
+
+    <dl class="confirm__details">
+      <div>
+        <dt>Service</dt>
+        <dd>{service.name} ({formatPrice(service)})</dd>
+      </div>
+      <div>
+        <dt>Stylist</dt>
+        <dd>{stylist.name}</dd>
+      </div>
+      <div>
+        <dt>When</dt>
+        <dd>
+          {date} at {time}
+        </dd>
+      </div>
+      <div>
+        <dt>Guest</dt>
+        <dd>
+          {firstName} {lastName} · {email}
+        </dd>
+      </div>
+    </dl>
+
+    <p class="confirm__note">
+      Placeholder confirmation — Resend email + Twilio SMS will fire here once
+      Supabase + Stripe are wired up.
+    </p>
+
+    <Button href="https://saloncitrineindy.com/" variant="secondary">
+      Back to {BUSINESS.name}
+    </Button>
+  </div>
+</BookingLayout>
+
+<style>
+  .confirm__kicker {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-sage);
+    margin: 0 0 0.5rem;
+  }
+
+  .confirm__details {
+    margin: 1.5rem 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  .confirm__details dt {
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .confirm__details dd {
+    margin: 0.15rem 0 0;
+    font-weight: 500;
+  }
+
+  .confirm__note {
+    padding: 1rem;
+    background: var(--color-light);
+    font-size: 0.9rem;
+    color: var(--color-gray);
+  }
+</style>

@@ -1,0 +1,88 @@
+---
+const STEPS = [
+  { num: 1, label: "Service", href: import.meta.env.BASE_URL },
+  { num: 2, label: "Stylist", href: `${import.meta.env.BASE_URL}stylist/` },
+  { num: 3, label: "Date & time", href: `${import.meta.env.BASE_URL}datetime/` },
+  { num: 4, label: "Details", href: `${import.meta.env.BASE_URL}details/` },
+  { num: 5, label: "Confirm", href: `${import.meta.env.BASE_URL}confirm/` },
+];
+
+interface Props {
+  current: 1 | 2 | 3 | 4 | 5;
+}
+
+const { current } = Astro.props;
+---
+
+<nav class="steps" aria-label="Booking progress">
+  <ol class="steps__list">
+    {
+      STEPS.map((step) => (
+        <li
+          class:list={[
+            "steps__item",
+            step.num === current && "steps__item--current",
+            step.num < current && "steps__item--complete",
+          ]}
+        >
+          <span class="steps__num">{step.num}</span>
+          <span class="steps__label">{step.label}</span>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .steps {
+    margin-bottom: 0.5rem;
+  }
+
+  .steps__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .steps__item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .steps__item--current {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .steps__item--complete .steps__num {
+    background: var(--color-sage);
+    border-color: var(--color-sage);
+    color: var(--color-white);
+  }
+
+  .steps__num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 50%;
+    font-size: 0.65rem;
+  }
+
+  .steps__item--current .steps__num {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
+  }
+</style>

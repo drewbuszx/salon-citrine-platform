@@ -1,0 +1,16 @@
+{
+  "name": "apps-admin",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev --port 4322",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@saloncitrine/shared": "*",
+    "@saloncitrine/theme": "*",
+    "astro": "^7.0.4"
+  }
+}

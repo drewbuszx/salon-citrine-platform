@@ -1,0 +1,130 @@
+---
+import Modal from "@saloncitrine/theme/components/Modal.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+import { CANCELLATION_POLICY } from "@saloncitrine/shared";
+
+const policyText = `Reschedule ${CANCELLATION_POLICY.rescheduleCutoffHours}+ hours before your appointment to avoid a fee. Cancel within 48 hours: ${CANCELLATION_POLICY.lateCancelFeePercent}% charge. No-show: ${CANCELLATION_POLICY.noShowFeePercent}% charge. Arriving ${CANCELLATION_POLICY.lateGraceMinutes}+ minutes late without contact counts as a no-show.${CANCELLATION_POLICY.feesWaivedIfRescheduledSameWeek ? " Fees are waived if you reschedule within the same week." : ""} A card on file is required to secure your booking.`;
+---
+
+<Modal id="policy-modal" labelledBy="policy-modal-title">
+  <h2 id="policy-modal-title" class="policy-modal__title">Cancellation Policy</h2>
+  <p class="policy-modal__text">{policyText}</p>
+  <div class="policy-modal__actions">
+    <Button variant="secondary" type="button" data-policy-back>Go Back</Button>
+    <Button variant="primary" type="button" data-policy-confirm>Understood!</Button>
+  </div>
+</Modal>
+
+<script>
+  const modal = document.getElementById("policy-modal");
+  const dialog = modal?.querySelector<HTMLElement>('[role="dialog"]');
+  const backBtn = modal?.querySelector<HTMLButtonElement>("[data-policy-back]");
+  const confirmBtn = modal?.querySelector<HTMLButtonElement>("[data-policy-confirm]");
+  const backdrop = modal?.querySelector<HTMLElement>(".sc-modal__backdrop");
+  const openBtn = document.querySelector<HTMLButtonElement>("[data-open-policy-modal]");
+
+  let pendingSubmit = false;
+
+  const focusableSelector =
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable(container: HTMLElement) {
+    return Array.from(container.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (el) => !el.hasAttribute("disabled"),
+    );
+  }
+
+  function openModal() {
+    if (!modal || !dialog) return;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("policy-modal-open");
+    backBtn?.focus();
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.setAttribute("hidden", "");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("policy-modal-open");
+    openBtn?.focus();
+  }
+
+  function submitForm() {
+    const form = document.querySelector<HTMLFormElement>("[data-booking-details-form]");
+    if (!form) return;
+    pendingSubmit = true;
+    form.requestSubmit();
+  }
+
+  openBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openModal();
+  });
+
+  backBtn?.addEventListener("click", closeModal);
+  backdrop?.addEventListener("click", closeModal);
+
+  confirmBtn?.addEventListener("click", () => {
+    closeModal();
+    submitForm();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal && !modal.hasAttribute("hidden")) {
+      e.preventDefault();
+      closeModal();
+    }
+
+    if (e.key === "Tab" && modal && !modal.hasAttribute("hidden") && dialog) {
+      const focusable = getFocusable(dialog);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  document.querySelector<HTMLFormElement>("[data-booking-details-form]")?.addEventListener(
+    "submit",
+    (e) => {
+      const ack = document.querySelector<HTMLInputElement>("#policy-ack");
+      if (!pendingSubmit) {
+        e.preventDefault();
+        openModal();
+        return;
+      }
+      if (ack) ack.value = "true";
+    },
+  );
+</script>
+
+<style>
+  .policy-modal__title {
+    font-size: 1.35rem;
+    margin-bottom: 1rem;
+  }
+
+  .policy-modal__text {
+    margin: 0 0 1.5rem;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .policy-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  :global(body.policy-modal-open) {
+    overflow: hidden;
+  }
+</style>

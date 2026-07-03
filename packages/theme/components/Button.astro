@@ -1,0 +1,61 @@
+---
+/**
+ * Stub — Salon Citrine button.
+ * Editorial bordered button matching the marketing site's CTA style
+ * (.services-cta__book / .booking-modal__btn).
+ */
+interface Props {
+  variant?: "primary" | "secondary";
+  href?: string;
+  type?: "button" | "submit";
+}
+
+const { variant = "primary", href, type = "button" } = Astro.props;
+const Tag = href ? "a" : "button";
+---
+
+<Tag
+  class:list={["sc-button", `sc-button--${variant}`]}
+  href={href}
+  type={href ? undefined : type}
+>
+  <slot />
+</Tag>
+
+<style>
+  .sc-button {
+    display: inline-block;
+    padding: 0.85rem 2rem;
+    border: 1px solid var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .sc-button--primary {
+    background: var(--color-text);
+    color: var(--color-bg);
+  }
+
+  .sc-button--primary:hover,
+  .sc-button--primary:focus-visible {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .sc-button--secondary {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .sc-button--secondary:hover,
+  .sc-button--secondary:focus-visible {
+    background: var(--color-light);
+  }
+</style>

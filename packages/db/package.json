@@ -1,0 +1,10 @@
+{
+  "name": "@saloncitrine/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Supabase schema migrations and seed data for Salon Citrine",
+  "scripts": {
+    "generate-seed": "node scripts/generate-seed.mjs"
+  }
+}

@@ -1,0 +1,87 @@
+---
+import "../styles/global.css";
+import { BUSINESS } from "@saloncitrine/shared";
+import BookingSteps from "../components/BookingSteps.astro";
+
+interface Props {
+  title: string;
+  step: 1 | 2 | 3 | 4 | 5;
+}
+
+const { title, step } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{title} · Book · {BUSINESS.name}</title>
+  </head>
+  <body>
+    <header class="booking-header">
+      <a class="booking-header__brand" href={import.meta.env.BASE_URL}>
+        {BUSINESS.name}
+      </a>
+      <p class="booking-header__tagline">{BUSINESS.tagline}</p>
+    </header>
+
+    <main class="booking-main">
+      <BookingSteps current={step} />
+      <div class="booking-content">
+        <slot />
+      </div>
+    </main>
+
+    <footer class="booking-footer">
+      <p>
+        Questions? Call <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phone}</a>
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .booking-header {
+    padding: 1.25rem var(--section-padding);
+    border-bottom: 1px solid var(--color-border);
+    text-align: center;
+  }
+
+  .booking-header__brand {
+    font-family: var(--font-nav);
+    font-size: 1.5rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .booking-header__tagline {
+    margin: 0.35rem 0 0;
+    font-size: 0.95rem;
+    color: var(--color-gray);
+  }
+
+  .booking-main {
+    width: min(var(--max-width), 100%);
+    margin: 0 auto;
+    padding: var(--section-padding);
+    padding-bottom: calc(var(--section-padding) + 1rem);
+  }
+
+  .booking-content {
+    margin-top: 1.5rem;
+  }
+
+  .booking-footer {
+    padding: 1rem var(--section-padding) 2rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--color-gray);
+  }
+
+  .booking-footer a {
+    color: var(--color-text);
+  }
+</style>

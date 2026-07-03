@@ -1,0 +1,146 @@
+---
+import BookingLayout from "../layouts/BookingLayout.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+import {
+  MOCK_TIME_SLOTS,
+  getServiceById,
+  getStaffBySlug,
+} from "../data/mock";
+
+const serviceId = Astro.url.searchParams.get("service");
+const stylistSlug = Astro.url.searchParams.get("stylist");
+const service = getServiceById(serviceId);
+const stylist = getStaffBySlug(stylistSlug);
+
+if (!service || !stylist) {
+  return Astro.redirect(import.meta.env.BASE_URL);
+}
+
+const dates = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + i + 1);
+  return d;
+});
+---
+
+<BookingLayout title="Choose date & time" step={3}>
+  <h1>Choose date & time</h1>
+  <p class="lead">
+    {service.name} with <strong>{stylist.name}</strong>
+  </p>
+
+  <form
+    class="datetime-form"
+    method="get"
+    action={`${import.meta.env.BASE_URL}details/`}
+  >
+    <input type="hidden" name="service" value={service.id} />
+    <input type="hidden" name="stylist" value={stylist.slug} />
+
+    <fieldset class="field">
+      <legend>Date</legend>
+      <div class="date-grid">
+        {
+          dates.map((date) => (
+            <label class="date-option">
+              <input
+                type="radio"
+                name="date"
+                value={date.toISOString().slice(0, 10)}
+                required
+              />
+              <span>
+                {date.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend>Time</legend>
+      <div class="time-grid">
+        {
+          MOCK_TIME_SLOTS.map((slot) => (
+            <label class="time-option">
+              <input type="radio" name="time" value={slot} required />
+              <span>{slot}</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <Button type="submit" variant="primary">Continue</Button>
+  </form>
+
+  <p class="back">
+    <a
+      href={`${import.meta.env.BASE_URL}stylist/?service=${service.id}&stylist=${stylist.slug}`}
+    >
+      ← Back to stylist
+    </a>
+  </p>
+</BookingLayout>
+
+<style>
+  .lead {
+    color: var(--color-gray);
+  }
+
+  .field {
+    border: none;
+    margin: 0 0 1.75rem;
+    padding: 0;
+  }
+
+  .field legend {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .date-grid,
+  .time-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .date-option input,
+  .time-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .date-option span,
+  .time-option span {
+    display: block;
+    padding: 0.65rem 0.5rem;
+    border: 1px solid var(--color-border);
+    text-align: center;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .date-option input:checked + span,
+  .time-option input:checked + span {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine);
+    color: var(--color-black);
+  }
+
+  .back {
+    margin-top: 1.5rem;
+  }
+</style>
