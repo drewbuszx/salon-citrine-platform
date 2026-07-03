@@ -6,6 +6,7 @@ import {
   groupServicesByCategory,
   formatPrice,
 } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const [services, preselectedStylist] = await Promise.all([
@@ -36,7 +37,7 @@ const grouped = groupServicesByCategory(services);
             <li>
               <a
                 class="service-card"
-                href={`${import.meta.env.BASE_URL}stylist/?service=${service.id}${stylistSlug ? `&stylist=${stylistSlug}` : ""}`}
+                href={`${withBase("stylist/")}?service=${service.id}${stylistSlug ? `&stylist=${stylistSlug}` : ""}`}
               >
                 <span class="service-card__name">{service.name}</span>
                 <span class="service-card__meta">

@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import { BUSINESS } from "@saloncitrine/shared";
 import BookingSteps from "../components/BookingSteps.astro";
+import { withBase } from "../lib/paths";
 
 interface Props {
   title: string;
@@ -21,7 +22,7 @@ const { title, step } = Astro.props;
   </head>
   <body>
     <header class="booking-header">
-      <a class="booking-header__brand" href={import.meta.env.BASE_URL}>
+      <a class="booking-header__brand" href={withBase()}>
         {BUSINESS.name}
       </a>
       <p class="booking-header__tagline">{BUSINESS.tagline}</p>

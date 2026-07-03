@@ -7,6 +7,7 @@ import {
   getServiceById,
   getStaffBySlug,
 } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
@@ -32,7 +33,7 @@ if (
   !email ||
   policyAck !== "true"
 ) {
-  return Astro.redirect(`${import.meta.env.BASE_URL}details/?${Astro.url.searchParams.toString()}`);
+  return Astro.redirect(`${withBase("details/")}?${Astro.url.searchParams.toString()}`);
 }
 
 const confirmationId = `SC-${Date.now().toString(36).toUpperCase()}`;

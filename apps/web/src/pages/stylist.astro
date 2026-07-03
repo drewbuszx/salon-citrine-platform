@@ -6,6 +6,7 @@ import {
   getServiceById,
   getStaffBySlug,
 } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
@@ -17,7 +18,7 @@ const [service, preselectedStylist, allStaff] = await Promise.all([
 ]);
 
 if (!service) {
-  return Astro.redirect(`${import.meta.env.BASE_URL}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`);
+  return Astro.redirect(`${withBase()}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`);
 }
 
 const staff = filterStaffForService(allStaff, service, preselectedStylist);
@@ -35,7 +36,7 @@ const staff = filterStaffForService(allStaff, service, preselectedStylist);
         <li>
           <a
             class="stylist-card"
-            href={`${import.meta.env.BASE_URL}datetime/?service=${service.id}&stylist=${member.slug}`}
+            href={`${withBase("datetime/")}?service=${service.id}&stylist=${member.slug}`}
           >
             <span class="stylist-card__avatar" aria-hidden="true">
               {member.name.charAt(0)}
@@ -52,7 +53,7 @@ const staff = filterStaffForService(allStaff, service, preselectedStylist);
   </ul>
 
   <p>
-    <a href={`${import.meta.env.BASE_URL}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`}>
+    <a href={`${withBase()}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`}>
       ← Back to services
     </a>
   </p>

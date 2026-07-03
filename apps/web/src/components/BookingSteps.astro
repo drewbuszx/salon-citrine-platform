@@ -1,10 +1,12 @@
 ---
+import { withBase } from "../lib/paths";
+
 const STEPS = [
-  { num: 1, label: "Service", href: import.meta.env.BASE_URL },
-  { num: 2, label: "Stylist", href: `${import.meta.env.BASE_URL}stylist/` },
-  { num: 3, label: "Date & time", href: `${import.meta.env.BASE_URL}datetime/` },
-  { num: 4, label: "Details", href: `${import.meta.env.BASE_URL}details/` },
-  { num: 5, label: "Confirm", href: `${import.meta.env.BASE_URL}confirm/` },
+  { num: 1, label: "Service", href: withBase() },
+  { num: 2, label: "Stylist", href: withBase("stylist/") },
+  { num: 3, label: "Date & time", href: withBase("datetime/") },
+  { num: 4, label: "Details", href: withBase("details/") },
+  { num: 5, label: "Confirm", href: withBase("confirm/") },
 ];
 
 interface Props {

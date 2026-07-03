@@ -3,6 +3,7 @@ import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import PolicyModal from "../components/PolicyModal.astro";
 import { getServiceById, getStaffBySlug } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
@@ -14,7 +15,7 @@ const [service, stylist] = await Promise.all([
 ]);
 
 if (!service || !stylist || !date || !time) {
-  return Astro.redirect(import.meta.env.BASE_URL);
+  return Astro.redirect(withBase());
 }
 ---
 
@@ -28,7 +29,7 @@ if (!service || !stylist || !date || !time) {
   <form
     class="details-form"
     method="get"
-    action={`${import.meta.env.BASE_URL}confirm/`}
+    action={withBase("confirm/")}
     data-booking-details-form
   >
     <input type="hidden" name="service" value={service.id} />
@@ -75,7 +76,7 @@ if (!service || !stylist || !date || !time) {
 
   <p class="back">
     <a
-      href={`${import.meta.env.BASE_URL}datetime/?service=${service.id}&stylist=${stylist.slug}`}
+      href={`${withBase("datetime/")}?service=${service.id}&stylist=${stylist.slug}`}
     >
       ← Back to date & time
     </a>

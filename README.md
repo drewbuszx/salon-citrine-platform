@@ -51,7 +51,8 @@ saloncitrineindy.com/api/*   → Supabase Edge Functions / Worker proxy
 ```bash
 npm install
 
-# client booking app → http://localhost:4321/book
+# client booking app → http://localhost:4321/book/
+# (Stop the marketing site dev server first — it also defaults to port 4321.)
 npm run dev:web
 
 # staff dashboard → http://localhost:4322/admin

@@ -3,6 +3,7 @@ import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import { MOCK_TIME_SLOTS } from "../data/mock";
 import { getServiceById, getStaffBySlug } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
@@ -12,7 +13,7 @@ const [service, stylist] = await Promise.all([
 ]);
 
 if (!service || !stylist) {
-  return Astro.redirect(import.meta.env.BASE_URL);
+  return Astro.redirect(withBase());
 }
 
 const dates = Array.from({ length: 7 }, (_, i) => {
@@ -31,7 +32,7 @@ const dates = Array.from({ length: 7 }, (_, i) => {
   <form
     class="datetime-form"
     method="get"
-    action={`${import.meta.env.BASE_URL}details/`}
+    action={withBase("details/")}
   >
     <input type="hidden" name="service" value={service.id} />
     <input type="hidden" name="stylist" value={stylist.slug} />
@@ -80,7 +81,7 @@ const dates = Array.from({ length: 7 }, (_, i) => {
 
   <p class="back">
     <a
-      href={`${import.meta.env.BASE_URL}stylist/?service=${service.id}&stylist=${stylist.slug}`}
+      href={`${withBase("stylist/")}?service=${service.id}&stylist=${stylist.slug}`}
     >
       ← Back to stylist
     </a>
