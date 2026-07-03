@@ -1,5 +1,12 @@
 ---
 import type { BookingCatalog } from "../lib/booking-data";
+import {
+  ESTHETICIAN_CATEGORY_ORDER,
+  getCategoriesForStaff,
+  getCategoryDisplayLabel,
+  HAIR_STYLIST_CATEGORY_ORDER,
+  VIEW_ALL_LABEL,
+} from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
 interface Props {
@@ -10,7 +17,11 @@ interface Props {
 
 const { catalog, initialStaffSlug, initialCategory } = Astro.props;
 
+const initialCategories = getCategoriesForStaff(catalog, initialStaffSlug);
 const catalogJson = JSON.stringify(catalog);
+const hairStylistCategoryOrder = JSON.stringify(HAIR_STYLIST_CATEGORY_ORDER);
+const estheticianCategoryOrder = JSON.stringify(ESTHETICIAN_CATEGORY_ORDER);
+const viewAllLabel = VIEW_ALL_LABEL;
 const datetimeBase = withBase("datetime/");
 const stylistBase = withBase("stylist/");
 ---
@@ -55,11 +66,11 @@ const stylistBase = withBase("stylist/");
         data-filter-category
         aria-label="Select a category"
       >
-        <option value="">All Categories</option>
+        <option value="">{viewAllLabel}</option>
         {
-          catalog.categories.map((category) => (
+          initialCategories.map((category) => (
             <option value={category} selected={category === initialCategory}>
-              {category}
+              {getCategoryDisplayLabel(category)}
             </option>
           ))
         }
@@ -79,6 +90,9 @@ const stylistBase = withBase("stylist/");
 <script
   define:vars={{
     catalogJson,
+    hairStylistCategoryOrder,
+    estheticianCategoryOrder,
+    viewAllLabel,
     datetimeBase,
     stylistBase,
     initialStaffSlug,
@@ -87,6 +101,8 @@ const stylistBase = withBase("stylist/");
 >
   /** @type {import('../lib/booking-data').BookingCatalog} */
   const catalog = JSON.parse(catalogJson);
+  const hairOrder = JSON.parse(hairStylistCategoryOrder);
+  const estheticianOrder = JSON.parse(estheticianCategoryOrder);
 
   const root = document.querySelector("[data-service-booking]");
   const professionalSelect = root?.querySelector("[data-filter-professional]");
@@ -94,6 +110,41 @@ const stylistBase = withBase("stylist/");
   const serviceList = root?.querySelector("[data-service-list]");
   const emptyState = root?.querySelector("[data-empty-state]");
   const resultsCount = root?.querySelector("[data-results-count]");
+
+  function orderAvailableCategories(available, order) {
+    return order.filter((category) => available.has(category));
+  }
+
+  function getCategoriesForStaff(staffSlug) {
+    const services = filterServices(staffSlug, "");
+    const available = new Set(services.map((service) => service.category));
+
+    if (!staffSlug) {
+      const hair = orderAvailableCategories(available, hairOrder);
+      const hairSet = new Set(hairOrder);
+      const esthetician = orderAvailableCategories(
+        available,
+        estheticianOrder,
+      ).filter((category) => !hairSet.has(category));
+      return [...hair, ...esthetician];
+    }
+
+    const member = catalog.staff.find((s) => s.slug === staffSlug);
+    if (!member) {
+      return orderAvailableCategories(available, [
+        ...hairOrder,
+        ...estheticianOrder,
+      ]);
+    }
+
+    if (member.role === "esthetician") {
+      const hair = orderAvailableCategories(available, hairOrder);
+      const esthetician = orderAvailableCategories(available, estheticianOrder);
+      return [...hair, ...esthetician];
+    }
+
+    return orderAvailableCategories(available, hairOrder);
+  }
 
   function filterServices(staffSlug, category) {
     let filtered = catalog.services;
@@ -111,13 +162,6 @@ const stylistBase = withBase("stylist/");
     }
 
     return filtered;
-  }
-
-  function categoriesForStaff(staffSlug) {
-    const services = filterServices(staffSlug, "");
-    return [...new Set(services.map((service) => service.category))].sort(
-      (a, b) => a.localeCompare(b),
-    );
   }
 
   function formatPriceClient(service) {
@@ -143,7 +187,7 @@ const stylistBase = withBase("stylist/");
 
   function refreshCategoryOptions(staffSlug, preserveCategory) {
     if (!categorySelect) return;
-    const available = categoriesForStaff(staffSlug);
+    const available = getCategoriesForStaff(staffSlug);
     const current = preserveCategory && available.includes(preserveCategory)
       ? preserveCategory
       : "";
@@ -151,7 +195,7 @@ const stylistBase = withBase("stylist/");
     categorySelect.innerHTML = "";
     const allOption = document.createElement("option");
     allOption.value = "";
-    allOption.textContent = "All Categories";
+    allOption.textContent = viewAllLabel;
     categorySelect.appendChild(allOption);
 
     for (const category of available) {

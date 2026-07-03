@@ -41,6 +41,44 @@ export type BookingCatalog = {
 
 const ANY_PROFESSIONAL = "";
 
+/** GlossGenius dropdown label for the unfiltered category option. */
+export const VIEW_ALL_LABEL = "View All";
+
+/**
+ * Category order for hair stylists (owners + stylists) in GlossGenius.
+ * DB `services.category` values match these labels (see menu-services.json).
+ */
+export const HAIR_STYLIST_CATEGORY_ORDER = [
+  "Color- Bleach & Tone",
+  "Color- Dimensional Color",
+  "Color- Single Color & Root Touch Ups",
+  "Color- Vivids / Fashion Colors",
+  "Hair Consultations",
+  "Hair Treatments",
+  "Haircuts",
+] as const;
+
+/** Category order for estheticians in GlossGenius (after any hair categories). */
+export const ESTHETICIAN_CATEGORY_ORDER = [
+  "Makeup Services",
+  "Skincare Services",
+  "Waxing Services",
+] as const;
+
+/** Maps DB category values to GlossGenius display labels (identity for current seed data). */
+export const SERVICE_CATEGORY_TO_DISPLAY: Record<string, string> = {
+  Haircuts: "Haircuts",
+  "Color- Dimensional Color": "Color- Dimensional Color",
+  "Color- Bleach & Tone": "Color- Bleach & Tone",
+  "Color- Single Color & Root Touch Ups": "Color- Single Color & Root Touch Ups",
+  "Color- Vivids / Fashion Colors": "Color- Vivids / Fashion Colors",
+  "Hair Treatments": "Hair Treatments",
+  "Hair Consultations": "Hair Consultations",
+  "Waxing Services": "Waxing Services",
+  "Skincare Services": "Skincare Services",
+  "Makeup Services": "Makeup Services",
+};
+
 function mapStaff(row: StaffRow): Staff {
   return {
     id: row.id,
@@ -97,11 +135,15 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
     staffServiceIds[row.staff_id] = list;
   }
 
-  const categories = [
-    ...new Set(services.map((service) => service.category)),
-  ].sort((a, b) => a.localeCompare(b));
+  const catalog: BookingCatalog = {
+    staff,
+    categories: [],
+    services,
+    staffServiceIds,
+  };
+  catalog.categories = getCategoriesForStaff(catalog, null);
 
-  return { staff, categories, services, staffServiceIds };
+  return catalog;
 }
 
 export async function fetchServices(): Promise<Service[]> {
@@ -136,21 +178,70 @@ export function filterServicesForBooking(
   }
 
   if (category) {
-    filtered = filtered.filter((service) => service.category === category);
+    filtered = filtered.filter(
+      (service) => service.category === category,
+    );
   }
 
   return filtered;
 }
 
-export function categoriesForStaff(
+export function getCategoryDisplayLabel(dbCategory: string): string {
+  return SERVICE_CATEGORY_TO_DISPLAY[dbCategory] ?? dbCategory;
+}
+
+function orderAvailableCategories(
+  available: Set<string>,
+  order: readonly string[],
+): string[] {
+  return order.filter((category) => available.has(category));
+}
+
+export function getCategoriesForStaff(
   catalog: BookingCatalog,
   staffSlug: string | null,
 ): string[] {
   const services = filterServicesForBooking(catalog, staffSlug, null);
-  return [...new Set(services.map((service) => service.category))].sort(
-    (a, b) => a.localeCompare(b),
-  );
+  const available = new Set(services.map((service) => service.category));
+
+  if (!staffSlug) {
+    const hair = orderAvailableCategories(
+      available,
+      HAIR_STYLIST_CATEGORY_ORDER,
+    );
+    const hairSet = new Set<string>(HAIR_STYLIST_CATEGORY_ORDER);
+    const esthetician = orderAvailableCategories(
+      available,
+      ESTHETICIAN_CATEGORY_ORDER,
+    ).filter((category) => !hairSet.has(category));
+    return [...hair, ...esthetician];
+  }
+
+  const member = catalog.staff.find((s) => s.slug === staffSlug);
+  if (!member) {
+    return orderAvailableCategories(available, [
+      ...HAIR_STYLIST_CATEGORY_ORDER,
+      ...ESTHETICIAN_CATEGORY_ORDER,
+    ]);
+  }
+
+  if (member.role === "esthetician") {
+    const hair = orderAvailableCategories(
+      available,
+      HAIR_STYLIST_CATEGORY_ORDER,
+    );
+    const esthetician = orderAvailableCategories(
+      available,
+      ESTHETICIAN_CATEGORY_ORDER,
+    );
+    return [...hair, ...esthetician];
+  }
+
+  return orderAvailableCategories(available, HAIR_STYLIST_CATEGORY_ORDER);
 }
+
+/** @deprecated Use getCategoriesForStaff */
+export const categoriesForStaff = getCategoriesForStaff;
 
 export function serviceOptionsLabel(service: Service): string | null {
   if (service.priceVaries) return "Multiple options";
