@@ -25,14 +25,14 @@ if (!service) {
 
 if (preselectedStylist) {
   return Astro.redirect(
-    `${withBase("datetime/")}?service=${service.id}&stylist=${preselectedStylist.slug}`,
+    `${withBase("cart/")}?service=${service.id}&stylist=${preselectedStylist.slug}`,
   );
 }
 
 const staff = await fetchStaffForService(service.id);
 ---
 
-<BookingLayout title="Choose a stylist" step={1}>
+<BookingLayout title="Choose a stylist" step="stylist" showStylistStep>
   <header class="stylist-page__header">
     <p class="stylist-page__kicker">Almost there</p>
     <h1>Choose a professional</h1>
@@ -47,7 +47,7 @@ const staff = await fetchStaffForService(service.id);
         <li>
           <a
             class="stylist-card"
-            href={`${withBase("datetime/")}?service=${service.id}&stylist=${member.slug}`}
+            href={`${withBase("cart/")}?service=${service.id}&stylist=${member.slug}&flow=stylist`}
           >
             {member.photoUrl ? (
               <img

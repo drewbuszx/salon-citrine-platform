@@ -148,15 +148,25 @@ export function computeSlotsForDate(
   return slots;
 }
 
+function normalizeServiceIds(serviceIds: string | string[]): string[] {
+  const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds];
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) {
+    throw new Error("At least one service id is required");
+  }
+  return unique;
+}
+
 async function fetchAvailabilityContext(
   staffId: string,
-  serviceId: string,
+  serviceIds: string | string[],
   rangeStart: Date,
   rangeEnd: Date,
 ): Promise<AvailabilityContext> {
+  const ids = normalizeServiceIds(serviceIds);
   const supabase = createSupabaseClient();
 
-  const [schedulesResult, serviceResult, blockedResult, appointmentsResult] =
+  const [schedulesResult, servicesResult, blockedResult, appointmentsResult] =
     await Promise.all([
       supabase
         .from("staff_schedules")
@@ -165,8 +175,7 @@ async function fetchAvailabilityContext(
       supabase
         .from("services")
         .select("duration_minutes")
-        .eq("id", serviceId)
-        .maybeSingle(),
+        .in("id", ids),
       supabase
         .from("blocked_times")
         .select("starts_at, ends_at")
@@ -182,34 +191,39 @@ async function fetchAvailabilityContext(
     ]);
 
   if (schedulesResult.error) throw schedulesResult.error;
-  if (serviceResult.error) throw serviceResult.error;
+  if (servicesResult.error) throw servicesResult.error;
   if (blockedResult.error) throw blockedResult.error;
   if (appointmentsResult.error) throw appointmentsResult.error;
-  if (!serviceResult.data) {
-    throw new Error(`Service not found: ${serviceId}`);
+  if (!servicesResult.data?.length) {
+    throw new Error(`Services not found: ${ids.join(", ")}`);
   }
+
+  const durationMinutes = (servicesResult.data as { duration_minutes: number }[]).reduce(
+    (sum, row) => sum + row.duration_minutes,
+    0,
+  );
 
   return {
     schedules: schedulesResult.data as StaffScheduleRow[],
     blockedTimes: blockedResult.data as BlockedTimeRow[],
     appointments: appointmentsResult.data as AppointmentRow[],
-    durationMinutes: serviceResult.data.duration_minutes,
+    durationMinutes,
   };
 }
 
 export async function getAvailableSlots(
   staffId: string,
-  serviceId: string,
+  serviceIds: string | string[],
   dateStr: string,
 ): Promise<TimeSlot[]> {
   const { start, end } = localDayUtcBounds(dateStr);
-  const ctx = await fetchAvailabilityContext(staffId, serviceId, start, end);
+  const ctx = await fetchAvailabilityContext(staffId, serviceIds, start, end);
   return computeSlotsForDate(ctx, dateStr);
 }
 
 export async function getAvailableDatesInRange(
   staffId: string,
-  serviceId: string,
+  serviceIds: string | string[],
   startDate: string,
   endDate: string,
 ): Promise<string[]> {
@@ -220,7 +234,7 @@ export async function getAvailableDatesInRange(
 
   const ctx = await fetchAvailabilityContext(
     staffId,
-    serviceId,
+    serviceIds,
     rangeStart,
     rangeEnd,
   );
@@ -239,13 +253,13 @@ export async function getAvailableDatesInRange(
 
 export async function getAvailableDates(
   staffId: string,
-  serviceId: string,
+  serviceIds: string | string[],
   fromDate?: string,
   daysAhead: number = DEFAULT_DAYS_AHEAD,
 ): Promise<string[]> {
   const startDate = fromDate ?? todayInTimezone();
   const endDate = addDaysToDateString(startDate, daysAhead - 1);
-  return getAvailableDatesInRange(staffId, serviceId, startDate, endDate);
+  return getAvailableDatesInRange(staffId, serviceIds, startDate, endDate);
 }
 
 /** Format a date string for the date picker UI. */

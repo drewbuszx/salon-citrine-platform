@@ -2,14 +2,18 @@ export const prerender = false;
 
 import type { APIRoute } from "astro";
 import { getAvailableDatesInRange } from "../../../lib/availability";
+import { parseServiceIdsFromParams } from "../../../lib/booking-data";
 
 export const GET: APIRoute = async ({ url }) => {
   const staffId = url.searchParams.get("staff");
-  const serviceId = url.searchParams.get("service");
+  const servicesParam = url.searchParams.get("services");
+  const serviceParam = url.searchParams.get("service");
   const start = url.searchParams.get("start");
   const end = url.searchParams.get("end");
 
-  if (!staffId || !serviceId || !start || !end) {
+  const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
+
+  if (!staffId || serviceIds.length === 0 || !start || !end) {
     return Response.json({ error: "Missing required query params" }, { status: 400 });
   }
 
@@ -18,7 +22,7 @@ export const GET: APIRoute = async ({ url }) => {
   }
 
   try {
-    const dates = await getAvailableDatesInRange(staffId, serviceId, start, end);
+    const dates = await getAvailableDatesInRange(staffId, serviceIds, start, end);
     return Response.json({ dates });
   } catch (error) {
     console.error("availability/dates", error);

@@ -2,15 +2,18 @@
 import "../styles/global.css";
 import "../styles/fonts.css";
 import { BUSINESS } from "@saloncitrine/shared";
-import BookingSteps from "../components/BookingSteps.astro";
+import BookingSteps, {
+  type BookingStepId,
+} from "../components/BookingSteps.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 
 interface Props {
   title: string;
-  step: 1 | 2 | 3 | 4;
+  step: BookingStepId;
+  showStylistStep?: boolean;
 }
 
-const { title, step } = Astro.props;
+const { title, step, showStylistStep = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -40,7 +43,7 @@ const { title, step } = Astro.props;
       <SiteHeader />
 
       <main class="booking-main">
-        <BookingSteps current={step} />
+        <BookingSteps current={step} showStylist={showStylistStep} />
         <div class="booking-content">
           <slot />
         </div>

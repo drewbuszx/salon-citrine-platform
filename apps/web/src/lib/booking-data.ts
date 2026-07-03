@@ -339,4 +339,201 @@ export function groupServicesByCategory(
   return map;
 }
 
+export type CartSuggestions = {
+  /** Shown when primary service requires a consultation first */
+  requiredConsultation: Service[];
+  /** is_addon services the stylist offers */
+  addons: Service[];
+  /** Optional consultation / test-strand style services */
+  consultations: Service[];
+  /** Same or related category extras (capped) */
+  relatedOptional: Service[];
+};
+
+const CONSULTATION_CATEGORIES = new Set(["Hair Consultations"]);
+
+function isConsultationService(service: Service): boolean {
+  return (
+    CONSULTATION_CATEGORIES.has(service.category) ||
+    /consultation|test strand/i.test(service.name)
+  );
+}
+
+function isRelatedCategory(category: string, primaryCategory: string): boolean {
+  if (category === primaryCategory) return true;
+  const prefixA = category.split("-")[0]?.trim();
+  const prefixB = primaryCategory.split("-")[0]?.trim();
+  if (prefixA && prefixB && prefixA === prefixB && prefixA === "Color") return true;
+  if (category === "Hair Treatments" && primaryCategory.startsWith("Color"))
+    return true;
+  return false;
+}
+
+/** Parse `services=id1,id2` with fallback to single `service`. */
+export function parseServiceIdsFromParams(
+  servicesParam: string | null,
+  serviceParam: string | null,
+): string[] {
+  if (servicesParam) {
+    const ids = servicesParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (ids.length > 0) return ids;
+  }
+  if (serviceParam) return [serviceParam];
+  return [];
+}
+
+export function formatDuration(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return hours === 1 ? "1 hr" : `${hours} hr`;
+  const hrLabel = hours === 1 ? "1 hr" : `${hours} hr`;
+  return `${hrLabel} ${minutes} min`;
+}
+
+export function sumServiceDuration(services: Service[]): number {
+  return services.reduce((sum, svc) => sum + svc.durationMinutes, 0);
+}
+
+export function estimateCartPrice(services: Service[]): string | null {
+  let totalCents = 0;
+  let hasNull = false;
+  let hasVaries = false;
+
+  for (const svc of services) {
+    if (svc.basePriceCents === null) {
+      hasNull = true;
+      continue;
+    }
+    totalCents += svc.basePriceCents;
+    if (svc.priceVaries) hasVaries = true;
+  }
+
+  if (totalCents === 0 && hasNull) return null;
+
+  const dollars = totalCents / 100;
+  const base = `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}`;
+  if (hasVaries || hasNull) return `${base}+`;
+  return base;
+}
+
+export async function fetchServicesByIds(
+  ids: string[],
+  staffSlug?: string | null,
+): Promise<Service[]> {
+  if (ids.length === 0) return [];
+
+  const supabase = createSupabaseClient();
+  let allowedIds: Set<string> | null = null;
+
+  if (staffSlug) {
+    const staff = await getStaffBySlug(staffSlug);
+    if (staff) {
+      const { data, error } = await supabase
+        .from("staff_services")
+        .select("service_id")
+        .eq("staff_id", staff.id);
+      if (error) throw error;
+      allowedIds = new Set((data ?? []).map((row) => row.service_id));
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .in("id", ids)
+    .eq("is_active", true);
+
+  if (error) throw error;
+
+  let services = (data as ServiceRow[]).map(mapService);
+  if (allowedIds) {
+    services = services.filter((svc) => allowedIds!.has(svc.id));
+  }
+
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return services.sort(
+    (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
+  );
+}
+
+export async function fetchCartSuggestions(
+  staffSlug: string,
+  primaryServiceId: string,
+): Promise<CartSuggestions> {
+  const empty: CartSuggestions = {
+    requiredConsultation: [],
+    addons: [],
+    consultations: [],
+    relatedOptional: [],
+  };
+
+  const staff = await getStaffBySlug(staffSlug);
+  const primary = await getServiceById(primaryServiceId);
+  if (!staff || !primary) return empty;
+
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("staff_services")
+    .select("service_id, services(*)")
+    .eq("staff_id", staff.id);
+
+  if (error) throw error;
+
+  const staffServices: Service[] = [];
+  for (const row of data ?? []) {
+    const raw = row.services as ServiceRow | ServiceRow[] | null;
+    const svcRow = Array.isArray(raw) ? raw[0] : raw;
+    if (svcRow?.is_active) staffServices.push(mapService(svcRow));
+  }
+
+  const available = staffServices.filter((svc) => svc.id !== primaryServiceId);
+
+  let requiredConsultation: Service[] = [];
+  if (primary.requiresConsultation) {
+    requiredConsultation = available.filter(
+      (svc) =>
+        isConsultationService(svc) &&
+        (svc.category === primary.category ||
+          svc.category === "Hair Consultations" ||
+          /color consultation/i.test(svc.name)),
+    );
+    if (requiredConsultation.length === 0) {
+      requiredConsultation = available
+        .filter(isConsultationService)
+        .slice(0, 2);
+    }
+  }
+
+  const requiredIds = new Set(requiredConsultation.map((svc) => svc.id));
+
+  const addons = available.filter(
+    (svc) => svc.isAddon && !requiredIds.has(svc.id),
+  );
+
+  const consultations = available
+    .filter(
+      (svc) =>
+        isConsultationService(svc) &&
+        !svc.isAddon &&
+        !requiredIds.has(svc.id),
+    )
+    .slice(0, 4);
+
+  const relatedOptional = available
+    .filter(
+      (svc) =>
+        !svc.isAddon &&
+        !isConsultationService(svc) &&
+        !requiredIds.has(svc.id) &&
+        isRelatedCategory(svc.category, primary.category),
+    )
+    .slice(0, 4);
+
+  return { requiredConsultation, addons, consultations, relatedOptional };
+}
+
 export { ANY_PROFESSIONAL };

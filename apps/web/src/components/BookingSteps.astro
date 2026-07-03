@@ -1,32 +1,50 @@
 ---
 import { withBase } from "../lib/paths";
 
-const STEPS = [
-  { num: 1, label: "Service", href: withBase() },
-  { num: 2, label: "Date & time", href: withBase("datetime/") },
-  { num: 3, label: "Details", href: withBase("details/") },
-  { num: 4, label: "Confirm", href: withBase("confirm/") },
-];
+export type BookingStepId =
+  | "service"
+  | "stylist"
+  | "cart"
+  | "datetime"
+  | "details"
+  | "confirm";
 
 interface Props {
-  current: 1 | 2 | 3 | 4;
+  current: BookingStepId;
+  /** Include the stylist step when booking started with "Any Professional" */
+  showStylist?: boolean;
 }
 
-const { current } = Astro.props;
+const { current, showStylist = false } = Astro.props;
+
+const BASE_STEPS: { id: BookingStepId; label: string; href: string }[] = [
+  { id: "service", label: "Service", href: withBase() },
+  { id: "stylist", label: "Stylist", href: withBase("stylist/") },
+  { id: "cart", label: "Cart", href: withBase("cart/") },
+  { id: "datetime", label: "Date & time", href: withBase("datetime/") },
+  { id: "details", label: "Details", href: withBase("details/") },
+  { id: "confirm", label: "Confirm", href: withBase("confirm/") },
+];
+
+const steps = showStylist
+  ? BASE_STEPS
+  : BASE_STEPS.filter((step) => step.id !== "stylist");
+
+const currentIndex = steps.findIndex((step) => step.id === current);
 ---
 
 <nav class="steps" aria-label="Booking progress">
   <ol class="steps__list">
     {
-      STEPS.map((step) => (
+      steps.map((step, index) => (
         <li
           class:list={[
             "steps__item",
-            step.num === current && "steps__item--current",
-            step.num < current && "steps__item--complete",
+            index === currentIndex && "steps__item--current",
+            index < currentIndex && "steps__item--complete",
           ]}
         >
-          <span class="steps__num">{step.num}</span>
+          <span class="steps__num">{index + 1}</span>
           <span class="steps__label">{step.label}</span>
         </li>
       ))
@@ -43,7 +61,7 @@ const { current } = Astro.props;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem 1.25rem;
+    gap: 0.5rem 1rem;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -54,8 +72,8 @@ const { current } = Astro.props;
     align-items: center;
     gap: 0.4rem;
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-gray);
   }

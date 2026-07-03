@@ -4,27 +4,47 @@ export const prerender = false;
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import PolicyModal from "../components/PolicyModal.astro";
-import { getServiceById, getStaffBySlug } from "../lib/booking-data";
+import {
+  fetchServicesByIds,
+  formatDuration,
+  getStaffBySlug,
+  parseServiceIdsFromParams,
+  sumServiceDuration,
+} from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
-const serviceId = Astro.url.searchParams.get("service");
+const serviceParam = Astro.url.searchParams.get("service");
+const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const date = Astro.url.searchParams.get("date");
 const time = Astro.url.searchParams.get("time");
-const [service, stylist] = await Promise.all([
-  getServiceById(serviceId),
+const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
+
+const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
+const servicesParamValue = serviceIds.join(",");
+
+const [services, stylist] = await Promise.all([
+  fetchServicesByIds(serviceIds, stylistSlug),
   getStaffBySlug(stylistSlug),
 ]);
 
-if (!service || !stylist || !date || !time) {
+if (services.length === 0 || !stylist || !date || !time) {
   return Astro.redirect(withBase());
 }
+
+const serviceSummary =
+  services.length === 1
+    ? services[0].name
+    : `${services[0].name} + ${services.length - 1} more`;
+const totalDuration = sumServiceDuration(services);
 ---
 
-<BookingLayout title="Your details" step={3}>
+<BookingLayout title="Your details" step="details" showStylistStep={showStylistStep}>
   <h1>Your details</h1>
   <p class="summary">
-    {service.name} · {stylist.name}<br />
+    {serviceSummary} · {stylist.name}
+    {services.length > 1 && ` · ${formatDuration(totalDuration)}`}
+    <br />
     {date} at {time}
   </p>
 
@@ -34,8 +54,9 @@ if (!service || !stylist || !date || !time) {
     action={withBase("confirm/")}
     data-booking-details-form
   >
-    <input type="hidden" name="service" value={service.id} />
+    <input type="hidden" name="services" value={servicesParamValue} />
     <input type="hidden" name="stylist" value={stylist.slug} />
+    {showStylistStep && <input type="hidden" name="flow" value="stylist" />}
     <input type="hidden" name="date" value={date} />
     <input type="hidden" name="time" value={time} />
     <input type="hidden" id="policy-ack" name="policyAck" value="false" />
@@ -78,7 +99,7 @@ if (!service || !stylist || !date || !time) {
 
   <p class="back">
     <a
-      href={`${withBase("datetime/")}?service=${service.id}&stylist=${stylist.slug}`}
+      href={`${withBase("datetime/")}?services=${servicesParamValue}&stylist=${stylist.slug}&date=${date}${showStylistStep ? "&flow=stylist" : ""}`}
     >
       ← Back to date & time
     </a>

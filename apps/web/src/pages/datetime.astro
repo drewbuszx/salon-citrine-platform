@@ -18,28 +18,44 @@ import {
   WEEKDAY_LABELS,
 } from "../lib/calendar-utils";
 import { todayInTimezone } from "../lib/datetime-utils";
-import { getServiceById, getStaffBySlug } from "../lib/booking-data";
+import {
+  formatDuration,
+  getStaffBySlug,
+  parseServiceIdsFromParams,
+  fetchServicesByIds,
+} from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
-const serviceId = Astro.url.searchParams.get("service");
+const serviceParam = Astro.url.searchParams.get("service");
+const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const requestedDate = Astro.url.searchParams.get("date");
 const requestedMonth = Astro.url.searchParams.get("month");
+const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 
-const [service, stylist] = await Promise.all([
-  getServiceById(serviceId),
+const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
+
+const [services, stylist] = await Promise.all([
+  fetchServicesByIds(serviceIds, stylistSlug),
   getStaffBySlug(stylistSlug),
 ]);
 
-if (!service || !stylist) {
+if (services.length === 0 || !stylist) {
   return Astro.redirect(withBase());
 }
+
+const servicesParamValue = services.map((svc) => svc.id).join(",");
+const totalDuration = services.reduce((sum, svc) => sum + svc.durationMinutes, 0);
+const serviceSummary =
+  services.length === 1
+    ? services[0].name
+    : `${services[0].name}${services.length > 1 ? ` + ${services.length - 1} more` : ""}`;
 
 const today = todayInTimezone();
 const horizonEnd = bookingHorizonEnd(today);
 const horizonAvailable = await getAvailableDatesInRange(
   stylist.id,
-  service.id,
+  serviceIds,
   today,
   horizonEnd,
 );
@@ -62,7 +78,7 @@ const monthAvailable = new Set(
 );
 
 const slots = selectedDate
-  ? await getAvailableSlots(stylist.id, service.id, selectedDate)
+  ? await getAvailableSlots(stylist.id, serviceIds, selectedDate)
   : [];
 
 const monthTitle = formatMonthYear(year, month);
@@ -83,11 +99,16 @@ const detailsUrl = withBase("details/");
 const datetimeUrl = withBase("datetime/");
 ---
 
-<BookingLayout title="Choose date & time" step={2}>
+<BookingLayout title="Choose date & time" step="datetime" showStylistStep={showStylistStep}>
   <header class="page-header">
     <h1>Choose date & time</h1>
     <p class="lead">
-      {service.name} with <strong>{stylist.name}</strong>
+      {serviceSummary} with <strong>{stylist.name}</strong>
+      {services.length > 1 && (
+        <span class="duration-note">
+          · {formatDuration(totalDuration)} total
+        </span>
+      )}
     </p>
   </header>
 
@@ -104,9 +125,10 @@ const datetimeUrl = withBase("datetime/");
         class="datetime-picker"
         data-datetime-picker
         data-staff-id={stylist.id}
-        data-service-id={service.id}
+        data-service-ids={servicesParamValue}
         data-stylist-slug={stylist.slug}
-        data-service-param={service.id}
+        data-services-param={servicesParamValue}
+        data-flow={showStylistStep ? "stylist" : ""}
         data-dates-api={datesApiUrl}
         data-slots-api={slotsApiUrl}
         data-details-url={detailsUrl}
@@ -210,8 +232,11 @@ const datetimeUrl = withBase("datetime/");
                     action={detailsUrl}
                     data-time-form
                   >
-                    <input type="hidden" name="service" value={service.id} />
+                    <input type="hidden" name="services" value={servicesParamValue} />
                     <input type="hidden" name="stylist" value={stylist.slug} />
+                    {showStylistStep && (
+                      <input type="hidden" name="flow" value="stylist" />
+                    )}
                     <input
                       type="hidden"
                       name="date"
@@ -251,7 +276,11 @@ const datetimeUrl = withBase("datetime/");
   }
 
   <p class="back">
-    <a href={`${withBase()}?stylist=${stylist.slug}`}>← Back to services</a>
+    <a
+      href={`${withBase("cart/")}?services=${servicesParamValue}&stylist=${stylist.slug}${showStylistStep ? "&flow=stylist" : ""}`}
+    >
+      ← Back to cart
+    </a>
   </p>
 </BookingLayout>
 
@@ -341,8 +370,9 @@ const datetimeUrl = withBase("datetime/");
 
   function syncUrl(root, selectedDate) {
     const params = new URLSearchParams(window.location.search);
-    params.set("service", root.dataset.serviceParam ?? "");
+    params.set("services", root.dataset.servicesParam ?? "");
     params.set("stylist", root.dataset.stylistSlug ?? "");
+    if (root.dataset.flow) params.set("flow", root.dataset.flow);
     params.set("month", monthParam(Number(root.dataset.year), Number(root.dataset.month)));
     if (selectedDate) {
       params.set("date", selectedDate);
@@ -353,7 +383,7 @@ const datetimeUrl = withBase("datetime/");
     window.history.replaceState({}, "", next);
   }
 
-  function renderTimePanel(panel, selectedDate, slots, detailsUrl, serviceId, stylistSlug) {
+  function renderTimePanel(panel, selectedDate, slots, detailsUrl, servicesParam, stylistSlug, flow) {
     panel.innerHTML = "";
 
     if (!selectedDate) {
@@ -381,8 +411,9 @@ const datetimeUrl = withBase("datetime/");
     form.dataset.timeForm = "";
 
     form.innerHTML = `
-      <input type="hidden" name="service" value="${serviceId}" />
+      <input type="hidden" name="services" value="${servicesParam}" />
       <input type="hidden" name="stylist" value="${stylistSlug}" />
+      ${flow ? `<input type="hidden" name="flow" value="${flow}" />` : ""}
       <input type="hidden" name="date" value="${selectedDate}" data-time-date-input />
     `;
 
@@ -484,7 +515,7 @@ const datetimeUrl = withBase("datetime/");
 
     const params = new URLSearchParams({
       staff: root.dataset.staffId ?? "",
-      service: root.dataset.serviceId ?? "",
+      services: root.dataset.serviceIds ?? root.dataset.servicesParam ?? "",
       start: queryStart,
       end: queryEnd,
     });
@@ -498,7 +529,7 @@ const datetimeUrl = withBase("datetime/");
   async function fetchSlots(root, date) {
     const params = new URLSearchParams({
       staff: root.dataset.staffId ?? "",
-      service: root.dataset.serviceId ?? "",
+      services: root.dataset.serviceIds ?? root.dataset.servicesParam ?? "",
       date,
     });
     const response = await fetch(`${root.dataset.slotsApi}?${params.toString()}`);
@@ -516,8 +547,9 @@ const datetimeUrl = withBase("datetime/");
 
     const panel = root.querySelector("[data-time-panel]");
     const detailsUrl = root.dataset.detailsUrl ?? "";
-    const serviceId = root.dataset.serviceParam ?? "";
+    const servicesParam = root.dataset.servicesParam ?? "";
     const stylistSlug = root.dataset.stylistSlug ?? "";
+    const flow = root.dataset.flow ?? "";
 
     async function selectDate(date) {
       selectedDate = date;
@@ -533,9 +565,9 @@ const datetimeUrl = withBase("datetime/");
       panel.setAttribute("aria-busy", "true");
       try {
         const slots = await fetchSlots(root, date);
-        renderTimePanel(panel, date, slots, detailsUrl, serviceId, stylistSlug);
+        renderTimePanel(panel, date, slots, detailsUrl, servicesParam, stylistSlug, flow);
       } catch {
-        renderTimePanel(panel, date, [], detailsUrl, serviceId, stylistSlug);
+        renderTimePanel(panel, date, [], detailsUrl, servicesParam, stylistSlug, flow);
       } finally {
         panel.removeAttribute("aria-busy");
       }
@@ -588,6 +620,11 @@ const datetimeUrl = withBase("datetime/");
 </script>
 
 <style>
+  .duration-note {
+    color: var(--color-gray);
+    font-weight: 400;
+  }
+
   .page-header {
     margin-bottom: 1.5rem;
   }

@@ -5,13 +5,18 @@ import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import { BUSINESS } from "@saloncitrine/shared";
 import {
+  estimateCartPrice,
+  fetchServicesByIds,
+  formatDuration,
   formatPrice,
-  getServiceById,
   getStaffBySlug,
+  parseServiceIdsFromParams,
+  sumServiceDuration,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
-const serviceId = Astro.url.searchParams.get("service");
+const serviceParam = Astro.url.searchParams.get("service");
+const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const date = Astro.url.searchParams.get("date");
 const time = Astro.url.searchParams.get("time");
@@ -19,14 +24,17 @@ const firstName = Astro.url.searchParams.get("firstName");
 const lastName = Astro.url.searchParams.get("lastName");
 const email = Astro.url.searchParams.get("email");
 const policyAck = Astro.url.searchParams.get("policyAck");
+const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 
-const [service, stylist] = await Promise.all([
-  getServiceById(serviceId),
+const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
+
+const [services, stylist] = await Promise.all([
+  fetchServicesByIds(serviceIds, stylistSlug),
   getStaffBySlug(stylistSlug),
 ]);
 
 if (
-  !service ||
+  services.length === 0 ||
   !stylist ||
   !date ||
   !time ||
@@ -38,18 +46,29 @@ if (
   return Astro.redirect(`${withBase("details/")}?${Astro.url.searchParams.toString()}`);
 }
 
+const serviceSummary =
+  services.length === 1
+    ? `${services[0].name} (${formatPrice(services[0])})`
+    : services.map((svc) => svc.name).join(", ");
+const priceEstimate = estimateCartPrice(services);
+const totalDuration = sumServiceDuration(services);
+
 const confirmationId = `SC-${Date.now().toString(36).toUpperCase()}`;
 ---
 
-<BookingLayout title="Booking confirmed" step={4}>
+<BookingLayout title="Booking confirmed" step="confirm" showStylistStep={showStylistStep}>
   <div class="confirm">
     <p class="confirm__kicker">You're booked!</p>
     <h1>Confirmation {confirmationId}</h1>
 
     <dl class="confirm__details">
       <div>
-        <dt>Service</dt>
-        <dd>{service.name} ({formatPrice(service)})</dd>
+        <dt>Services</dt>
+        <dd>
+          {serviceSummary}
+          {priceEstimate && ` · ${priceEstimate}`}
+          {services.length > 1 && ` · ${formatDuration(totalDuration)}`}
+        </dd>
       </div>
       <div>
         <dt>Stylist</dt>

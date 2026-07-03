@@ -22,7 +22,7 @@ const catalogJson = JSON.stringify(catalog);
 const hairStylistCategoryOrder = JSON.stringify(HAIR_STYLIST_CATEGORY_ORDER);
 const estheticianCategoryOrder = JSON.stringify(ESTHETICIAN_CATEGORY_ORDER);
 const viewAllLabel = VIEW_ALL_LABEL;
-const datetimeBase = withBase("datetime/");
+const cartBase = withBase("cart/");
 const stylistBase = withBase("stylist/");
 ---
 
@@ -93,7 +93,7 @@ const stylistBase = withBase("stylist/");
     hairStylistCategoryOrder,
     estheticianCategoryOrder,
     viewAllLabel,
-    datetimeBase,
+    cartBase,
     stylistBase,
     initialStaffSlug,
     initialCategory,
@@ -276,7 +276,7 @@ const stylistBase = withBase("stylist/");
       link.className = "service-card__select sc-button sc-button--primary";
       link.textContent = "Select";
       link.href = staffSlug
-        ? `${datetimeBase}?service=${service.id}&stylist=${staffSlug}`
+        ? `${cartBase}?service=${service.id}&stylist=${staffSlug}`
         : `${stylistBase}?service=${service.id}`;
       actions.appendChild(link);
 
