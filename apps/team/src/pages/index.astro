@@ -28,17 +28,6 @@ try {
 ---
 
 <TeamLayout title="Book" activeNav="book" fullBleed>
-  <div class="team-page-header">
-    <h1 class="page-title">{managerView ? "Salon calendar" : "My schedule"}</h1>
-    <p class="page-lead">
-      {
-        managerView
-          ? "All providers · day view"
-          : `${staff.name} · day view`
-      }
-    </p>
-  </div>
-
   <DayCalendar
     selectedDay={selectedDay}
     staff={calendar.staff}
