@@ -1,0 +1,438 @@
+---
+import { BUSINESS } from "@saloncitrine/shared";
+import {
+  GIFT_CARDS_URL,
+  marketingUrl,
+  MARKETING_ORIGIN,
+  SHOP_URL,
+} from "../lib/marketing-urls";
+import { withBase } from "../lib/paths";
+
+type NavChild = {
+  href: string;
+  label: string;
+  external?: boolean;
+};
+
+type NavLink = {
+  label: string;
+  href?: string;
+  external?: boolean;
+  children?: NavChild[];
+};
+
+const shopLinks: NavChild[] = [
+  { href: SHOP_URL, label: "Shop Citrine", external: true },
+  { href: GIFT_CARDS_URL, label: "Gift Cards", external: true },
+];
+
+const navLinks: NavLink[] = [
+  { href: marketingUrl("/#about"), label: "About" },
+  { href: marketingUrl("/#services"), label: "Services" },
+  { href: marketingUrl("/#team"), label: "Team" },
+  { label: "Shop", children: shopLinks },
+  { href: marketingUrl("/#policies"), label: "Policies" },
+  { href: marketingUrl("/#connect"), label: "Connect" },
+];
+
+const mobileNavLinks: NavLink[] = navLinks.flatMap((link) =>
+  link.href === marketingUrl("/#connect")
+    ? [link, { href: marketingUrl("/#reviews"), label: "Reviews" }]
+    : [link]
+);
+
+const externalLinkAttrs = (external?: boolean) =>
+  external ? { target: "_blank", rel: "noopener noreferrer" } : {};
+
+const shopMenuId = "shop-submenu";
+const logoLightSrc = withBase("images/salon-citrine-logo.png");
+const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
+---
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <nav class="site-header__nav site-header__nav--left" aria-label="Primary">
+      {
+        navLinks.slice(0, 3).map((link) => (
+          <a class="site-header__link" href={link.href} {...externalLinkAttrs(link.external)}>
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <a class="site-header__logo" href={MARKETING_ORIGIN} aria-label={BUSINESS.name}>
+      <img
+        class="site-header__logo-image site-header__logo-image--light"
+        src={logoLightSrc}
+        alt={BUSINESS.name}
+        width="1180"
+        height="430"
+        fetchpriority="high"
+      />
+      <img
+        class="site-header__logo-image site-header__logo-image--dark"
+        src={logoDarkSrc}
+        alt=""
+        width="1180"
+        height="430"
+        fetchpriority="high"
+        aria-hidden="true"
+      />
+    </a>
+
+    <nav class="site-header__nav site-header__nav--right" aria-label="Secondary">
+      {
+        navLinks.slice(3).map((link) =>
+          link.children ? (
+            <div class="site-header__dropdown" data-nav-dropdown>
+              <button
+                class="site-header__link site-header__dropdown-trigger"
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls={shopMenuId}
+                data-dropdown-trigger
+              >
+                {link.label}
+                <svg
+                  class="site-header__dropdown-chevron"
+                  viewBox="0 0 12 12"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </button>
+              <ul
+                id={shopMenuId}
+                class="site-header__dropdown-menu"
+                role="menu"
+                aria-label="Shop"
+                data-dropdown-menu
+              >
+                {
+                  link.children.map((child) => (
+                    <li role="none">
+                      <a
+                        class="site-header__dropdown-item"
+                        href={child.href}
+                        role="menuitem"
+                        {...externalLinkAttrs(child.external)}
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+          ) : (
+            <a
+              class="site-header__link"
+              href={link.href}
+              {...externalLinkAttrs(link.external)}
+            >
+              {link.label}
+            </a>
+          )
+        )
+      }
+    </nav>
+
+    <button
+      class="site-header__theme-toggle site-header__theme-toggle--desktop"
+      type="button"
+      aria-label="Switch to dark mode"
+      data-theme-toggle
+    >
+      <svg
+        class="theme-toggle__icon theme-toggle__icon--moon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      <svg
+        class="theme-toggle__icon theme-toggle__icon--sun"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    </button>
+
+    <div class="site-header__controls">
+      <button
+        class="site-header__menu-toggle"
+        type="button"
+        aria-label="Open menu"
+        aria-expanded="false"
+        data-menu-toggle
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <nav
+      class="site-header__nav site-header__nav--mobile"
+      aria-label="Mobile"
+      data-mobile-nav
+    >
+      {
+        mobileNavLinks.map((link) =>
+          link.children ? (
+            <div class="site-header__dropdown site-header__dropdown--mobile" data-nav-dropdown>
+              <button
+                class="site-header__link site-header__dropdown-trigger"
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls={`${shopMenuId}-mobile`}
+                data-dropdown-trigger
+              >
+                {link.label}
+                <svg
+                  class="site-header__dropdown-chevron"
+                  viewBox="0 0 12 12"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+              </button>
+              <ul
+                id={`${shopMenuId}-mobile`}
+                class="site-header__dropdown-menu"
+                role="menu"
+                aria-label="Shop"
+                data-dropdown-menu
+              >
+                {
+                  link.children.map((child) => (
+                    <li role="none">
+                      <a
+                        class="site-header__dropdown-item"
+                        href={child.href}
+                        role="menuitem"
+                        {...externalLinkAttrs(child.external)}
+                      >
+                        {child.label}
+                      </a>
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+          ) : (
+            <a
+              class="site-header__link"
+              href={link.href}
+              {...externalLinkAttrs(link.external)}
+            >
+              {link.label}
+            </a>
+          )
+        )
+      }
+
+      <button
+        class="site-header__theme-toggle site-header__theme-toggle--mobile"
+        type="button"
+        aria-label="Switch to dark mode"
+        data-theme-toggle
+      >
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--moon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--sun"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+      <button
+        class="site-header__menu-close"
+        type="button"
+        aria-label="Close menu"
+        data-menu-close
+      >
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
+  const storageKey = "theme";
+
+  function getTheme() {
+    return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  }
+
+  function updateToggleLabels(theme: "light" | "dark") {
+    const label =
+      theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+    themeToggles.forEach((toggle) => toggle.setAttribute("aria-label", label));
+  }
+
+  function setTheme(theme: "light" | "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(storageKey, theme);
+    updateToggleLabels(theme);
+  }
+
+  updateToggleLabels(getTheme());
+
+  themeToggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      setTheme(getTheme() === "dark" ? "light" : "dark");
+    });
+  });
+
+  const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+  const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+  const dropdowns = document.querySelectorAll<HTMLElement>("[data-nav-dropdown]");
+
+  function closeDropdown(dropdown: HTMLElement) {
+    const trigger = dropdown.querySelector<HTMLButtonElement>("[data-dropdown-trigger]");
+    dropdown.classList.remove("is-open");
+    trigger?.setAttribute("aria-expanded", "false");
+  }
+
+  function openDropdown(dropdown: HTMLElement) {
+    const trigger = dropdown.querySelector<HTMLButtonElement>("[data-dropdown-trigger]");
+    dropdown.classList.add("is-open");
+    trigger?.setAttribute("aria-expanded", "true");
+  }
+
+  function setDropdownOpen(dropdown: HTMLElement, open: boolean) {
+    if (open) {
+      openDropdown(dropdown);
+    } else {
+      closeDropdown(dropdown);
+    }
+  }
+
+  dropdowns.forEach((dropdown) => {
+    const trigger = dropdown.querySelector<HTMLButtonElement>("[data-dropdown-trigger]");
+    const menu = dropdown.querySelector<HTMLElement>("[data-dropdown-menu]");
+    const items = menu
+      ? Array.from(menu.querySelectorAll<HTMLAnchorElement>("a[role='menuitem']"))
+      : [];
+
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = dropdown.classList.contains("is-open");
+
+      dropdowns.forEach((other) => {
+        if (other !== dropdown) {
+          closeDropdown(other);
+        }
+      });
+
+      setDropdownOpen(dropdown, !isOpen);
+    });
+
+    trigger?.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        dropdowns.forEach((other) => {
+          if (other !== dropdown) {
+            closeDropdown(other);
+          }
+        });
+        openDropdown(dropdown);
+        items[0]?.focus();
+      }
+
+      if (event.key === "Escape") {
+        closeDropdown(dropdown);
+      }
+    });
+
+    menu?.addEventListener("keydown", (event) => {
+      const activeItem = document.activeElement;
+      const currentIndex = items.findIndex((item) => item === activeItem);
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        items[Math.min(currentIndex + 1, items.length - 1)]?.focus();
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (currentIndex <= 0) {
+          closeDropdown(dropdown);
+          trigger?.focus();
+        } else {
+          items[currentIndex - 1]?.focus();
+        }
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDropdown(dropdown);
+        trigger?.focus();
+      }
+
+      if (event.key === "Tab" && !event.shiftKey && currentIndex === items.length - 1) {
+        closeDropdown(dropdown);
+      }
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    dropdowns.forEach((dropdown) => {
+      if (!dropdown.contains(event.target as Node)) {
+        closeDropdown(dropdown);
+      }
+    });
+  });
+
+  function closeMobileMenu() {
+    nav?.classList.remove("is-open");
+    menuToggle?.setAttribute("aria-expanded", "false");
+    dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+  }
+
+  menuToggle?.addEventListener("click", () => {
+    const isOpen = nav?.classList.toggle("is-open");
+    menuToggle.setAttribute("aria-expanded", String(!!isOpen));
+
+    if (!isOpen) {
+      dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+    }
+  });
+
+  document
+    .querySelector<HTMLButtonElement>("[data-menu-close]")
+    ?.addEventListener("click", closeMobileMenu);
+
+  nav?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", closeMobileMenu);
+  });
+</script>
