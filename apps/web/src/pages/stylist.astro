@@ -1,8 +1,7 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
 import {
-  fetchBookableStaff,
-  filterStaffForService,
+  fetchStaffForService,
   getServiceById,
   getStaffBySlug,
 } from "../lib/booking-data";
@@ -11,24 +10,34 @@ import { withBase } from "../lib/paths";
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 
-const [service, preselectedStylist, allStaff] = await Promise.all([
+const [service, preselectedStylist] = await Promise.all([
   getServiceById(serviceId),
   getStaffBySlug(stylistSlug),
-  fetchBookableStaff(),
 ]);
 
 if (!service) {
-  return Astro.redirect(`${withBase()}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`);
+  return Astro.redirect(
+    `${withBase()}${stylistSlug ? `?stylist=${stylistSlug}` : ""}`,
+  );
 }
 
-const staff = filterStaffForService(allStaff, service, preselectedStylist);
+if (preselectedStylist) {
+  return Astro.redirect(
+    `${withBase("datetime/")}?service=${service.id}&stylist=${preselectedStylist.slug}`,
+  );
+}
+
+const staff = await fetchStaffForService(service.id);
 ---
 
-<BookingLayout title="Choose a stylist" step={2}>
-  <h1>Choose a stylist</h1>
-  <p class="lead">
-    For <strong>{service.name}</strong>
-  </p>
+<BookingLayout title="Choose a stylist" step={1}>
+  <header class="stylist-page__header">
+    <p class="stylist-page__kicker">Almost there</p>
+    <h1>Choose a professional</h1>
+    <p class="lead">
+      For <strong>{service.name}</strong> — select who you'd like to book with.
+    </p>
+  </header>
 
   <ul class="stylist-list">
     {
@@ -38,59 +47,106 @@ const staff = filterStaffForService(allStaff, service, preselectedStylist);
             class="stylist-card"
             href={`${withBase("datetime/")}?service=${service.id}&stylist=${member.slug}`}
           >
-            <span class="stylist-card__avatar" aria-hidden="true">
-              {member.name.charAt(0)}
-            </span>
+            {member.photoUrl ? (
+              <img
+                class="stylist-card__photo"
+                src={member.photoUrl}
+                alt=""
+                width="64"
+                height="64"
+                loading="lazy"
+              />
+            ) : (
+              <span class="stylist-card__avatar" aria-hidden="true">
+                {member.name.charAt(0)}
+              </span>
+            )}
             <span class="stylist-card__body">
               <span class="stylist-card__name">{member.name}</span>
-              <span class="stylist-card__role">{member.role.replace("_", " ")}</span>
-              {member.bio && <span class="stylist-card__bio">{member.bio}</span>}
+              <span class="stylist-card__role">
+                {member.role.replace("_", " ")}
+              </span>
+              {member.bio && (
+                <span class="stylist-card__bio">{member.bio}</span>
+              )}
             </span>
+            <span class="stylist-card__action">Select</span>
           </a>
         </li>
       ))
     }
   </ul>
 
-  <p>
-    <a href={`${withBase()}?${stylistSlug ? `stylist=${stylistSlug}` : ""}`}>
-      ← Back to services
-    </a>
+  {
+    staff.length === 0 && (
+      <p class="empty">
+        No professionals offer this service right now.{" "}
+        <a href={withBase()}>Choose another service</a>
+      </p>
+    )
+  }
+
+  <p class="back">
+    <a href={withBase()}>← Back to services</a>
   </p>
 </BookingLayout>
 
 <style>
+  .stylist-page__header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .stylist-page__kicker {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-sage);
+  }
+
   .lead {
     color: var(--color-gray);
+    margin-bottom: 0;
   }
 
   .stylist-list {
     list-style: none;
-    margin: 1.5rem 0;
+    margin: 0;
     padding: 0;
     display: grid;
     gap: 0.75rem;
   }
 
   .stylist-card {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
     gap: 1rem;
-    align-items: flex-start;
-    padding: 1rem;
+    align-items: center;
+    padding: 1rem 1.15rem;
     border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
     text-decoration: none;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .stylist-card:hover,
   .stylist-card:focus-visible {
     border-color: var(--color-citrine);
+    box-shadow: 0 4px 24px rgba(60, 61, 60, 0.06);
+  }
+
+  .stylist-card__photo,
+  .stylist-card__avatar {
+    flex-shrink: 0;
+    width: 4rem;
+    height: 4rem;
+    object-fit: cover;
+    border-radius: 50%;
   }
 
   .stylist-card__avatar {
-    flex-shrink: 0;
-    width: 3rem;
-    height: 3rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -98,18 +154,18 @@ const staff = filterStaffForService(allStaff, service, preselectedStylist);
     color: var(--color-white);
     font-family: var(--font-sans);
     font-weight: 600;
-    border-radius: 50%;
   }
 
   .stylist-card__name {
     display: block;
     font-weight: 600;
+    font-size: 1.15rem;
   }
 
   .stylist-card__role {
     display: block;
     font-family: var(--font-sans);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-gray);
@@ -120,5 +176,35 @@ const staff = filterStaffForService(allStaff, service, preselectedStylist);
     margin-top: 0.35rem;
     font-size: 0.95rem;
     color: var(--color-gray);
+  }
+
+  .stylist-card__action {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--color-text);
+    background: var(--color-text);
+    color: var(--color-bg);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .stylist-card:hover .stylist-card__action,
+  .stylist-card:focus-visible .stylist-card__action {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .empty {
+    padding: 1.5rem;
+    text-align: center;
+    background: var(--color-light);
+    color: var(--color-gray);
+  }
+
+  .back {
+    margin-top: 1.5rem;
+    text-align: center;
   }
 </style>

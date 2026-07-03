@@ -3,14 +3,13 @@ import { withBase } from "../lib/paths";
 
 const STEPS = [
   { num: 1, label: "Service", href: withBase() },
-  { num: 2, label: "Stylist", href: withBase("stylist/") },
-  { num: 3, label: "Date & time", href: withBase("datetime/") },
-  { num: 4, label: "Details", href: withBase("details/") },
-  { num: 5, label: "Confirm", href: withBase("confirm/") },
+  { num: 2, label: "Date & time", href: withBase("datetime/") },
+  { num: 3, label: "Details", href: withBase("details/") },
+  { num: 4, label: "Confirm", href: withBase("confirm/") },
 ];
 
 interface Props {
-  current: 1 | 2 | 3 | 4 | 5;
+  current: 1 | 2 | 3 | 4;
 }
 
 const { current } = Astro.props;
@@ -43,7 +42,8 @@ const { current } = Astro.props;
   .steps__list {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    justify-content: center;
+    gap: 0.5rem 1.25rem;
     list-style: none;
     margin: 0;
     padding: 0;

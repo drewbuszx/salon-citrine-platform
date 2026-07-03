@@ -1,0 +1,449 @@
+---
+import type { BookingCatalog } from "../lib/booking-data";
+import { withBase } from "../lib/paths";
+
+interface Props {
+  catalog: BookingCatalog;
+  initialStaffSlug: string;
+  initialCategory: string;
+}
+
+const { catalog, initialStaffSlug, initialCategory } = Astro.props;
+
+const catalogJson = JSON.stringify(catalog);
+const datetimeBase = withBase("datetime/");
+const stylistBase = withBase("stylist/");
+---
+
+<section class="service-booking" data-service-booking>
+  <header class="service-booking__header">
+    <p class="service-booking__kicker">Book an appointment</p>
+    <h1 class="service-booking__title">Filter Your Booking</h1>
+    <p class="service-booking__lead">
+      Choose a professional and category, then select a service to continue.
+    </p>
+  </header>
+
+  <div class="service-booking__filters">
+    <label class="filter-field">
+      <span class="filter-field__label">Select a Professional</span>
+      <select
+        class="filter-field__select"
+        name="professional"
+        data-filter-professional
+        aria-label="Select a professional"
+      >
+        <option value="">Any Professional</option>
+        {
+          catalog.staff.map((member) => (
+            <option
+              value={member.slug}
+              selected={member.slug === initialStaffSlug}
+            >
+              {member.name}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+
+    <label class="filter-field">
+      <span class="filter-field__label">Select a Category</span>
+      <select
+        class="filter-field__select"
+        name="category"
+        data-filter-category
+        aria-label="Select a category"
+      >
+        <option value="">All Categories</option>
+        {
+          catalog.categories.map((category) => (
+            <option value={category} selected={category === initialCategory}>
+              {category}
+            </option>
+          ))
+        }
+      </select>
+    </label>
+  </div>
+
+  <div class="service-booking__results" data-results-region aria-live="polite">
+    <p class="service-booking__count" data-results-count hidden></p>
+    <ul class="service-list" data-service-list></ul>
+    <p class="service-booking__empty" data-empty-state hidden>
+      No services match these filters. Try another professional or category.
+    </p>
+  </div>
+</section>
+
+<script
+  define:vars={{
+    catalogJson,
+    datetimeBase,
+    stylistBase,
+    initialStaffSlug,
+    initialCategory,
+  }}
+>
+  /** @type {import('../lib/booking-data').BookingCatalog} */
+  const catalog = JSON.parse(catalogJson);
+
+  const root = document.querySelector("[data-service-booking]");
+  const professionalSelect = root?.querySelector("[data-filter-professional]");
+  const categorySelect = root?.querySelector("[data-filter-category]");
+  const serviceList = root?.querySelector("[data-service-list]");
+  const emptyState = root?.querySelector("[data-empty-state]");
+  const resultsCount = root?.querySelector("[data-results-count]");
+
+  function filterServices(staffSlug, category) {
+    let filtered = catalog.services;
+
+    if (staffSlug) {
+      const member = catalog.staff.find((s) => s.slug === staffSlug);
+      if (member) {
+        const allowed = new Set(catalog.staffServiceIds[member.id] ?? []);
+        filtered = filtered.filter((service) => allowed.has(service.id));
+      }
+    }
+
+    if (category) {
+      filtered = filtered.filter((service) => service.category === category);
+    }
+
+    return filtered;
+  }
+
+  function categoriesForStaff(staffSlug) {
+    const services = filterServices(staffSlug, "");
+    return [...new Set(services.map((service) => service.category))].sort(
+      (a, b) => a.localeCompare(b),
+    );
+  }
+
+  function formatPriceClient(service) {
+    if (service.basePriceCents === null) return "Complimentary";
+    const dollars = service.basePriceCents / 100;
+    const base = `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}`;
+    return service.priceVaries ? `${base}+` : base;
+  }
+
+  function optionsLabel(service) {
+    if (service.priceVaries) return "Multiple options";
+    return null;
+  }
+
+  function syncUrl(staffSlug, category) {
+    const url = new URL(window.location.href);
+    if (staffSlug) url.searchParams.set("stylist", staffSlug);
+    else url.searchParams.delete("stylist");
+    if (category) url.searchParams.set("category", category);
+    else url.searchParams.delete("category");
+    window.history.replaceState({}, "", url);
+  }
+
+  function refreshCategoryOptions(staffSlug, preserveCategory) {
+    if (!categorySelect) return;
+    const available = categoriesForStaff(staffSlug);
+    const current = preserveCategory && available.includes(preserveCategory)
+      ? preserveCategory
+      : "";
+
+    categorySelect.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = "All Categories";
+    categorySelect.appendChild(allOption);
+
+    for (const category of available) {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      if (category === current) option.selected = true;
+      categorySelect.appendChild(option);
+    }
+
+    categorySelect.value = current;
+  }
+
+  function renderServices() {
+    const staffSlug = professionalSelect?.value ?? "";
+    const category = categorySelect?.value ?? "";
+    const services = filterServices(staffSlug, category);
+
+    syncUrl(staffSlug, category);
+
+    if (!serviceList || !emptyState || !resultsCount) return;
+
+    serviceList.innerHTML = "";
+
+    if (services.length === 0) {
+      emptyState.hidden = false;
+      resultsCount.hidden = true;
+      return;
+    }
+
+    emptyState.hidden = true;
+    resultsCount.hidden = false;
+    resultsCount.textContent = `${services.length} service${services.length === 1 ? "" : "s"}`;
+
+    for (const service of services) {
+      const li = document.createElement("li");
+      li.className = "service-card";
+
+      const body = document.createElement("div");
+      body.className = "service-card__body";
+
+      const name = document.createElement("h2");
+      name.className = "service-card__name";
+      name.textContent = service.name;
+      body.appendChild(name);
+
+      if (service.description) {
+        const desc = document.createElement("p");
+        desc.className = "service-card__description";
+        desc.textContent = service.description;
+        body.appendChild(desc);
+      }
+
+      const meta = document.createElement("p");
+      meta.className = "service-card__meta";
+      meta.textContent = `${formatPriceClient(service)} · ${service.durationMinutes} min`;
+      body.appendChild(meta);
+
+      const options = optionsLabel(service);
+      if (options) {
+        const badge = document.createElement("span");
+        badge.className = "service-card__options";
+        badge.textContent = options;
+        body.appendChild(badge);
+      }
+
+      if (service.requiresConsultation) {
+        const badge = document.createElement("span");
+        badge.className = "service-card__badge";
+        badge.textContent = "Consultation required";
+        body.appendChild(badge);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "service-card__actions";
+
+      const link = document.createElement("a");
+      link.className = "service-card__select sc-button sc-button--primary";
+      link.textContent = "Select";
+      link.href = staffSlug
+        ? `${datetimeBase}?service=${service.id}&stylist=${staffSlug}`
+        : `${stylistBase}?service=${service.id}`;
+      actions.appendChild(link);
+
+      li.appendChild(body);
+      li.appendChild(actions);
+      serviceList.appendChild(li);
+    }
+  }
+
+  function onFilterChange() {
+    const staffSlug = professionalSelect?.value ?? "";
+    const category = categorySelect?.value ?? "";
+    refreshCategoryOptions(staffSlug, category);
+    renderServices();
+  }
+
+  professionalSelect?.addEventListener("change", onFilterChange);
+  categorySelect?.addEventListener("change", renderServices);
+
+  refreshCategoryOptions(initialStaffSlug, initialCategory);
+  renderServices();
+</script>
+
+<style>
+  .service-booking__header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .service-booking__kicker {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-sage);
+  }
+
+  .service-booking__title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.75rem, 4vw, 2.35rem);
+    font-weight: 500;
+  }
+
+  .service-booking__lead {
+    margin: 0;
+    color: var(--color-gray);
+    max-width: 36rem;
+    margin-inline: auto;
+  }
+
+  .service-booking__filters {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (min-width: 640px) {
+    .service-booking__filters {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .filter-field {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .filter-field__label {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .filter-field__select {
+    appearance: none;
+    width: 100%;
+    padding: 0.85rem 2.5rem 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    background:
+      var(--color-bg)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%233c3d3c' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")
+      no-repeat right 1rem center;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .filter-field__select:hover,
+  .filter-field__select:focus-visible {
+    border-color: var(--color-citrine);
+    outline: none;
+  }
+
+  .service-booking__count {
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .service-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  :global(.service-card) {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem 1.35rem;
+    background: var(--color-booking-card-bg);
+    border: 1px solid var(--color-border);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  @media (min-width: 640px) {
+    :global(.service-card) {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+  }
+
+  :global(.service-card:hover) {
+    border-color: var(--color-citrine);
+    box-shadow: 0 4px 24px rgba(60, 61, 60, 0.06);
+  }
+
+  :global(.service-card__name) {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  :global(.service-card__description) {
+    margin: 0 0 0.5rem;
+    font-size: 0.98rem;
+    color: var(--color-gray);
+    line-height: 1.5;
+  }
+
+  :global(.service-card__meta) {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-charcoal);
+  }
+
+  :global(.service-card__options) {
+    display: inline-block;
+    margin-top: 0.5rem;
+    margin-right: 0.5rem;
+    padding: 0.2rem 0.55rem;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--color-light);
+    color: var(--color-charcoal);
+  }
+
+  :global(.service-card__badge) {
+    display: inline-block;
+    margin-top: 0.5rem;
+    padding: 0.2rem 0.55rem;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--color-sage);
+    color: var(--color-white);
+  }
+
+  :global(.service-card__select) {
+    display: inline-block;
+    padding: 0.75rem 1.75rem;
+    border: 1px solid var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    text-align: center;
+    background: var(--color-text);
+    color: var(--color-bg);
+    transition: background 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+  }
+
+  :global(.service-card__select:hover),
+  :global(.service-card__select:focus-visible) {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .service-booking__empty {
+    margin: 2rem 0 0;
+    padding: 2rem;
+    text-align: center;
+    color: var(--color-gray);
+    background: var(--color-light);
+    border: 1px dashed var(--color-border);
+  }
+</style>

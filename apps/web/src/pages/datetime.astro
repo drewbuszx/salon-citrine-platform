@@ -23,7 +23,7 @@ const dates = Array.from({ length: 7 }, (_, i) => {
 });
 ---
 
-<BookingLayout title="Choose date & time" step={3}>
+<BookingLayout title="Choose date & time" step={2}>
   <h1>Choose date & time</h1>
   <p class="lead">
     {service.name} with <strong>{stylist.name}</strong>
@@ -80,11 +80,7 @@ const dates = Array.from({ length: 7 }, (_, i) => {
   </form>
 
   <p class="back">
-    <a
-      href={`${withBase("stylist/")}?service=${service.id}&stylist=${stylist.slug}`}
-    >
-      ← Back to stylist
-    </a>
+    <a href={`${withBase()}?stylist=${stylist.slug}`}>← Back to services</a>
   </p>
 </BookingLayout>
 

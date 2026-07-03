@@ -26,6 +26,21 @@ type ServiceRow = {
   sort_order: number;
 };
 
+type StaffServiceRow = {
+  staff_id: string;
+  service_id: string;
+};
+
+export type BookingCatalog = {
+  staff: Staff[];
+  categories: string[];
+  services: Service[];
+  /** staffId → serviceIds this provider offers */
+  staffServiceIds: Record<string, string[]>;
+};
+
+const ANY_PROFESSIONAL = "";
+
 function mapStaff(row: StaffRow): Staff {
   return {
     id: row.id,
@@ -54,29 +69,92 @@ function mapService(row: ServiceRow): Service {
   };
 }
 
-export async function fetchServices(): Promise<Service[]> {
+export async function fetchBookingCatalog(): Promise<BookingCatalog> {
   const supabase = createSupabaseClient();
-  const { data, error } = await supabase
-    .from("services")
-    .select("*")
-    .eq("is_active", true)
-    .eq("is_addon", false)
-    .order("sort_order");
 
-  if (error) throw error;
-  return (data as ServiceRow[]).map(mapService);
+  const [staffResult, servicesResult, staffServicesResult] = await Promise.all([
+    supabase.from("staff").select("*").eq("is_bookable", true).order("name"),
+    supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true)
+      .eq("is_addon", false)
+      .order("sort_order"),
+    supabase.from("staff_services").select("staff_id, service_id"),
+  ]);
+
+  if (staffResult.error) throw staffResult.error;
+  if (servicesResult.error) throw servicesResult.error;
+  if (staffServicesResult.error) throw staffServicesResult.error;
+
+  const staff = (staffResult.data as StaffRow[]).map(mapStaff);
+  const services = (servicesResult.data as ServiceRow[]).map(mapService);
+  const staffServiceIds: Record<string, string[]> = {};
+
+  for (const row of staffServicesResult.data as StaffServiceRow[]) {
+    const list = staffServiceIds[row.staff_id] ?? [];
+    list.push(row.service_id);
+    staffServiceIds[row.staff_id] = list;
+  }
+
+  const categories = [
+    ...new Set(services.map((service) => service.category)),
+  ].sort((a, b) => a.localeCompare(b));
+
+  return { staff, categories, services, staffServiceIds };
+}
+
+export async function fetchServices(): Promise<Service[]> {
+  const { services } = await fetchBookingCatalog();
+  return services;
 }
 
 export async function fetchBookableStaff(): Promise<Staff[]> {
-  const supabase = createSupabaseClient();
-  const { data, error } = await supabase
-    .from("staff")
-    .select("*")
-    .eq("is_bookable", true)
-    .order("name");
+  const { staff } = await fetchBookingCatalog();
+  return staff;
+}
 
-  if (error) throw error;
-  return (data as StaffRow[]).map(mapStaff);
+export async function fetchServiceCategories(): Promise<string[]> {
+  const { categories } = await fetchBookingCatalog();
+  return categories;
+}
+
+export function filterServicesForBooking(
+  catalog: BookingCatalog,
+  staffSlug: string | null,
+  category: string | null,
+): Service[] {
+  const { services, staff, staffServiceIds } = catalog;
+  let filtered = services;
+
+  if (staffSlug) {
+    const member = staff.find((s) => s.slug === staffSlug);
+    if (member) {
+      const allowed = new Set(staffServiceIds[member.id] ?? []);
+      filtered = filtered.filter((service) => allowed.has(service.id));
+    }
+  }
+
+  if (category) {
+    filtered = filtered.filter((service) => service.category === category);
+  }
+
+  return filtered;
+}
+
+export function categoriesForStaff(
+  catalog: BookingCatalog,
+  staffSlug: string | null,
+): string[] {
+  const services = filterServicesForBooking(catalog, staffSlug, null);
+  return [...new Set(services.map((service) => service.category))].sort(
+    (a, b) => a.localeCompare(b),
+  );
+}
+
+export function serviceOptionsLabel(service: Service): string | null {
+  if (service.priceVaries) return "Multiple options";
+  return null;
 }
 
 export async function getServiceById(
@@ -113,18 +191,41 @@ export async function getStaffBySlug(
   return data ? mapStaff(data as StaffRow) : undefined;
 }
 
+export async function fetchStaffForService(
+  serviceId: string,
+  preselected?: Staff,
+): Promise<Staff[]> {
+  if (preselected) return [preselected];
+
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("staff_services")
+    .select("staff_id, staff(*)")
+    .eq("service_id", serviceId);
+
+  if (error) throw error;
+
+  const staff: Staff[] = [];
+  for (const row of data ?? []) {
+    const raw = row.staff as StaffRow | StaffRow[] | null;
+    const staffRow = Array.isArray(raw) ? raw[0] : raw;
+    if (staffRow?.is_bookable) {
+      staff.push(mapStaff(staffRow));
+    }
+  }
+
+  return staff.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** @deprecated Use fetchStaffForService — kept for backwards compatibility */
 export function filterStaffForService(
   staff: Staff[],
   service: Service,
   preselected?: Staff,
 ): Staff[] {
+  void service;
   if (preselected) return [preselected];
-
-  return staff.filter((member) =>
-    member.role === "esthetician"
-      ? /Skincare|Waxing|Makeup/i.test(service.category)
-      : !/^Skincare|^Makeup/i.test(service.category),
-  );
+  return staff;
 }
 
 export function formatPrice(service: Service): string {
@@ -146,3 +247,5 @@ export function groupServicesByCategory(
   }
   return map;
 }
+
+export { ANY_PROFESSIONAL };
