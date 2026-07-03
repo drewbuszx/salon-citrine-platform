@@ -1,13 +1,48 @@
 ---
-import AdminLayout from "../layouts/AdminLayout.astro";
+import TeamLayout from "../layouts/TeamLayout.astro";
 import WeekCalendar from "../components/WeekCalendar.astro";
+import { isSalonManager } from "../lib/auth";
+import { loadCalendarData, parseWeekParam } from "../lib/calendar";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
+}
+
+const weekStart = parseWeekParam(Astro.url.searchParams.get("week"));
+const managerView = isSalonManager(staff);
+
+let calendar;
+try {
+  calendar = await loadCalendarData(supabase, {
+    weekStart,
+    staffFilterIds: managerView ? null : [staff.id],
+  });
+} catch (error) {
+  console.error("Failed to load calendar", error);
+  calendar = { staff: [], appointments: [], blockedTimes: [] };
+}
 ---
 
-<AdminLayout title="Calendar">
-  <h1>Staff calendar</h1>
-  <p class="lead">All providers · week view</p>
-  <WeekCalendar />
-</AdminLayout>
+<TeamLayout title="Calendar" activeNav="calendar">
+  <h1>{managerView ? "Salon calendar" : "My schedule"}</h1>
+  <p class="lead">
+    {
+      managerView
+        ? "All providers · week view"
+        : `${staff.name} · week view`
+    }
+  </p>
+
+  <WeekCalendar
+    weekStart={weekStart}
+    staff={calendar.staff}
+    appointments={calendar.appointments}
+    blockedTimes={calendar.blockedTimes}
+    singleColumn={!managerView}
+  />
+</TeamLayout>
 
 <style>
   h1 {

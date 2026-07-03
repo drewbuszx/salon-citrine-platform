@@ -1,0 +1,164 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase } = Astro.locals;
+
+const { data: services, error } = await supabase
+  .from("services")
+  .select("id, category, name, duration_minutes")
+  .eq("is_active", true)
+  .order("category")
+  .order("sort_order")
+  .order("name");
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+const updateError = Astro.url.searchParams.get("error") === "update";
+---
+
+<TeamLayout title="Services" activeNav="services">
+  <h1>Service durations</h1>
+  <p class="lead">Update duration_minutes for active services. Owners and front desk only.</p>
+
+  {saved ? <p class="notice notice--success">Service updated.</p> : null}
+  {
+    updateError ? (
+      <p class="notice notice--error" role="alert">
+        Could not update service. Check the value and try again.
+      </p>
+    ) : null
+  }
+
+  {
+    error ? (
+      <p class="notice notice--error" role="alert">
+        Failed to load services.
+      </p>
+    ) : (
+      <div class="services">
+        {
+          (services ?? []).map((service) => (
+            <form
+              class="services__row"
+              method="post"
+              action={teamUrl(`/api/services/${service.id}`)}
+            >
+              <div class="services__info">
+                <span class="services__category">{service.category}</span>
+                <span class="services__name">{service.name}</span>
+              </div>
+              <label class="services__duration">
+                Minutes
+                <input
+                  name="duration_minutes"
+                  type="number"
+                  min="15"
+                  step="15"
+                  value={service.duration_minutes}
+                  required
+                />
+              </label>
+              <button type="submit">Save</button>
+            </form>
+          ))
+        }
+      </div>
+    )
+  }
+</TeamLayout>
+
+<style>
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .lead {
+    color: var(--color-gray);
+  }
+
+  .notice {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+  }
+
+  .notice--success {
+    border: 1px solid var(--color-citrine);
+    background: rgba(255, 210, 80, 0.15);
+  }
+
+  .notice--error {
+    border: 1px solid #c44;
+    background: rgba(200, 60, 60, 0.08);
+    color: #922;
+  }
+
+  .services {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .services__row {
+    display: grid;
+    gap: 0.75rem;
+    align-items: end;
+    padding: 0.85rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  @media (min-width: 40rem) {
+    .services__row {
+      grid-template-columns: 1fr auto auto;
+    }
+  }
+
+  .services__info {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .services__category {
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .services__name {
+    font-size: 1rem;
+  }
+
+  .services__duration {
+    display: grid;
+    gap: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .services__duration input {
+    width: 6rem;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .services__row button {
+    padding: 0.55rem 0.85rem;
+    border: none;
+    background: var(--color-charcoal);
+    color: var(--color-white);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+</style>

@@ -1,0 +1,150 @@
+---
+import { teamUrl } from "../lib/supabase-server";
+
+interface Props {
+  activeNav: "calendar" | "block-time" | "services";
+  staffName: string;
+  staffRole: string;
+}
+
+const { activeNav, staffName, staffRole } = Astro.props;
+
+const navItems = [
+  { id: "calendar" as const, label: "Calendar", href: teamUrl("/") },
+  { id: "block-time" as const, label: "Block time", href: teamUrl("/block-time") },
+];
+
+if (staffRole === "owner" || staffRole === "front_desk") {
+  navItems.push({
+    id: "services" as const,
+    label: "Services",
+    href: teamUrl("/services"),
+  });
+}
+---
+
+<header class="team-header">
+  <div class="team-header__inner">
+    <a class="team-header__brand" href={teamUrl("/")}>Salon Citrine Team</a>
+
+    <nav class="team-nav" aria-label="Team">
+      {
+        navItems.map((item) => (
+          <a
+            class:list={[
+              "team-nav__link",
+              { "team-nav__link--active": activeNav === item.id },
+            ]}
+            href={item.href}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="team-header__actions">
+      <button
+        class="team-header__theme"
+        type="button"
+        aria-label="Toggle dark mode"
+        data-theme-toggle
+      >
+        ◐
+      </button>
+      <span class="team-header__user">{staffName}</span>
+      <form method="post" action={teamUrl("/api/auth/logout")}>
+        <button class="team-header__logout" type="submit">Sign out</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<style>
+  .team-header {
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-charcoal);
+    color: var(--color-white);
+  }
+
+  .team-header__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    width: min(var(--max-width), 100%);
+    margin: 0 auto;
+    padding: 0.85rem var(--section-padding);
+  }
+
+  .team-header__brand {
+    font-family: var(--font-nav);
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .team-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-left: auto;
+  }
+
+  .team-nav__link {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .team-nav__link--active {
+    color: var(--color-citrine);
+  }
+
+  .team-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  @media (min-width: 48rem) {
+    .team-header__actions {
+      width: auto;
+      margin-left: 0;
+    }
+  }
+
+  .team-header__theme {
+    padding: 0.35rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .team-header__user {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .team-header__logout {
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: transparent;
+    color: inherit;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+</style>

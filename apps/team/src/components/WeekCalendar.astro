@@ -1,100 +1,161 @@
 ---
-import { STAFF_MEMBERS } from "@saloncitrine/shared";
+import type {
+  CalendarAppointment,
+  CalendarBlockedTime,
+  CalendarStaff,
+} from "../lib/calendar";
+import {
+  eventDayIndex,
+  formatTimeInSalon,
+  formatWeekParam,
+  shiftWeek,
+  weekDates,
+} from "../lib/calendar";
+import { teamUrl } from "../lib/supabase-server";
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const HOURS = ["10 AM", "12 PM", "2 PM", "4 PM", "6 PM", "8 PM"];
+interface Props {
+  weekStart: Date;
+  staff: CalendarStaff[];
+  appointments: CalendarAppointment[];
+  blockedTimes: CalendarBlockedTime[];
+  singleColumn?: boolean;
+}
 
-const today = new Date();
-const weekStart = new Date(today);
-weekStart.setDate(today.getDate() - today.getDay() + 1);
+const { weekStart, staff, appointments, blockedTimes, singleColumn = false } =
+  Astro.props;
 
-const weekDates = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(weekStart);
-  d.setDate(weekStart.getDate() + i);
-  return d;
-});
+const dates = weekDates(weekStart);
+const prevWeek = formatWeekParam(shiftWeek(weekStart, -1));
+const nextWeek = formatWeekParam(shiftWeek(weekStart, 1));
+const todayWeek = formatWeekParam(new Date());
 
-const placeholderAppointments = [
-  {
-    staffSlug: "lily-gleitsman",
-    dayIndex: 1,
-    hourIndex: 1,
-    label: "Haircut · Alex M.",
-  },
-  {
-    staffSlug: "shelby-craft",
-    dayIndex: 2,
-    hourIndex: 2,
-    label: "Vivid consult · Jordan K.",
-  },
-  {
-    staffSlug: "julie-powers",
-    dayIndex: 3,
-    hourIndex: 3,
-    label: "Korean facial · Sam T.",
-  },
-];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function cellEvents(staffId: string, dayIndex: number) {
+  const appts = appointments
+    .filter(
+      (item) =>
+        item.staffId === staffId && eventDayIndex(item.startsAt, weekStart) === dayIndex,
+    )
+    .map((item) => ({
+      kind: "appointment" as const,
+      label: item.serviceLabel
+        ? `${item.serviceLabel} · ${item.clientLabel}`
+        : item.clientLabel,
+      time: formatTimeInSalon(item.startsAt),
+      status: item.status,
+    }));
+
+  const blocks = blockedTimes
+    .filter(
+      (item) =>
+        item.staffId === staffId && eventDayIndex(item.startsAt, weekStart) === dayIndex,
+    )
+    .map((item) => ({
+      kind: "blocked" as const,
+      label: item.reason || "Blocked",
+      time: formatTimeInSalon(item.startsAt),
+      status: "blocked",
+    }));
+
+  return [...appts, ...blocks].sort((a, b) => a.time.localeCompare(b.time));
+}
 ---
 
 <section class="calendar" aria-label="Week calendar">
   <header class="calendar__toolbar">
-    <h2 class="calendar__title">Week of {weekDates[0].toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</h2>
+    <h2 class="calendar__title">
+      Week of {
+        dates[0]?.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      }
+    </h2>
     <div class="calendar__actions">
-      <button type="button" disabled>← Prev</button>
-      <button type="button" disabled>Today</button>
-      <button type="button" disabled>Next →</button>
+      <a class="calendar__btn" href={`${teamUrl("/")}?week=${prevWeek}`}>← Prev</a>
+      <a class="calendar__btn" href={`${teamUrl("/")}?week=${todayWeek}`}>Today</a>
+      <a class="calendar__btn" href={`${teamUrl("/")}?week=${nextWeek}`}>Next →</a>
     </div>
   </header>
 
-  <div class="calendar__scroll">
-    <table class="calendar__grid">
-      <thead>
-        <tr>
-          <th class="calendar__corner">Staff</th>
-          {
-            weekDates.map((date, i) => (
-              <th>
-                <span class="calendar__day">{DAYS[date.getDay()]}</span>
-                <span class="calendar__date">{date.getDate()}</span>
-              </th>
-            ))
-          }
-        </tr>
-      </thead>
-      <tbody>
+  {
+    singleColumn ? (
+      <div class="calendar__single">
         {
-          STAFF_MEMBERS.map((member) => (
+          dates.map((date, dayIndex) => (
+            <article class="calendar__day-card">
+              <h3>
+                {DAY_LABELS[dayIndex]} {date.getDate()}
+              </h3>
+              <ul>
+                {
+                  cellEvents(staff[0]?.id ?? "", dayIndex).map((event) => (
+                    <li class:list={["calendar__event", `calendar__event--${event.kind}`]}>
+                      <span class="calendar__event-time">{event.time}</span>
+                      <span>{event.label}</span>
+                    </li>
+                  ))
+                }
+                {cellEvents(staff[0]?.id ?? "", dayIndex).length === 0 ? (
+                  <li class="calendar__empty">No appointments</li>
+                ) : null}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+    ) : (
+      <div class="calendar__scroll">
+        <table class="calendar__grid">
+          <thead>
             <tr>
-              <th scope="row" class="calendar__staff">
-                {member.name}
-              </th>
+              <th class="calendar__corner">Staff</th>
               {
-                weekDates.map((_, dayIndex) => (
-                  <td class="calendar__cell">
-                    {
-                      placeholderAppointments
-                        .filter(
-                          (a) =>
-                            a.staffSlug === member.slug && a.dayIndex === dayIndex,
-                        )
-                        .map((a) => (
-                          <div class="calendar__appt">{a.label}</div>
-                        ))
-                    }
-                  </td>
+                dates.map((date, index) => (
+                  <th>
+                    <span class="calendar__day">{DAY_LABELS[index]}</span>
+                    <span class="calendar__date">{date.getDate()}</span>
+                  </th>
                 ))
               }
             </tr>
-          ))
-        }
-      </tbody>
-    </table>
-  </div>
-
-  <p class="calendar__note">
-    Placeholder week view — drag-drop, blocked time, and Supabase Auth login
-    ship in Phase 1.
-  </p>
+          </thead>
+          <tbody>
+            {
+              staff.map((member) => (
+                <tr>
+                  <th scope="row" class="calendar__staff">
+                    {member.name}
+                  </th>
+                  {
+                    dates.map((_, dayIndex) => (
+                      <td class="calendar__cell">
+                        {
+                          cellEvents(member.id, dayIndex).map((event) => (
+                            <div
+                              class:list={[
+                                "calendar__appt",
+                                event.kind === "blocked" && "calendar__appt--blocked",
+                              ]}
+                            >
+                              <span class="calendar__appt-time">{event.time}</span>
+                              {event.label}
+                            </div>
+                          ))
+                        }
+                      </td>
+                    ))
+                  }
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    )
+  }
 </section>
 
 <style>
@@ -116,7 +177,7 @@ const placeholderAppointments = [
     gap: 0.5rem;
   }
 
-  .calendar__actions button {
+  .calendar__btn {
     padding: 0.4rem 0.75rem;
     border: 1px solid var(--color-border);
     background: var(--color-bg);
@@ -124,8 +185,8 @@ const placeholderAppointments = [
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    cursor: not-allowed;
-    opacity: 0.55;
+    text-decoration: none;
+    color: inherit;
   }
 
   .calendar__scroll {
@@ -147,9 +208,13 @@ const placeholderAppointments = [
     vertical-align: top;
   }
 
+  .calendar__corner,
+  .calendar__staff {
+    background: var(--color-light);
+  }
+
   .calendar__corner {
     width: 8rem;
-    background: var(--color-light);
   }
 
   .calendar__grid thead th {
@@ -174,7 +239,6 @@ const placeholderAppointments = [
 
   .calendar__staff {
     text-align: left;
-    background: var(--color-light);
     font-weight: 500;
     white-space: nowrap;
   }
@@ -195,9 +259,62 @@ const placeholderAppointments = [
     border-radius: 2px;
   }
 
-  .calendar__note {
-    margin-top: 1rem;
-    font-size: 0.85rem;
+  .calendar__appt--blocked {
+    background: rgba(120, 120, 120, 0.25);
+    color: var(--color-text);
+  }
+
+  .calendar__appt-time {
+    display: block;
+    font-size: 0.65rem;
+    opacity: 0.85;
+  }
+
+  .calendar__single {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .calendar__day-card {
+    border: 1px solid var(--color-border);
+    padding: 0.75rem;
+    background: var(--color-bg);
+  }
+
+  .calendar__day-card h3 {
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .calendar__day-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .calendar__event {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.45rem 0.55rem;
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-size: 0.82rem;
+  }
+
+  .calendar__event--blocked {
+    background: rgba(120, 120, 120, 0.25);
+    color: var(--color-text);
+  }
+
+  .calendar__event-time {
+    font-size: 0.72rem;
+    opacity: 0.85;
+  }
+
+  .calendar__empty {
     color: var(--color-gray);
+    font-size: 0.85rem;
   }
 </style>
