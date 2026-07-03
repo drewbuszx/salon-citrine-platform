@@ -1,0 +1,990 @@
+{
+  "generated_at": "2026-07-03T19:34:17.925Z",
+  "source": "https://saloncitrineindy.glossgenius.com/booking-flow",
+  "staff": [
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000001",
+      "staff_slug": "lily-gleitsman",
+      "staff_name": "Lily Gleitsman",
+      "glossgenius_token": "10001-f5bd9a7b-3e2f-4255-951d-ca4881f88678",
+      "glossgenius_service_count": 35,
+      "matched_service_count": 35,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "TRANSFORMATIVE HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000040000"
+        },
+        {
+          "name": "CLIPPER CUT",
+          "service_id": "b2000001-4300-4000-8000-000000050000"
+        },
+        {
+          "name": "DRY CUT",
+          "service_id": "b2000001-4300-4000-8000-000000060000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "BABY'S FIRST HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000080000"
+        },
+        {
+          "name": "LITTLE KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000090000"
+        },
+        {
+          "name": "BIG KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-0000000a0000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000120000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000130000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000140000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000150000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "HAIR TINSEL",
+          "service_id": "b2000001-cb00-4000-8000-000000240000"
+        },
+        {
+          "name": "BLOWOUT",
+          "service_id": "b2000001-cb00-4000-8000-000000250000"
+        },
+        {
+          "name": "SILK PRESS",
+          "service_id": "b2000001-cb00-4000-8000-000000260000"
+        },
+        {
+          "name": "KERATIN COMPLEX TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000270000"
+        },
+        {
+          "name": "CONSULTATION FOR KERATIN COMPLEX",
+          "service_id": "b2000001-1a00-4000-8000-000000280000"
+        },
+        {
+          "name": "EXTENSIONS CONSULTATION",
+          "service_id": "b2000001-1a00-4000-8000-000000290000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000002",
+      "staff_slug": "miriam-zhukov",
+      "staff_name": "Miriam Zhukov",
+      "glossgenius_token": "10001-690e87a4-3d1b-44db-a449-08c9d40b5dff",
+      "glossgenius_service_count": 28,
+      "matched_service_count": 28,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "BABY'S FIRST HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000080000"
+        },
+        {
+          "name": "LITTLE KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000090000"
+        },
+        {
+          "name": "BIG KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-0000000a0000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000160000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000170000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000180000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000190000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "KERATIN COMPLEX TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000270000"
+        },
+        {
+          "name": "CONSULTATION FOR KERATIN COMPLEX",
+          "service_id": "b2000001-1a00-4000-8000-000000280000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000003",
+      "staff_slug": "andra-kramer",
+      "staff_name": "Andra Kramer",
+      "glossgenius_token": "10001-7e4b7dd5-f741-4f6f-b71d-ed5cc3b638ec",
+      "glossgenius_service_count": 33,
+      "matched_service_count": 33,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "TRANSFORMATIVE HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000040000"
+        },
+        {
+          "name": "CLIPPER CUT",
+          "service_id": "b2000001-4300-4000-8000-000000050000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000160000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000170000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000120000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000130000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000140000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000150000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000180000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000190000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "BLOWOUT",
+          "service_id": "b2000001-cb00-4000-8000-000000250000"
+        },
+        {
+          "name": "KERATIN COMPLEX TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000270000"
+        },
+        {
+          "name": "CONSULTATION FOR KERATIN COMPLEX",
+          "service_id": "b2000001-1a00-4000-8000-000000280000"
+        },
+        {
+          "name": "NOSTRIL",
+          "service_id": "b2000001-d200-4000-8000-0000002a0000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000004",
+      "staff_slug": "shelby-craft",
+      "staff_name": "Shelby Craft",
+      "glossgenius_token": "10001-6a29adda-3651-43d9-8899-3ace37524a1e",
+      "glossgenius_service_count": 33,
+      "matched_service_count": 33,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "NEW CLIENT HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000020000"
+        },
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "TRANSFORMATIVE HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000040000"
+        },
+        {
+          "name": "CLIPPER CUT",
+          "service_id": "b2000001-4300-4000-8000-000000050000"
+        },
+        {
+          "name": "DRY CUT",
+          "service_id": "b2000001-4300-4000-8000-000000060000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000160000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000170000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000120000"
+        },
+        {
+          "name": "ALL OVER BLEACH AND TONE & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000130000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & BLOWOUT",
+          "service_id": "b2000001-8700-4000-8000-000000140000"
+        },
+        {
+          "name": "BLEACH ROOT TOUCH UP & HAIRCUT",
+          "service_id": "b2000001-8700-4000-8000-000000150000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000180000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000190000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "BLOWOUT",
+          "service_id": "b2000001-cb00-4000-8000-000000250000"
+        },
+        {
+          "name": "CONSULTATION FOR KERATIN COMPLEX",
+          "service_id": "b2000001-1a00-4000-8000-000000280000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000005",
+      "staff_slug": "jules-hoffman",
+      "staff_name": "Jules Hoffman",
+      "glossgenius_token": "10001-40fac3c0-b13b-47c2-86da-6e1c3452329f",
+      "glossgenius_service_count": 30,
+      "matched_service_count": 30,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "NEW CLIENT HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000020000"
+        },
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "TRANSFORMATIVE HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000040000"
+        },
+        {
+          "name": "CLIPPER CUT",
+          "service_id": "b2000001-4300-4000-8000-000000050000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "BABY'S FIRST HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000080000"
+        },
+        {
+          "name": "LITTLE KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000090000"
+        },
+        {
+          "name": "BIG KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-0000000a0000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000160000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000170000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000180000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000190000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "BLOWOUT",
+          "service_id": "b2000001-cb00-4000-8000-000000250000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000006",
+      "staff_slug": "brie-crowe",
+      "staff_name": "Brie Crowe",
+      "glossgenius_token": "10001-32abe5c0-3025-48ed-8516-850b1fc5783f",
+      "glossgenius_service_count": 28,
+      "matched_service_count": 28,
+      "unmatched_services": [],
+      "services": [
+        {
+          "name": "NEW CLIENT HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000020000"
+        },
+        {
+          "name": "HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000030000"
+        },
+        {
+          "name": "TRANSFORMATIVE HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-000000040000"
+        },
+        {
+          "name": "CLIPPER CUT",
+          "service_id": "b2000001-4300-4000-8000-000000050000"
+        },
+        {
+          "name": "FRINGE / UNDERCUT MAINTENANCE",
+          "service_id": "b2000001-4300-4000-8000-000000070000"
+        },
+        {
+          "name": "BIG KID'S HAIRCUT",
+          "service_id": "b2000001-4300-4000-8000-0000000a0000"
+        },
+        {
+          "name": "DETANGLE",
+          "service_id": "b2000001-4300-4000-8000-0000000b0000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000160000"
+        },
+        {
+          "name": "ALL OVER COLOR WITH HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000170000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000c0000"
+        },
+        {
+          "name": "FULL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000d0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-0000000e0000"
+        },
+        {
+          "name": "PARTIAL DIMENSIONAL COLOR & CUT",
+          "service_id": "b2000001-de00-4000-8000-0000000f0000"
+        },
+        {
+          "name": "MINI LIGHTS & BLOWOUT",
+          "service_id": "b2000001-de00-4000-8000-000000100000"
+        },
+        {
+          "name": "MINI LIGHTS & CUT",
+          "service_id": "b2000001-de00-4000-8000-000000110000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-000000180000"
+        },
+        {
+          "name": "ROOT TOUCH UP WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-000000190000"
+        },
+        {
+          "name": "GLOSS WITH A BLOWOUT",
+          "service_id": "b2000001-5200-4000-8000-0000001a0000"
+        },
+        {
+          "name": "GLOSS WITH A HAIRCUT",
+          "service_id": "b2000001-5200-4000-8000-0000001b0000"
+        },
+        {
+          "name": "COLOR CONSULTATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001c0000"
+        },
+        {
+          "name": "VIVID TRANSFORMATION",
+          "service_id": "b2000001-8a00-4000-8000-0000001d0000"
+        },
+        {
+          "name": "ADD-ON: HOT TOWEL TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-0000001e0000"
+        },
+        {
+          "name": "ADD-ON: DEEP CONDITION",
+          "service_id": "b2000001-cb00-4000-8000-0000001f0000"
+        },
+        {
+          "name": "ADD-ON: MALIBU TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000200000"
+        },
+        {
+          "name": "ADD-ON:SCALP REVITALIZING TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000210000"
+        },
+        {
+          "name": "ADD-ON: K-18 TREATMENT",
+          "service_id": "b2000001-cb00-4000-8000-000000220000"
+        },
+        {
+          "name": "ADD-ON: STYLING EDUCATION",
+          "service_id": "b2000001-cb00-4000-8000-000000230000"
+        },
+        {
+          "name": "BLOWOUT",
+          "service_id": "b2000001-cb00-4000-8000-000000250000"
+        }
+      ]
+    },
+    {
+      "staff_id": "a1000001-0001-4000-8000-000000000007",
+      "staff_slug": "julie-powers",
+      "staff_name": "Julie Powers",
+      "glossgenius_token": "10001-d788dd27-3f49-452f-af8e-c87bb31e94c3",
+      "glossgenius_service_count": 41,
+      "matched_service_count": 38,
+      "unmatched_services": [
+        "Brow Tint",
+        "Lash Tint",
+        "Brow Wax & Tint"
+      ],
+      "services": [
+        {
+          "name": "NOSTRIL",
+          "service_id": "b2000001-d200-4000-8000-0000002a0000"
+        },
+        {
+          "name": "BESPOKE KOREAN FACIAL- 60 MINUTES",
+          "service_id": "b2000001-9400-4000-8000-0000003d0000"
+        },
+        {
+          "name": "ACNE FACIAL- INITIAL VISIT",
+          "service_id": "b2000001-9400-4000-8000-0000003e0000"
+        },
+        {
+          "name": "ACNE FACIAL-RETURNING CLIENT",
+          "service_id": "b2000001-9400-4000-8000-0000003f0000"
+        },
+        {
+          "name": "BACK WAX",
+          "service_id": "b2000001-d200-4000-8000-0000002b0000"
+        },
+        {
+          "name": "BESPOKE KOREAN FACIAL- 30 MINUTES",
+          "service_id": "b2000001-9400-4000-8000-000000400000"
+        },
+        {
+          "name": "BESPOKE KOREAN FACIAL- 90 MINUTES",
+          "service_id": "b2000001-9400-4000-8000-000000410000"
+        },
+        {
+          "name": "BIKINI WAX",
+          "service_id": "b2000001-d200-4000-8000-0000002c0000"
+        },
+        {
+          "name": "BRAZILIAN WAX",
+          "service_id": "b2000001-d200-4000-8000-0000002d0000"
+        },
+        {
+          "name": "BROW MAINTENANCE",
+          "service_id": "b2000001-d200-4000-8000-0000002e0000"
+        },
+        {
+          "name": "BROW SHAPING",
+          "service_id": "b2000001-d200-4000-8000-0000002f0000"
+        },
+        {
+          "name": "BUTTOCKS",
+          "service_id": "b2000001-d200-4000-8000-000000300000"
+        },
+        {
+          "name": "CHEST WAX",
+          "service_id": "b2000001-d200-4000-8000-000000310000"
+        },
+        {
+          "name": "CHIN",
+          "service_id": "b2000001-d200-4000-8000-000000320000"
+        },
+        {
+          "name": "EAR",
+          "service_id": "b2000001-d200-4000-8000-000000330000"
+        },
+        {
+          "name": "FULL ARM WAX",
+          "service_id": "b2000001-d200-4000-8000-000000340000"
+        },
+        {
+          "name": "FULL LEG WAX",
+          "service_id": "b2000001-d200-4000-8000-000000350000"
+        },
+        {
+          "name": "GLOW PEEL",
+          "service_id": "b2000001-9400-4000-8000-000000420000"
+        },
+        {
+          "name": "GREEN SEA SPICULE PEEL-1ST PEEL",
+          "service_id": "b2000001-9400-4000-8000-000000430000"
+        },
+        {
+          "name": "GREEN SEA PEEL-RETURNING CLIENT",
+          "service_id": "b2000001-9400-4000-8000-000000440000"
+        },
+        {
+          "name": "HAIR REDUCTION ENZYME ADD ON",
+          "service_id": "b2000001-d200-4000-8000-000000360000"
+        },
+        {
+          "name": "HALF ARM WAX",
+          "service_id": "b2000001-d200-4000-8000-000000370000"
+        },
+        {
+          "name": "HALF LEG",
+          "service_id": "b2000001-d200-4000-8000-000000380000"
+        },
+        {
+          "name": "ILLUMIN BIPHASIC CHEMICAL PEEL",
+          "service_id": "b2000001-9400-4000-8000-000000450000"
+        },
+        {
+          "name": "KOREAN NEEDLE-FREE FILLER FACIAL",
+          "service_id": "b2000001-9400-4000-8000-000000460000"
+        },
+        {
+          "name": "LAZER PEEL",
+          "service_id": "b2000001-9400-4000-8000-000000470000"
+        },
+        {
+          "name": "LIP",
+          "service_id": "b2000001-d200-4000-8000-000000390000"
+        },
+        {
+          "name": "LIP AND CHIN",
+          "service_id": "b2000001-d200-4000-8000-0000003a0000"
+        },
+        {
+          "name": "MAKEUP APPLICATION (BEAUTY MAKEUP)",
+          "service_id": "b2000001-c700-4000-8000-0000004b0000"
+        },
+        {
+          "name": "FX/BODY PAINTING MAKEUP",
+          "service_id": "b2000001-c700-4000-8000-0000004c0000"
+        },
+        {
+          "name": "MAKEUP CONSULTATION",
+          "service_id": "b2000001-c700-4000-8000-0000004d0000"
+        },
+        {
+          "name": "MAKEUP LESSON",
+          "service_id": "b2000001-c700-4000-8000-0000004e0000"
+        },
+        {
+          "name": "PERSONAL SHOPPING",
+          "service_id": "b2000001-c700-4000-8000-0000004f0000"
+        },
+        {
+          "name": "SUNBURN RX EXPRESS",
+          "service_id": "b2000001-9400-4000-8000-000000480000"
+        },
+        {
+          "name": "UNDERARM WAX",
+          "service_id": "b2000001-d200-4000-8000-0000003b0000"
+        },
+        {
+          "name": "CLEAR PEEL",
+          "service_id": "b2000001-9400-4000-8000-000000490000"
+        },
+        {
+          "name": "SKINCARE CONSULTATION",
+          "service_id": "b2000001-9400-4000-8000-0000004a0000"
+        },
+        {
+          "name": "FULL FACE WAX",
+          "service_id": "b2000001-d200-4000-8000-0000003c0000"
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    "Julie Powers: 3 GlossGenius service(s) not in menu: Brow Tint, Lash Tint, Brow Wax & Tint"
+  ]
+}

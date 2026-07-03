@@ -1,81 +1,23 @@
 /**
  * Generates seed/seed.sql from seed/data/menu-services.json + salon reference data.
+ * staff_services come from GlossGenius per-stylist data (see sync-staff-services-from-glossgenius.mjs).
  * Run: npm run db:generate-seed
  */
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import {
+  STAFF,
+  root,
+  menuPath,
+  buildServiceRows,
+} from "./lib/seed-constants.mjs";
+import {
+  syncStaffServicesFromGlossGenius,
+  flattenStaffServiceRows,
+} from "./sync-staff-services-from-glossgenius.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
-const menuPath = join(root, "seed", "data", "menu-services.json");
 const outPath = join(root, "seed", "seed.sql");
-
-const STAFF = [
-  {
-    id: "a1000001-0001-4000-8000-000000000001",
-    slug: "lily-gleitsman",
-    name: "Lily Gleitsman",
-    role: "owner",
-    glossgenius_token: "10001-f5bd9a7b-3e2f-4255-951d-ca4881f88678",
-    bio: null,
-    photo_url: "/images/lily-gleitsman.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000002",
-    slug: "miriam-zhukov",
-    name: "Miriam Zhukov",
-    role: "owner",
-    glossgenius_token: "10001-690e87a4-3d1b-44db-a449-08c9d40b5dff",
-    bio: null,
-    photo_url: "/images/miriam-zhukov.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000003",
-    slug: "andra-kramer",
-    name: "Andra Kramer",
-    role: "owner",
-    glossgenius_token: "10001-7e4b7dd5-f741-4f6f-b71d-ed5cc3b638ec",
-    bio: null,
-    photo_url: "/images/andra-kramer.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000004",
-    slug: "shelby-craft",
-    name: "Shelby Craft",
-    role: "stylist",
-    glossgenius_token: "10001-6a29adda-3651-43d9-8899-3ace37524a1e",
-    bio: "Specializes in alternative, vivid, edgy styles and low-maintenance natural looks",
-    photo_url: "/images/shelby-craft.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000005",
-    slug: "jules-hoffman",
-    name: "Jules Hoffman",
-    role: "stylist",
-    glossgenius_token: "10001-40fac3c0-b13b-47c2-86da-6e1c3452329f",
-    bio: "Helping you feel like the star you are, one appointment at a time.",
-    photo_url: "/images/jules-hoffman.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000006",
-    slug: "brie-crowe",
-    name: "Brie Crowe",
-    role: "stylist",
-    glossgenius_token: "10001-32abe5c0-3025-48ed-8516-850b1fc5783f",
-    bio: null,
-    photo_url: "/images/brie-crowe.jpg",
-  },
-  {
-    id: "a1000001-0001-4000-8000-000000000007",
-    slug: "julie-powers",
-    name: "Julie Powers",
-    role: "esthetician",
-    glossgenius_token: "10001-d788dd27-3f49-452f-af8e-c87bb31e94c3",
-    bio: "Korean-inspired facials, peels, waxing, and makeup artistry",
-    photo_url: "/images/julie-powers.jpg",
-  },
-];
+const staffServicesPath = join(root, "seed", "data", "staff-services-glossgenius.json");
 
 /** Salon business hours: 0=Sun … 6=Sat; null = closed */
 const SCHEDULE = {
@@ -157,23 +99,29 @@ function requiresConsultation(name, description) {
   const d = (description || "").toUpperCase();
   if (n.includes("CONSULTATION")) return false;
   return (
-    d.includes("REQUIRES A") && d.includes("CONSULTATION") ||
+    (d.includes("REQUIRES A") && d.includes("CONSULTATION")) ||
     d.includes("REQUIRED BEFORE") ||
     n.includes("VIVID TRANSFORMATION")
   );
 }
 
-function serviceId(category, name, index) {
-  const tail = (index + 1).toString(16).padStart(12, "0");
-  const catHash = [...category].reduce((a, c) => a + c.charCodeAt(0), 0) % 256;
-  const catHex = catHash.toString(16).padStart(2, "0");
-  return `b2000001-${catHex}00-4000-8000-${tail}`;
+async function loadStaffServices() {
+  if (!existsSync(staffServicesPath)) {
+    console.log("staff-services-glossgenius.json not found — fetching from GlossGenius…");
+    return syncStaffServicesFromGlossGenius({ writeJson: true });
+  }
+  return JSON.parse(readFileSync(staffServicesPath, "utf8"));
 }
 
 const menu = JSON.parse(readFileSync(menuPath, "utf8"));
+const serviceRows = buildServiceRows(menu);
+const syncResult = await loadStaffServices();
+const staffServiceRows = flattenStaffServiceRows(syncResult);
+
 const lines = [
   "-- Salon Citrine seed data (generated — do not edit by hand)",
   "-- Regenerate: npm run db:generate-seed",
+  `-- staff_services synced from GlossGenius at ${syncResult.generated_at}`,
   "",
   "begin;",
   "",
@@ -208,37 +156,36 @@ for (const p of POLICIES) {
 }
 
 lines.push("", "-- services");
-let sortOrder = 0;
-const serviceRows = [];
 
 for (const category of menu) {
   for (const svc of category.services) {
-    sortOrder += 1;
+    const row = serviceRows.find(
+      (r) => r.category === category.name && r.name === svc.name,
+    );
     const { cents, varies } = parsePrice(svc.price);
     const addon = isAddon(svc.name, svc.description);
     const consult = requiresConsultation(svc.name, svc.description);
     const duration = inferDuration(svc.name, category.name);
-    const id = serviceId(category.name, svc.name, sortOrder);
 
-    serviceRows.push({ id, category: category.name, svc, cents, varies, addon, consult, duration, sortOrder });
     lines.push(
-      `insert into public.services (id, category, name, description, base_price_cents, duration_minutes, price_varies, is_addon, requires_consultation, sort_order) values (${sqlEscape(id)}, ${sqlEscape(category.name)}, ${sqlEscape(svc.name)}, ${sqlEscape(svc.description)}, ${cents ?? "null"}, ${duration}, ${varies}, ${addon}, ${consult}, ${sortOrder});`,
+      `insert into public.services (id, category, name, description, base_price_cents, duration_minutes, price_varies, is_addon, requires_consultation, sort_order) values (${sqlEscape(row.id)}, ${sqlEscape(category.name)}, ${sqlEscape(svc.name)}, ${sqlEscape(svc.description)}, ${cents ?? "null"}, ${duration}, ${varies}, ${addon}, ${consult}, ${row.sortOrder});`,
     );
   }
 }
 
-lines.push("", "-- staff_services (all bookable staff × non-add-on services)");
-for (const s of STAFF) {
-  for (const row of serviceRows) {
-    if (row.addon) continue;
-    if (s.role === "esthetician" && !row.category.match(/Skincare|Waxing|Makeup|Consultations/i)) continue;
-    if (s.role !== "esthetician" && row.category.match(/^Skincare|^Makeup/i)) continue;
-    lines.push(
-      `insert into public.staff_services (staff_id, service_id) values (${sqlEscape(s.id)}, ${sqlEscape(row.id)});`,
-    );
-  }
+lines.push("", "-- staff_services (per-stylist assignments from GlossGenius)");
+for (const row of staffServiceRows) {
+  lines.push(
+    `insert into public.staff_services (staff_id, service_id) values (${sqlEscape(row.staff_id)}, ${sqlEscape(row.service_id)});`,
+  );
 }
 
 lines.push("", "commit;", "");
 writeFileSync(outPath, lines.join("\n"), "utf8");
-console.log(`Wrote ${outPath} (${serviceRows.length} services, ${STAFF.length} staff)`);
+
+const summary = syncResult.staff
+  .map((s) => `${s.staff_name}: ${s.matched_service_count}`)
+  .join(", ");
+console.log(
+  `Wrote ${outPath} (${serviceRows.length} services, ${staffServiceRows.length} staff_services — ${summary})`,
+);
