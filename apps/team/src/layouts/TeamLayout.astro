@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { BUSINESS } from "@saloncitrine/shared";
+import SiteHeaderMinimal from "../components/SiteHeaderMinimal.astro";
 import TeamHeader from "../components/TeamHeader.astro";
 
 interface Props {
@@ -10,21 +11,38 @@ interface Props {
 
 const { title, activeNav = "calendar" } = Astro.props;
 const { staff, user } = Astro.locals;
+const isAuthenticated = Boolean(user && staff);
 ---
 
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>{title} · Team · {BUSINESS.name}</title>
+    <script is:inline>
+      (function () {
+        var storageKey = "theme";
+        var stored = localStorage.getItem(storageKey);
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme =
+          stored === "dark" || stored === "light"
+            ? stored
+            : prefersDark
+              ? "dark"
+              : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
   </head>
-  <body>
+  <body class:list={[{ "team-shell--login": !isAuthenticated }]}>
     {
-      user && staff ? (
+      isAuthenticated ? (
         <TeamHeader activeNav={activeNav} staffName={staff.name} staffRole={staff.role} />
-      ) : null
+      ) : (
+        <SiteHeaderMinimal />
+      )
     }
 
     <main class="team-main">
@@ -32,27 +50,41 @@ const { staff, user } = Astro.locals;
     </main>
 
     <script>
+      const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
       const storageKey = "theme";
-      const stored = localStorage.getItem(storageKey);
-      if (stored === "dark" || stored === "light") {
-        document.documentElement.setAttribute("data-theme", stored);
+
+      function getTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
       }
 
-      document
-        .querySelector<HTMLButtonElement>("[data-theme-toggle]")
-        ?.addEventListener("click", () => {
-          const next =
-            document.documentElement.getAttribute("data-theme") === "dark"
-              ? "light"
-              : "dark";
-          document.documentElement.setAttribute("data-theme", next);
-          localStorage.setItem(storageKey, next);
+      function updateToggleLabels(theme: "light" | "dark") {
+        const label =
+          theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+        themeToggles.forEach((toggle) => toggle.setAttribute("aria-label", label));
+      }
+
+      function setTheme(theme: "light" | "dark") {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem(storageKey, theme);
+        updateToggleLabels(theme);
+      }
+
+      updateToggleLabels(getTheme());
+
+      themeToggles.forEach((toggle) => {
+        toggle.addEventListener("click", () => {
+          setTheme(getTheme() === "dark" ? "light" : "dark");
         });
+      });
     </script>
   </body>
 </html>
 
 <style>
+  .team-shell--login {
+    padding-top: var(--header-height);
+  }
+
   .team-main {
     width: min(var(--max-width), 100%);
     margin: 0 auto;

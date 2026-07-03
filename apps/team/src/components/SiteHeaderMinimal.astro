@@ -1,0 +1,62 @@
+---
+import { BUSINESS } from "@saloncitrine/shared";
+import { withBase } from "../lib/paths";
+
+const marketingOrigin = `https://${BUSINESS.domain}`;
+const logoLightSrc = withBase("images/salon-citrine-logo.png");
+const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
+---
+
+<header class="site-header site-header--minimal">
+  <div class="site-header__inner">
+    <a class="site-header__logo" href={marketingOrigin} aria-label={BUSINESS.name}>
+      <img
+        class="site-header__logo-image site-header__logo-image--light"
+        src={logoLightSrc}
+        alt={BUSINESS.name}
+        width="1180"
+        height="430"
+        fetchpriority="high"
+      />
+      <img
+        class="site-header__logo-image site-header__logo-image--dark"
+        src={logoDarkSrc}
+        alt=""
+        width="1180"
+        height="430"
+        fetchpriority="high"
+        aria-hidden="true"
+      />
+    </a>
+
+    <button
+      class="site-header__theme-toggle"
+      type="button"
+      aria-label="Switch to dark mode"
+      data-theme-toggle
+    >
+      <svg
+        class="theme-toggle__icon theme-toggle__icon--moon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      <svg
+        class="theme-toggle__icon theme-toggle__icon--sun"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+    </button>
+  </div>
+</header>
