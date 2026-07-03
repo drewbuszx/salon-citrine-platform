@@ -164,10 +164,10 @@ function requiresConsultation(name, description) {
 }
 
 function serviceId(category, name, index) {
-  const hex = (index + 1).toString(16).padStart(8, "0");
+  const tail = (index + 1).toString(16).padStart(12, "0");
   const catHash = [...category].reduce((a, c) => a + c.charCodeAt(0), 0) % 256;
   const catHex = catHash.toString(16).padStart(2, "0");
-  return `b2000001-${catHex}00-4000-8000-${hex}00000001`;
+  return `b2000001-${catHex}00-4000-8000-${tail}`;
 }
 
 const menu = JSON.parse(readFileSync(menuPath, "utf8"));
