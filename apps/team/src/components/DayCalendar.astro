@@ -182,8 +182,9 @@ function staffColor(index: number) {
 
 <style>
   .day-cal {
-    --day-col-width: clamp(9rem, 22vw, 11.5rem);
+    --day-col-min-width: clamp(9rem, 22vw, 11.5rem);
     --day-time-width: 3.25rem;
+    width: 100%;
   }
 
   .day-cal__toolbar {
@@ -193,6 +194,8 @@ function staffColor(index: number) {
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 1rem;
+    padding-left: clamp(1rem, 3vw, 2.5rem);
+    padding-right: clamp(1rem, 3vw, 2.5rem);
   }
 
   .day-cal__title {
@@ -231,9 +234,10 @@ function staffColor(index: number) {
 
   .day-cal__frame {
     display: flex;
-    border: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
     background: var(--color-booking-card-bg);
     overflow: hidden;
+    width: 100%;
   }
 
   .day-cal__time-axis {
@@ -268,11 +272,13 @@ function staffColor(index: number) {
 
   .day-cal__columns {
     display: flex;
-    min-width: min-content;
+    min-width: 100%;
+    width: 100%;
   }
 
   .day-cal__column {
-    flex: 0 0 var(--day-col-width);
+    flex: 1 0 var(--day-col-min-width);
+    min-width: var(--day-col-min-width);
     border-right: 1px solid var(--color-border);
   }
 
@@ -402,7 +408,7 @@ function staffColor(index: number) {
 
   @media (max-width: 40rem) {
     .day-cal {
-      --day-col-width: min(78vw, 11rem);
+      --day-col-min-width: min(78vw, 11rem);
     }
 
     .day-cal__toolbar {
