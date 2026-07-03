@@ -1,17 +1,18 @@
 ---
 import "../styles/global.css";
 import { BUSINESS } from "@saloncitrine/shared";
-import SiteHeaderMinimal from "../components/SiteHeaderMinimal.astro";
-import TeamHeader from "../components/TeamHeader.astro";
+import TeamSiteHeader, {
+  type TeamActiveNav,
+} from "../components/TeamSiteHeader.astro";
 
 interface Props {
   title: string;
-  activeNav?: "calendar" | "block-time" | "services" | "my-services";
+  activeNav?: TeamActiveNav;
   wide?: boolean;
   fullBleed?: boolean;
 }
 
-const { title, activeNav = "calendar", wide = false, fullBleed = false } = Astro.props;
+const { title, activeNav, wide = false, fullBleed = false } = Astro.props;
 const { staff, user } = Astro.locals;
 const isAuthenticated = Boolean(user && staff);
 ---
@@ -26,31 +27,38 @@ const isAuthenticated = Boolean(user && staff);
     <script is:inline>
       (function () {
         var storageKey = "theme";
-        var stored = localStorage.getItem(storageKey);
-        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var theme =
-          stored === "dark" || stored === "light"
-            ? stored
-            : prefersDark
-              ? "dark"
-              : "light";
-        document.documentElement.setAttribute("data-theme", theme);
+        var mobileQuery = window.matchMedia("(max-width: 1100px)");
+
+        function resolveTheme() {
+          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (mobileQuery.matches) {
+            var stored = localStorage.getItem(storageKey);
+            if (stored === "dark" || stored === "light") {
+              return stored;
+            }
+          }
+          return prefersDark ? "dark" : "light";
+        }
+
+        function applyTheme() {
+          document.documentElement.setAttribute("data-theme", resolveTheme());
+        }
+
+        applyTheme();
+        mobileQuery.addEventListener("change", applyTheme);
+        window
+          .matchMedia("(prefers-color-scheme: dark)")
+          .addEventListener("change", applyTheme);
       })();
     </script>
   </head>
-  <body class:list={[{ "team-shell--authenticated": isAuthenticated }]}>
+  <body>
     <div class="team-shell">
-      <SiteHeaderMinimal />
-
-      {
-        isAuthenticated ? (
-          <TeamHeader
-            activeNav={activeNav}
-            staffName={staff.name}
-            staffRole={staff.role}
-          />
-        ) : null
-      }
+      <TeamSiteHeader
+        activeNav={activeNav}
+        staff={staff}
+        isAuthenticated={isAuthenticated}
+      />
 
       <main
         class:list={[
@@ -72,11 +80,14 @@ const isAuthenticated = Boolean(user && staff);
     </div>
 
     <script>
-      const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
       const storageKey = "theme";
+      const mobileQuery = window.matchMedia("(max-width: 1100px)");
+      const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
 
       function getTheme() {
-        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+        return document.documentElement.getAttribute("data-theme") === "dark"
+          ? "dark"
+          : "light";
       }
 
       function updateToggleLabels(theme: "light" | "dark") {
@@ -85,18 +96,104 @@ const isAuthenticated = Boolean(user && staff);
         themeToggles.forEach((toggle) => toggle.setAttribute("aria-label", label));
       }
 
-      function setTheme(theme: "light" | "dark") {
+      function applyThemeFromRules() {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        let theme: "light" | "dark";
+
+        if (mobileQuery.matches) {
+          const stored = localStorage.getItem(storageKey);
+          theme =
+            stored === "dark" || stored === "light"
+              ? (stored as "light" | "dark")
+              : prefersDark
+                ? "dark"
+                : "light";
+        } else {
+          theme = prefersDark ? "dark" : "light";
+        }
+
+        document.documentElement.setAttribute("data-theme", theme);
+        updateToggleLabels(theme);
+      }
+
+      function setMobileTheme(theme: "light" | "dark") {
+        if (!mobileQuery.matches) return;
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem(storageKey, theme);
         updateToggleLabels(theme);
       }
 
-      updateToggleLabels(getTheme());
+      applyThemeFromRules();
+      mobileQuery.addEventListener("change", applyThemeFromRules);
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .addEventListener("change", applyThemeFromRules);
 
       themeToggles.forEach((toggle) => {
         toggle.addEventListener("click", () => {
-          setTheme(getTheme() === "dark" ? "light" : "dark");
+          setMobileTheme(getTheme() === "dark" ? "light" : "dark");
         });
+      });
+
+      const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
+      const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+      const profileDropdown = document.querySelector<HTMLElement>("[data-profile-dropdown]");
+      const profileTrigger = document.querySelector<HTMLButtonElement>("[data-profile-trigger]");
+
+      function closeProfileMenu() {
+        profileDropdown?.classList.remove("is-open");
+        profileTrigger?.setAttribute("aria-expanded", "false");
+      }
+
+      function openProfileMenu() {
+        profileDropdown?.classList.add("is-open");
+        profileTrigger?.setAttribute("aria-expanded", "true");
+      }
+
+      profileTrigger?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const isOpen = profileDropdown?.classList.contains("is-open");
+        if (isOpen) {
+          closeProfileMenu();
+        } else {
+          openProfileMenu();
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (
+          profileDropdown &&
+          !profileDropdown.contains(event.target as Node)
+        ) {
+          closeProfileMenu();
+        }
+      });
+
+      profileTrigger?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeProfileMenu();
+        }
+      });
+
+      function closeMobileMenu() {
+        nav?.classList.remove("is-open");
+        menuToggle?.setAttribute("aria-expanded", "false");
+      }
+
+      menuToggle?.addEventListener("click", () => {
+        const isOpen = nav?.classList.toggle("is-open");
+        menuToggle.setAttribute("aria-expanded", String(!!isOpen));
+        if (isOpen) {
+          closeProfileMenu();
+        }
+      });
+
+      document
+        .querySelector<HTMLButtonElement>("[data-menu-close]")
+        ?.addEventListener("click", closeMobileMenu);
+
+      nav?.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", closeMobileMenu);
       });
     </script>
   </body>

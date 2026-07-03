@@ -1,0 +1,100 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase, staff, user } = Astro.locals;
+
+if (!staff || !user) {
+  return Astro.redirect(teamUrl("/login"));
+}
+
+const { data: profile, error } = await supabase
+  .from("staff")
+  .select("id, name, bio, phone, photo_url")
+  .eq("id", staff.id)
+  .maybeSingle();
+
+if (error || !profile) {
+  console.error("Failed to load staff profile", error);
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const saved = Astro.url.searchParams.get("saved") === "1";
+const emailPending = Astro.url.searchParams.get("email") === "pending";
+const errorCode = Astro.url.searchParams.get("error");
+const errorMessage =
+  errorCode === "save"
+    ? "Could not save your profile. Try again."
+    : errorCode === "email"
+      ? "Could not update email. Check the address and try again."
+      : null;
+---
+
+<TeamLayout title="Account" activeNav="account">
+  <section class="form-stack form-stack--medium">
+    <h1 class="page-title">Account</h1>
+    <p class="page-lead">Update your staff profile and contact information.</p>
+
+    {saved ? <p class="notice notice--success" role="status">Profile saved.</p> : null}
+    {
+      emailPending ? (
+        <p class="notice notice--success" role="status">
+          Check your inbox to confirm your new email address.
+        </p>
+      ) : null
+    }
+    {errorMessage ? <p class="notice notice--error" role="alert">{errorMessage}</p> : null}
+
+    <form class="form-stack" method="post" action={teamUrl("/api/account")}>
+      <label class="form-label">
+        Display name
+        <input
+          class="form-input"
+          name="name"
+          type="text"
+          value={profile.name}
+          autocomplete="name"
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        Bio
+        <textarea
+          class="form-input form-input--textarea"
+          name="bio"
+          rows="5"
+          placeholder="Short bio for the marketing site team page">{profile.bio ?? ""}</textarea
+        >
+      </label>
+
+      <label class="form-label">
+        Phone
+        <input
+          class="form-input"
+          name="phone"
+          type="tel"
+          value={profile.phone ?? ""}
+          autocomplete="tel"
+        />
+      </label>
+
+      <label class="form-label">
+        Email
+        <input
+          class="form-input"
+          name="email"
+          type="email"
+          value={user.email ?? ""}
+          autocomplete="email"
+          required
+        />
+        <span class="label-meta">
+          Changing email sends a confirmation link via Supabase Auth.
+        </span>
+      </label>
+
+      <button class="btn-primary" type="submit">Save changes</button>
+    </form>
+  </section>
+</TeamLayout>

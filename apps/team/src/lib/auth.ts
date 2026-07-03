@@ -17,7 +17,7 @@ export async function loadStaffProfile(
 ): Promise<StaffProfile | null> {
   const { data, error } = await supabase
     .from("staff")
-    .select("id, slug, name, role")
+    .select("id, slug, name, role, bio, phone, photo_url")
     .eq("supabase_user_id", userId)
     .maybeSingle();
 

@@ -1,0 +1,234 @@
+---
+import { BUSINESS } from "@saloncitrine/shared";
+import type { StaffProfile } from "../env.d.ts";
+import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
+import { withBase } from "../lib/paths";
+import { teamUrl } from "../lib/supabase-server";
+
+export type TeamActiveNav =
+  | "book"
+  | "inventory"
+  | "tasks"
+  | "docs"
+  | "events"
+  | "account";
+
+interface Props {
+  activeNav?: TeamActiveNav;
+  staff?: StaffProfile | null;
+  isAuthenticated?: boolean;
+}
+
+const { activeNav, staff = null, isAuthenticated = false } = Astro.props;
+
+const marketingOrigin = `https://${BUSINESS.domain}`;
+const logoLightSrc = withBase("images/salon-citrine-logo.png");
+const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
+const profileMenuId = "team-profile-menu";
+
+const primaryTabs = [
+  { id: "book" as const, label: "Book", href: teamUrl("/") },
+  { id: "inventory" as const, label: "Inventory", href: teamUrl("/inventory") },
+  { id: "tasks" as const, label: "Tasks", href: teamUrl("/tasks") },
+];
+
+const secondaryTabs = [
+  { id: "docs" as const, label: "Docs", href: teamUrl("/docs") },
+  { id: "events" as const, label: "Calendar", href: teamUrl("/events") },
+];
+
+const mobileTabs = [...primaryTabs, ...secondaryTabs];
+const photoSrc = staff ? staffPhotoSrc(staff.photo_url) : null;
+const initials = staff ? staffInitials(staff.name) : "";
+---
+
+<header class="site-header team-site-header">
+  <div class="site-header__inner">
+    {
+      isAuthenticated && staff ? (
+        <div class="team-header__left">
+          <div class="team-header__profile" data-profile-dropdown>
+            <button
+              class="team-header__profile-trigger"
+              type="button"
+              aria-expanded="false"
+              aria-haspopup="true"
+              aria-controls={profileMenuId}
+              data-profile-trigger
+            >
+              {
+                photoSrc ? (
+                  <img
+                    class="team-header__avatar"
+                    src={photoSrc}
+                    alt=""
+                    width="36"
+                    height="36"
+                  />
+                ) : (
+                  <span class="team-header__avatar team-header__avatar--initials" aria-hidden="true">
+                    {initials}
+                  </span>
+                )}
+              <span class="team-header__profile-name">{staff.name}</span>
+            </button>
+            <ul
+              id={profileMenuId}
+              class="team-header__profile-menu"
+              role="menu"
+              aria-label="Account"
+              data-profile-menu
+            >
+              <li role="none">
+                <a
+                  class="team-header__profile-item"
+                  href={teamUrl("/account")}
+                  role="menuitem"
+                >
+                  Account
+                </a>
+              </li>
+              <li role="none">
+                <form method="post" action={teamUrl("/api/auth/logout")} role="none">
+                  <button class="team-header__profile-item team-header__profile-item--button" type="submit" role="menuitem">
+                    Sign out
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </div>
+
+          <nav class="site-header__nav site-header__nav--left team-header__tabs" aria-label="Team primary">
+            {primaryTabs.map((item) => (
+              <a
+                class:list={[
+                  "site-header__link",
+                  { "site-header__link--active": activeNav === item.id },
+                ]}
+                href={item.href}
+                aria-current={activeNav === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      ) : (
+        <div class="team-header__left team-header__left--empty" aria-hidden="true" />
+      )
+    }
+
+    <a class="site-header__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
+      <img
+        class="site-header__logo-image site-header__logo-image--light"
+        src={logoLightSrc}
+        alt={BUSINESS.name}
+        width="1180"
+        height="430"
+        fetchpriority="high"
+      />
+      <img
+        class="site-header__logo-image site-header__logo-image--dark"
+        src={logoDarkSrc}
+        alt=""
+        width="1180"
+        height="430"
+        fetchpriority="high"
+        aria-hidden="true"
+      />
+    </a>
+
+    {
+      isAuthenticated ? (
+        <nav class="site-header__nav site-header__nav--right team-header__tabs" aria-label="Team secondary">
+          {secondaryTabs.map((item) => (
+            <a
+              class:list={[
+                "site-header__link",
+                { "site-header__link--active": activeNav === item.id },
+              ]}
+              href={item.href}
+              aria-current={activeNav === item.id ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      ) : (
+        <div class="team-header__right team-header__right--empty" aria-hidden="true" />
+      )
+    }
+
+    {
+      isAuthenticated ? (
+        <div class="site-header__controls">
+          <button
+            class="site-header__menu-toggle"
+            type="button"
+            aria-label="Open menu"
+            aria-expanded="false"
+            data-menu-toggle
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      ) : null
+    }
+
+    {
+      isAuthenticated ? (
+        <nav
+          class="site-header__nav site-header__nav--mobile"
+          aria-label="Mobile"
+          data-mobile-nav
+        >
+          {mobileTabs.map((item) => (
+            <a
+              class:list={[
+                "site-header__link",
+                { "site-header__link--active": activeNav === item.id },
+              ]}
+              href={item.href}
+              aria-current={activeNav === item.id ? "page" : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+
+          <button
+            class="site-header__theme-toggle site-header__theme-toggle--mobile"
+            type="button"
+            aria-label="Switch to dark mode"
+            data-theme-toggle
+          >
+            <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+
+          <button
+            class="site-header__menu-close"
+            type="button"
+            aria-label="Close menu"
+            data-menu-close
+          >
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </nav>
+      ) : null
+    }
+  </div>
+</header>

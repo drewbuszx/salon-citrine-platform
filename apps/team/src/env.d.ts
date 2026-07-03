@@ -9,6 +9,9 @@ export type StaffProfile = {
   slug: string;
   name: string;
   role: StaffRole;
+  bio?: string | null;
+  phone?: string | null;
+  photo_url?: string | null;
 };
 
 declare global {
