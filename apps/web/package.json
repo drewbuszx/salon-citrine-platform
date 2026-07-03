@@ -11,6 +11,7 @@
   "dependencies": {
     "@saloncitrine/shared": "*",
     "@saloncitrine/theme": "*",
+    "@supabase/supabase-js": "^2.110.0",
     "astro": "^7.0.4"
   }
 }

@@ -2,14 +2,16 @@
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import PolicyModal from "../components/PolicyModal.astro";
-import { getServiceById, getStaffBySlug } from "../data/mock";
+import { getServiceById, getStaffBySlug } from "../lib/booking-data";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const date = Astro.url.searchParams.get("date");
 const time = Astro.url.searchParams.get("time");
-const service = getServiceById(serviceId);
-const stylist = getStaffBySlug(stylistSlug);
+const [service, stylist] = await Promise.all([
+  getServiceById(serviceId),
+  getStaffBySlug(stylistSlug),
+]);
 
 if (!service || !stylist || !date || !time) {
   return Astro.redirect(import.meta.env.BASE_URL);

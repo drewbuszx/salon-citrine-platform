@@ -6,7 +6,7 @@ import {
   formatPrice,
   getServiceById,
   getStaffBySlug,
-} from "../data/mock";
+} from "../lib/booking-data";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
@@ -17,8 +17,10 @@ const lastName = Astro.url.searchParams.get("lastName");
 const email = Astro.url.searchParams.get("email");
 const policyAck = Astro.url.searchParams.get("policyAck");
 
-const service = getServiceById(serviceId);
-const stylist = getStaffBySlug(stylistSlug);
+const [service, stylist] = await Promise.all([
+  getServiceById(serviceId),
+  getStaffBySlug(stylistSlug),
+]);
 
 if (
   !service ||

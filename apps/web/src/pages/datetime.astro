@@ -1,16 +1,15 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
-import {
-  MOCK_TIME_SLOTS,
-  getServiceById,
-  getStaffBySlug,
-} from "../data/mock";
+import { MOCK_TIME_SLOTS } from "../data/mock";
+import { getServiceById, getStaffBySlug } from "../lib/booking-data";
 
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
-const service = getServiceById(serviceId);
-const stylist = getStaffBySlug(stylistSlug);
+const [service, stylist] = await Promise.all([
+  getServiceById(serviceId),
+  getStaffBySlug(stylistSlug),
+]);
 
 if (!service || !stylist) {
   return Astro.redirect(import.meta.env.BASE_URL);

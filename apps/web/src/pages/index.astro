@@ -1,16 +1,18 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
-import Button from "@saloncitrine/theme/components/Button.astro";
 import {
-  MOCK_SERVICES,
+  fetchServices,
+  getStaffBySlug,
   groupServicesByCategory,
   formatPrice,
-  getStaffBySlug,
-} from "../data/mock";
+} from "../lib/booking-data";
 
 const stylistSlug = Astro.url.searchParams.get("stylist");
-const preselectedStylist = getStaffBySlug(stylistSlug);
-const grouped = groupServicesByCategory(MOCK_SERVICES);
+const [services, preselectedStylist] = await Promise.all([
+  fetchServices(),
+  getStaffBySlug(stylistSlug),
+]);
+const grouped = groupServicesByCategory(services);
 ---
 
 <BookingLayout title="Choose a service" step={1}>
@@ -26,11 +28,11 @@ const grouped = groupServicesByCategory(MOCK_SERVICES);
   <p class="lead">Prices shown are starting rates where noted (+).</p>
 
   {
-    [...grouped.entries()].map(([category, services]) => (
+    [...grouped.entries()].map(([category, categoryServices]) => (
       <section class="category">
         <h2 class="category__title">{category}</h2>
         <ul class="service-list">
-          {services.map((service) => (
+          {categoryServices.map((service) => (
             <li>
               <a
                 class="service-card"
@@ -52,8 +54,7 @@ const grouped = groupServicesByCategory(MOCK_SERVICES);
   }
 
   <p class="note">
-    Full menu ({MOCK_SERVICES.length} sample services shown) — complete catalog
-    loads from Supabase in Phase 1.
+    Full menu ({services.length} services) — loaded from Supabase.
   </p>
 </BookingLayout>
 
