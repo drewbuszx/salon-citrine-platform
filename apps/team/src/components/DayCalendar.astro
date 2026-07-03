@@ -107,14 +107,16 @@ function staffColor(index: number) {
             return (
               <div class="day-cal__column">
                 <header class="day-cal__staff-header">
-                  <img
-                    class="day-cal__avatar"
-                    src={staffPhotoUrl(member)}
-                    alt=""
-                    width="40"
-                    height="40"
-                    loading="lazy"
-                  />
+                  <div class="day-cal__avatar-wrap">
+                    <img
+                      class="day-cal__avatar"
+                      src={staffPhotoUrl(member)}
+                      alt=""
+                      width="40"
+                      height="40"
+                      loading="lazy"
+                    />
+                  </div>
                   <span class="day-cal__staff-name">{member.name}</span>
                 </header>
 
@@ -184,6 +186,7 @@ function staffColor(index: number) {
   .day-cal {
     --day-col-min-width: clamp(9rem, 22vw, 11.5rem);
     --day-time-width: 3.25rem;
+    --day-header-height: 3.75rem;
     width: 100%;
   }
 
@@ -247,7 +250,8 @@ function staffColor(index: number) {
   }
 
   .day-cal__time-spacer {
-    height: 3.75rem;
+    height: var(--day-header-height);
+    flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-light);
   }
@@ -290,29 +294,47 @@ function staffColor(index: number) {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
-    height: 3.75rem;
-    padding: 0.5rem 0.35rem;
+    justify-content: stretch;
+    box-sizing: border-box;
+    height: var(--day-header-height);
+    min-height: var(--day-header-height);
+    max-height: var(--day-header-height);
+    padding: 0 0.35rem;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-light);
     text-align: center;
+    overflow: visible;
+  }
+
+  .day-cal__avatar-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
   }
 
   .day-cal__avatar {
-    width: 2rem;
-    height: 2rem;
+    height: 100%;
+    width: auto;
+    aspect-ratio: 1;
+    max-width: 100%;
     border-radius: 50%;
     object-fit: cover;
+    object-position: center top;
     border: 2px solid var(--color-border);
     background: var(--color-booking-card-bg);
+    flex-shrink: 0;
   }
 
   .day-cal__staff-name {
+    flex: 0 0 auto;
     font-family: var(--font-sans);
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    line-height: 1.2;
+    line-height: 1.1;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
