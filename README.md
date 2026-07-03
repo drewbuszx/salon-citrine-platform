@@ -57,6 +57,7 @@ npm install
 npm run dev:web
 
 # staff area → http://localhost:4322/team/
+# Stop any other dev/preview server on port 4322 first (e.g. saloncitrineindy `astro preview --port 4322`).
 npm run dev:team
 
 # build everything
@@ -78,6 +79,8 @@ where slug = 'lily-gleitsman';  -- owner; use any staff slug
 ```
 
 4. Sign in at `http://localhost:4322/team/login` with that email/password.
+
+**Team app 404?** If you see the marketing site message “Page not found … book your next appointment”, you are hitting the wrong server — usually port 4322 is occupied by the `saloncitrineindy` preview. Stop that process, run `npm run dev:team`, then open `http://localhost:4322/team/login` (not port 4321; the booking app lives at `http://localhost:4321/book/`).
 
 **Roles:** `owner` and `front_desk` see the full salon calendar, can block time for anyone, and edit service durations. `stylist` and `esthetician` see only their schedule and own blocked time.
 

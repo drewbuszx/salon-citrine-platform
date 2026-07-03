@@ -13,5 +13,10 @@ export default defineConfig({
   },
   vite: {
     envDir: "../../",
+    server: {
+      // Fail fast when 4322 is taken (e.g. marketing site preview) instead of
+      // silently binding another port and serving /team/* from the wrong app.
+      strictPort: true,
+    },
   },
 });
