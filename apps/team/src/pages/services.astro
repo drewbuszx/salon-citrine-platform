@@ -4,27 +4,58 @@ import { teamUrl } from "../lib/supabase-server";
 
 const { supabase } = Astro.locals;
 
-const { data: services, error } = await supabase
-  .from("services")
-  .select("id, category, name, duration_minutes")
-  .eq("is_active", true)
-  .order("category")
-  .order("sort_order")
-  .order("name");
+const [
+  { data: services, error: servicesError },
+  { data: staff, error: staffError },
+  { data: staffServices, error: staffServicesError },
+] = await Promise.all([
+  supabase
+    .from("services")
+    .select("id, category, name, duration_minutes")
+    .eq("is_active", true)
+    .order("category")
+    .order("sort_order")
+    .order("name"),
+  supabase
+    .from("staff")
+    .select("id, name, role")
+    .in("role", ["owner", "stylist", "esthetician"])
+    .order("name"),
+  supabase
+    .from("staff_services")
+    .select("staff_id, service_id, returning_clients_only"),
+]);
 
+const error = servicesError ?? staffError ?? staffServicesError;
 const saved = Astro.url.searchParams.get("saved") === "1";
 const updateError = Astro.url.searchParams.get("error") === "update";
+const returnTo = teamUrl("/services");
+
+const returningByPair = new Map<string, boolean>();
+for (const row of staffServices ?? []) {
+  const key = `${row.staff_id}:${row.service_id}`;
+  returningByPair.set(key, row.returning_clients_only === true);
+}
+
+const staffServiceIds = new Map<string, Set<string>>();
+for (const row of staffServices ?? []) {
+  const set = staffServiceIds.get(row.staff_id) ?? new Set<string>();
+  set.add(row.service_id);
+  staffServiceIds.set(row.staff_id, set);
+}
 ---
 
 <TeamLayout title="Services" activeNav="services">
-  <h1>Service durations</h1>
-  <p class="lead">Update duration_minutes for active services. Owners and front desk only.</p>
+  <h1>Services</h1>
+  <p class="lead">
+    Update service durations and returning-clients-only settings per stylist.
+  </p>
 
-  {saved ? <p class="notice notice--success">Service updated.</p> : null}
+  {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
     updateError ? (
       <p class="notice notice--error" role="alert">
-        Could not update service. Check the value and try again.
+        Could not update. Check the value and try again.
       </p>
     ) : null
   }
@@ -35,34 +66,116 @@ const updateError = Astro.url.searchParams.get("error") === "update";
         Failed to load services.
       </p>
     ) : (
-      <div class="services">
-        {
-          (services ?? []).map((service) => (
-            <form
-              class="services__row"
-              method="post"
-              action={teamUrl(`/api/services/${service.id}`)}
-            >
-              <div class="services__info">
-                <span class="services__category">{service.category}</span>
-                <span class="services__name">{service.name}</span>
-              </div>
-              <label class="services__duration">
-                Minutes
-                <input
-                  name="duration_minutes"
-                  type="number"
-                  min="15"
-                  step="15"
-                  value={service.duration_minutes}
-                  required
-                />
-              </label>
-              <button type="submit">Save</button>
-            </form>
-          ))
-        }
-      </div>
+      <>
+        <section class="section">
+          <h2>Service durations</h2>
+          <div class="services">
+            {
+              (services ?? []).map((service) => (
+                <form
+                  class="services__row"
+                  method="post"
+                  action={teamUrl(`/api/services/${service.id}`)}
+                >
+                  <div class="services__info">
+                    <span class="services__category">{service.category}</span>
+                    <span class="services__name">{service.name}</span>
+                  </div>
+                  <label class="services__duration">
+                    Minutes
+                    <input
+                      name="duration_minutes"
+                      type="number"
+                      min="15"
+                      step="15"
+                      value={service.duration_minutes}
+                      required
+                    />
+                  </label>
+                  <button type="submit">Save</button>
+                </form>
+              ))
+            }
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Returning clients only</h2>
+          <p class="section__lead">
+            Per stylist and service. When enabled, online booking shows a
+            returning-clients notice before the cart.
+          </p>
+
+          <div class="matrix">
+            {
+              (staff ?? []).map((member) => {
+                const offered = staffServiceIds.get(member.id);
+                const memberServices = (services ?? []).filter((svc) =>
+                  offered?.has(svc.id),
+                );
+                if (memberServices.length === 0) return null;
+
+                return (
+                  <div class="matrix__group">
+                    <h3 class="matrix__staff">{member.name}</h3>
+                    <div class="matrix__rows">
+                      {
+                        memberServices.map((service) => {
+                          const key = `${member.id}:${service.id}`;
+                          const returningOnly =
+                            returningByPair.get(key) ?? false;
+
+                          return (
+                            <form
+                              class="matrix__row"
+                              method="post"
+                              action={teamUrl("/api/staff-services")}
+                            >
+                              <input
+                                type="hidden"
+                                name="service_id"
+                                value={service.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="staff_id"
+                                value={member.id}
+                              />
+                              <input
+                                type="hidden"
+                                name="return_to"
+                                value={returnTo}
+                              />
+
+                              <div class="matrix__service">
+                                <span class="matrix__category">
+                                  {service.category}
+                                </span>
+                                <span class="matrix__name">{service.name}</span>
+                              </div>
+
+                              <label class="matrix__toggle">
+                                <input
+                                  type="checkbox"
+                                  name="returning_clients_only"
+                                  value="1"
+                                  checked={returningOnly}
+                                  onchange="this.form.requestSubmit()"
+                                />
+                                <span>Returning clients only</span>
+                              </label>
+                            </form>
+                          );
+                        })
+                      }
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </section>
+      </>
     )
   }
 </TeamLayout>
@@ -74,6 +187,21 @@ const updateError = Astro.url.searchParams.get("error") === "update";
 
   .lead {
     color: var(--color-gray);
+  }
+
+  .section {
+    margin-top: 2rem;
+  }
+
+  .section h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+  }
+
+  .section__lead {
+    margin: 0 0 1rem;
+    color: var(--color-gray);
+    font-size: 0.95rem;
   }
 
   .notice {
@@ -93,13 +221,14 @@ const updateError = Astro.url.searchParams.get("error") === "update";
     color: #922;
   }
 
-  .services {
+  .services,
+  .matrix__rows {
     display: grid;
     gap: 0.75rem;
-    margin-top: 1.5rem;
   }
 
-  .services__row {
+  .services__row,
+  .matrix__row {
     display: grid;
     gap: 0.75rem;
     align-items: end;
@@ -112,14 +241,21 @@ const updateError = Astro.url.searchParams.get("error") === "update";
     .services__row {
       grid-template-columns: 1fr auto auto;
     }
+
+    .matrix__row {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
   }
 
-  .services__info {
+  .services__info,
+  .matrix__service {
     display: grid;
     gap: 0.15rem;
   }
 
-  .services__category {
+  .services__category,
+  .matrix__category {
     font-family: var(--font-sans);
     font-size: 0.68rem;
     letter-spacing: 0.08em;
@@ -127,7 +263,8 @@ const updateError = Astro.url.searchParams.get("error") === "update";
     color: var(--color-gray);
   }
 
-  .services__name {
+  .services__name,
+  .matrix__name {
     font-size: 1rem;
   }
 
@@ -160,5 +297,38 @@ const updateError = Astro.url.searchParams.get("error") === "update";
     letter-spacing: 0.08em;
     text-transform: uppercase;
     cursor: pointer;
+  }
+
+  .matrix {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .matrix__group {
+    border: 1px solid var(--color-border);
+    padding: 1rem;
+    background: var(--color-bg);
+  }
+
+  .matrix__staff {
+    margin: 0 0 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .matrix__toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .matrix__toggle input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-citrine);
   }
 </style>

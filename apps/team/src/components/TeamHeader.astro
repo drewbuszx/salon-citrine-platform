@@ -2,7 +2,7 @@
 import { teamUrl } from "../lib/supabase-server";
 
 interface Props {
-  activeNav: "calendar" | "block-time" | "services";
+  activeNav: "calendar" | "block-time" | "services" | "my-services";
   staffName: string;
   staffRole: string;
 }
@@ -19,6 +19,12 @@ if (staffRole === "owner" || staffRole === "front_desk") {
     id: "services" as const,
     label: "Services",
     href: teamUrl("/services"),
+  });
+} else if (staffRole === "stylist" || staffRole === "esthetician") {
+  navItems.push({
+    id: "my-services" as const,
+    label: "My services",
+    href: teamUrl("/my-services"),
   });
 }
 ---

@@ -2,8 +2,12 @@
 export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
+import ReturningClientsModal from "../components/ReturningClientsModal.astro";
 import {
+  fetchReturningOnlyStaffSlugs,
   fetchStaffForService,
+  formatDuration,
+  formatPrice,
   getServiceById,
   getStaffBySlug,
 } from "../lib/booking-data";
@@ -12,9 +16,10 @@ import { withBase } from "../lib/paths";
 const serviceId = Astro.url.searchParams.get("service");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 
-const [service, preselectedStylist] = await Promise.all([
+const [service, preselectedStylist, returningOnlySlugs] = await Promise.all([
   getServiceById(serviceId),
   getStaffBySlug(stylistSlug),
+  serviceId ? fetchReturningOnlyStaffSlugs(serviceId) : Promise.resolve(new Set<string>()),
 ]);
 
 if (!service) {
@@ -24,12 +29,16 @@ if (!service) {
 }
 
 if (preselectedStylist) {
-  return Astro.redirect(
-    `${withBase("cart/")}?service=${service.id}&stylist=${preselectedStylist.slug}`,
-  );
+  const params = new URLSearchParams();
+  params.set("service", service.id);
+  params.set("stylist", preselectedStylist.slug);
+  return Astro.redirect(`${withBase("cart/")}?${params.toString()}`);
 }
 
 const staff = await fetchStaffForService(service.id);
+const cartBase = withBase("cart/");
+const bookBase = withBase();
+const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
 ---
 
 <BookingLayout title="Choose a stylist" step="stylist" showStylistStep>
@@ -41,41 +50,80 @@ const staff = await fetchStaffForService(service.id);
     </p>
   </header>
 
-  <ul class="stylist-list">
+  <ul class="stylist-list" data-stylist-list>
     {
-      staff.map((member) => (
-        <li>
-          <a
-            class="stylist-card"
-            href={`${withBase("cart/")}?service=${service.id}&stylist=${member.slug}&flow=stylist`}
-          >
-            {member.photoUrl ? (
-              <img
-                class="stylist-card__photo"
-                src={member.photoUrl}
-                alt=""
-                width="64"
-                height="64"
-                loading="lazy"
-              />
+      staff.map((member) => {
+        const isRestricted = returningOnlySlugs.has(member.slug);
+        const cartHref = `${cartBase}?service=${service.id}&stylist=${member.slug}&flow=stylist`;
+        const continueHref = `${cartHref}&returning=1`;
+
+        return (
+          <li>
+            {isRestricted ? (
+              <button
+                type="button"
+                class="stylist-card stylist-card--button"
+                data-stylist-select
+                data-stylist-name={member.name}
+                data-continue-href={continueHref}
+              >
+                {member.photoUrl ? (
+                  <img
+                    class="stylist-card__photo"
+                    src={member.photoUrl}
+                    alt=""
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span class="stylist-card__avatar" aria-hidden="true">
+                    {member.name.charAt(0)}
+                  </span>
+                )}
+                <span class="stylist-card__body">
+                  <span class="stylist-card__name">{member.name}</span>
+                  <span class="stylist-card__role">
+                    {member.role.replace("_", " ")}
+                  </span>
+                  <span class="stylist-card__badge">Returning clients only</span>
+                  {member.bio && (
+                    <span class="stylist-card__bio">{member.bio}</span>
+                  )}
+                </span>
+                <span class="stylist-card__action">Select</span>
+              </button>
             ) : (
-              <span class="stylist-card__avatar" aria-hidden="true">
-                {member.name.charAt(0)}
-              </span>
+              <a class="stylist-card" href={cartHref}>
+                {member.photoUrl ? (
+                  <img
+                    class="stylist-card__photo"
+                    src={member.photoUrl}
+                    alt=""
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span class="stylist-card__avatar" aria-hidden="true">
+                    {member.name.charAt(0)}
+                  </span>
+                )}
+                <span class="stylist-card__body">
+                  <span class="stylist-card__name">{member.name}</span>
+                  <span class="stylist-card__role">
+                    {member.role.replace("_", " ")}
+                  </span>
+                  {member.bio && (
+                    <span class="stylist-card__bio">{member.bio}</span>
+                  )}
+                </span>
+                <span class="stylist-card__action">Select</span>
+              </a>
             )}
-            <span class="stylist-card__body">
-              <span class="stylist-card__name">{member.name}</span>
-              <span class="stylist-card__role">
-                {member.role.replace("_", " ")}
-              </span>
-              {member.bio && (
-                <span class="stylist-card__bio">{member.bio}</span>
-              )}
-            </span>
-            <span class="stylist-card__action">Select</span>
-          </a>
-        </li>
-      ))
+          </li>
+        );
+      })
     }
   </ul>
 
@@ -83,15 +131,53 @@ const staff = await fetchStaffForService(service.id);
     staff.length === 0 && (
       <p class="empty">
         No professionals offer this service right now.{" "}
-        <a href={withBase()}>Choose another service</a>
+        <a href={bookBase}>Choose another service</a>
       </p>
     )
   }
 
+  <ReturningClientsModal
+    serviceName={service.name}
+    serviceDescription={service.description}
+    stylistName=""
+    durationLabel={formatDuration(service.durationMinutes)}
+    priceLabel={formatPrice(service)}
+    continueHref={cartBase}
+    chooseStylistHref={`${withBase("stylist/")}?service=${service.id}`}
+  />
+
   <p class="back">
-    <a href={withBase()}>← Back to services</a>
+    <a href={bookBase}>← Back to services</a>
   </p>
 </BookingLayout>
+
+<script
+  define:vars={{
+    returningOnlyJson,
+    serviceDuration: formatDuration(service.durationMinutes),
+    servicePrice: formatPrice(service),
+  }}
+>
+  const returningOnly = new Set(JSON.parse(returningOnlyJson));
+  const modal = document.getElementById("returning-clients-modal");
+  const stylistNameEl = modal?.querySelector(".returning-modal__stylist-name");
+  const continueBtn = modal?.querySelector("[data-returning-continue]");
+  const metaEl = modal?.querySelector(".returning-modal__meta");
+
+  document.querySelectorAll("[data-stylist-select]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const name = button.dataset.stylistName ?? "";
+      const href = button.dataset.continueHref ?? "";
+      if (stylistNameEl) stylistNameEl.textContent = name;
+      if (metaEl) metaEl.textContent = `${serviceDuration} · ${servicePrice}`;
+      if (continueBtn) continueBtn.dataset.continueHref = href;
+      modal?.removeAttribute("hidden");
+      modal?.setAttribute("aria-hidden", "false");
+      document.body.classList.add("returning-modal-open");
+      continueBtn?.focus();
+    });
+  });
+</script>
 
 <style>
   .stylist-page__header {
@@ -121,22 +207,31 @@ const staff = await fetchStaffForService(service.id);
     gap: 0.75rem;
   }
 
-  .stylist-card {
+  .stylist-card,
+  .stylist-card--button {
     display: grid;
     grid-template-columns: auto 1fr auto;
     gap: 1rem;
     align-items: center;
+    width: 100%;
     padding: 1rem 1.15rem;
     border: 1px solid var(--color-border);
     background: var(--color-booking-card-bg);
     text-decoration: none;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .stylist-card:hover,
-  .stylist-card:focus-visible {
+  .stylist-card:focus-visible,
+  .stylist-card--button:hover,
+  .stylist-card--button:focus-visible {
     border-color: var(--color-citrine);
     box-shadow: 0 4px 24px rgba(60, 61, 60, 0.06);
+    outline: none;
   }
 
   .stylist-card__photo,
@@ -173,6 +268,18 @@ const staff = await fetchStaffForService(service.id);
     color: var(--color-gray);
   }
 
+  .stylist-card__badge {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(255, 210, 80, 0.35);
+    color: var(--color-charcoal);
+  }
+
   .stylist-card__bio {
     display: block;
     margin-top: 0.35rem;
@@ -193,7 +300,9 @@ const staff = await fetchStaffForService(service.id);
   }
 
   .stylist-card:hover .stylist-card__action,
-  .stylist-card:focus-visible .stylist-card__action {
+  .stylist-card:focus-visible .stylist-card__action,
+  .stylist-card--button:hover .stylist-card__action,
+  .stylist-card--button:focus-visible .stylist-card__action {
     background: var(--color-bg);
     color: var(--color-text);
   }

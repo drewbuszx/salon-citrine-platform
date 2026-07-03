@@ -6,7 +6,7 @@ import TeamHeader from "../components/TeamHeader.astro";
 
 interface Props {
   title: string;
-  activeNav?: "calendar" | "block-time" | "services";
+  activeNav?: "calendar" | "block-time" | "services" | "my-services";
 }
 
 const { title, activeNav = "calendar" } = Astro.props;

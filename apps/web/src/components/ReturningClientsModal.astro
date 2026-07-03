@@ -1,0 +1,210 @@
+---
+import Modal from "@saloncitrine/theme/components/Modal.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+
+interface Props {
+  serviceName: string;
+  serviceDescription: string | null;
+  stylistName: string;
+  durationLabel: string;
+  priceLabel: string;
+  /** URL when user confirms they are a returning client */
+  continueHref: string;
+  /** URL when user wants to pick another stylist */
+  chooseStylistHref: string;
+  autoOpen?: boolean;
+}
+
+const {
+  serviceName,
+  serviceDescription,
+  stylistName,
+  durationLabel,
+  priceLabel,
+  continueHref,
+  chooseStylistHref,
+  autoOpen = false,
+} = Astro.props;
+---
+
+<Modal id="returning-clients-modal" labelledBy="returning-clients-modal-title">
+  <h2 id="returning-clients-modal-title" class="returning-modal__title">
+    {serviceName}
+  </h2>
+
+  <p class="returning-modal__warning" role="status">
+    <strong>For returning clients only!</strong>
+    {
+      serviceDescription ? (
+        <span class="returning-modal__description">{serviceDescription}</span>
+      ) : null
+    }
+  </p>
+
+  <div class="returning-modal__stylist">
+    <p class="returning-modal__stylist-name">{stylistName}</p>
+    <p class="returning-modal__meta">
+      {durationLabel} · {priceLabel}
+    </p>
+  </div>
+
+  <div class="returning-modal__actions">
+    <Button
+      variant="primary"
+      type="button"
+      data-returning-continue
+      data-continue-href={continueHref}
+    >
+      I'm a returning client — Continue
+    </Button>
+    <Button
+      variant="secondary"
+      type="button"
+      data-returning-choose-stylist
+      data-choose-href={chooseStylistHref}
+    >
+      Choose another stylist
+    </Button>
+  </div>
+</Modal>
+
+<script define:vars={{ autoOpen, continueHref, chooseStylistHref }}>
+  const modal = document.getElementById("returning-clients-modal");
+  const dialog = modal?.querySelector<HTMLElement>('[role="dialog"]');
+  const continueBtn = modal?.querySelector<HTMLButtonElement>(
+    "[data-returning-continue]",
+  );
+  const chooseBtn = modal?.querySelector<HTMLButtonElement>(
+    "[data-returning-choose-stylist]",
+  );
+  const backdrop = modal?.querySelector<HTMLElement>(".sc-modal__backdrop");
+
+  const focusableSelector =
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function getFocusable(container: HTMLElement) {
+    return Array.from(
+      container.querySelectorAll<HTMLElement>(focusableSelector),
+    ).filter((el) => !el.hasAttribute("disabled"));
+  }
+
+  function openModal() {
+    if (!modal || !dialog) return;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("returning-modal-open");
+    continueBtn?.focus();
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.setAttribute("hidden", "");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("returning-modal-open");
+  }
+
+  continueBtn?.addEventListener("click", () => {
+    const href = continueBtn.dataset.continueHref;
+    if (href) window.location.href = href;
+  });
+
+  chooseBtn?.addEventListener("click", () => {
+    const href = chooseBtn.dataset.chooseHref;
+    if (href) window.location.href = href;
+  });
+
+  backdrop?.addEventListener("click", () => {
+    const href = chooseBtn?.dataset.chooseHref;
+    if (href) window.location.href = href;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal && !modal.hasAttribute("hidden")) {
+      e.preventDefault();
+      const href = chooseBtn?.dataset.chooseHref;
+      if (href) window.location.href = href;
+    }
+
+    if (e.key === "Tab" && modal && !modal.hasAttribute("hidden") && dialog) {
+      const focusable = getFocusable(dialog);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  if (autoOpen) {
+    openModal();
+  }
+</script>
+
+<style>
+  .returning-modal__title {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .returning-modal__warning {
+    margin: 0 0 1.25rem;
+    padding: 0.85rem 1rem;
+    background: rgba(255, 210, 80, 0.18);
+    border: 1px solid var(--color-citrine);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+
+  .returning-modal__warning strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-charcoal);
+  }
+
+  .returning-modal__description {
+    display: block;
+    color: var(--color-gray);
+  }
+
+  .returning-modal__stylist {
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.1rem;
+    background: var(--color-booking-card-bg, var(--color-light));
+    border: 1px solid var(--color-border);
+  }
+
+  .returning-modal__stylist-name {
+    margin: 0 0 0.35rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .returning-modal__meta {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-charcoal);
+  }
+
+  .returning-modal__actions {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(body.returning-modal-open) {
+    overflow: hidden;
+  }
+</style>

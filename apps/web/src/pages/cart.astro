@@ -2,10 +2,12 @@
 export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
+import ReturningClientsModal from "../components/ReturningClientsModal.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import {
   estimateCartPrice,
   fetchCartSuggestions,
+  fetchReturningClientsOnly,
   fetchServicesByIds,
   formatDuration,
   formatPrice,
@@ -20,11 +22,13 @@ const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
+const returningAck = Astro.url.searchParams.get("returning") === "1";
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const primaryServiceId = serviceIds[0] ?? serviceParam;
 
-const [primaryService, stylist, cartServices, suggestions] = await Promise.all([
+const [primaryService, stylist, cartServices, suggestions, returningClientsOnly] =
+  await Promise.all([
   getServiceById(primaryServiceId),
   getStaffBySlug(stylistSlug),
   fetchServicesByIds(serviceIds.length > 0 ? serviceIds : primaryServiceId ? [primaryServiceId] : [], stylistSlug),
@@ -36,11 +40,27 @@ const [primaryService, stylist, cartServices, suggestions] = await Promise.all([
         consultations: [],
         relatedOptional: [],
       }),
+  primaryServiceId && stylistSlug
+    ? fetchReturningClientsOnly(stylistSlug, primaryServiceId)
+    : Promise.resolve(false),
 ]);
 
 if (!primaryService || !stylist) {
   return Astro.redirect(withBase());
 }
+
+const showReturningModal = returningClientsOnly && !returningAck;
+
+const cartParams = new URLSearchParams();
+cartParams.set("services", serviceIds.length > 0 ? serviceIds.join(",") : primaryService.id);
+cartParams.set("stylist", stylist.slug);
+if (showStylistStep) cartParams.set("flow", "stylist");
+cartParams.set("returning", "1");
+const continueHref = `${withBase("cart/")}?${cartParams.toString()}`;
+
+const chooseStylistParams = new URLSearchParams();
+chooseStylistParams.set("service", primaryService.id);
+const chooseStylistHref = `${withBase("stylist/")}?${chooseStylistParams.toString()}`;
 
 const initialCartIds =
   cartServices.length > 0 ? cartServices.map((svc) => svc.id) : [primaryService.id];
@@ -112,6 +132,25 @@ const bookBase = withBase();
   step="cart"
   showStylistStep={showStylistStep}
 >
+  {
+    showReturningModal && (
+      <ReturningClientsModal
+        serviceName={primaryService.name}
+        serviceDescription={primaryService.description}
+        stylistName={stylist.name}
+        durationLabel={formatDuration(
+          sumServiceDuration(
+            cartServices.length > 0 ? cartServices : [primaryService],
+          ),
+        )}
+        priceLabel={formatPrice(primaryService)}
+        continueHref={continueHref}
+        chooseStylistHref={chooseStylistHref}
+        autoOpen={true}
+      />
+    )
+  }
+
   <header class="cart-page__header">
     <p class="cart-page__kicker">Build your visit</p>
     <h1>Your appointment</h1>

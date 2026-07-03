@@ -95,6 +95,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(teamUrl("/"));
   }
 
+  if (
+    routePath === "/my-services" &&
+    context.locals.staff &&
+    isSalonManager(context.locals.staff)
+  ) {
+    return context.redirect(teamUrl("/services"));
+  }
+
   if (routePath === "/login" && user && context.locals.staff) {
     if (needsPasswordChange) {
       return context.redirect(teamUrl(CHANGE_PASSWORD_PATH));

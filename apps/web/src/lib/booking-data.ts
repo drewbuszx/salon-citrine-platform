@@ -29,6 +29,7 @@ type ServiceRow = {
 type StaffServiceRow = {
   staff_id: string;
   service_id: string;
+  returning_clients_only: boolean;
 };
 
 export type BookingCatalog = {
@@ -37,7 +38,21 @@ export type BookingCatalog = {
   services: Service[];
   /** staffId → serviceIds this provider offers */
   staffServiceIds: Record<string, string[]>;
+  /** `${staffId}:${serviceId}` → returning clients only */
+  staffServiceReturningOnly: Record<string, boolean>;
 };
+
+export function staffServiceKey(staffId: string, serviceId: string): string {
+  return `${staffId}:${serviceId}`;
+}
+
+export function isReturningClientsOnly(
+  catalog: BookingCatalog,
+  staffId: string,
+  serviceId: string,
+): boolean {
+  return catalog.staffServiceReturningOnly[staffServiceKey(staffId, serviceId)] ?? false;
+}
 
 const ANY_PROFESSIONAL = "";
 
@@ -118,7 +133,9 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
       .eq("is_active", true)
       .eq("is_addon", false)
       .order("sort_order"),
-    supabase.from("staff_services").select("staff_id, service_id"),
+    supabase
+      .from("staff_services")
+      .select("staff_id, service_id, returning_clients_only"),
   ]);
 
   if (staffResult.error) throw staffResult.error;
@@ -128,11 +145,16 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
   const staff = (staffResult.data as StaffRow[]).map(mapStaff);
   const services = (servicesResult.data as ServiceRow[]).map(mapService);
   const staffServiceIds: Record<string, string[]> = {};
+  const staffServiceReturningOnly: Record<string, boolean> = {};
 
   for (const row of staffServicesResult.data as StaffServiceRow[]) {
     const list = staffServiceIds[row.staff_id] ?? [];
     list.push(row.service_id);
     staffServiceIds[row.staff_id] = list;
+    if (row.returning_clients_only) {
+      staffServiceReturningOnly[staffServiceKey(row.staff_id, row.service_id)] =
+        true;
+    }
   }
 
   const catalog: BookingCatalog = {
@@ -140,6 +162,7 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
     categories: [],
     services,
     staffServiceIds,
+    staffServiceReturningOnly,
   };
   catalog.categories = getCategoriesForStaff(catalog, null);
 
@@ -282,6 +305,47 @@ export async function getStaffBySlug(
   return data ? mapStaff(data as StaffRow) : undefined;
 }
 
+export async function fetchReturningClientsOnly(
+  staffSlug: string,
+  serviceId: string,
+): Promise<boolean> {
+  const staff = await getStaffBySlug(staffSlug);
+  if (!staff) return false;
+
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("staff_services")
+    .select("returning_clients_only")
+    .eq("staff_id", staff.id)
+    .eq("service_id", serviceId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.returning_clients_only === true;
+}
+
+/** staffSlug → true when that provider restricts the service to returning clients */
+export async function fetchReturningOnlyStaffSlugs(
+  serviceId: string,
+): Promise<Set<string>> {
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from("staff_services")
+    .select("returning_clients_only, staff(slug)")
+    .eq("service_id", serviceId)
+    .eq("returning_clients_only", true);
+
+  if (error) throw error;
+
+  const slugs = new Set<string>();
+  for (const row of data ?? []) {
+    const raw = row.staff as { slug: string } | { slug: string }[] | null;
+    const staffRow = Array.isArray(raw) ? raw[0] : raw;
+    if (staffRow?.slug) slugs.add(staffRow.slug);
+  }
+  return slugs;
+}
+
 export async function fetchStaffForService(
   serviceId: string,
   preselected?: Staff,
@@ -291,7 +355,7 @@ export async function fetchStaffForService(
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("staff_services")
-    .select("staff_id, staff(*)")
+    .select("staff_id, returning_clients_only, staff(*)")
     .eq("service_id", serviceId);
 
   if (error) throw error;
