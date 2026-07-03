@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace apps/web",
-    "dev:admin": "npm run dev --workspace apps/admin",
+    "dev:team": "npm run dev --workspace apps/team",
     "build": "npm run build --workspaces --if-present",
     "db:generate-seed": "npm run generate-seed --workspace packages/db",
     "db:sync-staff-services": "npm run sync-staff-services --workspace packages/db"

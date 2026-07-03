@@ -21,7 +21,7 @@ This is a **separate repo** from the marketing site (`saloncitrineindy`, Astro s
 salon-citrine-platform/
 ├── apps/
 │   ├── web/          # Client booking UI — served at saloncitrineindy.com/book
-│   └── admin/        # Staff dashboard — served at saloncitrineindy.com/admin
+│   └── team/         # Staff area — served at team.saloncitrineindy.com (/team in dev)
 ├── packages/
 │   ├── theme/        # @saloncitrine/theme — brand tokens, fonts, UI stubs
 │   ├── db/           # @saloncitrine/db — Supabase migrations + seed
@@ -30,20 +30,21 @@ salon-citrine-platform/
 
 ## Framework choice
 
-Both apps are **Astro 7** (`output: 'static'` for now):
+Both apps are **Astro 7**:
 
 - Matches the marketing site exactly — same framework, same Node baseline, one mental model across all Salon Citrine repos.
-- First-class Cloudflare deployment (`@astrojs/cloudflare` adapter can be added when server rendering is needed; static output deploys to Pages as-is today).
-- Islands architecture: the multi-step booking flow and admin calendar will be interactive islands (React or vanilla) inside otherwise static, fast, mobile-first pages.
+- First-class Cloudflare deployment via `@astrojs/cloudflare`.
+- `apps/web` is static output today; `apps/team` uses server output for Supabase Auth sessions and middleware.
 - The `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` env var name is kept verbatim from the project brief for compatibility with its docs; in Astro expose it as `PUBLIC_STRIPE_PUBLISHABLE_KEY` when wiring Stripe Elements (see `.env.example`).
 
-Apps use `base: '/book'` (web) and `base: '/admin'` (admin) for same-domain Cloudflare routing:
+Apps use `base: '/book'` (web) and `base: '/team'` (team) for routing:
 
 ```
-saloncitrineindy.com/*       → marketing Pages (existing)
-saloncitrineindy.com/book/*  → apps/web
-saloncitrineindy.com/admin/* → apps/admin
-saloncitrineindy.com/api/*   → Supabase Edge Functions / Worker proxy
+saloncitrineindy.com/*              → marketing Pages (existing)
+saloncitrineindy.com/book/*         → apps/web
+team.saloncitrineindy.com/*         → apps/team (production subdomain)
+localhost:4322/team/*               → apps/team (local dev)
+saloncitrineindy.com/api/*          → Supabase Edge Functions / Worker proxy
 ```
 
 ## Getting started
@@ -55,20 +56,39 @@ npm install
 # (Stop the marketing site dev server first — it also defaults to port 4321.)
 npm run dev:web
 
-# staff dashboard → http://localhost:4322/admin
-npm run dev:admin
+# staff area → http://localhost:4322/team/
+npm run dev:team
 
 # build everything
 npm run build
 ```
 
-Copy `.env.example` to `.env` and fill in keys as integrations are wired (not required for the placeholder UI).
+Copy `.env.example` to `.env` and fill in Supabase keys before using the team app or live booking availability.
+
+### Team test login setup
+
+1. Enable **Email** provider in Supabase Auth.
+2. Create a user (Dashboard → Authentication → Users, or invite email).
+3. Link the user to a staff row:
+
+```sql
+update public.staff
+set supabase_user_id = '<auth.users.id>'
+where slug = 'lily-gleitsman';  -- owner; use any staff slug
+```
+
+4. Sign in at `http://localhost:4322/team/login` with that email/password.
+
+**Roles:** `owner` and `front_desk` see the full salon calendar, can block time for anyone, and edit service durations. `stylist` and `esthetician` see only their schedule and own blocked time.
+
+Apply role-scoped RLS with `migrations/0004_team_rls.sql`.
 
 ## Database (packages/db)
 
 - `migrations/0001_init.sql` — core schema: staff, services, staff_services, staff_schedules, blocked_times, clients, appointments, appointment_services, email_logs, sms_logs, policies. RLS enabled on every table.
 - `migrations/0002_public_read_staff_services.sql` — anon read on staff_services for booking catalog.
 - `migrations/0003_public_read_availability.sql` — anon read on blocked_times + `appointment_availability` view for slot conflict checks.
+- `migrations/0004_team_rls.sql` — role-scoped team app policies (appointments, blocked_times, services, clients).
 - `seed/seed.sql` — generated seed: 7 staff (GlossGenius tokens + slugs), business hours, policies, full service menu from `menu-services.json`.
 - Regenerate after editing `seed/data/menu-services.json`:
 
@@ -87,45 +107,37 @@ psql $DATABASE_URL -f packages/db/scripts/wipe-test-appointments.sql
 
 ## Current status
 
-**Scaffold + Phase 1 placeholders (no live API keys required):**
-
 | Area | Status |
 |------|--------|
 | Monorepo workspaces | Done |
 | `@saloncitrine/theme` | tokens, fonts, Button/Modal/BookBar stubs |
 | `@saloncitrine/shared` | business constants + Zod schemas |
-| `@saloncitrine/db` | migration + seed generator |
-| `apps/web` | Multi-step booking flow with mock data + policy modal |
-| `apps/admin` | Week calendar shell for 7 providers |
+| `@saloncitrine/db` | migrations + seed generator |
+| `apps/web` | Multi-step booking flow + Supabase availability |
+| `apps/team` | Auth, role-based calendar, block time, service durations |
 
 ### Booking flow (`apps/web`)
-
-Static placeholder pages wired to `@saloncitrine/theme`:
 
 1. `/book/` — service selection (supports `?stylist=` deep link)
 2. `/book/stylist/` — stylist selection
 3. `/book/datetime/` — date & time (real availability from Supabase)
-4. `/book/details/` — guest details + cancellation policy modal (Escape closes, focus trap)
+4. `/book/details/` — guest details + cancellation policy modal
 5. `/book/confirm/` — placeholder confirmation
 
-Stripe SetupIntent placeholder on details page; Resend/Twilio hooks documented but not implemented.
+### Team (`apps/team`)
 
-### Admin (`apps/admin`)
-
-- `/admin/` — week calendar grid for all 7 staff with sample appointments
-- Supabase Auth sign-in button stubbed (disabled until project is created)
+- `/team/login` — Supabase email/password sign-in
+- `/team/` — week calendar (all staff for owners/front desk; single-column “My schedule” for providers)
+- `/team/block-time` — create `blocked_times` (scoped by RLS)
+- `/team/services` — edit `duration_minutes` (owners/front desk only)
 
 ## Next steps (recommended order)
 
-1. **Create Supabase project** — run `migrations/0001_init.sql` then `seed/seed.sql`; map staff `supabase_user_id` after inviting owners.
-2. **Copy licensed fonts** — from marketing site `public/fonts/` into each app's `public/fonts/` (Serling Galleria, Basic Title).
-3. **Stripe test mode** — create account, add test keys to `.env`, wire SetupIntent on `/book/details`.
-4. **Resend** — verify `saloncitrineindy.com` domain in Cloudflare DNS; build confirmation email template.
-5. **Twilio** — start 10DLC registration early; add test credentials for confirmation SMS.
-6. **Replace mock data** — `GET /api/services`, `/api/staff`, availability endpoints via Supabase Edge Functions.
-7. **Supabase Auth** — enable email login for `/admin`; protect admin RLS policies by staff role.
-8. **Cloudflare Pages** — two projects or monorepo build targets: `apps/web` → `/book`, `apps/admin` → `/admin`.
-9. **Marketing site cutover** — flip `BOOKING_URL` to `/book` after parallel testing with GlossGenius.
+1. **Stripe test mode** — create account, add test keys to `.env`, wire SetupIntent on `/book/details`.
+2. **Resend** — verify `saloncitrineindy.com` domain in Cloudflare DNS; build confirmation email template.
+3. **Twilio** — start 10DLC registration early; add test credentials for confirmation SMS.
+4. **Cloudflare Pages** — deploy `apps/web` → `/book`, `apps/team` → `team.saloncitrineindy.com`.
+5. **Marketing site cutover** — flip `BOOKING_URL` to `/book` after parallel testing with GlossGenius.
 
 ## Conventions
 
