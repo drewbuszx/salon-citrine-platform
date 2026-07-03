@@ -1,8 +1,13 @@
 import { defineMiddleware } from "astro:middleware";
-import { isSalonManager, loadStaffProfile } from "./lib/auth";
+import {
+  isSalonManager,
+  loadStaffProfile,
+  mustChangePassword,
+} from "./lib/auth";
 import { createSupabaseServerClient, teamUrl } from "./lib/supabase-server";
 
 const PUBLIC_PATHS = new Set(["/login"]);
+const CHANGE_PASSWORD_PATH = "/change-password";
 
 function normalizePath(pathname: string, base: string) {
   const baseNormalized = base.endsWith("/") ? base.slice(0, -1) : base;
@@ -32,6 +37,26 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isApiRoute = routePath.startsWith("/api/");
   const isPublicRoute = PUBLIC_PATHS.has(routePath);
   const isPublicApi = routePath === "/api/auth/login";
+  const needsPasswordChange = mustChangePassword(user);
+
+  if (routePath === CHANGE_PASSWORD_PATH) {
+    if (!user) {
+      return context.redirect(teamUrl("/login"));
+    }
+    if (!needsPasswordChange) {
+      return context.redirect(teamUrl("/"));
+    }
+    return next();
+  }
+
+  if (
+    user &&
+    needsPasswordChange &&
+    routePath !== "/api/auth/change-password" &&
+    routePath !== "/api/auth/logout"
+  ) {
+    return context.redirect(teamUrl(CHANGE_PASSWORD_PATH));
+  }
 
   if (isApiRoute && !isPublicApi && !user) {
     return new Response("Unauthorized", { status: 401 });
@@ -71,6 +96,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (routePath === "/login" && user && context.locals.staff) {
+    if (needsPasswordChange) {
+      return context.redirect(teamUrl(CHANGE_PASSWORD_PATH));
+    }
     return context.redirect(teamUrl("/"));
   }
 

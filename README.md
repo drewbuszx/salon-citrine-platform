@@ -69,16 +69,25 @@ Copy `.env.example` to `.env` and fill in Supabase keys before using the team ap
 ### Team test login setup
 
 1. Enable **Email** provider in Supabase Auth.
-2. Create a user (Dashboard → Authentication → Users, or invite email).
-3. Link the user to a staff row:
+2. Create a dev admin user and link to staff (requires `SUPABASE_SERVICE_ROLE_KEY` in `.env`):
+
+```bash
+node packages/db/scripts/create-dev-admin.mjs you@example.com
+# optional: link a different staff slug (defaults to lily-gleitsman)
+node packages/db/scripts/create-dev-admin.mjs you@example.com --link-staff=lily-gleitsman
+```
+
+The script prints a **one-time temporary password**, sets `user_metadata.must_change_password`, and assigns the staff row `role = 'owner'`. On first sign-in you are redirected to `/team/change-password` before the calendar.
+
+Alternatively, create a user in Supabase Dashboard and link manually:
 
 ```sql
 update public.staff
-set supabase_user_id = '<auth.users.id>'
-where slug = 'lily-gleitsman';  -- owner; use any staff slug
+set supabase_user_id = '<auth.users.id>', role = 'owner'
+where slug = 'lily-gleitsman';
 ```
 
-4. Sign in at `http://localhost:4322/team/login` with that email/password.
+3. Sign in at `http://localhost:4322/team/login` with that email/password.
 
 **Team app 404?** If you see the marketing site message “Page not found … book your next appointment”, you are hitting the wrong server — usually port 4322 is occupied by the `saloncitrineindy` preview. Stop that process, run `npm run dev:team`, then open `http://localhost:4322/team/login` (not port 4321; the booking app lives at `http://localhost:4321/book/`).
 
@@ -130,6 +139,7 @@ psql $DATABASE_URL -f packages/db/scripts/wipe-test-appointments.sql
 ### Team (`apps/team`)
 
 - `/team/login` — Supabase email/password sign-in
+- `/team/change-password` — required on first login when `must_change_password` is set
 - `/team/` — week calendar (all staff for owners/front desk; single-column “My schedule” for providers)
 - `/team/block-time` — create `blocked_times` (scoped by RLS)
 - `/team/services` — edit `duration_minutes` (owners/front desk only)

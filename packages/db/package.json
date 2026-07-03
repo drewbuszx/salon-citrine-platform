@@ -6,6 +6,7 @@
   "description": "Supabase schema migrations and seed data for Salon Citrine",
   "scripts": {
     "generate-seed": "node scripts/generate-seed.mjs",
-    "sync-staff-services": "node scripts/sync-staff-services-from-glossgenius.mjs"
+    "sync-staff-services": "node scripts/sync-staff-services-from-glossgenius.mjs",
+    "create-dev-admin": "node scripts/create-dev-admin.mjs"
   }
 }

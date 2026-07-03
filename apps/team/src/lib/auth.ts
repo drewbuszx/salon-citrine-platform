@@ -1,4 +1,11 @@
+import type { User } from "@supabase/supabase-js";
 import type { StaffProfile } from "../env.d.ts";
+
+export function mustChangePassword(user: User | null | undefined) {
+  if (!user) return false;
+  const meta = user.user_metadata ?? {};
+  return meta.must_change_password === true;
+}
 
 export function isSalonManager(staff: StaffProfile | null | undefined) {
   return staff?.role === "owner" || staff?.role === "front_desk";

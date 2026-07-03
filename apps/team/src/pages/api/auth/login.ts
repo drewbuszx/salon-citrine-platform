@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { mustChangePassword } from "../../../lib/auth";
 import { createSupabaseServerClient, teamUrl } from "../../../lib/supabase-server";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
@@ -15,6 +16,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (error) {
     return redirect(teamUrl("/login?error=invalid"));
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (mustChangePassword(user)) {
+    return redirect(teamUrl("/change-password"));
   }
 
   return redirect(teamUrl("/"));
