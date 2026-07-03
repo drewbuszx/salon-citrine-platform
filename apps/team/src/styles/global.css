@@ -98,6 +98,10 @@ textarea {
   padding-bottom: calc(var(--section-padding) + 1rem);
 }
 
+.team-main--wide {
+  --team-max-width: 1400px;
+}
+
 .team-content {
   padding: clamp(1.5rem, 4vw, 2.5rem);
   background: var(--color-booking-panel-bg);

@@ -1,0 +1,417 @@
+---
+import type {
+  CalendarAppointment,
+  CalendarBlockedTime,
+  CalendarStaff,
+} from "../lib/calendar";
+import {
+  CALENDAR_ROW_HEIGHT_REM,
+  calendarGridHeightRem,
+  calendarTimeSlots,
+  currentTimeLineTopRem,
+  eventBlockStyle,
+  formatDayLabel,
+  formatDayParam,
+  formatSlotHourLabel,
+  formatTimeRangeInSalon,
+  isTodayInSalon,
+  shiftDay,
+  staffEventsForDay,
+} from "../lib/calendar";
+import { teamUrl } from "../lib/supabase-server";
+
+interface Props {
+  selectedDay: Date;
+  staff: CalendarStaff[];
+  appointments: CalendarAppointment[];
+  blockedTimes: CalendarBlockedTime[];
+}
+
+const { selectedDay, staff, appointments, blockedTimes } = Astro.props;
+
+const prevDay = formatDayParam(shiftDay(selectedDay, -1));
+const nextDay = formatDayParam(shiftDay(selectedDay, 1));
+const todayParam = formatDayParam(new Date());
+const timeSlots = calendarTimeSlots();
+const gridHeight = calendarGridHeightRem();
+const isToday = isTodayInSalon(selectedDay);
+const nowLineTop = isToday ? currentTimeLineTopRem() : null;
+
+const STAFF_COLORS = [
+  "var(--color-citrine)",
+  "var(--color-sage)",
+  "#d4a5a5",
+  "#9cb4d4",
+  "#c4b0d8",
+  "#e8b8a8",
+  "#8fbfb0",
+];
+
+function staffPhotoUrl(member: CalendarStaff) {
+  if (member.photoUrl) {
+    return member.photoUrl.startsWith("/")
+      ? teamUrl(member.photoUrl)
+      : member.photoUrl;
+  }
+  return teamUrl(`/images/${member.slug}.jpg`);
+}
+
+function staffColor(index: number) {
+  return STAFF_COLORS[index % STAFF_COLORS.length]!;
+}
+---
+
+<section class="day-cal" aria-label="Day calendar">
+  <header class="day-cal__toolbar">
+    <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
+    <div class="day-cal__actions">
+      <a class="day-cal__btn" href={`${teamUrl("/")}?day=${prevDay}`} aria-label="Previous day">
+        ← Prev
+      </a>
+      <a class="day-cal__btn day-cal__btn--today" href={`${teamUrl("/")}?day=${todayParam}`}>
+        Today
+      </a>
+      <a class="day-cal__btn" href={`${teamUrl("/")}?day=${nextDay}`} aria-label="Next day">
+        Next →
+      </a>
+    </div>
+  </header>
+
+  <div class="day-cal__frame">
+    <div class="day-cal__time-axis" aria-hidden="true">
+      <div class="day-cal__time-spacer"></div>
+      {
+        timeSlots.map((minutes) => (
+          <div
+            class="day-cal__time-label"
+            style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+          >
+            {formatSlotHourLabel(minutes)}
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="day-cal__scroll">
+      <div class="day-cal__columns">
+        {
+          staff.map((member, index) => {
+            const events = staffEventsForDay(
+              member.id,
+              selectedDay,
+              appointments,
+              blockedTimes,
+            );
+            const accent = staffColor(index);
+
+            return (
+              <div class="day-cal__column">
+                <header class="day-cal__staff-header">
+                  <img
+                    class="day-cal__avatar"
+                    src={staffPhotoUrl(member)}
+                    alt=""
+                    width="40"
+                    height="40"
+                    loading="lazy"
+                  />
+                  <span class="day-cal__staff-name">{member.name}</span>
+                </header>
+
+                <div
+                  class="day-cal__grid"
+                  style={`height: ${gridHeight}rem; --staff-accent: ${accent}`}
+                >
+                  {
+                    timeSlots.map((minutes) => (
+                      <div
+                        class="day-cal__slot"
+                        style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+                        data-minute={minutes}
+                      />
+                    ))
+                  }
+
+                  {
+                    events.map((event) => {
+                      const style = eventBlockStyle(event.startsAt, event.endsAt);
+                      const isBlocked = event.kind === "blocked";
+
+                      return (
+                        <article
+                          class:list={[
+                            "day-cal__block",
+                            isBlocked && "day-cal__block--blocked",
+                          ]}
+                          style={style}
+                          aria-label={
+                            isBlocked
+                              ? `${event.label}, ${formatTimeRangeInSalon(event.startsAt, event.endsAt)}`
+                              : `${event.clientLabel}, ${formatTimeRangeInSalon(event.startsAt, event.endsAt)}`
+                          }
+                        >
+                          <span class="day-cal__block-title">
+                            {isBlocked ? event.label : event.clientLabel}
+                          </span>
+                          <span class="day-cal__block-time">
+                            {formatTimeRangeInSalon(event.startsAt, event.endsAt)}
+                          </span>
+                        </article>
+                      );
+                    })
+                  }
+
+                  {
+                    isToday && nowLineTop !== null ? (
+                      <div
+                        class="day-cal__now-line"
+                        style={`top: ${nowLineTop}rem`}
+                        aria-hidden="true"
+                      />
+                    ) : null
+                  }
+                </div>
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .day-cal {
+    --day-col-width: clamp(9rem, 22vw, 11.5rem);
+    --day-time-width: 3.25rem;
+  }
+
+  .day-cal__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .day-cal__title {
+    font-size: clamp(1.15rem, 3vw, 1.35rem);
+    margin: 0;
+    font-weight: 500;
+  }
+
+  .day-cal__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .day-cal__btn {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: inherit;
+    transition: opacity 0.2s ease;
+  }
+
+  .day-cal__btn:hover,
+  .day-cal__btn:focus-visible {
+    opacity: 0.75;
+    outline: none;
+  }
+
+  .day-cal__btn--today {
+    border-color: var(--color-sage);
+  }
+
+  .day-cal__frame {
+    display: flex;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+    overflow: hidden;
+  }
+
+  .day-cal__time-axis {
+    flex: 0 0 var(--day-time-width);
+    border-right: 1px solid var(--color-border);
+    background: var(--color-light);
+  }
+
+  .day-cal__time-spacer {
+    height: 3.75rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-light);
+  }
+
+  .day-cal__time-label {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: 0.15rem 0.35rem 0 0;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    color: var(--color-gray);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__scroll {
+    flex: 1;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .day-cal__columns {
+    display: flex;
+    min-width: min-content;
+  }
+
+  .day-cal__column {
+    flex: 0 0 var(--day-col-width);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .day-cal__column:last-child {
+    border-right: none;
+  }
+
+  .day-cal__staff-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    height: 3.75rem;
+    padding: 0.5rem 0.35rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-light);
+    text-align: center;
+  }
+
+  .day-cal__avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+  }
+
+  .day-cal__staff-name {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .day-cal__grid {
+    position: relative;
+  }
+
+  .day-cal__slot {
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-booking-card-bg);
+  }
+
+  .day-cal__slot:nth-child(even) {
+    background: rgba(141, 158, 136, 0.04);
+  }
+
+  [data-theme="dark"] .day-cal__slot:nth-child(even) {
+    background: rgba(141, 158, 136, 0.08);
+  }
+
+  .day-cal__block {
+    position: absolute;
+    left: 0.2rem;
+    right: 0.2rem;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: 3px;
+    border-left: 3px solid var(--staff-accent, var(--color-citrine));
+    background: color-mix(in srgb, var(--staff-accent, var(--color-citrine)) 72%, white);
+    color: var(--color-black);
+    font-size: 0.68rem;
+    line-height: 1.25;
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .day-cal__block {
+    background: color-mix(in srgb, var(--staff-accent, var(--color-citrine)) 35%, var(--color-light));
+    color: var(--color-text);
+  }
+
+  .day-cal__block--blocked {
+    border-left-color: var(--color-gray);
+    background: rgba(120, 120, 120, 0.22);
+    color: var(--color-text);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 4px,
+      rgba(120, 120, 120, 0.08) 4px,
+      rgba(120, 120, 120, 0.08) 8px
+    );
+  }
+
+  .day-cal__block-title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .day-cal__block-time {
+    font-size: 0.6rem;
+    opacity: 0.85;
+  }
+
+  .day-cal__now-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: 2px;
+    background: #c44;
+    pointer-events: none;
+  }
+
+  .day-cal__now-line::before {
+    content: "";
+    position: absolute;
+    left: -0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: #c44;
+  }
+
+  @media (max-width: 40rem) {
+    .day-cal {
+      --day-col-width: min(78vw, 11rem);
+    }
+
+    .day-cal__toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .day-cal__actions {
+      justify-content: space-between;
+    }
+  }
+</style>

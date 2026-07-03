@@ -7,9 +7,10 @@ import TeamHeader from "../components/TeamHeader.astro";
 interface Props {
   title: string;
   activeNav?: "calendar" | "block-time" | "services" | "my-services";
+  wide?: boolean;
 }
 
-const { title, activeNav = "calendar" } = Astro.props;
+const { title, activeNav = "calendar", wide = false } = Astro.props;
 const { staff, user } = Astro.locals;
 const isAuthenticated = Boolean(user && staff);
 ---
@@ -50,7 +51,7 @@ const isAuthenticated = Boolean(user && staff);
         ) : null
       }
 
-      <main class="team-main">
+      <main class:list={["team-main", wide && "team-main--wide"]}>
         <div class="team-content">
           <slot />
         </div>

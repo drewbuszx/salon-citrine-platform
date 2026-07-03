@@ -1,8 +1,8 @@
 ---
+import DayCalendar from "../components/DayCalendar.astro";
 import TeamLayout from "../layouts/TeamLayout.astro";
-import WeekCalendar from "../components/WeekCalendar.astro";
 import { isSalonManager } from "../lib/auth";
-import { loadCalendarData, parseWeekParam } from "../lib/calendar";
+import { loadCalendarData, parseDayParam } from "../lib/calendar";
 
 const { supabase, staff } = Astro.locals;
 
@@ -10,13 +10,15 @@ if (!staff) {
   return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
 }
 
-const weekStart = parseWeekParam(Astro.url.searchParams.get("week"));
+const selectedDay = parseDayParam(
+  Astro.url.searchParams.get("day") ?? Astro.url.searchParams.get("week"),
+);
 const managerView = isSalonManager(staff);
 
 let calendar;
 try {
   calendar = await loadCalendarData(supabase, {
-    weekStart,
+    selectedDay,
     staffFilterIds: managerView ? null : [staff.id],
   });
 } catch (error) {
@@ -25,21 +27,20 @@ try {
 }
 ---
 
-<TeamLayout title="Calendar" activeNav="calendar">
+<TeamLayout title="Calendar" activeNav="calendar" wide>
   <h1 class="page-title">{managerView ? "Salon calendar" : "My schedule"}</h1>
   <p class="page-lead">
     {
       managerView
-        ? "All providers · week view"
-        : `${staff.name} · week view`
+        ? "All providers · day view"
+        : `${staff.name} · day view`
     }
   </p>
 
-  <WeekCalendar
-    weekStart={weekStart}
+  <DayCalendar
+    selectedDay={selectedDay}
     staff={calendar.staff}
     appointments={calendar.appointments}
     blockedTimes={calendar.blockedTimes}
-    singleColumn={!managerView}
   />
 </TeamLayout>
