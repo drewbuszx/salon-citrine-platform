@@ -50,6 +50,7 @@
   --color-cream-deep: #efe6d8;
   --color-booking-panel-bg: rgba(255, 255, 255, 0.92);
   --color-booking-card-bg: rgba(255, 255, 255, 0.88);
+  --color-card-shadow: rgba(60, 61, 60, 0.06);
 
   /* Layout */
   --header-logo-height: clamp(3.5rem, 10vw, 5rem);
@@ -64,6 +65,7 @@
   --color-light: #262626;
   --color-bg: #181818;
   --color-text: #ececec;
+  --color-charcoal: #c8c8c8;
   --color-border: rgba(255, 255, 255, 0.12);
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-header-border: rgba(255, 255, 255, 0.2);
@@ -71,4 +73,9 @@
   --color-book-bar-text: var(--color-black);
   --color-book-bar-hover-bg: var(--color-black);
   --color-book-bar-hover-text: var(--color-citrine);
+  --color-cream: #141414;
+  --color-cream-deep: #1c1c1c;
+  --color-booking-panel-bg: rgba(24, 24, 24, 0.92);
+  --color-booking-card-bg: rgba(32, 32, 32, 0.88);
+  --color-card-shadow: rgba(0, 0, 0, 0.35);
 }

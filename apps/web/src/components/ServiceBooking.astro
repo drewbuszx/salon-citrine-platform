@@ -299,6 +299,7 @@ const stylistBase = withBase("stylist/");
   .filter-field {
     display: grid;
     gap: 0.4rem;
+    position: relative;
   }
 
   .filter-field__label {
@@ -315,13 +316,23 @@ const stylistBase = withBase("stylist/");
     padding: 0.85rem 2.5rem 0.85rem 1rem;
     border: 1px solid var(--color-border);
     border-radius: 0;
-    background:
-      var(--color-bg)
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%233c3d3c' d='M1 1l5 5 5-5'/%3E%3C/svg%3E")
-      no-repeat right 1rem center;
+    background: var(--color-bg);
     color: var(--color-text);
     cursor: pointer;
     transition: border-color 0.2s ease;
+  }
+
+  .filter-field::after {
+    content: "";
+    position: absolute;
+    right: 1.15rem;
+    bottom: 1.05rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border: solid var(--color-text);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    pointer-events: none;
   }
 
   .filter-field__select:hover,
@@ -365,7 +376,7 @@ const stylistBase = withBase("stylist/");
 
   :global(.service-card:hover) {
     border-color: var(--color-citrine);
-    box-shadow: 0 4px 24px rgba(60, 61, 60, 0.06);
+    box-shadow: 0 4px 24px var(--color-card-shadow);
   }
 
   :global(.service-card__name) {
