@@ -780,7 +780,7 @@ const calendarConfig = {
 <style>
   .day-cal {
     --day-col-min-width: clamp(9rem, 22vw, 11.5rem);
-    --day-time-width: 3.25rem;
+    --day-time-width: 2.35rem;
     --day-header-height: 3.75rem;
     width: 100%;
     min-height: calc(100vh - var(--header-height));
@@ -851,7 +851,7 @@ const calendarConfig = {
   .day-cal__time-axis {
     flex: 0 0 var(--day-time-width);
     border-right: 1px solid var(--color-border);
-    background: var(--color-light);
+    background: var(--color-bg);
   }
 
   .day-cal__time-spacer {
@@ -865,18 +865,20 @@ const calendarConfig = {
     display: flex;
     align-items: flex-start;
     justify-content: flex-end;
-    padding: 0.15rem 0.35rem 0 0;
+    padding: 0.15rem 0.2rem 0 0.15rem;
     font-family: var(--font-sans);
     font-size: 0.62rem;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     color: var(--color-gray);
     border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-bg);
   }
 
   .day-cal__scroll {
     flex: 1;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    background: var(--color-bg);
   }
 
   .day-cal__columns {
@@ -949,6 +951,7 @@ const calendarConfig = {
 
   .day-cal__grid {
     position: relative;
+    background: var(--color-bg);
   }
 
   .day-cal__slot {
@@ -960,7 +963,7 @@ const calendarConfig = {
     margin: 0;
     border: none;
     border-bottom: 1px solid var(--color-border-subtle);
-    background: var(--color-booking-card-bg);
+    background: var(--color-bg);
     cursor: pointer;
     pointer-events: auto;
     touch-action: manipulation;
@@ -971,14 +974,6 @@ const calendarConfig = {
   .day-cal__slot:focus-visible {
     background: rgba(141, 158, 136, 0.12);
     outline: none;
-  }
-
-  .day-cal__slot:nth-child(even) {
-    background: rgba(141, 158, 136, 0.04);
-  }
-
-  [data-theme="dark"] .day-cal__slot:nth-child(even) {
-    background: rgba(141, 158, 136, 0.08);
   }
 
   .day-cal__block {
