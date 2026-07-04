@@ -18,6 +18,7 @@ import {
   formatSlotHourLabel,
   formatSlotMinuteLabel,
   formatSlotTimeLabel,
+  staffAccentColor,
   staffColumnWidthRem,
   isTodayInSalon,
   shiftDay,
@@ -57,16 +58,6 @@ const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
 const staffColWidthRem = staffColumnWidthRem(staff);
 
-const STAFF_COLORS = [
-  "var(--color-citrine)",
-  "var(--color-sage)",
-  "#d4a5a5",
-  "#9cb4d4",
-  "#c4b0d8",
-  "#e8b8a8",
-  "#8fbfb0",
-];
-
 function staffPhotoUrl(member: CalendarStaff) {
   if (member.photoUrl) {
     return member.photoUrl.startsWith("/")
@@ -74,10 +65,6 @@ function staffPhotoUrl(member: CalendarStaff) {
       : member.photoUrl;
   }
   return teamUrl(`/images/${member.slug}.jpg`);
-}
-
-function staffColor(index: number) {
-  return STAFF_COLORS[index % STAFF_COLORS.length]!;
 }
 
 const calendarConfig = {
@@ -142,14 +129,14 @@ const calendarConfig = {
     <div class="day-cal__scroll">
       <div class="day-cal__columns">
         {
-          staff.map((member, index) => {
+          staff.map((member) => {
             const events = staffEventsForDay(
               member.id,
               selectedDay,
               appointments,
               blockedTimes,
             );
-            const accent = staffColor(index);
+            const accent = staffAccentColor(member.id);
 
             return (
               <div class="day-cal__column">

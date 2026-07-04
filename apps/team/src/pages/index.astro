@@ -7,6 +7,7 @@ import {
   loadCalendarData,
   loadStaffServicesByStaff,
   parseDayParam,
+  sortStaffWithCurrentFirst,
 } from "../lib/calendar";
 
 const { supabase, staff } = Astro.locals;
@@ -28,10 +29,14 @@ let servicesByStaff: Record<
 > = {};
 
 try {
-  calendar = await loadCalendarData(supabase, {
+  const loaded = await loadCalendarData(supabase, {
     selectedDay,
     staffFilterIds: managerView ? null : [staff.id],
   });
+  calendar = {
+    ...loaded,
+    staff: sortStaffWithCurrentFirst(loaded.staff, staff.id),
+  };
   servicesByStaff = await loadStaffServicesByStaff(
     supabase,
     calendar.staff.map((member) => member.id),

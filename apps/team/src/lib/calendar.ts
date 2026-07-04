@@ -67,6 +67,37 @@ export const CALENDAR_SLOT_MINUTES = 15;
 export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
 
+export const STAFF_ACCENT_COLORS = [
+  "var(--color-citrine)",
+  "var(--color-sage)",
+  "#d4a5a5",
+  "#9cb4d4",
+  "#c4b0d8",
+  "#e8b8a8",
+  "#8fbfb0",
+];
+
+/** Stable accent color per staff member (independent of column order). */
+export function staffAccentColor(staffId: string) {
+  let hash = 0;
+  for (let i = 0; i < staffId.length; i++) {
+    hash = (hash * 31 + staffId.charCodeAt(i)) >>> 0;
+  }
+  return STAFF_ACCENT_COLORS[hash % STAFF_ACCENT_COLORS.length]!;
+}
+
+/** Logged-in staff first, then others alphabetically by name. */
+export function sortStaffWithCurrentFirst(
+  staff: CalendarStaff[],
+  currentStaffId: string,
+) {
+  return [...staff].sort((a, b) => {
+    if (a.id === currentStaffId) return -1;
+    if (b.id === currentStaffId) return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 export function parseDayParam(value: string | null): Date {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const parsed = new Date(`${value}T12:00:00`);
