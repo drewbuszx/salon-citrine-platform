@@ -45,8 +45,80 @@ const initials = staff ? staffInitials(staff.name) : "";
 <header class="site-header team-site-header">
   <div class="site-header__inner">
     {
-      isAuthenticated && staff ? (
+      isAuthenticated ? (
         <div class="team-header__left">
+          <div class="site-header__controls">
+            <button
+              class="site-header__menu-toggle"
+              type="button"
+              aria-label="Open menu"
+              aria-expanded="false"
+              data-menu-toggle
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <nav class="site-header__nav site-header__nav--left team-header__tabs" aria-label="Team primary">
+            {primaryTabs.map((item) => (
+              <a
+                class:list={[
+                  "site-header__link",
+                  { "site-header__link--active": activeNav === item.id },
+                ]}
+                href={item.href}
+                aria-current={activeNav === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      ) : (
+        <div class="team-header__left team-header__left--empty" aria-hidden="true" />
+      )
+    }
+
+    <a class="site-header__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
+      <img
+        class="site-header__logo-image site-header__logo-image--light"
+        src={logoLightSrc}
+        alt={BUSINESS.name}
+        width="1180"
+        height="430"
+        fetchpriority="high"
+      />
+      <img
+        class="site-header__logo-image site-header__logo-image--dark"
+        src={logoDarkSrc}
+        alt=""
+        width="1180"
+        height="430"
+        fetchpriority="high"
+        aria-hidden="true"
+      />
+    </a>
+
+    {
+      isAuthenticated && staff ? (
+        <div class="team-header__right">
+          <nav class="site-header__nav site-header__nav--right team-header__tabs" aria-label="Team secondary">
+            {secondaryTabs.map((item) => (
+              <a
+                class:list={[
+                  "site-header__link",
+                  { "site-header__link--active": activeNav === item.id },
+                ]}
+                href={item.href}
+                aria-current={activeNav === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
           <div class="team-header__profile" data-profile-dropdown>
             <button
               class="team-header__profile-trigger"
@@ -97,84 +169,10 @@ const initials = staff ? staffInitials(staff.name) : "";
               </li>
             </ul>
           </div>
-
-          <nav class="site-header__nav site-header__nav--left team-header__tabs" aria-label="Team primary">
-            {primaryTabs.map((item) => (
-              <a
-                class:list={[
-                  "site-header__link",
-                  { "site-header__link--active": activeNav === item.id },
-                ]}
-                href={item.href}
-                aria-current={activeNav === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
         </div>
-      ) : (
-        <div class="team-header__left team-header__left--empty" aria-hidden="true" />
-      )
-    }
-
-    <a class="site-header__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
-      <img
-        class="site-header__logo-image site-header__logo-image--light"
-        src={logoLightSrc}
-        alt={BUSINESS.name}
-        width="1180"
-        height="430"
-        fetchpriority="high"
-      />
-      <img
-        class="site-header__logo-image site-header__logo-image--dark"
-        src={logoDarkSrc}
-        alt=""
-        width="1180"
-        height="430"
-        fetchpriority="high"
-        aria-hidden="true"
-      />
-    </a>
-
-    {
-      isAuthenticated ? (
-        <nav class="site-header__nav site-header__nav--right team-header__tabs" aria-label="Team secondary">
-          {secondaryTabs.map((item) => (
-            <a
-              class:list={[
-                "site-header__link",
-                { "site-header__link--active": activeNav === item.id },
-              ]}
-              href={item.href}
-              aria-current={activeNav === item.id ? "page" : undefined}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
       ) : (
         <div class="team-header__right team-header__right--empty" aria-hidden="true" />
       )
-    }
-
-    {
-      isAuthenticated ? (
-        <div class="site-header__controls">
-          <button
-            class="site-header__menu-toggle"
-            type="button"
-            aria-label="Open menu"
-            aria-expanded="false"
-            data-menu-toggle
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </div>
-      ) : null
     }
 
     {

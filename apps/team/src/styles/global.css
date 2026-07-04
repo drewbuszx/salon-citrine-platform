@@ -329,6 +329,16 @@ textarea {
   grid-column: 1;
 }
 
+.team-header__right {
+  grid-column: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--header-nav-tab-gap);
+  padding-left: var(--header-logo-nav-gap);
+  min-width: 0;
+}
+
 .team-header__right--empty {
   grid-column: 3;
 }
@@ -336,6 +346,11 @@ textarea {
 .team-header__tabs.site-header__nav--left {
   grid-column: auto;
   padding-right: 0;
+}
+
+.team-header__tabs.site-header__nav--right {
+  grid-column: auto;
+  padding-left: 0;
 }
 
 .team-header__profile {
@@ -394,7 +409,8 @@ textarea {
 .team-header__profile-menu {
   position: absolute;
   top: calc(100% + 0.65rem);
-  left: 0;
+  right: 0;
+  left: auto;
   z-index: 110;
   min-width: 10rem;
   margin: 0;
@@ -459,7 +475,7 @@ textarea {
 @media (max-width: 1100px) {
   .site-header__inner {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
     gap: 0.65rem;
   }
@@ -471,7 +487,15 @@ textarea {
     grid-column: auto;
     padding-right: 0;
     justify-content: flex-start;
-    order: 1;
+  }
+
+  .team-header__right {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    grid-column: auto;
+    padding-left: 0;
+    justify-content: flex-end;
   }
 
   .team-header__tabs,
@@ -494,10 +518,7 @@ textarea {
 
   .site-header__controls {
     display: flex;
-    position: relative;
-    z-index: 1;
     margin-left: 0;
-    order: 2;
   }
 
   .site-header__menu-toggle {
