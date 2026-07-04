@@ -1,5 +1,6 @@
 import { BUSINESS } from "@saloncitrine/shared";
 import { formatConfirmationWhen } from "../appointment-confirmation";
+import { getServerEnv } from "../server-env";
 
 export type BookingConfirmationPayload = {
   clientFirstName: string;
@@ -90,19 +91,26 @@ function escapeHtml(value: string): string {
 export async function sendBookingConfirmationEmail(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
-  const apiKey = import.meta.env.RESEND_API_KEY;
+  const apiKey = getServerEnv("RESEND_API_KEY");
   const fromEmail =
-    import.meta.env.RESEND_FROM_EMAIL?.trim() || BUSINESS.bookingEmail;
+    getServerEnv("RESEND_FROM_EMAIL")?.trim() || BUSINESS.bookingEmail;
 
   if (!apiKey) {
-    console.warn("booking-confirmation: RESEND_API_KEY missing, email skipped");
+    console.log(
+      "booking-confirmation: email skipped — RESEND_API_KEY not set (check process.env / .env)",
+    );
     return;
   }
 
   if (!payload.clientEmail) {
-    console.warn("booking-confirmation: no client email, email skipped");
+    console.log("booking-confirmation: email skipped — no client email");
     return;
   }
+
+  console.log("booking-confirmation: sending email", {
+    to: payload.clientEmail,
+    from: fromEmail,
+  });
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -123,29 +131,36 @@ export async function sendBookingConfirmationEmail(
     const body = await response.text().catch(() => "");
     throw new Error(`Resend API ${response.status}: ${body.slice(0, 200)}`);
   }
+
+  console.log("booking-confirmation: email sent", { to: payload.clientEmail });
 }
 
 export async function sendBookingConfirmationSms(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
-  if (!payload.smsOptIn) return;
+  if (!payload.smsOptIn) {
+    console.log("booking-confirmation: SMS skipped — client did not opt in");
+    return;
+  }
 
-  const accountSid = import.meta.env.TWILIO_ACCOUNT_SID;
-  const authToken = import.meta.env.TWILIO_AUTH_TOKEN;
-  const from = import.meta.env.TWILIO_PHONE_NUMBER?.trim();
+  const accountSid = getServerEnv("TWILIO_ACCOUNT_SID");
+  const authToken = getServerEnv("TWILIO_AUTH_TOKEN");
+  const from = getServerEnv("TWILIO_PHONE_NUMBER")?.trim();
 
   if (!accountSid || !authToken || !from) {
-    console.warn(
-      "booking-confirmation: Twilio env vars missing, SMS skipped",
+    console.log(
+      "booking-confirmation: SMS skipped — Twilio env vars not set (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER)",
     );
     return;
   }
 
   const to = toE164(payload.clientPhone);
   if (!to) {
-    console.warn("booking-confirmation: invalid client phone, SMS skipped");
+    console.log("booking-confirmation: SMS skipped — invalid client phone");
     return;
   }
+
+  console.log("booking-confirmation: sending SMS", { to });
 
   // Production: register a Twilio 10DLC campaign before sending at scale.
   const params = new URLSearchParams({ To: to, Body: buildSmsBody(payload) });
@@ -172,22 +187,31 @@ export async function sendBookingConfirmationSms(
     const body = await response.text().catch(() => "");
     throw new Error(`Twilio API ${response.status}: ${body.slice(0, 200)}`);
   }
+
+  console.log("booking-confirmation: SMS sent", { to });
 }
 
 /** Send confirmation email (always) and SMS (when opted in). Never throws. */
 export async function sendBookingConfirmations(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
-  const hasResend = Boolean(import.meta.env.RESEND_API_KEY);
+  const hasResend = Boolean(getServerEnv("RESEND_API_KEY"));
   const hasTwilio =
-    Boolean(import.meta.env.TWILIO_ACCOUNT_SID) &&
-    Boolean(import.meta.env.TWILIO_AUTH_TOKEN) &&
-    Boolean(import.meta.env.TWILIO_PHONE_NUMBER?.trim());
+    Boolean(getServerEnv("TWILIO_ACCOUNT_SID")) &&
+    Boolean(getServerEnv("TWILIO_AUTH_TOKEN")) &&
+    Boolean(getServerEnv("TWILIO_PHONE_NUMBER")?.trim());
 
   if (!hasResend && !(hasTwilio && payload.smsOptIn)) {
-    console.warn("booking-confirmation: notifications skipped (env not configured)");
+    console.log(
+      "booking-confirmation: notifications skipped — Resend and Twilio env not configured",
+    );
     return;
   }
+
+  console.log("booking-confirmation: dispatching notifications", {
+    email: hasResend,
+    sms: hasTwilio && payload.smsOptIn,
+  });
 
   const tasks: Promise<void>[] = [sendBookingConfirmationEmail(payload)];
   if (payload.smsOptIn) {
