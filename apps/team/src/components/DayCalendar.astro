@@ -98,7 +98,14 @@ const calendarConfig = {
         href={`${teamUrl("/")}?day=${prevDay}`}
         aria-label="Previous day"
       >
-        <span class="day-cal__chevron" aria-hidden="true">&lsaquo;</span>
+        <svg class="day-cal__chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M15 6l-6 6 6 6"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
       </a>
       <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
       <a
@@ -106,7 +113,14 @@ const calendarConfig = {
         href={`${teamUrl("/")}?day=${nextDay}`}
         aria-label="Next day"
       >
-        <span class="day-cal__chevron" aria-hidden="true">&rsaquo;</span>
+        <svg class="day-cal__chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M9 6l6 6-6 6"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
       </a>
       <a
         class="day-cal__nav-btn day-cal__nav-btn--today"
@@ -1495,15 +1509,15 @@ const calendarConfig = {
     gap: 0.65rem;
   }
 
-  .day-cal__title {
+  .day-cal__toolbar h2.day-cal__title {
     margin: 0;
-    padding: 0 0.15rem;
+    padding: 0 0.25rem;
     font-family: var(--font-sans);
-    font-size: clamp(1.35rem, 3.5vw, 1.65rem);
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
-    color: inherit;
+    font-size: clamp(1.4rem, 3.5vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--color-on-brand-section);
     white-space: nowrap;
   }
 
@@ -1512,12 +1526,14 @@ const calendarConfig = {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     background: transparent;
     font-family: var(--font-sans);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 500;
     line-height: 1;
+    letter-spacing: 0;
+    text-transform: none;
     text-decoration: none;
     color: var(--color-on-brand-section);
     cursor: pointer;
@@ -1534,24 +1550,26 @@ const calendarConfig = {
   }
 
   .day-cal__nav-btn--circle {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
     padding: 0;
     border-radius: 50%;
   }
 
   .day-cal__chevron {
     display: block;
-    font-size: 1.35rem;
-    font-weight: 300;
-    line-height: 1;
-    margin-top: -0.05rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
   }
 
   .day-cal__nav-btn--today {
-    margin-left: 0.35rem;
-    padding: 0.45rem 1rem;
+    margin-left: 0.5rem;
+    padding: 0.5rem 1.15rem;
     border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
   }
 
   .day-cal__frame {
