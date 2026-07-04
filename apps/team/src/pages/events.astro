@@ -1,11 +1,416 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const managerView = isSalonManager(staff);
+
+const { data: staffRows } = await supabase
+  .from("staff")
+  .select("id, name")
+  .order("name");
+
+const staffOptions = staffRows ?? [];
 ---
 
 <TeamLayout title="Calendar" activeNav="events">
-  <h1 class="page-title">Team calendar</h1>
-  <p class="page-lead">
-    Birthdays, time off, and local events — not the appointment book.
-  </p>
-  <p class="empty-state">Coming soon.</p>
+  <div
+    class="events-page"
+    data-events-app
+    data-api-base={teamUrl("/api/events")}
+    data-manager={managerView ? "1" : "0"}
+    data-current-staff-id={staff.id}
+  >
+    <header class="events-page__header">
+      <div>
+        <h1 class="page-title">Team calendar</h1>
+        <p class="page-lead">
+          Birthdays, time off, closures, and salon announcements — not the appointment book.
+        </p>
+      </div>
+      <button class="btn-primary events-page__add" type="button" data-event-create>
+        Add event
+      </button>
+    </header>
+
+    <div class="events-page__nav">
+      <button class="btn-secondary" type="button" data-month-prev aria-label="Previous month">
+        ‹
+      </button>
+      <h2 class="events-page__month" data-month-label></h2>
+      <button class="btn-secondary" type="button" data-month-next aria-label="Next month">
+        ›
+      </button>
+      <button class="btn-secondary events-page__today" type="button" data-month-today>
+        Today
+      </button>
+    </div>
+
+    <p class="notice notice--error events-page__error" data-events-error hidden role="alert"></p>
+
+    <div class="events-calendar" data-events-calendar aria-label="Month calendar"></div>
+
+    <section class="events-upcoming">
+      <h3 class="events-upcoming__title">Upcoming</h3>
+      <div class="events-list" data-events-list aria-live="polite">
+        <p class="empty-state">Loading events…</p>
+      </div>
+    </section>
+  </div>
+
+  <dialog class="events-modal" data-event-modal aria-labelledby="event-modal-title">
+    <form class="events-modal__form" method="dialog" data-event-form>
+      <header class="events-modal__header">
+        <h2 id="event-modal-title" data-event-modal-title>Add event</h2>
+        <button class="events-modal__close" type="button" data-event-modal-close aria-label="Close">
+          ×
+        </button>
+      </header>
+
+      <div class="form-stack">
+        <label class="form-label">
+          Title
+          <input class="form-input" name="title" type="text" maxlength="200" required />
+        </label>
+
+        <label class="form-label">
+          Description (optional)
+          <textarea class="form-input" name="description" rows="3" maxlength="2000"></textarea>
+        </label>
+
+        <label class="form-label">
+          Type
+          <select class="form-input" name="event_type" data-event-type>
+            {
+              managerView ? (
+                <>
+                  <option value="event">Event</option>
+                  <option value="announcement">Announcement</option>
+                  <option value="closure">Closure</option>
+                  <option value="time_off">Time off</option>
+                </>
+              ) : (
+                <option value="time_off">Time off (my schedule)</option>
+              )
+            }
+          </select>
+        </label>
+
+        <div class="events-modal__staff" data-staff-picker hidden>
+          <label class="form-label">
+            Team member
+            <select class="form-input" name="staff_id">
+              {
+                staffOptions.map((member) => (
+                  <option value={member.id} selected={member.id === staff.id}>
+                    {member.name}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
+        </div>
+
+        <label class="events-modal__checkbox">
+          <input type="checkbox" name="all_day" data-all-day />
+          All day
+        </label>
+
+        <label class="form-label" data-start-label>
+          Starts
+          <input class="form-input" name="starts_at" type="datetime-local" required />
+        </label>
+
+        <label class="form-label" data-end-label>
+          Ends (optional)
+          <input class="form-input" name="ends_at" type="datetime-local" />
+        </label>
+      </div>
+
+      <footer class="events-modal__footer">
+        <button class="btn-secondary" type="button" data-event-modal-close>Cancel</button>
+        {
+          managerView ? (
+            <button class="btn-secondary" type="button" data-event-delete hidden>
+              Delete
+            </button>
+          ) : (
+            <button class="btn-secondary" type="button" data-event-delete hidden>
+              Remove
+            </button>
+          )
+        }
+        <button class="btn-primary" type="submit" data-event-submit>Save</button>
+      </footer>
+    </form>
+  </dialog>
 </TeamLayout>
+
+<script src="../scripts/events.ts"></script>
+
+<style>
+  .events-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .events-page__nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .events-page__month {
+    margin: 0;
+    flex: 1;
+    min-width: 10rem;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .events-page__today {
+    margin-left: auto;
+  }
+
+  .events-page__error {
+    margin-top: 0;
+  }
+
+  .events-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-border);
+  }
+
+  .events-calendar__head,
+  .events-calendar__cell {
+    background: var(--color-booking-card-bg);
+    min-height: 2.5rem;
+    padding: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+  }
+
+  .events-calendar__head {
+    text-align: center;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+    min-height: auto;
+  }
+
+  .events-calendar__cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 4.5rem;
+    cursor: default;
+  }
+
+  .events-calendar__cell--muted {
+    color: var(--color-gray);
+    opacity: 0.65;
+  }
+
+  .events-calendar__cell--today {
+    outline: 2px solid var(--color-dusty-rose);
+    outline-offset: -2px;
+  }
+
+  .events-calendar__day {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .events-calendar__dots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+  }
+
+  .events-calendar__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--color-dusty-rose);
+  }
+
+  .events-calendar__dot--time_off {
+    background: #7a8f6e;
+  }
+
+  .events-calendar__dot--closure {
+    background: #922;
+  }
+
+  .events-calendar__dot--announcement {
+    background: #8a7355;
+  }
+
+  .events-upcoming__title {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .events-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .event-card {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    font: inherit;
+    color: inherit;
+  }
+
+  .event-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .event-card__title {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 500;
+  }
+
+  .event-card__description {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--color-gray);
+  }
+
+  .event-card__meta {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--color-gray);
+  }
+
+  .event-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--color-border);
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .event-badge--time_off {
+    border-color: #7a8f6e;
+    color: #556648;
+  }
+
+  .event-badge--closure {
+    border-color: #922;
+    color: #922;
+    background: rgba(200, 60, 60, 0.08);
+  }
+
+  .event-badge--announcement {
+    border-color: #8a7355;
+    color: #8a7355;
+  }
+
+  .events-modal {
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    box-shadow: 0 12px 48px var(--color-card-shadow);
+  }
+
+  .events-modal::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .events-modal__form {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    margin: 0;
+  }
+
+  .events-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .events-modal__header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .events-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-gray);
+    cursor: pointer;
+  }
+
+  .events-modal__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+  }
+
+  .events-modal__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+
+  @media (max-width: 640px) {
+    .events-calendar__cell {
+      min-height: 3rem;
+      padding: 0.2rem;
+    }
+
+    .events-calendar__head {
+      font-size: 0.62rem;
+    }
+  }
+</style>

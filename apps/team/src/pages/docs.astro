@@ -1,9 +1,259 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const managerView = isSalonManager(staff);
 ---
 
 <TeamLayout title="Docs" activeNav="docs">
-  <h1 class="page-title">Docs</h1>
-  <p class="page-lead">Employee handbook, procedures, and salon resources.</p>
-  <p class="empty-state">Coming soon.</p>
+  <div
+    class="docs-page"
+    data-docs-app
+    data-api-base={teamUrl("/api/documents")}
+    data-manager={managerView ? "1" : "0"}
+  >
+    <header class="docs-page__header">
+      <div>
+        <h1 class="page-title">Docs</h1>
+        <p class="page-lead">Employee handbook, procedures, and salon resources.</p>
+      </div>
+      {
+        managerView ? (
+          <button class="btn-primary docs-page__upload" type="button" data-doc-upload-open>
+            Upload
+          </button>
+        ) : null
+      }
+    </header>
+
+    <div class="docs-page__filters">
+      <label class="form-label docs-page__search">
+        Search
+        <input
+          class="form-input"
+          type="search"
+          placeholder="Title or description…"
+          autocomplete="off"
+          data-doc-search
+        />
+      </label>
+
+      <label class="form-label docs-page__category">
+        Category
+        <select class="form-input" data-doc-category>
+          <option value="all">All categories</option>
+          <option value="policies">Policies</option>
+          <option value="training">Training</option>
+          <option value="forms">Forms</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="notice notice--error docs-page__error" data-docs-error hidden role="alert"></p>
+
+    <div class="docs-list" data-docs-list aria-live="polite">
+      <p class="empty-state">Loading documents…</p>
+    </div>
+  </div>
+
+  <dialog class="docs-modal" data-doc-modal aria-labelledby="doc-modal-title">
+    <form class="docs-modal__form" method="dialog" data-doc-form enctype="multipart/form-data">
+      <header class="docs-modal__header">
+        <h2 id="doc-modal-title">Upload document</h2>
+        <button class="docs-modal__close" type="button" data-doc-modal-close aria-label="Close">
+          ×
+        </button>
+      </header>
+
+      <div class="form-stack">
+        <label class="form-label">
+          Title
+          <input class="form-input" name="title" type="text" maxlength="200" required />
+        </label>
+
+        <label class="form-label">
+          Description (optional)
+          <textarea class="form-input" name="description" rows="3" maxlength="2000"></textarea>
+        </label>
+
+        <label class="form-label">
+          Category
+          <select class="form-input" name="category">
+            <option value="">Uncategorized</option>
+            <option value="policies">Policies</option>
+            <option value="training">Training</option>
+            <option value="forms">Forms</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+
+        <label class="form-label">
+          File
+          <input
+            class="form-input"
+            name="file"
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+            required
+          />
+        </label>
+      </div>
+
+      <footer class="docs-modal__footer">
+        <button class="btn-secondary" type="button" data-doc-modal-close>Cancel</button>
+        <button class="btn-primary" type="submit" data-doc-submit>Upload</button>
+      </footer>
+    </form>
+  </dialog>
 </TeamLayout>
+
+<script src="../scripts/docs.ts"></script>
+
+<style>
+  .docs-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .docs-page__filters {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .docs-page__filters {
+      grid-template-columns: 1fr minmax(10rem, 14rem);
+    }
+  }
+
+  .docs-page__error {
+    margin-top: 0;
+  }
+
+  .docs-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .doc-card {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+  }
+
+  .doc-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .doc-card__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .doc-card__description {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--color-gray);
+  }
+
+  .doc-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--color-gray);
+  }
+
+  .doc-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .doc-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--color-border);
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .doc-badge--policies {
+    border-color: var(--color-dusty-rose);
+    color: var(--color-dusty-rose);
+  }
+
+  .docs-modal {
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    box-shadow: 0 12px 48px var(--color-card-shadow);
+  }
+
+  .docs-modal::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .docs-modal__form {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    margin: 0;
+  }
+
+  .docs-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .docs-modal__header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .docs-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-gray);
+    cursor: pointer;
+  }
+
+  .docs-modal__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+</style>
