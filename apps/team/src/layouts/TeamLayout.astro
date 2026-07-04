@@ -54,7 +54,7 @@ const isAuthenticated = Boolean(user && staff);
     </script>
   </head>
   <body>
-    <div class:list={["team-shell", loginPage && "team-shell--login"]}>
+    <div class:list={["team-shell", loginPage && "team-shell--login", fullBleed && "team-shell--book"]}>
       <TeamSiteHeader
         activeNav={activeNav}
         staff={staff}

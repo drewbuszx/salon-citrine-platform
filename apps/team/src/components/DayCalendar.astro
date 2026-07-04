@@ -783,6 +783,9 @@ const calendarConfig = {
     --day-time-width: 3.25rem;
     --day-header-height: 3.75rem;
     width: 100%;
+    min-height: calc(100vh - var(--header-height));
+    background: var(--color-dusty-rose);
+    color: var(--color-on-brand-section);
   }
 
   .day-cal__toolbar {
@@ -790,7 +793,7 @@ const calendarConfig = {
     flex-direction: column;
     align-items: stretch;
     gap: 0.25rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     padding: 0.5rem clamp(1rem, 3vw, 2.5rem);
     background: var(--color-dusty-rose);
     color: var(--color-on-brand-section);
@@ -840,8 +843,7 @@ const calendarConfig = {
 
   .day-cal__frame {
     display: flex;
-    border-top: 1px solid var(--color-border);
-    background: var(--color-booking-card-bg);
+    background: var(--color-dusty-rose);
     overflow: hidden;
     width: 100%;
   }
@@ -856,7 +858,7 @@ const calendarConfig = {
     height: var(--day-header-height);
     flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
-    background: var(--color-light);
+    background: var(--color-dusty-rose);
   }
 
   .day-cal__time-label {
@@ -904,7 +906,8 @@ const calendarConfig = {
     max-height: var(--day-header-height);
     padding: 0 0.35rem;
     border-bottom: 1px solid var(--color-border);
-    background: var(--color-light);
+    background: var(--color-dusty-rose);
+    color: var(--color-on-brand-section);
     text-align: center;
     overflow: visible;
   }

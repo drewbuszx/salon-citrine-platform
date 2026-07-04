@@ -101,8 +101,13 @@ textarea {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0;
+  background-color: var(--color-dusty-rose);
+}
+
+.team-shell--book {
+  background-color: var(--color-dusty-rose);
+  background-image: none;
 }
 
 .team-page-header {
