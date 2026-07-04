@@ -88,12 +88,19 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Dev without a verified domain must use onboarding@resend.dev (Resend sandbox sender). */
+function getResendFromEmail(): string {
+  const fromEnv = getServerEnv("RESEND_FROM_EMAIL")?.trim();
+  if (fromEnv) return fromEnv;
+  if (!import.meta.env?.PROD) return "onboarding@resend.dev";
+  return BUSINESS.bookingEmail;
+}
+
 export async function sendBookingConfirmationEmail(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
   const apiKey = getServerEnv("RESEND_API_KEY");
-  const fromEmail =
-    getServerEnv("RESEND_FROM_EMAIL")?.trim() || BUSINESS.bookingEmail;
+  const fromEmail = getResendFromEmail();
 
   if (!apiKey) {
     console.log(
@@ -127,12 +134,25 @@ export async function sendBookingConfirmationEmail(
     }),
   });
 
+  const body = await response.text().catch(() => "");
+
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Resend API ${response.status}: ${body.slice(0, 200)}`);
+    console.error("booking-confirmation: email failed:", body || response.statusText);
+    return;
   }
 
-  console.log("booking-confirmation: email sent", { to: payload.clientEmail });
+  let resendId: string | undefined;
+  try {
+    const parsed = JSON.parse(body) as { id?: string };
+    resendId = parsed.id;
+  } catch {
+    // non-JSON success body
+  }
+
+  console.log("booking-confirmation: email sent", {
+    to: payload.clientEmail,
+    id: resendId ?? "(no id in response)",
+  });
 }
 
 export async function sendBookingConfirmationSms(
@@ -183,12 +203,25 @@ export async function sendBookingConfirmationSms(
     },
   );
 
+  const body = await response.text().catch(() => "");
+
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Twilio API ${response.status}: ${body.slice(0, 200)}`);
+    console.error("booking-confirmation: SMS failed:", body || response.statusText);
+    return;
   }
 
-  console.log("booking-confirmation: SMS sent", { to });
+  let messageSid: string | undefined;
+  try {
+    const parsed = JSON.parse(body) as { sid?: string };
+    messageSid = parsed.sid;
+  } catch {
+    // non-JSON success body
+  }
+
+  console.log("booking-confirmation: SMS sent", {
+    to,
+    sid: messageSid ?? "(no sid in response)",
+  });
 }
 
 /** Send confirmation email (always) and SMS (when opted in). Never throws. */
@@ -200,6 +233,9 @@ export async function sendBookingConfirmations(
     Boolean(getServerEnv("TWILIO_ACCOUNT_SID")) &&
     Boolean(getServerEnv("TWILIO_AUTH_TOKEN")) &&
     Boolean(getServerEnv("TWILIO_PHONE_NUMBER")?.trim());
+
+  console.log(`booking-confirmation: Resend configured ${hasResend ? "yes" : "no"}`);
+  console.log(`booking-confirmation: Twilio configured ${hasTwilio ? "yes" : "no"}`);
 
   if (!hasResend && !(hasTwilio && payload.smsOptIn)) {
     console.log(
@@ -218,10 +254,5 @@ export async function sendBookingConfirmations(
     tasks.push(sendBookingConfirmationSms(payload));
   }
 
-  const results = await Promise.allSettled(tasks);
-  for (const result of results) {
-    if (result.status === "rejected") {
-      console.error("booking-confirmation: send failed", result.reason);
-    }
-  }
+  await Promise.allSettled(tasks);
 }
