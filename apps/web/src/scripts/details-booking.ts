@@ -66,21 +66,45 @@ function checkboxChecked(name: string) {
   return el instanceof HTMLInputElement && el.checked;
 }
 
+function logBookingError(phase: string, error: unknown, extra?: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
+  console.error(`[booking/details] ${phase}`, error, extra ?? "");
+}
+
+function formatBookingError(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
+
+async function readJsonResponse(response: Response): Promise<{
+  error?: string;
+  id?: string;
+  clientSecret?: string;
+  setupIntentId?: string;
+}> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as {
+      error?: string;
+      id?: string;
+      clientSecret?: string;
+      setupIntentId?: string;
+    };
+  } catch (parseError) {
+    logBookingError("invalid JSON response", parseError, {
+      status: response.status,
+      bodyPreview: text.slice(0, 200),
+    });
+    return {};
+  }
+}
+
 function resetStripeElements() {
   elements = null;
   setupIntentId = null;
   setupIntentEmail = null;
   confirmedSetupIntentId = null;
-}
-
-async function readJsonResponse(response: Response): Promise<{ error?: string; id?: string }> {
-  const text = await response.text();
-  if (!text) return {};
-  try {
-    return JSON.parse(text) as { error?: string; id?: string };
-  } catch {
-    return {};
-  }
 }
 
 async function ensureStripeElements(forceRecreate = false) {
@@ -153,8 +177,8 @@ async function ensureStripeElements(forceRecreate = false) {
     setupIntentEmail = email;
     setPaymentBusy(false);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Could not load card form";
+    const message = formatBookingError(error, "Could not load card form");
+    logBookingError("setup-intent", error);
     showError(message);
     showPaymentError(message);
     setPaymentBusy(false);
@@ -219,6 +243,11 @@ async function completeBooking() {
       });
 
       if (confirmError) {
+        logBookingError("confirmSetup", confirmError, {
+          type: confirmError.type,
+          code: confirmError.code,
+          setupIntentId,
+        });
         throw new Error(confirmError.message ?? "Card verification failed");
       }
 
@@ -253,6 +282,10 @@ async function completeBooking() {
 
     const payload = await readJsonResponse(response);
     if (!response.ok) {
+      logBookingError("appointments", payload.error ?? response.statusText, {
+        status: response.status,
+        bookingBody,
+      });
       throw new Error(payload.error ?? "Could not save your appointment");
     }
 
@@ -264,7 +297,8 @@ async function completeBooking() {
     if (formValue("flow") === "stylist") params.set("flow", "stylist");
     window.location.href = `${confirmUrl}?${params.toString()}`;
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Booking failed");
+    logBookingError("completeBooking", error);
+    showError(formatBookingError(error, "Booking failed"));
     submitBtn?.removeAttribute("disabled");
     submitting = false;
   }

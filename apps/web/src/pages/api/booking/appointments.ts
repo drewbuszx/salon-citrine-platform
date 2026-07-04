@@ -9,6 +9,18 @@ import { getStripeClient } from "../../../lib/stripe-server";
 import { createSupabaseServiceClient } from "../../../lib/supabase-server";
 import { formatDateInTimezone } from "../../../lib/datetime-utils";
 
+function stripeErrorMessage(error: unknown): string | undefined {
+  if (
+    error instanceof Error &&
+    "type" in error &&
+    typeof (error as { type?: string }).type === "string"
+  ) {
+    const stripeError = error as Error & { type?: string; code?: string };
+    return stripeError.message || stripeError.code;
+  }
+  return undefined;
+}
+
 export const POST: APIRoute = async ({ request }) => {
   let body: unknown;
 
@@ -26,7 +38,14 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const input = parsed.data;
-  const supabase = createSupabaseServiceClient();
+
+  let supabase;
+  try {
+    supabase = createSupabaseServiceClient();
+  } catch (error) {
+    console.error("booking/appointments: supabase config", error);
+    return jsonError("Booking is temporarily unavailable", 503);
+  }
 
   try {
     const staff = await getStaffBySlug(input.staffSlug);
@@ -49,6 +68,12 @@ export const POST: APIRoute = async ({ request }) => {
       input.startsAt,
     );
     if (!slotAvailable) {
+      console.error(
+        "booking/appointments: slot unavailable",
+        input.staffSlug,
+        dateStr,
+        input.startsAt,
+      );
       return jsonError("That time is no longer available", 409);
     }
 
@@ -258,6 +283,10 @@ export const POST: APIRoute = async ({ request }) => {
     return jsonOk({ id: appointment.id });
   } catch (error) {
     console.error("booking/appointments", error);
+    const stripeMessage = stripeErrorMessage(error);
+    if (stripeMessage) {
+      return jsonError(stripeMessage, 502);
+    }
     return jsonError("Failed to create appointment", 500);
   }
 };

@@ -277,8 +277,17 @@ export async function isBookingSlotAvailableByStartsAt(
   dateStr: string,
   startsAtIso: string,
 ): Promise<boolean> {
+  const requestedStartMs = new Date(startsAtIso).getTime();
+  if (Number.isNaN(requestedStartMs)) return false;
+
   const slots = await getAvailableSlots(staffId, serviceIds, dateStr);
-  return slots.some((slot) => slot.startsAt === startsAtIso);
+  return slots.some((slot) => {
+    const slotStartMs = new Date(slot.startsAt).getTime();
+    return (
+      !Number.isNaN(slotStartMs) &&
+      (slot.startsAt === startsAtIso || slotStartMs === requestedStartMs)
+    );
+  });
 }
 
 /** Resolve display label + UTC start for a selected slot. */
@@ -291,7 +300,13 @@ export async function resolveBookingSlot(
 ): Promise<TimeSlot | undefined> {
   const slots = await getAvailableSlots(staffId, serviceIds, dateStr);
   if (startsAtIso) {
-    return slots.find((slot) => slot.startsAt === startsAtIso);
+    const requestedStartMs = new Date(startsAtIso).getTime();
+    return slots.find((slot) => {
+      if (slot.startsAt === startsAtIso) return true;
+      if (Number.isNaN(requestedStartMs)) return false;
+      const slotStartMs = new Date(slot.startsAt).getTime();
+      return !Number.isNaN(slotStartMs) && slotStartMs === requestedStartMs;
+    });
   }
   if (timeLabel) {
     return slots.find((slot) => slot.label === timeLabel);
