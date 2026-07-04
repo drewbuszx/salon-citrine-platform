@@ -713,6 +713,15 @@ const calendarConfig = {
           grid.appendChild(preview);
         }
 
+        const accent = getComputedStyle(grid).getPropertyValue("--staff-accent").trim();
+        preview.style.position = "absolute";
+        preview.style.left = "0.15rem";
+        preview.style.right = "0.15rem";
+        preview.style.zIndex = "4";
+        preview.style.pointerEvents = "none";
+        preview.style.display = "flex";
+        if (accent) preview.style.background = accent;
+
         const style = previewStyleFromIndices(minIndex, maxIndex);
         preview.style.top = style.top;
         preview.style.height = style.height;
@@ -825,6 +834,32 @@ const calendarConfig = {
       /** @type {HTMLElement | null} */
       let pendingBlockClick = null;
 
+      function handleDragPointerMove(event) {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+
+        const grid = dragState.grid;
+        const dx = event.clientX - dragState.startX;
+        const dy = event.clientY - dragState.startY;
+        if (!dragState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+          dragState.moved = true;
+        }
+
+        const activeIndex = activeSlotIndex(grid, event.clientX, event.clientY);
+        if (activeIndex < 0) return;
+
+        const slots = slotsInGrid(grid);
+        const activeSlot = slots[activeIndex];
+        if (!(activeSlot instanceof HTMLElement)) return;
+        const context = slotContextFrom(activeSlot);
+        if (!context || context.staffId !== dragState.staffId) return;
+
+        applySlotSelection(grid, dragState.anchorIndex, activeIndex);
+      }
+
+      function stopDragPointerTracking() {
+        document.removeEventListener("pointermove", handleDragPointerMove);
+      }
+
       root.querySelectorAll(".day-cal__grid").forEach((grid) => {
         if (!(grid instanceof HTMLElement)) return;
 
@@ -861,28 +896,8 @@ const calendarConfig = {
           };
           applySlotSelection(grid, anchorIndex, anchorIndex);
           grid.setPointerCapture(event.pointerId);
+          document.addEventListener("pointermove", handleDragPointerMove);
           event.preventDefault();
-        });
-
-        grid.addEventListener("pointermove", (event) => {
-          if (!dragState || dragState.grid !== grid || event.pointerId !== dragState.pointerId) return;
-
-          const dx = event.clientX - dragState.startX;
-          const dy = event.clientY - dragState.startY;
-          if (!dragState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
-            dragState.moved = true;
-          }
-
-          const activeIndex = activeSlotIndex(grid, event.clientX, event.clientY);
-          if (activeIndex < 0) return;
-
-          const slots = slotsInGrid(grid);
-          const activeSlot = slots[activeIndex];
-          if (!(activeSlot instanceof HTMLElement)) return;
-          const context = slotContextFrom(activeSlot);
-          if (!context || context.staffId !== dragState.staffId) return;
-
-          applySlotSelection(grid, dragState.anchorIndex, activeIndex);
         });
 
         grid.addEventListener("pointerup", (event) => {
@@ -907,6 +922,7 @@ const calendarConfig = {
 
           const state = dragState;
           dragState = null;
+          stopDragPointerTracking();
 
           if (state.moved && selectedSlots.length >= 2) {
             const context = rangeContextFromSlots(selectedSlots);
@@ -931,6 +947,7 @@ const calendarConfig = {
         grid.addEventListener("pointercancel", (event) => {
           if (dragState?.grid === grid && event.pointerId === dragState.pointerId) {
             dragState = null;
+            stopDragPointerTracking();
             clearSlotSelectionHighlight();
           }
           pendingBlockClick = null;
@@ -1393,7 +1410,8 @@ const calendarConfig = {
   }
 
   .day-cal--selecting,
-  .day-cal--selecting .day-cal__grid {
+  .day-cal--selecting .day-cal__grid,
+  .day-cal--selecting .day-cal__slot {
     user-select: none;
     -webkit-user-select: none;
     touch-action: none;
