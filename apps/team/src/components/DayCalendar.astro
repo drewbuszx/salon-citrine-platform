@@ -92,18 +92,29 @@ const calendarConfig = {
   style={`--day-staff-width: ${staffColWidthRem}rem`}
 >
   <header class="day-cal__toolbar">
-    <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
-    <div class="day-cal__actions">
-      <a class="day-cal__btn" href={`${teamUrl("/")}?day=${prevDay}`} aria-label="Previous day">
-        ← Prev
+    <nav class="day-cal__nav" aria-label="Day navigation">
+      <a
+        class="day-cal__nav-btn day-cal__nav-btn--circle"
+        href={`${teamUrl("/")}?day=${prevDay}`}
+        aria-label="Previous day"
+      >
+        <span class="day-cal__chevron" aria-hidden="true">&lsaquo;</span>
       </a>
-      <a class="day-cal__btn day-cal__btn--today" href={`${teamUrl("/")}?day=${todayParam}`}>
+      <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
+      <a
+        class="day-cal__nav-btn day-cal__nav-btn--circle"
+        href={`${teamUrl("/")}?day=${nextDay}`}
+        aria-label="Next day"
+      >
+        <span class="day-cal__chevron" aria-hidden="true">&rsaquo;</span>
+      </a>
+      <a
+        class="day-cal__nav-btn day-cal__nav-btn--today"
+        href={`${teamUrl("/")}?day=${todayParam}`}
+      >
         Today
       </a>
-      <a class="day-cal__btn" href={`${teamUrl("/")}?day=${nextDay}`} aria-label="Next day">
-        Next →
-      </a>
-    </div>
+    </nav>
   </header>
 
   <div class="day-cal__frame">
@@ -1470,55 +1481,77 @@ const calendarConfig = {
 
   .day-cal__toolbar {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: flex-start;
     margin-bottom: 0;
-    padding: 0.5rem clamp(1rem, 3vw, 2.5rem);
+    padding: 0.85rem clamp(1rem, 3vw, 2.5rem);
     background: var(--color-dusty-rose);
     color: var(--color-on-brand-section);
   }
 
-  .day-cal__title {
-    width: 100%;
-    font-size: clamp(1.15rem, 3vw, 1.35rem);
-    margin: 0;
-    font-weight: 500;
-    color: inherit;
-    text-align: center;
-  }
-
-  .day-cal__actions {
+  .day-cal__nav {
     display: flex;
-    gap: 0.5rem;
-    justify-content: space-between;
-    width: 100%;
+    align-items: center;
+    gap: 0.65rem;
   }
 
-  .day-cal__toolbar .day-cal__btn {
-    padding: 0.4rem 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background: rgba(255, 255, 255, 0.15);
+  .day-cal__title {
+    margin: 0;
+    padding: 0 0.15rem;
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: clamp(1.35rem, 3.5vw, 1.65rem);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: inherit;
+    white-space: nowrap;
+  }
+
+  .day-cal__nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1;
     text-decoration: none;
     color: var(--color-on-brand-section);
+    cursor: pointer;
     transition:
       background 0.2s ease,
       border-color 0.2s ease;
   }
 
-  .day-cal__toolbar .day-cal__btn:hover,
-  .day-cal__toolbar .day-cal__btn:focus-visible {
-    background: rgba(255, 255, 255, 0.28);
+  .day-cal__nav-btn:hover,
+  .day-cal__nav-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.85);
     outline: none;
   }
 
-  .day-cal__toolbar .day-cal__btn--today {
-    border-color: var(--color-citrine);
-    background: rgba(255, 255, 255, 0.22);
+  .day-cal__nav-btn--circle {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .day-cal__chevron {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 300;
+    line-height: 1;
+    margin-top: -0.05rem;
+  }
+
+  .day-cal__nav-btn--today {
+    margin-left: 0.35rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
   }
 
   .day-cal__frame {

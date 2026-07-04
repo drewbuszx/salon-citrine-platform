@@ -143,7 +143,6 @@ export function shiftDay(dayStart: Date, deltaDays: number) {
 
 export function formatDayLabel(date: Date) {
   return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
     month: "long",
     day: "numeric",
   }).format(date);
