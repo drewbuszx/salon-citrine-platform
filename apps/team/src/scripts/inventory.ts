@@ -77,6 +77,7 @@ function initInventory(root: HTMLElement) {
   const txTitle = root.querySelector<HTMLElement>("[data-tx-title]");
   const txQtyInput = root.querySelector<HTMLInputElement>("[data-tx-qty]");
   const txNotes = root.querySelector<HTMLTextAreaElement>("[data-tx-notes]");
+  const txSubmit = root.querySelector<HTMLButtonElement>("[data-tx-submit]");
 
   const addModal = root.querySelector<HTMLElement>("[data-add-modal]");
   const addForm = root.querySelector<HTMLFormElement>("[data-add-form]");
@@ -86,6 +87,8 @@ function initInventory(root: HTMLElement) {
   let pendingTxType: TransactionType | null = null;
   let scanner: { stop: () => void } | null = null;
   let searchTimer: number | undefined;
+  let scanCheckInMode = false;
+  let txFromScan = false;
 
   function setStatus(message: string, isError = false) {
     if (!statusEl) return;
@@ -116,6 +119,7 @@ function initInventory(root: HTMLElement) {
     closeModal(detailModal);
     closeModal(txModal);
     closeModal(addModal);
+    scanCheckInMode = false;
     stopScanner();
   }
 
@@ -242,17 +246,27 @@ function initInventory(root: HTMLElement) {
     openModal(detailModal);
   }
 
-  function openTransactionModal(type: TransactionType, product: Product) {
+  function openTransactionModal(
+    type: TransactionType,
+    product: Product,
+    options?: { fromScan?: boolean },
+  ) {
     pendingTxType = type;
     selectedProduct = product;
+    txFromScan = options?.fromScan ?? false;
+
     if (txTitle) {
       const labels: Record<TransactionType, string> = {
-        receive: "Receive stock",
+        receive: txFromScan ? "Check in" : "Receive stock",
         use: "Log use",
         adjust: "Adjust quantity",
         count: "Set count",
       };
       txTitle.textContent = `${labels[type]} — ${product.name}`;
+    }
+    if (txSubmit) {
+      txSubmit.textContent =
+        type === "receive" && txFromScan ? "Check in" : "Save";
     }
     if (txQtyInput) {
       if (type === "count") {
@@ -270,6 +284,7 @@ function initInventory(root: HTMLElement) {
     }
     if (txNotes) txNotes.value = "";
     openModal(txModal);
+    window.requestAnimationFrame(() => txQtyInput?.focus());
   }
 
   async function submitTransaction() {
@@ -302,10 +317,27 @@ function initInventory(root: HTMLElement) {
       return;
     }
 
+    const product = selectedProduct;
+    const txType = pendingTxType;
+    const qtyCheckedIn = qty;
+    const keepScanning = txFromScan && txType === "receive";
+
     closeModal(txModal);
     closeModal(detailModal);
-    setStatus("Stock updated.");
+    pendingTxType = null;
+    txFromScan = false;
+
     await fetchProducts(searchInput?.value ?? "");
+
+    if (keepScanning && product) {
+      setStatus(
+        `Checked in ${formatQty(qtyCheckedIn)} ${product.unit} of ${product.name}. Scan the next item.`,
+      );
+      void openScanner();
+      return;
+    }
+
+    setStatus(txType === "receive" ? "Stock checked in." : "Stock updated.");
   }
 
   async function lookupBarcode(code: string) {
@@ -324,12 +356,17 @@ function initInventory(root: HTMLElement) {
     stopScanner();
 
     if (data.product) {
-      openTransactionModal("use", data.product as Product);
-      setStatus(`Found: ${(data.product as Product).name}`);
+      openTransactionModal("receive", data.product as Product, {
+        fromScan: scanCheckInMode,
+      });
       return;
     }
 
-    setStatus(`Unknown barcode: ${trimmed}`, true);
+    setStatus(
+      `Product not found for code “${trimmed}”. Search below or ask a manager to add it.`,
+      true,
+    );
+    searchInput?.focus();
     if (isManager && addModal && addForm) {
       const barcodeField = addForm.querySelector<HTMLInputElement>(
         'input[name="barcode"]',
@@ -341,6 +378,7 @@ function initInventory(root: HTMLElement) {
 
   async function openScanner() {
     if (!scanModal || !scanVideo) return;
+    scanCheckInMode = true;
     openModal(scanModal);
     if (scanError) scanError.textContent = "";
     if (manualBarcodeInput) manualBarcodeInput.value = "";
@@ -367,6 +405,7 @@ function initInventory(root: HTMLElement) {
     btn.addEventListener("click", () => {
       const target = (btn as HTMLElement).dataset.modalClose;
       if (target === "scan") {
+        scanCheckInMode = false;
         closeModal(scanModal);
         stopScanner();
       } else if (target === "detail") closeModal(detailModal);

@@ -17,12 +17,12 @@ const isManager = isSalonManager(staff);
       <div>
         <h1 class="page-title">Inventory</h1>
         <p class="page-lead">
-          Back-bar supplies — scan barcodes to log use or receive stock.
+          Back-bar supplies — scan a barcode or QR code to check in received stock.
         </p>
       </div>
-      <div class="inventory-page__actions">
+      <div class="inventory-page__actions inventory-page__actions--desktop">
         <button class="btn-primary inventory-page__scan" type="button" data-scan-open>
-          Scan barcode
+          Scan to check in
         </button>
         {
           isManager ? (
@@ -51,6 +51,12 @@ const isManager = isSalonManager(staff);
     <div class="inventory-list" data-product-list>
       <p class="empty-state">Loading products…</p>
     </div>
+
+    <div class="inventory-scan-bar">
+      <button class="btn-primary inventory-scan-bar__btn" type="button" data-scan-open>
+        Scan to check in
+      </button>
+    </div>
   </div>
 
   <!-- Scanner modal -->
@@ -58,20 +64,22 @@ const isManager = isSalonManager(staff);
     <div class="inventory-modal__backdrop" data-modal-close="scan"></div>
     <div class="inventory-modal__panel inventory-modal__panel--scanner" role="dialog" aria-modal="true" aria-labelledby="scan-title">
       <div class="inventory-modal__head">
-        <h2 id="scan-title">Scan barcode</h2>
+        <h2 id="scan-title">Scan to check in</h2>
         <button class="inventory-modal__close" type="button" data-modal-close="scan" aria-label="Close">×</button>
       </div>
       <div class="inventory-scanner">
-        <video class="inventory-scanner__video" data-scan-video playsinline muted></video>
-        <p class="inventory-scanner__hint">Point your camera at a UPC/EAN barcode</p>
+        <video class="inventory-scanner__video" data-scan-video playsinline muted autoplay></video>
+        <p class="inventory-scanner__hint">
+          Point your camera at a barcode (UPC/EAN) or QR code on the product
+        </p>
         <p class="notice notice--error inventory-scanner__error" data-scan-error></p>
         <div class="inventory-scanner__manual">
           <label class="form-label">
-            Or enter barcode manually
-            <input class="form-input" type="text" inputmode="numeric" data-manual-barcode />
+            Or enter code manually
+            <input class="form-input" type="text" data-manual-barcode placeholder="Barcode or QR value" />
           </label>
           <button class="btn-secondary" type="button" data-manual-barcode-submit>
-            Look up
+            Check in
           </button>
         </div>
       </div>
@@ -89,8 +97,8 @@ const isManager = isSalonManager(staff);
       <p class="inventory-detail__meta" data-detail-meta></p>
       <p class="inventory-detail__qty" data-detail-qty></p>
       <div class="inventory-detail__actions">
+        <button class="btn-primary" type="button" data-tx-action="receive">Check in</button>
         <button class="btn-secondary" type="button" data-tx-action="use">Use</button>
-        <button class="btn-secondary" type="button" data-tx-action="receive">Receive</button>
         <button class="btn-secondary" type="button" data-tx-action="adjust">Adjust</button>
         <button class="btn-secondary" type="button" data-tx-action="count">Set count</button>
       </div>
@@ -223,8 +231,31 @@ const isManager = isSalonManager(staff);
     gap: 0.5rem;
   }
 
-  .inventory-page__scan {
+  .inventory-page__actions--desktop {
+    display: none;
+  }
+
+  .inventory-scan-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: var(--color-booking-panel-bg);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 24px var(--color-card-shadow);
+  }
+
+  .inventory-scan-bar__btn {
+    width: 100%;
+    min-height: 3rem;
+    font-size: 1.05rem;
     background: var(--color-dusty-rose-dark, var(--color-charcoal));
+  }
+
+  .inventory-page {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   .inventory-search {
@@ -442,6 +473,22 @@ const isManager = isSalonManager(staff);
   }
 
   @media (min-width: 40rem) {
+    .inventory-page__actions--desktop {
+      display: flex;
+    }
+
+    .inventory-scan-bar {
+      display: none;
+    }
+
+    .inventory-page {
+      padding-bottom: 0;
+    }
+
+    .inventory-page__scan {
+      background: var(--color-dusty-rose-dark, var(--color-charcoal));
+    }
+
     .inventory-modal {
       align-items: center;
       padding: 1rem;
