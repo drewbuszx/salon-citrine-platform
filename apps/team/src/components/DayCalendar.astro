@@ -15,7 +15,10 @@ import {
   formatDayLabel,
   formatDayParam,
   formatSlotHourLabel,
+  formatSlotMinuteLabel,
+  formatSlotTimeLabel,
   formatTimeRangeInSalon,
+  staffColumnWidthRem,
   isTodayInSalon,
   shiftDay,
   slotStartsAtIso,
@@ -52,6 +55,7 @@ const timeSlots = calendarTimeSlots();
 const gridHeight = calendarGridHeightRem();
 const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
+const staffColWidthRem = staffColumnWidthRem(staff);
 
 const STAFF_COLORS = [
   "var(--color-citrine)",
@@ -93,7 +97,11 @@ const calendarConfig = {
 };
 ---
 
-<section class="day-cal" aria-label="Day calendar">
+<section
+  class="day-cal"
+  aria-label="Day calendar"
+  style={`--day-staff-width: ${staffColWidthRem}rem`}
+>
   <header class="day-cal__toolbar">
     <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
     <div class="day-cal__actions">
@@ -113,14 +121,21 @@ const calendarConfig = {
     <div class="day-cal__time-axis" aria-hidden="true">
       <div class="day-cal__time-spacer"></div>
       {
-        timeSlots.map((minutes) => (
-          <div
-            class="day-cal__time-label"
-            style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
-          >
-            {formatSlotHourLabel(minutes)}
-          </div>
-        ))
+        timeSlots.map((minutes) => {
+          const hourLabel = formatSlotHourLabel(minutes);
+          const minuteLabel = formatSlotMinuteLabel(minutes);
+          return (
+            <div
+              class:list={[
+                "day-cal__time-label",
+                minuteLabel && "day-cal__time-label--minute",
+              ]}
+              style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+            >
+              {hourLabel || minuteLabel}
+            </div>
+          );
+        })
       }
     </div>
 
@@ -165,7 +180,7 @@ const calendarConfig = {
                         data-staff-id={member.id}
                         data-starts-at={slotStartsAtIso(selectedDay, minutes)}
                         data-slot-minutes={CALENDAR_SLOT_MINUTES}
-                        aria-label={`Open actions for ${member.name} at ${formatSlotHourLabel(minutes) || "this time"}`}
+                        aria-label={`Open actions for ${member.name} at ${formatSlotTimeLabel(minutes)}`}
                       />
                     ))
                   }
@@ -1059,7 +1074,7 @@ const calendarConfig = {
 
 <style>
   .day-cal {
-    --day-col-min-width: clamp(9rem, 22vw, 11.5rem);
+    --day-staff-width: 5rem;
     --day-time-width: 2.35rem;
     --day-header-height: 3.75rem;
     width: 100%;
@@ -1154,6 +1169,12 @@ const calendarConfig = {
     background: var(--color-bg);
   }
 
+  .day-cal__time-label--minute {
+    font-size: 0.52rem;
+    color: var(--color-gray);
+    opacity: 0.75;
+  }
+
   .day-cal__scroll {
     flex: 1;
     overflow-x: auto;
@@ -1163,13 +1184,15 @@ const calendarConfig = {
 
   .day-cal__columns {
     display: flex;
+    width: max-content;
     min-width: 100%;
-    width: 100%;
   }
 
   .day-cal__column {
-    flex: 1 0 var(--day-col-min-width);
-    min-width: var(--day-col-min-width);
+    flex: 0 0 var(--day-staff-width);
+    width: var(--day-staff-width);
+    min-width: var(--day-staff-width);
+    max-width: var(--day-staff-width);
     border-right: 1px solid var(--color-border);
   }
 
@@ -1195,19 +1218,16 @@ const calendarConfig = {
   }
 
   .day-cal__avatar-wrap {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100%;
+    flex: 0 0 auto;
     display: flex;
-    align-items: stretch;
+    align-items: center;
     justify-content: center;
+    padding-top: 0.25rem;
   }
 
   .day-cal__avatar {
-    height: 100%;
-    width: auto;
-    aspect-ratio: 1;
-    max-width: 100%;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     object-fit: cover;
     object-position: center top;
@@ -1566,12 +1586,6 @@ const calendarConfig = {
     min-height: 8rem;
   }
 
-  @media (max-width: 40rem) {
-    .day-cal {
-      --day-col-min-width: min(78vw, 11rem);
-    }
-
-  }
 </style>
 
 <style is:global>

@@ -60,8 +60,10 @@ export type CalendarEvent =
 
 export const CALENDAR_START_HOUR = 9;
 export const CALENDAR_END_HOUR = 20;
-export const CALENDAR_SLOT_MINUTES = 30;
-export const CALENDAR_ROW_HEIGHT_REM = 2.5;
+export const CALENDAR_SLOT_MINUTES = 15;
+export const CALENDAR_ROW_HEIGHT_REM = 1.25;
+export const STAFF_AVATAR_SIZE_REM = 2.5;
+export const STAFF_COL_PADDING_REM = 0.7;
 
 export function parseDayParam(value: string | null): Date {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -218,6 +220,38 @@ export function formatSlotHourLabel(totalMinutes: number) {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
   }).format(date);
+}
+
+export function formatSlotMinuteLabel(totalMinutes: number) {
+  const minute = totalMinutes % 60;
+  if (minute === 0) {
+    return "";
+  }
+  return String(minute);
+}
+
+export function formatSlotTimeLabel(totalMinutes: number) {
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    ...(minute > 0 ? { minute: "2-digit" } : {}),
+  }).format(date);
+}
+
+/** Uniform staff column width (rem) from avatar + longest name. */
+export function staffColumnWidthRem(staff: Pick<CalendarStaff, "name">[]) {
+  if (staff.length === 0) {
+    return 4.5;
+  }
+  const nameCharWidthRem = 0.36;
+  const maxNameWidth = Math.max(
+    ...staff.map((member) => member.name.length * nameCharWidthRem),
+  );
+  const contentWidth = Math.max(STAFF_AVATAR_SIZE_REM, maxNameWidth);
+  return Math.ceil((contentWidth + STAFF_COL_PADDING_REM) * 100) / 100;
 }
 
 function dayBounds(dayStart: Date) {
