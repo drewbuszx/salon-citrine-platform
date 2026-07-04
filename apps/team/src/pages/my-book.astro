@@ -1,0 +1,459 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login"));
+}
+
+const { data: scheduleRows, error: scheduleError } = await supabase
+  .from("staff_schedules")
+  .select("id, day_of_week, start_time, end_time")
+  .eq("staff_id", staff.id)
+  .order("day_of_week");
+
+const { data: serviceRows, error: serviceError } = await supabase
+  .from("staff_services")
+  .select(
+    "service_id, returning_clients_only, client_booking_block, services(id, category, name, duration_minutes)",
+  )
+  .eq("staff_id", staff.id)
+  .order("services(category)", { ascending: true });
+
+type ScheduleRow = {
+  id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+};
+
+type ServiceRow = {
+  service_id: string;
+  returning_clients_only: boolean;
+  client_booking_block: string;
+  services:
+    | {
+        id: string;
+        category: string;
+        name: string;
+        duration_minutes: number;
+      }
+    | Array<{
+        id: string;
+        category: string;
+        name: string;
+        duration_minutes: number;
+      }>
+    | null;
+};
+
+const DAY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function formatTimeInput(value: string): string {
+  return value.slice(0, 5);
+}
+
+const schedulesByDay = new Map<number, ScheduleRow>();
+for (const row of (scheduleRows ?? []) as ScheduleRow[]) {
+  schedulesByDay.set(row.day_of_week, row);
+}
+
+const services = ((serviceRows ?? []) as ServiceRow[])
+  .map((row) => {
+    const raw = row.services;
+    const svc = Array.isArray(raw) ? raw[0] : raw;
+    if (!svc) return null;
+    return {
+      id: svc.id,
+      category: svc.category,
+      name: svc.name,
+      durationMinutes: svc.duration_minutes,
+      returningClientsOnly: row.returning_clients_only,
+      clientBookingBlock: row.client_booking_block ?? "none",
+    };
+  })
+  .filter(Boolean);
+
+const calendarUrl = teamUrl("/");
+const apiSchedules = teamUrl("/api/my-book/schedules");
+const apiServices = teamUrl("/api/my-book/services");
+---
+
+<TeamLayout title="My Book">
+  <nav class="my-book__back" aria-label="Back">
+    <a href={calendarUrl} class="my-book__back-link">← Back to calendar</a>
+  </nav>
+
+  <h1 class="page-title">My Book</h1>
+  <p class="page-lead">
+    Set your bookable hours and control which services clients can see online.
+    You can still manually book any service on the team calendar.
+  </p>
+
+  <section class="page-section my-book__section" aria-labelledby="my-book-hours">
+    <h2 id="my-book-hours">Bookable hours</h2>
+    <p class="page-section__lead">
+      These hours feed client availability on the booking site.
+    </p>
+
+    {
+      scheduleError ? (
+        <p class="notice notice--error" role="alert">
+          Failed to load your schedule.
+        </p>
+      ) : (
+        <form class="my-book__schedule" id="my-book-schedule-form" novalidate>
+          <div class="my-book__schedule-grid">
+            {
+              DAY_LABELS.map((label, dayOfWeek) => {
+                const row = schedulesByDay.get(dayOfWeek);
+                const enabled = Boolean(row);
+                return (
+                  <div
+                    class="my-book__day-row card-row card-row--2"
+                    data-day-row
+                    data-day={dayOfWeek}
+                  >
+                    <label class="my-book__day-toggle">
+                      <input
+                        type="checkbox"
+                        name={`day_${dayOfWeek}_enabled`}
+                        checked={enabled}
+                        data-day-enabled
+                      />
+                      <span class="my-book__day-name">{label}</span>
+                    </label>
+                    <div class="my-book__day-times" data-day-times hidden={!enabled}>
+                      <label class="my-book__time-label">
+                        <span class="label-meta">Start</span>
+                        <input
+                          type="time"
+                          class="form-input my-book__time-input"
+                          name={`day_${dayOfWeek}_start`}
+                          value={row ? formatTimeInput(row.start_time) : "10:00"}
+                          data-day-start
+                          required={enabled}
+                        />
+                      </label>
+                      <label class="my-book__time-label">
+                        <span class="label-meta">End</span>
+                        <input
+                          type="time"
+                          class="form-input my-book__time-input"
+                          name={`day_${dayOfWeek}_end`}
+                          value={row ? formatTimeInput(row.end_time) : "17:00"}
+                          data-day-end
+                          required={enabled}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+          <p class="my-book__status" id="schedule-status" role="status" hidden></p>
+          <button type="submit" class="btn-primary my-book__save">Save hours</button>
+        </form>
+      )
+    }
+  </section>
+
+  <section class="page-section my-book__section" aria-labelledby="my-book-services">
+    <h2 id="my-book-services">Client booking blocks</h2>
+    <p class="page-section__lead">
+      Soft and hard blocks hide services from clients online. Hard block is the
+      strongest client-side restriction; team manual booking always shows all
+      your services.
+    </p>
+
+    {
+      serviceError ? (
+        <p class="notice notice--error" role="alert">
+          Failed to load your services.
+        </p>
+      ) : services.length === 0 ? (
+        <p class="empty-state">No services are assigned to your profile yet.</p>
+      ) : (
+        <div class="card-grid my-book__services">
+          {
+            services.map((service) => (
+              <div class="card-row card-row--2 my-book__service-row" data-service-row data-service-id={service.id}>
+                <div class="my-book__service-info">
+                  <span class="label-meta">{service.category}</span>
+                  <span class="my-book__service-name">{service.name}</span>
+                  <span class="my-book__service-meta">{service.durationMinutes} min</span>
+                  {
+                    service.returningClientsOnly ? (
+                      <span class="my-book__badge">Returning clients only</span>
+                    ) : null
+                  }
+                </div>
+                <label class="my-book__block-label">
+                  <span class="label-meta">Client visibility</span>
+                  <select
+                    class="form-input my-book__block-select"
+                    data-block-select
+                    aria-label={`Client booking block for ${service.name}`}
+                  >
+                    <option value="none" selected={service.clientBookingBlock === "none"}>
+                      No block — clients can book
+                    </option>
+                    <option value="soft" selected={service.clientBookingBlock === "soft"}>
+                      Soft block — hidden from clients
+                    </option>
+                    <option value="hard" selected={service.clientBookingBlock === "hard"}>
+                      Hard block — hidden from clients
+                    </option>
+                  </select>
+                </label>
+              </div>
+            ))
+          }
+        </div>
+      )
+    }
+    <p class="my-book__status" id="services-status" role="status" hidden></p>
+  </section>
+</TeamLayout>
+
+<script define:vars={{ apiSchedules, apiServices }}>
+  const scheduleForm = document.getElementById("my-book-schedule-form");
+  const scheduleStatus = document.getElementById("schedule-status");
+  const servicesStatus = document.getElementById("services-status");
+
+  function showStatus(el, message, isError = false) {
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = message;
+    el.classList.toggle("notice--error", isError);
+    el.classList.toggle("notice--success", !isError);
+    el.classList.add("notice");
+  }
+
+  document.querySelectorAll("[data-day-enabled]").forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const row = checkbox.closest("[data-day-row]");
+      const times = row?.querySelector("[data-day-times]");
+      if (!times) return;
+      const enabled = checkbox.checked;
+      times.hidden = !enabled;
+      times.querySelectorAll("input").forEach((input) => {
+        input.required = enabled;
+      });
+    });
+  });
+
+  scheduleForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const rows = document.querySelectorAll("[data-day-row]");
+    const toSave = [];
+    const toDelete = [];
+
+    rows.forEach((row) => {
+      const day = Number(row.getAttribute("data-day"));
+      const enabled = row.querySelector("[data-day-enabled]")?.checked;
+      if (!enabled) {
+        toDelete.push(day);
+        return;
+      }
+      const start = row.querySelector("[data-day-start]")?.value;
+      const end = row.querySelector("[data-day-end]")?.value;
+      if (!start || !end) return;
+      toSave.push({ day_of_week: day, start_time: start, end_time: end });
+    });
+
+    try {
+      for (const day of toDelete) {
+        const res = await fetch(apiSchedules, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ day_of_week: day }),
+        });
+        if (!res.ok) throw new Error("delete failed");
+      }
+
+      if (toSave.length > 0) {
+        const res = await fetch(apiSchedules, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ schedules: toSave }),
+        });
+        if (!res.ok) throw new Error("save failed");
+      }
+
+      showStatus(scheduleStatus, "Bookable hours saved.");
+    } catch {
+      showStatus(scheduleStatus, "Could not save hours. Try again.", true);
+    }
+  });
+
+  document.querySelectorAll("[data-block-select]").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const row = select.closest("[data-service-row]");
+      const serviceId = row?.getAttribute("data-service-id");
+      if (!serviceId) return;
+
+      try {
+        const res = await fetch(apiServices, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            service_id: serviceId,
+            client_booking_block: select.value,
+          }),
+        });
+        if (!res.ok) throw new Error("update failed");
+        showStatus(servicesStatus, "Service visibility updated.");
+      } catch {
+        showStatus(servicesStatus, "Could not update service. Try again.", true);
+      }
+    });
+  });
+</script>
+
+<style>
+  .my-book__back {
+    margin-bottom: 1rem;
+  }
+
+  .my-book__back-link {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-gray);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .my-book__back-link:hover {
+    color: var(--color-text);
+  }
+
+  .my-book__section {
+    margin-top: 2.5rem;
+  }
+
+  .my-book__schedule-grid {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .my-book__day-row {
+    align-items: center;
+  }
+
+  .my-book__day-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+  }
+
+  .my-book__day-toggle input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-citrine);
+  }
+
+  .my-book__day-name {
+    font-weight: 500;
+  }
+
+  .my-book__day-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .my-book__day-times[hidden] {
+    display: none;
+  }
+
+  .my-book__time-label {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 7rem;
+  }
+
+  .my-book__time-input {
+    font-size: 0.95rem;
+  }
+
+  .my-book__save {
+    margin-top: 1rem;
+  }
+
+  .my-book__services {
+    margin-top: 1rem;
+  }
+
+  .my-book__service-info {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .my-book__service-name {
+    font-size: 1rem;
+  }
+
+  .my-book__service-meta {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    color: var(--color-gray);
+  }
+
+  .my-book__badge {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .my-book__block-label {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 12rem;
+  }
+
+  .my-book__block-select {
+    font-size: 0.9rem;
+  }
+
+  .my-book__status {
+    margin-top: 1rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid var(--color-citrine);
+    background: var(--color-citrine);
+    color: var(--color-on-citrine, #1a1a1a);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.05);
+  }
+</style>
