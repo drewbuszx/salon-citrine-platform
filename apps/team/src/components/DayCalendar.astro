@@ -793,14 +793,33 @@ const calendarConfig = {
         return { staffId, startsAt, slotMinutes };
       }
 
-      function hitTarget(event, className) {
-        return hitTargetAt(event.clientX, event.clientY, className);
+      function slotIndexAtY(grid, clientY) {
+        const slots = slotsInGrid(grid);
+        if (slots.length === 0) return -1;
+        const gridRect = grid.getBoundingClientRect();
+        const y = clientY - gridRect.top;
+        const slotHeight = gridRect.height / slots.length;
+        if (slotHeight <= 0) return -1;
+        return Math.max(0, Math.min(slots.length - 1, Math.floor(y / slotHeight)));
+      }
+
+      function activeSlotIndex(grid, clientX, clientY) {
+        const slot = hitTargetAt(clientX, clientY, "day-cal__slot");
+        if (slot instanceof HTMLElement && grid.contains(slot)) {
+          const index = slotIndexInGrid(grid, slot);
+          if (index >= 0) return index;
+        }
+        return slotIndexAtY(grid, clientY);
       }
 
       function hitTargetAt(x, y, className) {
         return document.elementsFromPoint(x, y).find(
           (el) => el instanceof HTMLElement && el.classList.contains(className),
         );
+      }
+
+      function hitTarget(event, className) {
+        return hitTargetAt(event.clientX, event.clientY, className);
       }
 
       /** @type {HTMLElement | null} */
@@ -854,14 +873,15 @@ const calendarConfig = {
             dragState.moved = true;
           }
 
-          const slot = hitTargetAt(event.clientX, event.clientY, "day-cal__slot");
-          if (!(slot instanceof HTMLElement) || !grid.contains(slot)) return;
+          const activeIndex = activeSlotIndex(grid, event.clientX, event.clientY);
+          if (activeIndex < 0) return;
 
-          const context = slotContextFrom(slot);
+          const slots = slotsInGrid(grid);
+          const activeSlot = slots[activeIndex];
+          if (!(activeSlot instanceof HTMLElement)) return;
+          const context = slotContextFrom(activeSlot);
           if (!context || context.staffId !== dragState.staffId) return;
 
-          const activeIndex = slotIndexInGrid(grid, slot);
-          if (activeIndex < 0) return;
           applySlotSelection(grid, dragState.anchorIndex, activeIndex);
         });
 
@@ -1372,40 +1392,6 @@ const calendarConfig = {
     background: var(--color-bg);
   }
 
-  .day-cal__selection-preview {
-    position: absolute;
-    left: 0.15rem;
-    right: 0.15rem;
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    padding: 0.2rem 0.35rem;
-    border-radius: 4px;
-    background: var(--staff-accent, var(--color-citrine));
-    color: #1a1a1a;
-    font-size: 0.62rem;
-    line-height: 1.2;
-    overflow: hidden;
-    pointer-events: none;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-    opacity: 0.88;
-  }
-
-  [data-theme="dark"] .day-cal__selection-preview {
-    color: #111;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-    opacity: 0.92;
-  }
-
-  .day-cal__selection-preview-time {
-    font-size: 0.58rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
   .day-cal--selecting,
   .day-cal--selecting .day-cal__grid {
     user-select: none;
@@ -1827,6 +1813,41 @@ const calendarConfig = {
 </style>
 
 <style is:global>
+  /* JS-created during drag — must be global (no Astro scope attr) */
+  .day-cal__selection-preview {
+    position: absolute;
+    left: 0.15rem;
+    right: 0.15rem;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+    background: var(--staff-accent, var(--color-citrine));
+    color: #1a1a1a;
+    font-size: 0.62rem;
+    line-height: 1.2;
+    overflow: hidden;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    opacity: 0.88;
+  }
+
+  [data-theme="dark"] .day-cal__selection-preview {
+    color: #111;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    opacity: 0.92;
+  }
+
+  .day-cal__selection-preview-time {
+    font-size: 0.58rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .day-cal__sheet.is-open {
     pointer-events: auto;
   }
