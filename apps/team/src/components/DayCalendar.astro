@@ -1048,7 +1048,6 @@ const calendarConfig = {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 28rem;
     max-height: min(90vh, 40rem);
     overflow: auto;
     background: var(--color-booking-card-bg);
@@ -1128,10 +1127,25 @@ const calendarConfig = {
     color: var(--color-gray);
   }
 
-  @media (min-width: 40rem) {
+  @media (max-width: 48rem) {
+    .day-cal__sheet {
+      align-items: flex-end;
+      justify-content: stretch;
+    }
+
     .day-cal__sheet-panel {
+      max-width: none;
+      width: 100%;
+      border-left: none;
+      border-right: none;
+      border-radius: 0.75rem 0.75rem 0 0;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .day-cal__sheet-panel {
+      max-width: 28rem;
       border-radius: 0.5rem 0.5rem 0 0;
-      margin-bottom: 0;
     }
   }
 
