@@ -142,10 +142,17 @@ export function shiftDay(dayStart: Date, deltaDays: number) {
 }
 
 export function formatDayLabel(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
+  const parts = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
     day: "numeric",
-  }).format(date);
+  }).formatToParts(date);
+  const weekday =
+    parts.find((part) => part.type === "weekday")?.value.slice(0, 3) ?? "";
+  const month =
+    parts.find((part) => part.type === "month")?.value.slice(0, 3) ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  return `${weekday} ${month} ${day}`;
 }
 
 export function formatTimeInSalon(iso: string) {
