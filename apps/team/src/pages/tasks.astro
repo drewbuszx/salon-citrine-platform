@@ -1,9 +1,402 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const managerView = isSalonManager(staff);
+
+const { data: staffRows } = await supabase
+  .from("staff")
+  .select("id, name")
+  .order("name");
+
+const staffOptions = staffRows ?? [];
 ---
 
 <TeamLayout title="Tasks" activeNav="tasks">
-  <h1 class="page-title">Tasks</h1>
-  <p class="page-lead">Team to-dos and salon operations checklists.</p>
-  <p class="empty-state">Coming soon.</p>
+  <div
+    class="tasks-page"
+    data-tasks-app
+    data-api-base={teamUrl("/api/tasks")}
+    data-manager={managerView ? "1" : "0"}
+    data-current-staff-id={staff.id}
+  >
+    <header class="tasks-page__header">
+      <div>
+        <h1 class="page-title">Tasks</h1>
+        <p class="page-lead">Team to-dos and salon operations checklists.</p>
+      </div>
+      {
+        managerView ? (
+          <button class="btn-primary tasks-page__create" type="button" data-task-create>
+            New task
+          </button>
+        ) : null
+      }
+    </header>
+
+    <div class="tasks-tabs" role="tablist" aria-label="Task views">
+      <button class="tasks-tabs__btn is-active" type="button" role="tab" data-view="my" aria-selected="true">
+        My tasks
+      </button>
+      <button class="tasks-tabs__btn" type="button" role="tab" data-view="available" aria-selected="false">
+        Available
+      </button>
+      <button class="tasks-tabs__btn" type="button" role="tab" data-view="completed" aria-selected="false">
+        Completed
+      </button>
+      {
+        managerView ? (
+          <button class="tasks-tabs__btn" type="button" role="tab" data-view="all" aria-selected="false">
+            All
+          </button>
+        ) : null
+      }
+    </div>
+
+    <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
+
+    <div class="tasks-list" data-tasks-list aria-live="polite">
+      <p class="empty-state">Loading tasks…</p>
+    </div>
+  </div>
+
+  <dialog class="tasks-modal" data-task-modal aria-labelledby="task-modal-title">
+    <form class="tasks-modal__form" method="dialog" data-task-form>
+      <header class="tasks-modal__header">
+        <h2 id="task-modal-title" data-task-modal-title>New task</h2>
+        <button class="tasks-modal__close" type="button" data-task-modal-close aria-label="Close">
+          ×
+        </button>
+      </header>
+
+      <div class="form-stack">
+        <label class="form-label">
+          Title
+          <input class="form-input" name="title" type="text" maxlength="200" required />
+        </label>
+
+        <label class="form-label">
+          Description (optional)
+          <textarea class="form-input" name="description" rows="3" maxlength="2000"></textarea>
+        </label>
+
+        <label class="form-label">
+          Due date (optional)
+          <input class="form-input" name="due_at" type="datetime-local" />
+        </label>
+
+        <label class="form-label">
+          Priority
+          <select class="form-input" name="priority">
+            <option value="low">Low</option>
+            <option value="normal" selected>Normal</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+
+        <fieldset class="tasks-modal__fieldset">
+          <legend class="label-meta">Assignment</legend>
+          <label class="tasks-modal__radio">
+            <input type="radio" name="assignment_type" value="open" checked />
+            Anyone can claim
+          </label>
+          <label class="tasks-modal__radio">
+            <input type="radio" name="assignment_type" value="assigned" />
+            Assign to team member(s)
+          </label>
+        </fieldset>
+
+        <div class="tasks-modal__assignees" data-assignee-picker hidden>
+          <span class="label-meta">Team members</span>
+          <div class="tasks-modal__staff-list">
+            {
+              staffOptions.map((member) => (
+                <label class="tasks-modal__staff-option">
+                  <input type="checkbox" name="assignee_ids" value={member.id} />
+                  <span>{member.name}</span>
+                </label>
+              ))
+            }
+          </div>
+        </div>
+      </div>
+
+      <footer class="tasks-modal__footer">
+        <button class="btn-secondary" type="button" data-task-modal-close>Cancel</button>
+        <button class="btn-primary" type="submit" data-task-submit>Save task</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="tasks-modal tasks-modal--narrow" data-complete-modal aria-labelledby="complete-modal-title">
+    <form class="tasks-modal__form" method="dialog" data-complete-form>
+      <header class="tasks-modal__header">
+        <h2 id="complete-modal-title">Mark complete</h2>
+        <button class="tasks-modal__close" type="button" data-complete-modal-close aria-label="Close">
+          ×
+        </button>
+      </header>
+
+      <p class="tasks-modal__lead" data-complete-task-title></p>
+
+      <label class="form-label">
+        Completion notes (optional)
+        <textarea class="form-input" name="completion_notes" rows="3" maxlength="1000"></textarea>
+      </label>
+
+      <footer class="tasks-modal__footer">
+        <button class="btn-secondary" type="button" data-complete-modal-close>Cancel</button>
+        <button class="btn-primary" type="submit">Mark done</button>
+      </footer>
+    </form>
+  </dialog>
 </TeamLayout>
+
+<script src="../scripts/tasks.ts"></script>
+
+<style>
+  .tasks-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .tasks-page__create {
+    flex-shrink: 0;
+  }
+
+  .tasks-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.75rem;
+  }
+
+  .tasks-tabs__btn {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-gray);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .tasks-tabs__btn:hover,
+  .tasks-tabs__btn:focus-visible {
+    color: var(--color-text);
+    outline: none;
+  }
+
+  .tasks-tabs__btn.is-active {
+    color: var(--color-text);
+    border-color: var(--color-dusty-rose);
+    background: rgba(174, 148, 143, 0.12);
+  }
+
+  .tasks-page__error {
+    margin-top: 0;
+  }
+
+  .tasks-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .task-card {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+  }
+
+  .task-card__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .task-card__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .task-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .task-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border: 1px solid var(--color-border);
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .task-badge--high {
+    border-color: #c44;
+    color: #922;
+    background: rgba(200, 60, 60, 0.08);
+  }
+
+  .task-badge--low {
+    color: var(--color-gray);
+  }
+
+  .task-badge--open {
+    border-color: var(--color-sage);
+    color: var(--color-sage);
+  }
+
+  .task-card__description {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--color-gray);
+  }
+
+  .task-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--color-gray);
+  }
+
+  .task-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .task-card__actions .btn-primary,
+  .task-card__actions .btn-secondary {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .tasks-modal {
+    width: min(32rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 2rem);
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    box-shadow: 0 12px 48px var(--color-card-shadow);
+  }
+
+  .tasks-modal--narrow {
+    width: min(26rem, calc(100vw - 2rem));
+  }
+
+  .tasks-modal::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .tasks-modal__form {
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    margin: 0;
+  }
+
+  .tasks-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .tasks-modal__header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .tasks-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--color-gray);
+    cursor: pointer;
+  }
+
+  .tasks-modal__fieldset {
+    margin: 0;
+    padding: 0;
+    border: none;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .tasks-modal__radio {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+  }
+
+  .tasks-modal__assignees {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .tasks-modal__staff-list {
+    display: grid;
+    gap: 0.35rem;
+    max-height: 10rem;
+    overflow-y: auto;
+    padding: 0.5rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+  }
+
+  .tasks-modal__staff-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.92rem;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+  }
+
+  .tasks-modal__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.25rem;
+  }
+
+  .tasks-modal__lead {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+</style>
