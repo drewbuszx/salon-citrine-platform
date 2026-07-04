@@ -38,7 +38,7 @@ const secondaryTabs = [
 ];
 
 const mobileTabs = [...primaryTabs, ...secondaryTabs];
-const photoSrc = staff ? staffPhotoSrc(staff.photo_url) : null;
+const photoSrc = staff ? staffPhotoSrc(staff.photo_url, staff.slug) : null;
 const initials = staff ? staffInitials(staff.name) : "";
 ---
 

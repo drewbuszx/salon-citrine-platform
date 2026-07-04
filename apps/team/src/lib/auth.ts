@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import type { StaffProfile } from "../env.d.ts";
+import { staffPhotoSrc } from "./staff-display";
 
 export function mustChangePassword(user: User | null | undefined) {
   if (!user) return false;
@@ -26,4 +27,8 @@ export async function loadStaffProfile(
   }
 
   return data as StaffProfile;
+}
+
+export function staffPhotoUrl(staff: StaffProfile): string | null {
+  return staffPhotoSrc(staff.photo_url, staff.slug);
 }

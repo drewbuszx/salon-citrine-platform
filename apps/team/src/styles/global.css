@@ -128,7 +128,7 @@ textarea {
   height: var(--header-height);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-header-border);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .site-header__inner {
@@ -314,10 +314,18 @@ textarea {
 }
 
 /* Team header — profile + tab layout */
+.team-site-header {
+  overflow: visible;
+}
+
+.team-site-header .site-header__inner {
+  overflow: visible;
+}
+
 .team-header__left {
   grid-column: 1;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--header-nav-tab-gap);
   padding-right: var(--header-logo-nav-gap);
@@ -332,7 +340,7 @@ textarea {
 .team-header__right {
   grid-column: 3;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
   gap: var(--header-nav-tab-gap);
   padding-left: var(--header-logo-nav-gap);
@@ -356,6 +364,8 @@ textarea {
 .team-header__profile {
   position: relative;
   flex-shrink: 0;
+  align-self: center;
+  z-index: 120;
 }
 
 .team-header__profile-trigger {
@@ -411,7 +421,7 @@ textarea {
   top: calc(100% + 0.65rem);
   right: 0;
   left: auto;
-  z-index: 110;
+  z-index: 200;
   min-width: 10rem;
   margin: 0;
   padding: 0.65rem 0;
@@ -463,10 +473,6 @@ textarea {
 }
 
 @media (min-width: 1101px) {
-  .site-header {
-    overflow: visible;
-  }
-
   .team-header__profile-name {
     display: none;
   }
