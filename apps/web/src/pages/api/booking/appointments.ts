@@ -1,0 +1,234 @@
+export const prerender = false;
+
+import type { APIRoute } from "astro";
+import { createAppointmentInputSchema } from "@saloncitrine/shared";
+import { isBookingSlotAvailableByStartsAt } from "../../../lib/availability";
+import { getStaffBySlug } from "../../../lib/booking-data";
+import { jsonError, jsonOk } from "../../../lib/api-booking";
+import { getStripeClient } from "../../../lib/stripe-server";
+import { createSupabaseServiceClient } from "../../../lib/supabase-server";
+import { formatDateInTimezone } from "../../../lib/datetime-utils";
+
+export const POST: APIRoute = async ({ request }) => {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Invalid JSON body", 400);
+  }
+
+  const parsed = createAppointmentInputSchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError(parsed.error.errors[0]?.message ?? "Invalid request", 400);
+  }
+
+  const input = parsed.data;
+  const supabase = createSupabaseServiceClient();
+
+  try {
+    const staff = await getStaffBySlug(input.staffSlug);
+    if (!staff) {
+      return jsonError("Stylist not found", 400);
+    }
+
+    const startsAt = new Date(input.startsAt);
+    if (Number.isNaN(startsAt.getTime())) {
+      return jsonError("Invalid appointment time", 400);
+    }
+
+    const dateStr = formatDateInTimezone(startsAt);
+    const slotAvailable = await isBookingSlotAvailableByStartsAt(
+      staff.id,
+      input.serviceIds,
+      dateStr,
+      input.startsAt,
+    );
+    if (!slotAvailable) {
+      return jsonError("That time is no longer available", 409);
+    }
+
+    const stripe = getStripeClient();
+    const setupIntent = await stripe.setupIntents.retrieve(input.setupIntentId);
+
+    if (setupIntent.status !== "succeeded") {
+      return jsonError("Card verification incomplete", 400);
+    }
+
+    const paymentMethodId =
+      typeof setupIntent.payment_method === "string"
+        ? setupIntent.payment_method
+        : setupIntent.payment_method?.id;
+
+    const stripeCustomerId =
+      typeof setupIntent.customer === "string"
+        ? setupIntent.customer
+        : setupIntent.customer?.id;
+
+    if (!paymentMethodId || !stripeCustomerId) {
+      return jsonError("Missing payment method", 400);
+    }
+
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: stripeCustomerId,
+    }).catch((error: unknown) => {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error as { code?: string }).code === "resource_already_exists"
+      ) {
+        return;
+      }
+      throw error;
+    });
+    await stripe.customers.update(stripeCustomerId, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+
+    const { data: staffServices, error: staffServicesError } = await supabase
+      .from("staff_services")
+      .select("service_id, client_booking_block, services(id, duration_minutes, base_price_cents)")
+      .eq("staff_id", staff.id)
+      .in("service_id", input.serviceIds);
+
+    if (staffServicesError) {
+      console.error("staff_services lookup failed", staffServicesError);
+      return jsonError("Failed to load services", 500);
+    }
+
+    const matched = staffServices ?? [];
+    if (matched.length !== input.serviceIds.length) {
+      return jsonError("One or more services are not offered by this provider", 400);
+    }
+
+    let totalMinutes = 0;
+    const serviceRows: Array<{ service_id: string; price_cents: number | null }> = [];
+
+    for (const serviceId of input.serviceIds) {
+      const row = matched.find((item) => item.service_id === serviceId);
+      if (!row || (row.client_booking_block ?? "none") !== "none") {
+        return jsonError("Invalid service selection", 400);
+      }
+
+      const raw = row.services as
+        | { id: string; duration_minutes: number; base_price_cents: number | null }
+        | Array<{
+            id: string;
+            duration_minutes: number;
+            base_price_cents: number | null;
+          }>
+        | null;
+      const svc = Array.isArray(raw) ? raw[0] : raw;
+      if (!svc) {
+        return jsonError("Invalid service selection", 400);
+      }
+
+      totalMinutes += svc.duration_minutes;
+      serviceRows.push({
+        service_id: serviceId,
+        price_cents: svc.base_price_cents,
+      });
+    }
+
+    const endsAt = new Date(startsAt.getTime() + totalMinutes * 60_000);
+    const phone = input.client.phone.trim();
+    const email = input.client.email.trim().toLowerCase();
+
+    let clientId: string | null = null;
+
+    if (phone) {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, stripe_customer_id")
+        .eq("phone", phone)
+        .maybeSingle();
+      if (data) clientId = data.id;
+    }
+
+    if (!clientId && email) {
+      const { data } = await supabase
+        .from("clients")
+        .select("id, stripe_customer_id")
+        .eq("email", email)
+        .maybeSingle();
+      if (data) clientId = data.id;
+    }
+
+    if (clientId) {
+      const { error: clientUpdateError } = await supabase
+        .from("clients")
+        .update({
+          first_name: input.client.firstName.trim(),
+          last_name: input.client.lastName.trim(),
+          phone,
+          email,
+          sms_opt_in: input.client.smsOptIn,
+          stripe_customer_id: stripeCustomerId,
+        })
+        .eq("id", clientId);
+
+      if (clientUpdateError) {
+        console.error("client update failed", clientUpdateError);
+        return jsonError("Failed to update client", 500);
+      }
+    } else {
+      const { data: createdClient, error: clientError } = await supabase
+        .from("clients")
+        .insert({
+          first_name: input.client.firstName.trim(),
+          last_name: input.client.lastName.trim(),
+          phone,
+          email,
+          sms_opt_in: input.client.smsOptIn,
+          stripe_customer_id: stripeCustomerId,
+        })
+        .select("id")
+        .single();
+
+      if (clientError || !createdClient) {
+        console.error("client insert failed", clientError);
+        return jsonError("Failed to create client", 500);
+      }
+      clientId = createdClient.id;
+    }
+
+    const { data: appointment, error: appointmentError } = await supabase
+      .from("appointments")
+      .insert({
+        client_id: clientId,
+        staff_id: staff.id,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        status: "confirmed",
+        policy_acknowledged_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+
+    if (appointmentError || !appointment) {
+      console.error("appointment insert failed", appointmentError);
+      return jsonError("Failed to create appointment", 500);
+    }
+
+    const { error: servicesError } = await supabase.from("appointment_services").insert(
+      serviceRows.map((row) => ({
+        appointment_id: appointment.id,
+        service_id: row.service_id,
+        price_cents: row.price_cents,
+      })),
+    );
+
+    if (servicesError) {
+      console.error("appointment_services insert failed", servicesError);
+      await supabase.from("appointments").delete().eq("id", appointment.id);
+      return jsonError("Failed to attach services", 500);
+    }
+
+    // TODO: Resend confirmation email + Twilio SMS (Phase 1 notifications)
+
+    return jsonOk({ id: appointment.id });
+  } catch (error) {
+    console.error("booking/appointments", error);
+    return jsonError("Failed to create appointment", 500);
+  }
+};

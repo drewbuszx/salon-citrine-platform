@@ -270,6 +270,35 @@ export async function isBookingSlotAvailable(
   return slots.some((slot) => slot.label === timeLabel);
 }
 
+/** Server-side guard using the UTC ISO slot start from availability. */
+export async function isBookingSlotAvailableByStartsAt(
+  staffId: string,
+  serviceIds: string | string[],
+  dateStr: string,
+  startsAtIso: string,
+): Promise<boolean> {
+  const slots = await getAvailableSlots(staffId, serviceIds, dateStr);
+  return slots.some((slot) => slot.startsAt === startsAtIso);
+}
+
+/** Resolve display label + UTC start for a selected slot. */
+export async function resolveBookingSlot(
+  staffId: string,
+  serviceIds: string | string[],
+  dateStr: string,
+  timeLabel: string | null,
+  startsAtIso: string | null,
+): Promise<TimeSlot | undefined> {
+  const slots = await getAvailableSlots(staffId, serviceIds, dateStr);
+  if (startsAtIso) {
+    return slots.find((slot) => slot.startsAt === startsAtIso);
+  }
+  if (timeLabel) {
+    return slots.find((slot) => slot.label === timeLabel);
+  }
+  return undefined;
+}
+
 export async function getAvailableDatesInRange(
   staffId: string,
   serviceIds: string | string[],

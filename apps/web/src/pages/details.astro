@@ -11,7 +11,7 @@ import {
   parseServiceIdsFromParams,
   sumServiceDuration,
 } from "../lib/booking-data";
-import { isBookingSlotAvailable } from "../lib/availability";
+import { resolveBookingSlot } from "../lib/availability";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -19,6 +19,7 @@ const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const date = Astro.url.searchParams.get("date");
 const time = Astro.url.searchParams.get("time");
+const startsAtParam = Astro.url.searchParams.get("startsAt");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
@@ -29,17 +30,18 @@ const [services, stylist] = await Promise.all([
   getStaffBySlug(stylistSlug),
 ]);
 
-if (services.length === 0 || !stylist || !date || !time) {
+if (services.length === 0 || !stylist || !date || (!time && !startsAtParam)) {
   return Astro.redirect(withBase());
 }
 
-const slotAvailable = await isBookingSlotAvailable(
+const slot = await resolveBookingSlot(
   stylist.id,
   serviceIds,
   date,
   time,
+  startsAtParam,
 );
-if (!slotAvailable) {
+if (!slot) {
   const params = new URLSearchParams({
     services: serviceIds.join(","),
     stylist: stylist.slug,
@@ -54,6 +56,11 @@ const serviceSummary =
     ? services[0].name
     : `${services[0].name} + ${services.length - 1} more`;
 const totalDuration = sumServiceDuration(services);
+
+const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const setupIntentUrl = withBase("api/booking/setup-intent");
+const appointmentsUrl = withBase("api/booking/appointments");
+const confirmUrl = withBase("confirm/");
 ---
 
 <BookingLayout title="Your details" step="details" showStylistStep={showStylistStep}>
@@ -62,20 +69,16 @@ const totalDuration = sumServiceDuration(services);
     {serviceSummary} · {stylist.name}
     {services.length > 1 && ` · ${formatDuration(totalDuration)}`}
     <br />
-    {date} at {time}
+    {date} at {slot.label}
   </p>
 
-  <form
-    class="details-form"
-    method="get"
-    action={withBase("confirm/")}
-    data-booking-details-form
-  >
+  <form class="details-form" data-booking-details-form novalidate>
     <input type="hidden" name="services" value={servicesParamValue} />
     <input type="hidden" name="stylist" value={stylist.slug} />
     {showStylistStep && <input type="hidden" name="flow" value="stylist" />}
     <input type="hidden" name="date" value={date} />
-    <input type="hidden" name="time" value={time} />
+    <input type="hidden" name="time" value={slot.label} />
+    <input type="hidden" name="startsAt" value={slot.startsAt} />
     <input type="hidden" id="policy-ack" name="policyAck" value="false" />
 
     <label class="field">
@@ -103,9 +106,14 @@ const totalDuration = sumServiceDuration(services);
       <span>Text me appointment reminders (optional)</span>
     </label>
 
-    <p class="stripe-note">
-      Stripe card-on-file collection will appear here in Phase 1 (SetupIntent).
-    </p>
+    <div class="card-section">
+      <p class="card-section__label">Card on file</p>
+      <p class="card-section__hint">
+        Your card secures this appointment. You won't be charged now.
+      </p>
+      <div id="payment-element" class="payment-element"></div>
+      <p class="form-error" data-form-error hidden></p>
+    </div>
 
     <Button type="button" variant="primary" data-open-policy-modal>
       Review policy & continue
@@ -122,6 +130,192 @@ const totalDuration = sumServiceDuration(services);
     </a>
   </p>
 </BookingLayout>
+
+<script
+  define:vars={{
+    stripePublishableKey,
+    setupIntentUrl,
+    appointmentsUrl,
+    confirmUrl,
+  }}
+>
+  import { loadStripe } from "@stripe/stripe-js";
+
+  const form = document.querySelector("[data-booking-details-form]");
+  const paymentMount = document.getElementById("payment-element");
+  const errorEl = document.querySelector("[data-form-error]");
+  const submitBtn = document.querySelector("[data-open-policy-modal]");
+
+  let stripe = null;
+  let elements = null;
+  let setupIntentId = null;
+  let pendingSubmit = false;
+  let initializing = false;
+
+  function showError(message) {
+    if (!errorEl) return;
+    if (message) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+    } else {
+      errorEl.textContent = "";
+      errorEl.hidden = true;
+    }
+  }
+
+  function formValue(name) {
+    return form?.elements.namedItem(name)?.value?.trim() ?? "";
+  }
+
+  function checkboxChecked(name) {
+    const el = form?.elements.namedItem(name);
+    return el instanceof HTMLInputElement && el.checked;
+  }
+
+  async function ensureStripeElements() {
+    if (elements || initializing) return;
+    if (!stripePublishableKey) {
+      showError("Card collection is not configured. Please contact the salon.");
+      return;
+    }
+
+    initializing = true;
+    showError("");
+
+    try {
+      const response = await fetch(setupIntentUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formValue("email") || undefined,
+          firstName: formValue("firstName") || undefined,
+          lastName: formValue("lastName") || undefined,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not initialize card form");
+      }
+
+      stripe = await loadStripe(stripePublishableKey);
+      if (!stripe) throw new Error("Could not load Stripe");
+
+      elements = stripe.elements({
+        clientSecret: payload.clientSecret,
+        appearance: {
+          theme: "stripe",
+          variables: {
+            colorPrimary: "#e7ac46",
+          },
+        },
+      });
+
+      const paymentElement = elements.create("payment");
+      paymentMount?.replaceChildren();
+      await paymentElement.mount("#payment-element");
+      setupIntentId = payload.setupIntentId;
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not load card form");
+    } finally {
+      initializing = false;
+    }
+  }
+
+  paymentMount?.addEventListener("focusin", () => {
+    ensureStripeElements();
+  });
+
+  form?.querySelector('input[name="email"]')?.addEventListener("blur", () => {
+    if (!elements) ensureStripeElements();
+  });
+
+  async function completeBooking() {
+    if (!form || !stripe || !elements || !setupIntentId) {
+      await ensureStripeElements();
+      if (!stripe || !elements || !setupIntentId) {
+        showError("Enter your details and card information to continue.");
+        return;
+      }
+    }
+
+    showError("");
+    submitBtn?.setAttribute("disabled", "true");
+
+    try {
+      const { error: confirmError, setupIntent } = await stripe.confirmSetup({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          payment_method_data: {
+            billing_details: {
+              name: `${formValue("firstName")} ${formValue("lastName")}`.trim(),
+              email: formValue("email"),
+              phone: formValue("phone"),
+            },
+          },
+        },
+      });
+
+      if (confirmError) {
+        throw new Error(confirmError.message ?? "Card verification failed");
+      }
+
+      if (!setupIntent || setupIntent.status !== "succeeded") {
+        throw new Error("Card verification incomplete");
+      }
+
+      const bookingBody = {
+        staffSlug: formValue("stylist"),
+        serviceIds: formValue("services").split(",").filter(Boolean),
+        startsAt: formValue("startsAt"),
+        client: {
+          firstName: formValue("firstName"),
+          lastName: formValue("lastName"),
+          email: formValue("email"),
+          phone: formValue("phone"),
+          smsOptIn: checkboxChecked("smsOptIn"),
+        },
+        policyAcknowledged: true,
+        setupIntentId: setupIntent.id,
+      };
+
+      const response = await fetch(appointmentsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingBody),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not save your appointment");
+      }
+
+      const params = new URLSearchParams({ appointment: payload.id });
+      if (formValue("flow") === "stylist") params.set("flow", "stylist");
+      window.location.href = `${confirmUrl}?${params.toString()}`;
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Booking failed");
+      submitBtn?.removeAttribute("disabled");
+    }
+  }
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!pendingSubmit) return;
+    pendingSubmit = false;
+    completeBooking();
+  });
+
+  document.addEventListener("policy-confirmed", () => {
+    const ack = document.querySelector("#policy-ack");
+    if (ack instanceof HTMLInputElement) ack.value = "true";
+    pendingSubmit = true;
+    form?.requestSubmit();
+  });
+
+  ensureStripeElements();
+</script>
 
 <style>
   .summary {
@@ -163,11 +357,36 @@ const totalDuration = sumServiceDuration(services);
     font-size: 0.95rem;
   }
 
-  .stripe-note {
+  .card-section {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .card-section__label {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .card-section__hint {
+    margin: 0;
     font-size: 0.85rem;
     color: var(--color-gray);
-    padding: 0.75rem;
-    border: 1px dashed var(--color-border);
+  }
+
+  .payment-element {
+    min-height: 2rem;
+  }
+
+  .form-error {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #b42318;
   }
 
   .back {

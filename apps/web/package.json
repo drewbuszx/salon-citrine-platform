@@ -12,7 +12,9 @@
     "@astrojs/cloudflare": "^14.1.1",
     "@saloncitrine/shared": "*",
     "@saloncitrine/theme": "*",
+    "@stripe/stripe-js": "^9.9.0",
     "@supabase/supabase-js": "^2.110.0",
-    "astro": "^7.0.4"
+    "astro": "^7.0.4",
+    "stripe": "^22.3.0"
   }
 }

@@ -77,7 +77,15 @@ export const appointmentSchema = z.object({
 });
 export type Appointment = z.infer<typeof appointmentSchema>;
 
-/** POST /api/appointments request body (Phase 1) */
+/** POST /api/booking/setup-intent request body */
+export const createSetupIntentInputSchema = z.object({
+  email: z.string().email().optional(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+});
+export type CreateSetupIntentInput = z.infer<typeof createSetupIntentInputSchema>;
+
+/** POST /api/booking/appointments request body (Phase 1) */
 export const createAppointmentInputSchema = z.object({
   staffSlug: z.string(),
   serviceIds: z.array(z.string().uuid()).min(1),
@@ -90,6 +98,7 @@ export const createAppointmentInputSchema = z.object({
     smsOptIn: z.boolean().default(false),
   }),
   policyAcknowledged: z.literal(true),
+  setupIntentId: z.string().min(1),
 });
 export type CreateAppointmentInput = z.infer<
   typeof createAppointmentInputSchema

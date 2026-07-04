@@ -272,6 +272,12 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
                     )}
                     <input
                       type="hidden"
+                      name="startsAt"
+                      value=""
+                      data-starts-at-input
+                    />
+                    <input
+                      type="hidden"
                       name="date"
                       value={selectedDate}
                       data-time-date-input
@@ -285,6 +291,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
                               type="radio"
                               name="time"
                               value={slot.label}
+                              data-starts-at={slot.startsAt}
                               required
                             />
                             <span>{slot.label}</span>
@@ -448,6 +455,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
       <input type="hidden" name="stylist" value="${stylistSlug}" />
       ${flow ? `<input type="hidden" name="flow" value="${flow}" />` : ""}
       ${existingAck ? `<input type="hidden" name="existing" value="1" />` : ""}
+      <input type="hidden" name="startsAt" value="" data-starts-at-input />
       <input type="hidden" name="date" value="${selectedDate}" data-time-date-input />
     `;
 
@@ -461,7 +469,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
       const label = document.createElement("label");
       label.className = "time-option";
       label.innerHTML = `
-        <input type="radio" name="time" value="${slot.label}" required />
+        <input type="radio" name="time" value="${slot.label}" data-starts-at="${slot.startsAt}" required />
         <span>${slot.label}</span>
       `;
       grid.appendChild(label);
@@ -478,6 +486,15 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
     form.appendChild(grid);
     form.appendChild(actions);
     panel.appendChild(form);
+
+    form.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.name !== "time") return;
+      const startsAtInput = form.querySelector("[data-starts-at-input]");
+      if (startsAtInput instanceof HTMLInputElement) {
+        startsAtInput.value = target.dataset.startsAt ?? "";
+      }
+    });
   }
 
   function renderCalendar(root, year, month, availableDates, selectedDate) {
@@ -650,6 +667,17 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
       if (!(button instanceof HTMLButtonElement)) return;
       if (button.disabled || button.dataset.available !== "true") return;
       selectDate(button.dataset.date ?? "");
+    });
+
+    document.querySelector("[data-time-form]")?.addEventListener("change", (event) => {
+      const form = event.currentTarget;
+      if (!(form instanceof HTMLFormElement)) return;
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.name !== "time") return;
+      const startsAtInput = form.querySelector("[data-starts-at-input]");
+      if (startsAtInput instanceof HTMLInputElement) {
+        startsAtInput.value = target.dataset.startsAt ?? "";
+      }
     });
   }
 </script>

@@ -6,77 +6,55 @@ import Button from "@saloncitrine/theme/components/Button.astro";
 import { BUSINESS } from "@saloncitrine/shared";
 import {
   estimateCartPrice,
-  fetchServicesByIds,
   formatDuration,
   formatPrice,
-  getStaffBySlug,
-  parseServiceIdsFromParams,
   sumServiceDuration,
 } from "../lib/booking-data";
-import { isBookingSlotAvailable } from "../lib/availability";
+import {
+  fetchAppointmentConfirmation,
+  formatConfirmationWhen,
+} from "../lib/appointment-confirmation";
 import { withBase } from "../lib/paths";
 
-const serviceParam = Astro.url.searchParams.get("service");
-const servicesParam = Astro.url.searchParams.get("services");
-const stylistSlug = Astro.url.searchParams.get("stylist");
-const date = Astro.url.searchParams.get("date");
-const time = Astro.url.searchParams.get("time");
-const firstName = Astro.url.searchParams.get("firstName");
-const lastName = Astro.url.searchParams.get("lastName");
-const email = Astro.url.searchParams.get("email");
-const policyAck = Astro.url.searchParams.get("policyAck");
+const appointmentId = Astro.url.searchParams.get("appointment");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 
-const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
-
-const [services, stylist] = await Promise.all([
-  fetchServicesByIds(serviceIds, stylistSlug),
-  getStaffBySlug(stylistSlug),
-]);
-
-if (
-  services.length === 0 ||
-  !stylist ||
-  !date ||
-  !time ||
-  !firstName ||
-  !lastName ||
-  !email ||
-  policyAck !== "true"
-) {
-  return Astro.redirect(`${withBase("details/")}?${Astro.url.searchParams.toString()}`);
+if (!appointmentId) {
+  return Astro.redirect(withBase());
 }
 
-const slotAvailable = await isBookingSlotAvailable(
-  stylist.id,
-  serviceIds,
-  date,
-  time,
-);
-if (!slotAvailable) {
-  const params = new URLSearchParams({
-    services: serviceIds.join(","),
-    stylist: stylist.slug,
-    date,
-  });
-  if (showStylistStep) params.set("flow", "stylist");
-  return Astro.redirect(`${withBase("datetime/")}?${params.toString()}`);
+const appointment = await fetchAppointmentConfirmation(appointmentId);
+if (!appointment) {
+  return Astro.redirect(withBase());
 }
+
+const servicesForEstimate = appointment.services.map((svc) => ({
+  id: "",
+  category: "",
+  name: svc.name,
+  description: null,
+  basePriceCents: svc.priceCents,
+  durationMinutes: svc.durationMinutes,
+  priceVaries: false,
+  isAddon: false,
+  requiresConsultation: false,
+  isActive: true,
+}));
 
 const serviceSummary =
-  services.length === 1
-    ? `${services[0].name} (${formatPrice(services[0])})`
-    : services.map((svc) => svc.name).join(", ");
-const priceEstimate = estimateCartPrice(services);
-const totalDuration = sumServiceDuration(services);
-
-const confirmationId = `SC-${Date.now().toString(36).toUpperCase()}`;
+  appointment.services.length === 1
+    ? `${appointment.services[0].name} (${formatPrice(servicesForEstimate[0])})`
+    : appointment.services.map((svc) => svc.name).join(", ");
+const priceEstimate = estimateCartPrice(servicesForEstimate);
+const totalDuration = sumServiceDuration(servicesForEstimate);
+const whenLabel = formatConfirmationWhen(appointment.startsAt);
+const shortId = appointment.id.slice(0, 8).toUpperCase();
 ---
 
 <BookingLayout title="Booking confirmed" step="confirm" showStylistStep={showStylistStep}>
   <div class="confirm">
     <p class="confirm__kicker">You're booked!</p>
-    <h1>Confirmation {confirmationId}</h1>
+    <h1>Confirmation #{shortId}</h1>
 
     <dl class="confirm__details">
       <div>
@@ -84,30 +62,29 @@ const confirmationId = `SC-${Date.now().toString(36).toUpperCase()}`;
         <dd>
           {serviceSummary}
           {priceEstimate && ` · ${priceEstimate}`}
-          {services.length > 1 && ` · ${formatDuration(totalDuration)}`}
+          {appointment.services.length > 1 && ` · ${formatDuration(totalDuration)}`}
         </dd>
       </div>
       <div>
         <dt>Stylist</dt>
-        <dd>{stylist.name}</dd>
+        <dd>{appointment.staff.name}</dd>
       </div>
       <div>
         <dt>When</dt>
-        <dd>
-          {date} at {time}
-        </dd>
+        <dd>{whenLabel}</dd>
       </div>
       <div>
         <dt>Guest</dt>
         <dd>
-          {firstName} {lastName} · {email}
+          {appointment.client.firstName} {appointment.client.lastName}
+          {appointment.client.email && ` · ${appointment.client.email}`}
         </dd>
       </div>
     </dl>
 
     <p class="confirm__note">
-      Placeholder confirmation — Resend email + Twilio SMS will fire here once
-      Supabase + Stripe are wired up.
+      Your card is on file to secure this appointment. A confirmation email and
+      text reminder will be sent shortly.
     </p>
 
     <Button href="https://saloncitrineindy.com/" variant="secondary">

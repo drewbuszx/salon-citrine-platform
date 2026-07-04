@@ -23,8 +23,6 @@ const policyText = `Reschedule ${CANCELLATION_POLICY.rescheduleCutoffHours}+ hou
   const backdrop = modal?.querySelector<HTMLElement>(".sc-modal__backdrop");
   const openBtn = document.querySelector<HTMLButtonElement>("[data-open-policy-modal]");
 
-  let pendingSubmit = false;
-
   const focusableSelector =
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -51,10 +49,7 @@ const policyText = `Reschedule ${CANCELLATION_POLICY.rescheduleCutoffHours}+ hou
   }
 
   function submitForm() {
-    const form = document.querySelector<HTMLFormElement>("[data-booking-details-form]");
-    if (!form) return;
-    pendingSubmit = true;
-    form.requestSubmit();
+    document.dispatchEvent(new CustomEvent("policy-confirmed"));
   }
 
   openBtn?.addEventListener("click", (e) => {
@@ -91,18 +86,6 @@ const policyText = `Reschedule ${CANCELLATION_POLICY.rescheduleCutoffHours}+ hou
     }
   });
 
-  document.querySelector<HTMLFormElement>("[data-booking-details-form]")?.addEventListener(
-    "submit",
-    (e) => {
-      const ack = document.querySelector<HTMLInputElement>("#policy-ack");
-      if (!pendingSubmit) {
-        e.preventDefault();
-        openModal();
-        return;
-      }
-      if (ack) ack.value = "true";
-    },
-  );
 </script>
 
 <style>
