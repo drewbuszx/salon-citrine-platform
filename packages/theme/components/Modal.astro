@@ -38,7 +38,8 @@ const { id, labelledBy } = Astro.props;
   }
 
   .sc-modal[hidden] {
-    display: none;
+    display: none !important;
+    pointer-events: none;
   }
 
   .sc-modal__backdrop {

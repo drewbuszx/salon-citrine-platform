@@ -430,12 +430,14 @@ textarea {
     background: var(--color-bg);
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.25s ease, visibility 0.25s ease;
   }
 
   .site-header__nav.is-open {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
 
   .site-header__nav--left,
