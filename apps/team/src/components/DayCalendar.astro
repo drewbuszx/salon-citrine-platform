@@ -378,6 +378,7 @@ const calendarConfig = {
       const SHEET_TRANSITION_MS = 250;
       const BACKDROP_DISMISS_DELAY_MS = 350;
       const DRAG_THRESHOLD_PX = 6;
+      const ROW_HEIGHT_REM = 1.25;
 
       /** @type {{
        *   grid: HTMLElement;
@@ -686,19 +687,71 @@ const calendarConfig = {
         return slotsInGrid(grid).indexOf(slot);
       }
 
+      function removeSelectionPreview(grid) {
+        grid.querySelectorAll(".day-cal__selection-preview").forEach((el) => el.remove());
+      }
+
       function clearSlotSelectionHighlight() {
-        selectedSlots.forEach((slot) => slot.classList.remove("day-cal__slot--selected"));
         selectedSlots = [];
         root.classList.remove("day-cal--selecting");
+        root.querySelectorAll(".day-cal__selection-preview").forEach((el) => el.remove());
+      }
+
+      function previewStyleFromIndices(minIndex, maxIndex) {
+        return {
+          top: `${minIndex * ROW_HEIGHT_REM}rem`,
+          height: `${(maxIndex - minIndex + 1) * ROW_HEIGHT_REM}rem`,
+        };
+      }
+
+      function updateSelectionPreview(grid, slots) {
+        if (slots.length === 0) {
+          removeSelectionPreview(grid);
+          return;
+        }
+
+        const allSlots = slotsInGrid(grid);
+        const minIndex = allSlots.indexOf(slots[0]);
+        const maxIndex = allSlots.indexOf(slots[slots.length - 1]);
+        if (minIndex < 0 || maxIndex < 0) return;
+
+        let preview = grid.querySelector(".day-cal__selection-preview");
+        if (!(preview instanceof HTMLElement)) {
+          preview = document.createElement("div");
+          preview.className = "day-cal__selection-preview";
+          preview.setAttribute("aria-hidden", "true");
+          const timeEl = document.createElement("span");
+          timeEl.className = "day-cal__selection-preview-time";
+          preview.appendChild(timeEl);
+          grid.appendChild(preview);
+        }
+
+        const style = previewStyleFromIndices(minIndex, maxIndex);
+        preview.style.top = style.top;
+        preview.style.height = style.height;
+
+        const firstCtx = slotContextFrom(slots[0]);
+        const lastCtx = slotContextFrom(slots[slots.length - 1]);
+        const timeEl = preview.querySelector(".day-cal__selection-preview-time");
+        if (timeEl instanceof HTMLElement && firstCtx && lastCtx) {
+          const endsAt = addMinutesToIso(lastCtx.startsAt, lastCtx.slotMinutes);
+          timeEl.textContent = `${formatTime(firstCtx.startsAt)} – ${formatTime(endsAt)}`;
+          const heightRem = (maxIndex - minIndex + 1) * ROW_HEIGHT_REM;
+          timeEl.hidden = heightRem < ROW_HEIGHT_REM * 2;
+        }
       }
 
       function applySlotSelection(grid, anchorIndex, activeIndex) {
         const slots = slotsInGrid(grid);
         const min = Math.min(anchorIndex, activeIndex);
         const max = Math.max(anchorIndex, activeIndex);
-        clearSlotSelectionHighlight();
+
+        root.querySelectorAll(".day-cal__grid").forEach((otherGrid) => {
+          if (otherGrid !== grid) removeSelectionPreview(otherGrid);
+        });
+
         selectedSlots = slots.slice(min, max + 1);
-        selectedSlots.forEach((slot) => slot.classList.add("day-cal__slot--selected"));
+        updateSelectionPreview(grid, selectedSlots);
         root.classList.add("day-cal--selecting");
       }
 
@@ -1237,8 +1290,8 @@ const calendarConfig = {
 
   .day-cal__columns {
     display: flex;
-    width: max-content;
-    min-width: 100%;
+    width: 100%;
+    min-width: max-content;
   }
 
   .day-cal__column {
@@ -1274,7 +1327,6 @@ const calendarConfig = {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-top: 0.25rem;
   }
 
   .day-cal__avatar {
@@ -1328,15 +1380,43 @@ const calendarConfig = {
     outline: none;
   }
 
-  .day-cal__slot--selected {
-    background: color-mix(in srgb, var(--color-citrine) 18%, var(--color-bg));
-    box-shadow: inset 0 0 0 2px var(--color-sage);
-    z-index: 2;
+  .day-cal--selecting .day-cal__slot:hover,
+  .day-cal--selecting .day-cal__slot:focus-visible {
+    background: var(--color-bg);
   }
 
-  [data-theme="dark"] .day-cal__slot--selected {
-    background: color-mix(in srgb, var(--color-citrine) 22%, var(--color-light));
-    box-shadow: inset 0 0 0 2px var(--color-citrine);
+  .day-cal__selection-preview {
+    position: absolute;
+    left: 0.15rem;
+    right: 0.15rem;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0.2rem 0.35rem;
+    border-radius: 4px;
+    background: var(--staff-accent, var(--color-citrine));
+    color: #1a1a1a;
+    font-size: 0.62rem;
+    line-height: 1.2;
+    overflow: hidden;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    opacity: 0.88;
+  }
+
+  [data-theme="dark"] .day-cal__selection-preview {
+    color: #111;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    opacity: 0.92;
+  }
+
+  .day-cal__selection-preview-time {
+    font-size: 0.58rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .day-cal--selecting,
