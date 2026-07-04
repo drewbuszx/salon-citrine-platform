@@ -3,9 +3,10 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const platformRoot = path.resolve(__dirname, "../../..");
+// apps/web/src/lib -> four levels up = monorepo root (where .env lives; matches vite envDir)
+const platformRoot = path.resolve(__dirname, "../../../..");
 
-if (!import.meta.env.PROD) {
+if (!import.meta.env?.PROD) {
   const mode =
     process.env.NODE_ENV ??
     (typeof import.meta.env?.MODE === "string" ? import.meta.env.MODE : "development");
