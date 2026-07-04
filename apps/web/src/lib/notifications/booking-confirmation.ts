@@ -1,0 +1,203 @@
+import { BUSINESS } from "@saloncitrine/shared";
+import { formatConfirmationWhen } from "../appointment-confirmation";
+
+export type BookingConfirmationPayload = {
+  clientFirstName: string;
+  clientLastName: string;
+  clientEmail: string;
+  clientPhone: string;
+  stylistName: string;
+  startsAt: string;
+  services: Array<{ name: string }>;
+  smsOptIn: boolean;
+};
+
+function formatSalonAddress(): string {
+  const { street, city, state, zip } = BUSINESS.address;
+  return `${street}, ${city}, ${state} ${zip}`;
+}
+
+/** Normalize US phone numbers to E.164 for Twilio. */
+function toE164(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (phone.trim().startsWith("+") && digits.length >= 10) return `+${digits}`;
+  return null;
+}
+
+function buildEmailSubject(payload: BookingConfirmationPayload): string {
+  return `Your appointment at ${BUSINESS.name} is confirmed`;
+}
+
+function buildEmailText(payload: BookingConfirmationPayload): string {
+  const clientName = `${payload.clientFirstName} ${payload.clientLastName}`.trim();
+  const when = formatConfirmationWhen(payload.startsAt);
+  const servicesList = payload.services.map((s) => s.name).join(", ");
+
+  return [
+    `Hi ${payload.clientFirstName},`,
+    "",
+    `Your appointment at ${BUSINESS.name} is confirmed.`,
+    "",
+    `When: ${when}`,
+    `Stylist: ${payload.stylistName}`,
+    `Services: ${servicesList}`,
+    "",
+    BUSINESS.name,
+    formatSalonAddress(),
+    BUSINESS.phone,
+    "",
+    "Need to reschedule? Contact us at least 48 hours before your appointment.",
+  ].join("\n");
+}
+
+function buildEmailHtml(payload: BookingConfirmationPayload): string {
+  const when = formatConfirmationWhen(payload.startsAt);
+  const servicesList = payload.services.map((s) => s.name).join(", ");
+  const address = formatSalonAddress();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<body style="font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; line-height: 1.6; max-width: 560px; margin: 0 auto; padding: 24px;">
+  <p>Hi ${escapeHtml(payload.clientFirstName)},</p>
+  <p>Your appointment at <strong>${escapeHtml(BUSINESS.name)}</strong> is confirmed.</p>
+  <table style="border-collapse: collapse; margin: 24px 0;">
+    <tr><td style="padding: 4px 16px 4px 0; color: #666;">When</td><td><strong>${escapeHtml(when)}</strong></td></tr>
+    <tr><td style="padding: 4px 16px 4px 0; color: #666;">Stylist</td><td>${escapeHtml(payload.stylistName)}</td></tr>
+    <tr><td style="padding: 4px 16px 4px 0; color: #666; vertical-align: top;">Services</td><td>${escapeHtml(servicesList)}</td></tr>
+    <tr><td style="padding: 4px 16px 4px 0; color: #666; vertical-align: top;">Location</td><td>${escapeHtml(BUSINESS.name)}<br>${escapeHtml(address)}</td></tr>
+  </table>
+  <p style="color: #666; font-size: 14px;">Questions? Call us at ${escapeHtml(BUSINESS.phone)}.</p>
+  <p style="color: #666; font-size: 14px;">Need to reschedule? Contact us at least 48 hours before your appointment.</p>
+</body>
+</html>`;
+}
+
+function buildSmsBody(payload: BookingConfirmationPayload): string {
+  const when = formatConfirmationWhen(payload.startsAt);
+  return `${BUSINESS.name}: You're booked with ${payload.stylistName} on ${when}. ${formatSalonAddress()}. Reply STOP to opt out.`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function sendBookingConfirmationEmail(
+  payload: BookingConfirmationPayload,
+): Promise<void> {
+  const apiKey = import.meta.env.RESEND_API_KEY;
+  const fromEmail =
+    import.meta.env.RESEND_FROM_EMAIL?.trim() || BUSINESS.bookingEmail;
+
+  if (!apiKey) {
+    console.warn("booking-confirmation: RESEND_API_KEY missing, email skipped");
+    return;
+  }
+
+  if (!payload.clientEmail) {
+    console.warn("booking-confirmation: no client email, email skipped");
+    return;
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: `${BUSINESS.name} <${fromEmail}>`,
+      to: [payload.clientEmail],
+      subject: buildEmailSubject(payload),
+      html: buildEmailHtml(payload),
+      text: buildEmailText(payload),
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Resend API ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
+export async function sendBookingConfirmationSms(
+  payload: BookingConfirmationPayload,
+): Promise<void> {
+  if (!payload.smsOptIn) return;
+
+  const accountSid = import.meta.env.TWILIO_ACCOUNT_SID;
+  const authToken = import.meta.env.TWILIO_AUTH_TOKEN;
+  const from = import.meta.env.TWILIO_PHONE_NUMBER?.trim();
+
+  if (!accountSid || !authToken || !from) {
+    console.warn(
+      "booking-confirmation: Twilio env vars missing, SMS skipped",
+    );
+    return;
+  }
+
+  const to = toE164(payload.clientPhone);
+  if (!to) {
+    console.warn("booking-confirmation: invalid client phone, SMS skipped");
+    return;
+  }
+
+  // Production: register a Twilio 10DLC campaign before sending at scale.
+  const params = new URLSearchParams({ To: to, Body: buildSmsBody(payload) });
+  if (from.startsWith("MG")) {
+    params.set("MessagingServiceSid", from);
+  } else {
+    params.set("From", from);
+  }
+
+  const auth = btoa(`${accountSid}:${authToken}`);
+  const response = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Twilio API ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
+/** Send confirmation email (always) and SMS (when opted in). Never throws. */
+export async function sendBookingConfirmations(
+  payload: BookingConfirmationPayload,
+): Promise<void> {
+  const hasResend = Boolean(import.meta.env.RESEND_API_KEY);
+  const hasTwilio =
+    Boolean(import.meta.env.TWILIO_ACCOUNT_SID) &&
+    Boolean(import.meta.env.TWILIO_AUTH_TOKEN) &&
+    Boolean(import.meta.env.TWILIO_PHONE_NUMBER?.trim());
+
+  if (!hasResend && !(hasTwilio && payload.smsOptIn)) {
+    console.warn("booking-confirmation: notifications skipped (env not configured)");
+    return;
+  }
+
+  const tasks: Promise<void>[] = [sendBookingConfirmationEmail(payload)];
+  if (payload.smsOptIn) {
+    tasks.push(sendBookingConfirmationSms(payload));
+  }
+
+  const results = await Promise.allSettled(tasks);
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("booking-confirmation: send failed", result.reason);
+    }
+  }
+}

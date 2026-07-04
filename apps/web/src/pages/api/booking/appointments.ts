@@ -8,6 +8,7 @@ import { jsonError, jsonOk } from "../../../lib/api-booking";
 import { getStripeClient } from "../../../lib/stripe-server";
 import { createSupabaseServiceClient } from "../../../lib/supabase-server";
 import { formatDateInTimezone } from "../../../lib/datetime-utils";
+import { sendBookingConfirmations } from "../../../lib/notifications/booking-confirmation";
 
 function stripeErrorMessage(error: unknown): string | undefined {
   if (
@@ -137,7 +138,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     const { data: staffServices, error: staffServicesError } = await supabase
       .from("staff_services")
-      .select("service_id, client_booking_block, services(id, duration_minutes, base_price_cents)")
+      .select(
+        "service_id, client_booking_block, services(id, name, duration_minutes, base_price_cents)",
+      )
       .eq("staff_id", staff.id)
       .in("service_id", input.serviceIds);
 
@@ -158,6 +161,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     let totalMinutes = 0;
     const serviceRows: Array<{ service_id: string; price_cents: number | null }> = [];
+    const serviceNames: string[] = [];
 
     for (const serviceId of input.serviceIds) {
       const row = matched.find((item) => item.service_id === serviceId);
@@ -167,9 +171,15 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       const raw = row.services as
-        | { id: string; duration_minutes: number; base_price_cents: number | null }
+        | {
+            id: string;
+            name: string;
+            duration_minutes: number;
+            base_price_cents: number | null;
+          }
         | Array<{
             id: string;
+            name: string;
             duration_minutes: number;
             base_price_cents: number | null;
           }>
@@ -180,6 +190,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       totalMinutes += svc.duration_minutes;
+      serviceNames.push(svc.name);
       serviceRows.push({
         service_id: serviceId,
         price_cents: svc.base_price_cents,
@@ -278,7 +289,20 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonError("Failed to attach services", 500);
     }
 
-    // TODO: Resend confirmation email + Twilio SMS (Phase 1 notifications)
+    try {
+      await sendBookingConfirmations({
+        clientFirstName: input.client.firstName.trim(),
+        clientLastName: input.client.lastName.trim(),
+        clientEmail: email,
+        clientPhone: phone,
+        stylistName: staff.name,
+        startsAt: startsAt.toISOString(),
+        services: serviceNames.map((name) => ({ name })),
+        smsOptIn: input.client.smsOptIn,
+      });
+    } catch (error) {
+      console.error("booking/appointments: confirmation notifications failed", error);
+    }
 
     return jsonOk({ id: appointment.id });
   } catch (error) {

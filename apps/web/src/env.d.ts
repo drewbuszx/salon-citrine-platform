@@ -8,6 +8,11 @@ interface ImportMetaEnv {
   readonly PUBLIC_STRIPE_PUBLISHABLE_KEY: string;
   readonly PUBLIC_SUPABASE_URL?: string;
   readonly PUBLIC_SUPABASE_ANON_KEY?: string;
+  readonly RESEND_API_KEY?: string;
+  readonly RESEND_FROM_EMAIL?: string;
+  readonly TWILIO_ACCOUNT_SID?: string;
+  readonly TWILIO_AUTH_TOKEN?: string;
+  readonly TWILIO_PHONE_NUMBER?: string;
 }
 
 interface ImportMeta {
