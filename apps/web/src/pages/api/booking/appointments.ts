@@ -20,7 +20,9 @@ export const POST: APIRoute = async ({ request }) => {
 
   const parsed = createAppointmentInputSchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError(parsed.error.errors[0]?.message ?? "Invalid request", 400);
+    const message = parsed.error.errors[0]?.message ?? "Invalid request";
+    console.error("booking/appointments: validation failed", parsed.error.flatten());
+    return jsonError(message, 400);
   }
 
   const input = parsed.data;
@@ -29,11 +31,13 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const staff = await getStaffBySlug(input.staffSlug);
     if (!staff) {
+      console.error("booking/appointments: stylist not found", input.staffSlug);
       return jsonError("Stylist not found", 400);
     }
 
     const startsAt = new Date(input.startsAt);
     if (Number.isNaN(startsAt.getTime())) {
+      console.error("booking/appointments: invalid startsAt", input.startsAt);
       return jsonError("Invalid appointment time", 400);
     }
 
@@ -52,6 +56,11 @@ export const POST: APIRoute = async ({ request }) => {
     const setupIntent = await stripe.setupIntents.retrieve(input.setupIntentId);
 
     if (setupIntent.status !== "succeeded") {
+      console.error(
+        "booking/appointments: setup intent not succeeded",
+        input.setupIntentId,
+        setupIntent.status,
+      );
       return jsonError("Card verification incomplete", 400);
     }
 
@@ -60,13 +69,29 @@ export const POST: APIRoute = async ({ request }) => {
         ? setupIntent.payment_method
         : setupIntent.payment_method?.id;
 
-    const stripeCustomerId =
+    let stripeCustomerId =
       typeof setupIntent.customer === "string"
         ? setupIntent.customer
-        : setupIntent.customer?.id;
+        : setupIntent.customer?.id ?? null;
 
-    if (!paymentMethodId || !stripeCustomerId) {
+    if (!paymentMethodId) {
+      console.error(
+        "booking/appointments: setup intent missing payment_method",
+        input.setupIntentId,
+      );
       return jsonError("Missing payment method", 400);
+    }
+
+    const phone = input.client.phone.trim();
+    const email = input.client.email.trim().toLowerCase();
+
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email,
+        name: `${input.client.firstName.trim()} ${input.client.lastName.trim()}`,
+        phone: phone || undefined,
+      });
+      stripeCustomerId = customer.id;
     }
 
     await stripe.paymentMethods.attach(paymentMethodId, {
@@ -98,6 +123,11 @@ export const POST: APIRoute = async ({ request }) => {
 
     const matched = staffServices ?? [];
     if (matched.length !== input.serviceIds.length) {
+      console.error(
+        "booking/appointments: services not offered by stylist",
+        input.staffSlug,
+        input.serviceIds,
+      );
       return jsonError("One or more services are not offered by this provider", 400);
     }
 
@@ -107,6 +137,7 @@ export const POST: APIRoute = async ({ request }) => {
     for (const serviceId of input.serviceIds) {
       const row = matched.find((item) => item.service_id === serviceId);
       if (!row || (row.client_booking_block ?? "none") !== "none") {
+        console.error("booking/appointments: blocked or missing service", serviceId);
         return jsonError("Invalid service selection", 400);
       }
 
@@ -131,8 +162,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const endsAt = new Date(startsAt.getTime() + totalMinutes * 60_000);
-    const phone = input.client.phone.trim();
-    const email = input.client.email.trim().toLowerCase();
 
     let clientId: string | null = null;
 

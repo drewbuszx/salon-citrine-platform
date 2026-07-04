@@ -13,8 +13,13 @@ const confirmUrl = form?.dataset.confirmUrl ?? "";
 let stripe: Stripe | null = null;
 let elements: StripeElements | null = null;
 let setupIntentId: string | null = null;
+/** Email used when the current setup intent was created (must match before confirm). */
+let setupIntentEmail: string | null = null;
+/** Setup intent id that already passed client-side confirmSetup successfully. */
+let confirmedSetupIntentId: string | null = null;
 let pendingSubmit = false;
 let initializing = false;
+let submitting = false;
 
 function showError(message: string) {
   if (!errorEl) return;
@@ -61,8 +66,39 @@ function checkboxChecked(name: string) {
   return el instanceof HTMLInputElement && el.checked;
 }
 
-async function ensureStripeElements() {
-  if (elements || initializing) return;
+function resetStripeElements() {
+  elements = null;
+  setupIntentId = null;
+  setupIntentEmail = null;
+  confirmedSetupIntentId = null;
+}
+
+async function readJsonResponse(response: Response): Promise<{ error?: string; id?: string }> {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as { error?: string; id?: string };
+  } catch {
+    return {};
+  }
+}
+
+async function ensureStripeElements(forceRecreate = false) {
+  const email = formValue("email");
+  if (!email) {
+    showPaymentStatus("Enter your email above to load the card form.");
+    return;
+  }
+
+  if (initializing) return;
+  if (elements && !forceRecreate && setupIntentEmail === email) return;
+
+  if (forceRecreate || (elements && setupIntentEmail !== email)) {
+    resetStripeElements();
+  }
+
+  if (elements) return;
+
   if (!stripePublishableKey) {
     const message = "Card collection is not configured. Please contact the salon.";
     showError(message);
@@ -87,16 +123,20 @@ async function ensureStripeElements() {
       }),
     });
 
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     if (!response.ok) {
       throw new Error(payload.error ?? "Could not initialize card form");
+    }
+
+    if (!("clientSecret" in payload) || typeof payload.clientSecret !== "string") {
+      throw new Error("Could not initialize card form");
     }
 
     stripe = await loadStripe(stripePublishableKey);
     if (!stripe) throw new Error("Could not load Stripe");
 
     elements = stripe.elements({
-      clientSecret: payload.clientSecret,
+      clientSecret: payload.clientSecret as string,
       appearance: {
         theme: "stripe",
         variables: {
@@ -108,7 +148,9 @@ async function ensureStripeElements() {
     const paymentElement = elements.create("payment");
     paymentMount?.replaceChildren();
     await paymentElement.mount("#payment-element");
-    setupIntentId = payload.setupIntentId;
+    setupIntentId =
+      typeof payload.setupIntentId === "string" ? payload.setupIntentId : null;
+    setupIntentEmail = email;
     setPaymentBusy(false);
   } catch (error) {
     const message =
@@ -126,12 +168,28 @@ paymentMount?.addEventListener("focusin", () => {
 });
 
 form?.querySelector('input[name="email"]')?.addEventListener("blur", () => {
-  if (!elements) ensureStripeElements();
+  void ensureStripeElements();
+});
+
+form?.querySelector('input[name="email"]')?.addEventListener("input", () => {
+  const email = formValue("email");
+  if (setupIntentEmail && email !== setupIntentEmail) {
+    resetStripeElements();
+    showPaymentStatus("Enter your email above to load the card form.");
+  }
 });
 
 async function completeBooking() {
-  if (!form || !stripe || !elements || !setupIntentId) {
-    await ensureStripeElements();
+  if (submitting) return;
+
+  const email = formValue("email");
+  if (!email) {
+    showError("Enter your email to continue.");
+    return;
+  }
+
+  if (!stripe || !elements || !setupIntentId || setupIntentEmail !== email) {
+    await ensureStripeElements(setupIntentEmail !== null && setupIntentEmail !== email);
     if (!stripe || !elements || !setupIntentId) {
       showError("Enter your details and card information to continue.");
       return;
@@ -139,29 +197,37 @@ async function completeBooking() {
   }
 
   showError("");
+  submitting = true;
   submitBtn?.setAttribute("disabled", "true");
 
   try {
-    const { error: confirmError, setupIntent } = await stripe.confirmSetup({
-      elements,
-      redirect: "if_required",
-      confirmParams: {
-        payment_method_data: {
-          billing_details: {
-            name: `${formValue("firstName")} ${formValue("lastName")}`.trim(),
-            email: formValue("email"),
-            phone: formValue("phone"),
+    let verifiedSetupIntentId = confirmedSetupIntentId;
+
+    if (!verifiedSetupIntentId || verifiedSetupIntentId !== setupIntentId) {
+      const { error: confirmError, setupIntent } = await stripe.confirmSetup({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          payment_method_data: {
+            billing_details: {
+              name: `${formValue("firstName")} ${formValue("lastName")}`.trim(),
+              email,
+              phone: formValue("phone"),
+            },
           },
         },
-      },
-    });
+      });
 
-    if (confirmError) {
-      throw new Error(confirmError.message ?? "Card verification failed");
-    }
+      if (confirmError) {
+        throw new Error(confirmError.message ?? "Card verification failed");
+      }
 
-    if (!setupIntent || setupIntent.status !== "succeeded") {
-      throw new Error("Card verification incomplete");
+      if (!setupIntent || setupIntent.status !== "succeeded") {
+        throw new Error("Card verification incomplete");
+      }
+
+      verifiedSetupIntentId = setupIntent.id;
+      confirmedSetupIntentId = setupIntent.id;
     }
 
     const bookingBody = {
@@ -176,7 +242,7 @@ async function completeBooking() {
         smsOptIn: checkboxChecked("smsOptIn"),
       },
       policyAcknowledged: true,
-      setupIntentId: setupIntent.id,
+      setupIntentId: verifiedSetupIntentId,
     };
 
     const response = await fetch(appointmentsUrl, {
@@ -185,9 +251,13 @@ async function completeBooking() {
       body: JSON.stringify(bookingBody),
     });
 
-    const payload = await response.json();
+    const payload = await readJsonResponse(response);
     if (!response.ok) {
       throw new Error(payload.error ?? "Could not save your appointment");
+    }
+
+    if (!payload.id) {
+      throw new Error("Could not save your appointment");
     }
 
     const params = new URLSearchParams({ appointment: payload.id });
@@ -196,6 +266,7 @@ async function completeBooking() {
   } catch (error) {
     showError(error instanceof Error ? error.message : "Booking failed");
     submitBtn?.removeAttribute("disabled");
+    submitting = false;
   }
 }
 
@@ -212,5 +283,3 @@ document.addEventListener("policy-confirmed", () => {
   pendingSubmit = true;
   form?.requestSubmit();
 });
-
-ensureStripeElements();
