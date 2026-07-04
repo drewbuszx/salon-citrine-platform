@@ -40,6 +40,14 @@ export type CalendarStaff = {
   photoUrl: string | null;
 };
 
+export type StaffSchedule = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  effectiveFrom: string;
+  effectiveUntil: string | null;
+};
+
 export type CalendarEvent =
   | {
       kind: "appointment";
@@ -319,6 +327,57 @@ function dayBounds(dayStart: Date) {
   };
 }
 
+/** Parse "HH:MM" or "HH:MM:SS" to minutes from midnight. */
+export function parseTimeToMinutes(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** JS day-of-week (0=Sun) for a YYYY-MM-DD date in the salon timezone. */
+export function dayOfWeekInSalon(dateStr: string) {
+  const noonUtc = localDateTimeToUtc(dateStr, "12:00");
+  const weekday = noonUtc.toLocaleDateString("en-US", {
+    timeZone: TIMEZONE,
+    weekday: "short",
+  });
+  const map: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return map[weekday] ?? 0;
+}
+
+export function scheduleForStaffOnDay(
+  schedules: StaffSchedule[],
+  dateStr: string,
+) {
+  const dow = dayOfWeekInSalon(dateStr);
+  return schedules.find((row) => {
+    if (row.dayOfWeek !== dow) return false;
+    if (dateStr < row.effectiveFrom) return false;
+    if (row.effectiveUntil && dateStr > row.effectiveUntil) return false;
+    return true;
+  });
+}
+
+/** True when a 15-minute slot starting at slotMinutes falls within staff hours. */
+export function isSlotWithinStaffSchedule(
+  slotMinutes: number,
+  schedules: StaffSchedule[],
+  dateStr: string,
+) {
+  const schedule = scheduleForStaffOnDay(schedules, dateStr);
+  if (!schedule) return false;
+  const startMin = parseTimeToMinutes(schedule.startTime);
+  const endMin = parseTimeToMinutes(schedule.endTime);
+  return slotMinutes >= startMin && slotMinutes < endMin;
+}
+
 export async function loadCalendarData(
   supabase: App.Locals["supabase"],
   options: {
@@ -367,11 +426,25 @@ export async function loadCalendarData(
     blockedQuery = blockedQuery.eq("staff_id", options.staffFilterIds[0]!);
   }
 
-  const [staffResult, appointmentsResult, blockedResult] = await Promise.all([
-    staffQuery,
-    appointmentsQuery,
-    blockedQuery,
-  ]);
+  let schedulesQuery = supabase
+    .from("staff_schedules")
+    .select(
+      "staff_id, day_of_week, start_time, end_time, effective_from, effective_until",
+    );
+
+  if (options.staffFilterIds?.length === 1) {
+    schedulesQuery = schedulesQuery.eq("staff_id", options.staffFilterIds[0]!);
+  } else if (options.staffFilterIds && options.staffFilterIds.length > 0) {
+    schedulesQuery = schedulesQuery.in("staff_id", options.staffFilterIds);
+  }
+
+  const [staffResult, appointmentsResult, blockedResult, schedulesResult] =
+    await Promise.all([
+      staffQuery,
+      appointmentsQuery,
+      blockedQuery,
+      schedulesQuery,
+    ]);
 
   if (staffResult.error) {
     throw staffResult.error;
@@ -381,6 +454,9 @@ export async function loadCalendarData(
   }
   if (blockedResult.error) {
     throw blockedResult.error;
+  }
+  if (schedulesResult.error) {
+    throw schedulesResult.error;
   }
 
   const staff = (staffResult.data ?? []).map((row) => ({
@@ -449,7 +525,20 @@ export async function loadCalendarData(
     }),
   );
 
-  return { staff, appointments, blockedTimes };
+  const staffSchedules: Record<string, StaffSchedule[]> = {};
+  for (const row of schedulesResult.data ?? []) {
+    const list = staffSchedules[row.staff_id] ?? [];
+    list.push({
+      dayOfWeek: row.day_of_week,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      effectiveFrom: row.effective_from,
+      effectiveUntil: row.effective_until,
+    });
+    staffSchedules[row.staff_id] = list;
+  }
+
+  return { staff, appointments, blockedTimes, staffSchedules };
 }
 
 export async function loadStaffServicesByStaff(

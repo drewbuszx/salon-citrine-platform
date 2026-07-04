@@ -7,6 +7,11 @@ import {
   requireApiAuth,
 } from "../../../lib/api-calendar";
 import {
+  mapOverlapDbError,
+  validateAppointmentTimeRange,
+} from "../../../lib/calendar-overlap";
+import { isSalonManager } from "../../../lib/auth";
+import {
   parseDateTimeLocalInput,
   roundDateTimeLocalToSlot,
 } from "../../../lib/datetime";
@@ -26,6 +31,7 @@ type CreateAppointmentBody = {
   service_ids?: string[];
   notes?: string;
   status?: string;
+  allow_off_hours?: boolean;
 };
 
 export const POST: APIRoute = async (context) => {
@@ -188,6 +194,18 @@ export const POST: APIRoute = async (context) => {
     clientId = createdClient.id;
   }
 
+  const validation = await validateAppointmentTimeRange(supabase, {
+    staffId,
+    startsAt,
+    endsAt,
+    status,
+    isManager: isSalonManager(staff),
+    allowOffHours: body.allow_off_hours === true,
+  });
+  if (!validation.ok) {
+    return jsonError(validation.message, validation.status);
+  }
+
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
@@ -203,6 +221,10 @@ export const POST: APIRoute = async (context) => {
 
   if (appointmentError || !appointment) {
     console.error("appointment insert failed", appointmentError);
+    const conflict = mapOverlapDbError(appointmentError);
+    if (conflict) {
+      return jsonError(conflict.message, conflict.status);
+    }
     return jsonError("Failed to create appointment", 500);
   }
 

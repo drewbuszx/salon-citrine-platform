@@ -22,3 +22,11 @@ Thumbs.db
 
 # cloudflare
 .wrangler/
+
+# agent / local scratch (do not commit)
+tmp-*
+tmp/
+packages/db/seed/tmp-*
+packages/db/seed/_*
+packages/db/seed/mcp-args-*.json
+packages/db/seed/out-batch-*.txt
