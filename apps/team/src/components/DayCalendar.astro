@@ -266,20 +266,39 @@ const calendarConfig = {
     </div>
   </div>
 
-  <script type="application/json" id="day-cal-config">{JSON.stringify(calendarConfig)}</script>
+  <script
+    type="application/json"
+    id="day-cal-config"
+    is:inline
+    set:html={JSON.stringify(calendarConfig).replace(/</g, "\\u003c")}></script>
   <script is:inline>
-    (function initDayCalendar() {
+    (function () {
+      const scriptEl = document.currentScript;
+
+      function initDayCalendar() {
       const TIMEZONE = "America/Indiana/Indianapolis";
+      const root =
+        scriptEl?.closest(".day-cal") || document.querySelector(".day-cal");
+      if (!root) return;
+
       const configEl = document.getElementById("day-cal-config");
       if (!configEl) return;
 
       /** @type {any} */
-      const config = JSON.parse(configEl.textContent || "{}");
+      let config;
+      try {
+        config = JSON.parse(configEl.textContent || "{}");
+      } catch {
+        return;
+      }
+
       const menu = document.getElementById("day-cal-menu");
       const modal = document.getElementById("day-cal-modal");
       const modalTitle = document.getElementById("day-cal-modal-title");
       const modalBody = document.getElementById("day-cal-modal-body");
       if (!menu || !modal || !modalTitle || !modalBody) return;
+
+      document.body.append(menu, modal);
 
       /** @type {{ staffId: string; startsAt: string; slotMinutes: number } | null} */
       let slotContext = null;
@@ -321,14 +340,18 @@ const calendarConfig = {
       }
 
       function staffName(staffId) {
-        return config.staff.find((member) => member.id === staffId)?.name || "Provider";
+        return (config.staff || []).find((member) => member.id === staffId)?.name || "Provider";
       }
 
       function openSheet(sheet) {
+        sheet.classList.remove("is-open");
         sheet.hidden = false;
         sheet.setAttribute("aria-hidden", "false");
+        void sheet.offsetHeight;
         requestAnimationFrame(() => {
-          sheet.classList.add("is-open");
+          requestAnimationFrame(() => {
+            sheet.classList.add("is-open");
+          });
         });
       }
 
@@ -521,32 +544,38 @@ const calendarConfig = {
         );
       }
 
-      document.querySelector(".day-cal")?.addEventListener("click", (event) => {
+      function slotContextFrom(slot) {
+        const staffId = slot.dataset.staffId;
+        const startsAt = slot.dataset.startsAt;
+        const slotMinutes = Number(slot.dataset.slotMinutes || config.slotMinutes);
+        if (!staffId || !startsAt) return null;
+        return { staffId, startsAt, slotMinutes };
+      }
+
+      root.querySelectorAll(".day-cal__slot").forEach((slot) => {
+        slot.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const context = slotContextFrom(slot);
+          if (!context) return;
+          openMenu(context);
+        });
+      });
+
+      root.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof Element)) return;
 
         const block = target.closest(".day-cal__block");
-        if (block instanceof HTMLElement) {
-          event.preventDefault();
-          event.stopPropagation();
-          closeMenu();
-          const kind = block.dataset.kind;
-          const id = block.dataset.id;
-          if (kind === "appointment" && id) openAppointmentModal(id);
-          if (kind === "blocked" && id) openBlockedModal(id);
-          return;
-        }
+        if (!(block instanceof HTMLElement)) return;
 
-        const slot = target.closest(".day-cal__slot");
-        if (slot instanceof HTMLElement) {
-          event.preventDefault();
-          event.stopPropagation();
-          const staffId = slot.dataset.staffId;
-          const startsAt = slot.dataset.startsAt;
-          const slotMinutes = Number(slot.dataset.slotMinutes || config.slotMinutes);
-          if (!staffId || !startsAt) return;
-          openMenu({ staffId, startsAt, slotMinutes });
-        }
+        event.preventDefault();
+        event.stopPropagation();
+        closeMenu();
+        const kind = block.dataset.kind;
+        const id = block.dataset.id;
+        if (kind === "appointment" && id) openAppointmentModal(id);
+        if (kind === "blocked" && id) openBlockedModal(id);
       });
 
       menu.addEventListener("click", (event) => {
@@ -735,6 +764,13 @@ const calendarConfig = {
           closeMenu();
         }
       });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initDayCalendar);
+      } else {
+        initDayCalendar();
+      }
     })();
   </script>
 </section>
@@ -749,26 +785,29 @@ const calendarConfig = {
 
   .day-cal__toolbar {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
     margin-bottom: 1rem;
-    padding: 0.85rem clamp(1rem, 3vw, 2.5rem);
+    padding: 0.5rem clamp(1rem, 3vw, 2.5rem);
     background: var(--color-dusty-rose);
     color: var(--color-on-brand-section);
   }
 
   .day-cal__title {
+    width: 100%;
     font-size: clamp(1.15rem, 3vw, 1.35rem);
     margin: 0;
     font-weight: 500;
     color: inherit;
+    text-align: center;
   }
 
   .day-cal__actions {
     display: flex;
     gap: 0.5rem;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .day-cal__toolbar .day-cal__btn {
@@ -1023,10 +1062,10 @@ const calendarConfig = {
   }
 
   .day-cal__sheet[hidden] {
-    display: none;
+    display: none !important;
   }
 
-  .day-cal__sheet:not([hidden]) {
+  .day-cal__sheet.is-open {
     pointer-events: auto;
   }
 
@@ -1218,13 +1257,5 @@ const calendarConfig = {
       --day-col-min-width: min(78vw, 11rem);
     }
 
-    .day-cal__toolbar {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .day-cal__actions {
-      justify-content: space-between;
-    }
   }
 </style>
