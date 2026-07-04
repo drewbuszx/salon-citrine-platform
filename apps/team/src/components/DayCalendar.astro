@@ -223,6 +223,44 @@ const calendarConfig = {
     </div>
   </div>
 
+  <div class="day-cal__sheet" id="day-cal-selection" hidden aria-hidden="true">
+    <div class="day-cal__sheet-backdrop" data-close-selection tabindex="-1"></div>
+    <div
+      class="day-cal__sheet-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="day-cal-selection-title"
+    >
+      <header class="day-cal__sheet-header">
+        <h3 class="day-cal__sheet-title" id="day-cal-selection-title">Selected time</h3>
+      </header>
+      <div class="day-cal__sheet-body">
+        <p class="day-cal__selection-summary" id="day-cal-selection-summary"></p>
+        <div class="day-cal__sheet-actions" role="menu">
+          <button
+            type="button"
+            class="day-cal__sheet-action day-cal__sheet-action--primary"
+            data-action="block-bulk"
+            role="menuitem"
+          >
+            Block time (bulk)
+          </button>
+          <button type="button" class="day-cal__sheet-action" data-action="appointment-bulk" role="menuitem">
+            New appointment
+          </button>
+          <button
+            type="button"
+            class="day-cal__sheet-action day-cal__sheet-action--muted"
+            data-action="clear-selection"
+            role="menuitem"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="day-cal__sheet" id="day-cal-menu" hidden aria-hidden="true">
     <div class="day-cal__sheet-backdrop" data-close-menu tabindex="-1"></div>
     <div
@@ -293,17 +331,36 @@ const calendarConfig = {
       }
 
       const menu = document.getElementById("day-cal-menu");
+      const selectionSheet = document.getElementById("day-cal-selection");
+      const selectionSummary = document.getElementById("day-cal-selection-summary");
+      const selectionTitle = document.getElementById("day-cal-selection-title");
       const modal = document.getElementById("day-cal-modal");
       const modalTitle = document.getElementById("day-cal-modal-title");
       const modalBody = document.getElementById("day-cal-modal-body");
-      if (!menu || !modal || !modalTitle || !modalBody) return;
+      if (!menu || !selectionSheet || !selectionSummary || !selectionTitle || !modal || !modalTitle || !modalBody) return;
 
       if (root.dataset.dayCalReady === "true") return;
       root.dataset.dayCalReady = "true";
 
-      /** @type {{ staffId: string; startsAt: string; slotMinutes: number } | null} */
+      /** @type {{ staffId: string; startsAt: string; slotMinutes: number; endsAt?: string } | null} */
       let slotContext = null;
+      /** @type {{ staffId: string; startsAt: string; endsAt: string; slotMinutes: number; slotCount: number } | null} */
+      let rangeContext = null;
+      /** @type {HTMLElement[]} */
+      let selectedSlots = [];
       const SHEET_TRANSITION_MS = 250;
+      const DRAG_THRESHOLD_PX = 6;
+
+      /** @type {{
+       *   grid: HTMLElement;
+       *   staffId: string;
+       *   anchorIndex: number;
+       *   pointerId: number;
+       *   startX: number;
+       *   startY: number;
+       *   moved: boolean;
+       * } | null} */
+      let dragState = null;
 
       function reloadCalendar() {
         window.location.href = config.reloadUrl;
@@ -541,6 +598,99 @@ const calendarConfig = {
         );
       }
 
+      function addMinutesToIso(iso, minutes) {
+        const date = new Date(iso);
+        date.setMinutes(date.getMinutes() + minutes);
+        return date.toISOString();
+      }
+
+      function formatTime(iso) {
+        return new Intl.DateTimeFormat("en-US", {
+          timeZone: TIMEZONE,
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(iso));
+      }
+
+      function formatDurationMinutes(totalMinutes) {
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        if (hours > 0 && mins > 0) return `${hours} hr ${mins} min`;
+        if (hours > 0) return `${hours} hr`;
+        return `${mins} min`;
+      }
+
+      function canSelectStaffColumn(staffId) {
+        if (config.managerView) return true;
+        return staffId === config.currentStaffId;
+      }
+
+      function slotsInGrid(grid) {
+        return Array.from(grid.querySelectorAll(".day-cal__slot"));
+      }
+
+      function slotIndexInGrid(grid, slot) {
+        return slotsInGrid(grid).indexOf(slot);
+      }
+
+      function clearSlotSelectionHighlight() {
+        selectedSlots.forEach((slot) => slot.classList.remove("day-cal__slot--selected"));
+        selectedSlots = [];
+        root.classList.remove("day-cal--selecting");
+      }
+
+      function applySlotSelection(grid, anchorIndex, activeIndex) {
+        const slots = slotsInGrid(grid);
+        const min = Math.min(anchorIndex, activeIndex);
+        const max = Math.max(anchorIndex, activeIndex);
+        clearSlotSelectionHighlight();
+        selectedSlots = slots.slice(min, max + 1);
+        selectedSlots.forEach((slot) => slot.classList.add("day-cal__slot--selected"));
+        root.classList.add("day-cal--selecting");
+      }
+
+      function rangeContextFromSlots(slots) {
+        const first = slots[0];
+        const last = slots[slots.length - 1];
+        if (!(first instanceof HTMLElement) || !(last instanceof HTMLElement)) return null;
+        const firstCtx = slotContextFrom(first);
+        const lastCtx = slotContextFrom(last);
+        if (!firstCtx || !lastCtx) return null;
+        return {
+          staffId: firstCtx.staffId,
+          startsAt: firstCtx.startsAt,
+          endsAt: addMinutesToIso(lastCtx.startsAt, lastCtx.slotMinutes),
+          slotMinutes: firstCtx.slotMinutes,
+          slotCount: slots.length,
+        };
+      }
+
+      function closeSelectionSheet() {
+        closeSheet(selectionSheet, () => {
+          rangeContext = null;
+          clearSlotSelectionHighlight();
+        });
+      }
+
+      function openSelectionSheet(context) {
+        rangeContext = context;
+        const durationMinutes = Math.round(
+          (new Date(context.endsAt).getTime() - new Date(context.startsAt).getTime()) / 60000,
+        );
+        selectionTitle.textContent = "Block time in bulk";
+        selectionSummary.textContent = `${staffName(context.staffId)} · ${formatTime(context.startsAt)} – ${formatTime(context.endsAt)} · ${formatDurationMinutes(durationMinutes)}`;
+        openSheet(selectionSheet);
+      }
+
+      function clearSelection() {
+        if (selectionSheet.classList.contains("is-open")) {
+          closeSelectionSheet();
+          return;
+        }
+        rangeContext = null;
+        clearSlotSelectionHighlight();
+      }
+
       function slotContextFrom(slot) {
         const staffId = slot.dataset.staffId;
         const startsAt = slot.dataset.startsAt;
@@ -550,18 +700,84 @@ const calendarConfig = {
       }
 
       function hitTarget(event, className) {
-        return document.elementsFromPoint(event.clientX, event.clientY).find(
+        return hitTargetAt(event.clientX, event.clientY, className);
+      }
+
+      function hitTargetAt(x, y, className) {
+        return document.elementsFromPoint(x, y).find(
           (el) => el instanceof HTMLElement && el.classList.contains(className),
         );
       }
 
+      /** @type {HTMLElement | null} */
+      let pendingBlockClick = null;
+
       root.querySelectorAll(".day-cal__grid").forEach((grid) => {
-        grid.addEventListener("click", (event) => {
-          const block = hitTarget(event, "day-cal__block");
+        if (!(grid instanceof HTMLElement)) return;
+
+        grid.addEventListener("pointerdown", (event) => {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+
+          const block = hitTargetAt(event.clientX, event.clientY, "day-cal__block");
           if (block instanceof HTMLElement) {
+            pendingBlockClick = block;
+            return;
+          }
+
+          const slot = hitTargetAt(event.clientX, event.clientY, "day-cal__slot");
+          if (!(slot instanceof HTMLElement) || !grid.contains(slot)) return;
+
+          const context = slotContextFrom(slot);
+          if (!context || !canSelectStaffColumn(context.staffId)) return;
+
+          pendingBlockClick = null;
+          clearSelection();
+          closeMenu();
+
+          const anchorIndex = slotIndexInGrid(grid, slot);
+          if (anchorIndex < 0) return;
+
+          dragState = {
+            grid,
+            staffId: context.staffId,
+            anchorIndex,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false,
+          };
+          applySlotSelection(grid, anchorIndex, anchorIndex);
+          grid.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+
+        grid.addEventListener("pointermove", (event) => {
+          if (!dragState || dragState.grid !== grid || event.pointerId !== dragState.pointerId) return;
+
+          const dx = event.clientX - dragState.startX;
+          const dy = event.clientY - dragState.startY;
+          if (!dragState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+            dragState.moved = true;
+          }
+
+          const slot = hitTargetAt(event.clientX, event.clientY, "day-cal__slot");
+          if (!(slot instanceof HTMLElement) || !grid.contains(slot)) return;
+
+          const context = slotContextFrom(slot);
+          if (!context || context.staffId !== dragState.staffId) return;
+
+          const activeIndex = slotIndexInGrid(grid, slot);
+          if (activeIndex < 0) return;
+          applySlotSelection(grid, dragState.anchorIndex, activeIndex);
+        });
+
+        grid.addEventListener("pointerup", (event) => {
+          if (pendingBlockClick instanceof HTMLElement) {
+            const block = pendingBlockClick;
+            pendingBlockClick = null;
             event.preventDefault();
-            event.stopPropagation();
             closeMenu();
+            clearSelection();
             const kind = block.dataset.kind;
             const id = block.dataset.id;
             if (kind === "appointment" && id) openAppointmentModal(id);
@@ -569,15 +785,71 @@ const calendarConfig = {
             return;
           }
 
-          const slot = hitTarget(event, "day-cal__slot");
-          if (!(slot instanceof HTMLElement)) return;
+          if (!dragState || dragState.grid !== grid || event.pointerId !== dragState.pointerId) return;
 
-          event.preventDefault();
-          event.stopPropagation();
-          const context = slotContextFrom(slot);
-          if (!context) return;
-          openMenu(context);
+          if (grid.hasPointerCapture(event.pointerId)) {
+            grid.releasePointerCapture(event.pointerId);
+          }
+
+          const state = dragState;
+          dragState = null;
+
+          if (state.moved && selectedSlots.length >= 2) {
+            const context = rangeContextFromSlots(selectedSlots);
+            if (context) openSelectionSheet(context);
+            return;
+          }
+
+          const anchorSlot = slotsInGrid(state.grid)[state.anchorIndex];
+          if (anchorSlot instanceof HTMLElement) {
+            const context = slotContextFrom(anchorSlot);
+            if (context) {
+              clearSlotSelectionHighlight();
+              openMenu(context);
+            }
+          }
         });
+
+        grid.addEventListener("pointercancel", (event) => {
+          if (dragState?.grid === grid && event.pointerId === dragState.pointerId) {
+            dragState = null;
+            clearSlotSelectionHighlight();
+          }
+          pendingBlockClick = null;
+        });
+      });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (!(event.target instanceof HTMLElement)) return;
+        if (selectedSlots.length === 0 || selectionSheet.classList.contains("is-open")) return;
+        if (event.target.closest(".day-cal__grid") || event.target.closest("#day-cal-selection")) return;
+        clearSelection();
+      });
+
+      selectionSheet.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (target.matches("[data-close-selection]")) {
+          closeSelectionSheet();
+          return;
+        }
+        const action = target.closest("[data-action]")?.getAttribute("data-action");
+        if (!action || !rangeContext) return;
+        if (action === "clear-selection") {
+          closeSelectionSheet();
+          return;
+        }
+        if (action === "block-bulk") {
+          const context = rangeContext;
+          closeSelectionSheet();
+          openBlockTimeForm(context, context.endsAt);
+          return;
+        }
+        if (action === "appointment-bulk") {
+          const context = rangeContext;
+          closeSelectionSheet();
+          openNewAppointmentForm(context);
+        }
       });
 
       menu.addEventListener("click", (event) => {
@@ -760,6 +1032,14 @@ const calendarConfig = {
         if (event.key !== "Escape") return;
         if (modal.classList.contains("is-open")) {
           closeModal();
+          return;
+        }
+        if (selectionSheet.classList.contains("is-open")) {
+          closeSelectionSheet();
+          return;
+        }
+        if (selectedSlots.length > 0) {
+          clearSelection();
           return;
         }
         if (menu.classList.contains("is-open")) {
@@ -976,6 +1256,24 @@ const calendarConfig = {
     outline: none;
   }
 
+  .day-cal__slot--selected {
+    background: color-mix(in srgb, var(--color-citrine) 18%, var(--color-bg));
+    box-shadow: inset 0 0 0 2px var(--color-sage);
+    z-index: 2;
+  }
+
+  [data-theme="dark"] .day-cal__slot--selected {
+    background: color-mix(in srgb, var(--color-citrine) 22%, var(--color-light));
+    box-shadow: inset 0 0 0 2px var(--color-citrine);
+  }
+
+  .day-cal--selecting,
+  .day-cal--selecting .day-cal__grid {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
   .day-cal__block {
     position: absolute;
     left: 0.2rem;
@@ -1161,6 +1459,28 @@ const calendarConfig = {
 
   .day-cal__sheet-action--muted {
     color: var(--color-gray);
+  }
+
+  .day-cal__sheet-action--primary {
+    font-weight: 600;
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--color-citrine) 14%, transparent);
+  }
+
+  .day-cal__sheet-action--primary:hover,
+  .day-cal__sheet-action--primary:focus-visible {
+    background: color-mix(in srgb, var(--color-citrine) 24%, transparent);
+  }
+
+  .day-cal__selection-summary {
+    margin: 0 0 0.75rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.25rem;
+    background: var(--color-light);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    line-height: 1.45;
   }
 
   @media (max-width: 48rem) {
