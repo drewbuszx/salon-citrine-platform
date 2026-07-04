@@ -10,7 +10,24 @@ type StaffRow = {
   photo_url: string | null;
   glossgenius_token: string | null;
   is_bookable: boolean;
+  accepting_new_clients?: boolean | null;
 };
+
+/** URL param set when an existing client confirms the new-client booking gate. */
+export const EXISTING_CLIENT_ACK_PARAM = "existing";
+
+export function staffFirstName(name: string): string {
+  const first = name.trim().split(/\s+/)[0];
+  return first || name;
+}
+
+export function hasExistingClientAck(searchParams: URLSearchParams): boolean {
+  return searchParams.get(EXISTING_CLIENT_ACK_PARAM) === "1";
+}
+
+export function isAcceptingNewClients(staff: Staff): boolean {
+  return staff.acceptingNewClients !== false;
+}
 
 type ServiceRow = {
   id: string;
@@ -111,6 +128,7 @@ function mapStaff(row: StaffRow): Staff {
     photoUrl: row.photo_url,
     glossgeniusToken: row.glossgenius_token,
     isBookable: row.is_bookable,
+    acceptingNewClients: row.accepting_new_clients !== false,
   };
 }
 

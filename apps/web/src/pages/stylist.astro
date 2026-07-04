@@ -3,13 +3,17 @@ export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
 import ReturningClientsModal from "../components/ReturningClientsModal.astro";
+import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
 import {
+  EXISTING_CLIENT_ACK_PARAM,
   fetchReturningOnlyStaffSlugs,
   fetchStaffForService,
   formatDuration,
   formatPrice,
   getServiceById,
   getStaffBySlug,
+  isAcceptingNewClients,
+  staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
@@ -53,9 +57,12 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
   <ul class="stylist-list" data-stylist-list>
     {
       staff.map((member) => {
-        const isRestricted = returningOnlySlugs.has(member.slug);
+        const isReturningRestricted = returningOnlySlugs.has(member.slug);
+        const isNotAcceptingNew = !isAcceptingNewClients(member);
+        const isRestricted = isReturningRestricted || isNotAcceptingNew;
         const cartHref = `${cartBase}?service=${service.id}&stylist=${member.slug}&flow=stylist`;
         const continueHref = `${cartHref}&returning=1`;
+        const existingContinueHref = `${cartHref}&${EXISTING_CLIENT_ACK_PARAM}=1`;
 
         return (
           <li>
@@ -65,7 +72,12 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
                 class="stylist-card stylist-card--button"
                 data-stylist-select
                 data-stylist-name={member.name}
+                data-stylist-first-name={staffFirstName(member.name)}
+                data-stylist-slug={member.slug}
                 data-continue-href={continueHref}
+                data-existing-continue-href={existingContinueHref}
+                data-returning-restricted={isReturningRestricted ? "1" : ""}
+                data-not-accepting={isNotAcceptingNew ? "1" : ""}
               >
                 {member.photoUrl ? (
                   <img
@@ -86,7 +98,13 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
                   <span class="stylist-card__role">
                     {member.role.replace("_", " ")}
                   </span>
-                  <span class="stylist-card__badge">Returning clients only</span>
+                  {
+                    isNotAcceptingNew ? (
+                      <span class="stylist-card__badge">Not accepting new clients</span>
+                    ) : isReturningRestricted ? (
+                      <span class="stylist-card__badge">Returning clients only</span>
+                    ) : null
+                  }
                   {member.bio && (
                     <span class="stylist-card__bio">{member.bio}</span>
                   )}
@@ -146,6 +164,13 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     chooseStylistHref={`${withBase("stylist/")}?service=${service.id}`}
   />
 
+  <NotAcceptingNewClientsModal
+    stylistFirstName=""
+    stylistSlug=""
+    continueHref={cartBase}
+    chooseStylistHref={`${withBase("stylist/")}?service=${service.id}`}
+  />
+
   <p class="back">
     <a href={bookBase}>← Back to services</a>
   </p>
@@ -159,22 +184,62 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
   }}
 >
   const returningOnly = new Set(JSON.parse(returningOnlyJson));
-  const modal = document.getElementById("returning-clients-modal");
-  const stylistNameEl = modal?.querySelector(".returning-modal__stylist-name");
-  const continueBtn = modal?.querySelector("[data-returning-continue]");
-  const metaEl = modal?.querySelector(".returning-modal__meta");
+  const returningModal = document.getElementById("returning-clients-modal");
+  const newClientsModal = document.getElementById("not-accepting-new-clients-modal");
+  const stylistNameEl = returningModal?.querySelector(".returning-modal__stylist-name");
+  const continueBtn = returningModal?.querySelector("[data-returning-continue]");
+  const metaEl = returningModal?.querySelector(".returning-modal__meta");
+  const newClientsContinueBtn = newClientsModal?.querySelector("[data-new-clients-continue]");
+  const newClientsFirstNameEls = newClientsModal?.querySelectorAll(
+    ".new-clients-modal__body strong",
+  );
+
+  function openReturningModal(name, href) {
+    if (stylistNameEl) stylistNameEl.textContent = name;
+    if (metaEl) metaEl.textContent = `${serviceDuration} · ${servicePrice}`;
+    if (continueBtn) continueBtn.dataset.continueHref = href;
+    returningModal?.removeAttribute("hidden");
+    returningModal?.setAttribute("aria-hidden", "false");
+    document.body.classList.add("returning-modal-open");
+    continueBtn?.focus();
+  }
+
+  function openNewClientsModal(firstName, slug, href) {
+    if (newClientsFirstNameEls) {
+      newClientsFirstNameEls.forEach((el) => {
+        el.textContent = firstName;
+      });
+    }
+    if (newClientsContinueBtn) {
+      newClientsContinueBtn.dataset.continueHref = href;
+      newClientsContinueBtn.dataset.stylistSlug = slug;
+    }
+    newClientsModal?.removeAttribute("hidden");
+    newClientsModal?.setAttribute("aria-hidden", "false");
+    document.body.classList.add("new-clients-modal-open");
+    newClientsContinueBtn?.focus();
+  }
 
   document.querySelectorAll("[data-stylist-select]").forEach((button) => {
     button.addEventListener("click", () => {
       const name = button.dataset.stylistName ?? "";
-      const href = button.dataset.continueHref ?? "";
-      if (stylistNameEl) stylistNameEl.textContent = name;
-      if (metaEl) metaEl.textContent = `${serviceDuration} · ${servicePrice}`;
-      if (continueBtn) continueBtn.dataset.continueHref = href;
-      modal?.removeAttribute("hidden");
-      modal?.setAttribute("aria-hidden", "false");
-      document.body.classList.add("returning-modal-open");
-      continueBtn?.focus();
+      const firstName = button.dataset.stylistFirstName ?? name;
+      const slug = button.dataset.stylistSlug ?? "";
+      const notAccepting = button.dataset.notAccepting === "1";
+      const returningRestricted = button.dataset.returningRestricted === "1";
+
+      if (notAccepting) {
+        openNewClientsModal(
+          firstName,
+          slug,
+          button.dataset.existingContinueHref ?? "",
+        );
+        return;
+      }
+
+      if (returningRestricted) {
+        openReturningModal(name, button.dataset.continueHref ?? "");
+      }
     });
   });
 </script>

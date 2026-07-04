@@ -3,9 +3,11 @@ export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
 import ReturningClientsModal from "../components/ReturningClientsModal.astro";
+import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import {
   estimateCartPrice,
+  EXISTING_CLIENT_ACK_PARAM,
   fetchCartSuggestions,
   fetchReturningClientsOnly,
   fetchServicesByIds,
@@ -13,7 +15,10 @@ import {
   formatPrice,
   getServiceById,
   getStaffBySlug,
+  hasExistingClientAck,
+  isAcceptingNewClients,
   parseServiceIdsFromParams,
+  staffFirstName,
   sumServiceDuration,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
@@ -23,6 +28,7 @@ const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 const returningAck = Astro.url.searchParams.get("returning") === "1";
+const existingAck = hasExistingClientAck(Astro.url.searchParams);
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const primaryServiceId = serviceIds[0] ?? serviceParam;
@@ -50,13 +56,19 @@ if (!primaryService || !stylist) {
 }
 
 const showReturningModal = returningClientsOnly && !returningAck;
+const showNewClientsModal = !isAcceptingNewClients(stylist) && !existingAck;
 
 const cartParams = new URLSearchParams();
 cartParams.set("services", serviceIds.length > 0 ? serviceIds.join(",") : primaryService.id);
 cartParams.set("stylist", stylist.slug);
 if (showStylistStep) cartParams.set("flow", "stylist");
-cartParams.set("returning", "1");
+if (returningAck) cartParams.set("returning", "1");
+cartParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
 const continueHref = `${withBase("cart/")}?${cartParams.toString()}`;
+
+const returningContinueParams = new URLSearchParams(cartParams);
+returningContinueParams.set("returning", "1");
+const returningContinueHref = `${withBase("cart/")}?${returningContinueParams.toString()}`;
 
 const chooseStylistParams = new URLSearchParams();
 chooseStylistParams.set("service", primaryService.id);
@@ -133,6 +145,18 @@ const bookBase = withBase();
   showStylistStep={showStylistStep}
 >
   {
+    showNewClientsModal && (
+      <NotAcceptingNewClientsModal
+        stylistFirstName={staffFirstName(stylist.name)}
+        stylistSlug={stylist.slug}
+        continueHref={continueHref}
+        chooseStylistHref={withBase()}
+        autoOpen={true}
+      />
+    )
+  }
+
+  {
     showReturningModal && (
       <ReturningClientsModal
         serviceName={primaryService.name}
@@ -144,9 +168,9 @@ const bookBase = withBase();
           ),
         )}
         priceLabel={formatPrice(primaryService)}
-        continueHref={continueHref}
+        continueHref={returningContinueHref}
         chooseStylistHref={chooseStylistHref}
-        autoOpen={true}
+        autoOpen={!showNewClientsModal}
       />
     )
   }
@@ -220,6 +244,8 @@ const bookBase = withBase();
     stylistSlug,
     showStylistStep,
     primaryServiceId,
+    existingAck,
+    existingClientAckParam: EXISTING_CLIENT_ACK_PARAM,
   }}
 >
   /** @type {{ id: string; name: string; durationMinutes: number; priceLabel: string; isPrimary?: boolean }[]} */
@@ -395,6 +421,7 @@ const bookBase = withBase();
     params.set("services", cart.map((item) => item.id).join(","));
     params.set("stylist", stylistSlug);
     if (showStylistStep) params.set("flow", "stylist");
+    if (existingAck) params.set(existingClientAckParam, "1");
     window.history.replaceState({}, "", `?${params.toString()}`);
   }
 
@@ -411,6 +438,7 @@ const bookBase = withBase();
     params.set("services", cart.map((item) => item.id).join(","));
     params.set("stylist", stylistSlug);
     if (showStylistStep) params.set("flow", "stylist");
+    if (existingAck) params.set(existingClientAckParam, "1");
     window.location.href = `${base}?${params.toString()}`;
   });
 

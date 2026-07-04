@@ -1,10 +1,20 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
 import ServiceBooking from "../components/ServiceBooking.astro";
-import { fetchBookingCatalog, getStaffBySlug } from "../lib/booking-data";
+import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
+import {
+  EXISTING_CLIENT_ACK_PARAM,
+  fetchBookingCatalog,
+  getStaffBySlug,
+  hasExistingClientAck,
+  isAcceptingNewClients,
+  staffFirstName,
+} from "../lib/booking-data";
+import { withBase } from "../lib/paths";
 
 const stylistSlug = Astro.url.searchParams.get("stylist") ?? "";
 const category = Astro.url.searchParams.get("category") ?? "";
+const existingAck = hasExistingClientAck(Astro.url.searchParams);
 
 const [catalog, preselectedStylist] = await Promise.all([
   fetchBookingCatalog(),
@@ -15,9 +25,32 @@ const initialStaffSlug =
   preselectedStylist && catalog.staff.some((s) => s.slug === preselectedStylist.slug)
     ? preselectedStylist.slug
     : "";
+
+const showNewClientsModal =
+  Boolean(preselectedStylist && initialStaffSlug) &&
+  !isAcceptingNewClients(preselectedStylist!) &&
+  !existingAck;
+
+const continueParams = new URLSearchParams();
+if (initialStaffSlug) continueParams.set("stylist", initialStaffSlug);
+if (category) continueParams.set("category", category);
+continueParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+const continueHref = `${withBase()}?${continueParams.toString()}`;
 ---
 
 <BookingLayout title="Choose a service" step="service">
+  {
+    showNewClientsModal && preselectedStylist && (
+      <NotAcceptingNewClientsModal
+        stylistFirstName={staffFirstName(preselectedStylist.name)}
+        stylistSlug={preselectedStylist.slug}
+        continueHref={continueHref}
+        chooseStylistHref={withBase()}
+        autoOpen={true}
+      />
+    )
+  }
+
   {
     preselectedStylist && initialStaffSlug && (
       <p class="prefill">

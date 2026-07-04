@@ -8,6 +8,14 @@ if (!staff) {
   return Astro.redirect(teamUrl("/login"));
 }
 
+const { data: staffSettings, error: staffSettingsError } = await supabase
+  .from("staff")
+  .select("accepting_new_clients")
+  .eq("id", staff.id)
+  .maybeSingle();
+
+const acceptingNewClients = staffSettings?.accepting_new_clients !== false;
+
 const { data: scheduleRows, error: scheduleError } = await supabase
   .from("staff_schedules")
   .select("id, day_of_week, start_time, end_time")
@@ -87,6 +95,7 @@ const services = ((serviceRows ?? []) as ServiceRow[])
 const calendarUrl = teamUrl("/");
 const apiSchedules = teamUrl("/api/my-book/schedules");
 const apiServices = teamUrl("/api/my-book/services");
+const apiProfile = teamUrl("/api/my-book/profile");
 ---
 
 <TeamLayout title="My Book">
@@ -99,6 +108,39 @@ const apiServices = teamUrl("/api/my-book/services");
     Set your bookable hours and control which services clients can see online.
     You can still manually book any service on the team calendar.
   </p>
+
+  <section class="page-section my-book__section" aria-labelledby="my-book-availability">
+    <h2 id="my-book-availability">Client availability</h2>
+    <p class="page-section__lead">
+      When enabled, clients who have never booked with you will see a notice before
+      continuing online. Existing clients can still proceed.
+    </p>
+
+    {
+      staffSettingsError ? (
+        <p class="notice notice--error" role="alert">
+          Failed to load your availability setting.
+        </p>
+      ) : (
+        <label class="my-book__toggle card-row card-row--2">
+          <span class="my-book__toggle-copy">
+            <span class="my-book__toggle-label">Not accepting new clients</span>
+            <span class="my-book__toggle-hint">
+              Online booking stays open for returning clients only.
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            class="my-book__toggle-input"
+            id="not-accepting-new-clients"
+            checked={!acceptingNewClients}
+            data-not-accepting-toggle
+          />
+        </label>
+      )
+    }
+    <p class="my-book__status" id="profile-status" role="status" hidden></p>
+  </section>
 
   <section class="page-section my-book__section" aria-labelledby="my-book-hours">
     <h2 id="my-book-hours">Bookable hours</h2>
@@ -227,10 +269,12 @@ const apiServices = teamUrl("/api/my-book/services");
   </section>
 </TeamLayout>
 
-<script define:vars={{ apiSchedules, apiServices }}>
+<script define:vars={{ apiSchedules, apiServices, apiProfile }}>
   const scheduleForm = document.getElementById("my-book-schedule-form");
   const scheduleStatus = document.getElementById("schedule-status");
   const servicesStatus = document.getElementById("services-status");
+  const profileStatus = document.getElementById("profile-status");
+  const notAcceptingToggle = document.querySelector("[data-not-accepting-toggle]");
 
   function showStatus(el, message, isError = false) {
     if (!el) return;
@@ -320,6 +364,29 @@ const apiServices = teamUrl("/api/my-book/services");
       }
     });
   });
+
+  notAcceptingToggle?.addEventListener("change", async () => {
+    const notAccepting = notAcceptingToggle.checked;
+    try {
+      const res = await fetch(apiProfile, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accepting_new_clients: !notAccepting,
+        }),
+      });
+      if (!res.ok) throw new Error("update failed");
+      showStatus(
+        profileStatus,
+        notAccepting
+          ? "You are not accepting new clients online."
+          : "You are accepting new clients online.",
+      );
+    } catch {
+      notAcceptingToggle.checked = !notAccepting;
+      showStatus(profileStatus, "Could not save setting. Try again.", true);
+    }
+  });
 </script>
 
 <style>
@@ -341,6 +408,34 @@ const apiServices = teamUrl("/api/my-book/services");
 
   .my-book__section {
     margin-top: 2.5rem;
+  }
+
+  .my-book__toggle {
+    align-items: center;
+    margin-top: 1rem;
+  }
+
+  .my-book__toggle-copy {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .my-book__toggle-label {
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .my-book__toggle-hint {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-gray);
+  }
+
+  .my-book__toggle-input {
+    width: 2.75rem;
+    height: 1.5rem;
+    accent-color: var(--color-citrine);
+    cursor: pointer;
   }
 
   .my-book__schedule-grid {

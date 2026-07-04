@@ -3,6 +3,7 @@ export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
+import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
 import {
   getAvailableDatesInRange,
   getAvailableSlots,
@@ -19,10 +20,14 @@ import {
 } from "../lib/calendar-utils";
 import { todayInTimezone } from "../lib/datetime-utils";
 import {
+  EXISTING_CLIENT_ACK_PARAM,
   formatDuration,
   getStaffBySlug,
+  hasExistingClientAck,
+  isAcceptingNewClients,
   parseServiceIdsFromParams,
   fetchServicesByIds,
+  staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
 
@@ -32,6 +37,7 @@ const stylistSlug = Astro.url.searchParams.get("stylist");
 const requestedDate = Astro.url.searchParams.get("date");
 const requestedMonth = Astro.url.searchParams.get("month");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
+const existingAck = hasExistingClientAck(Astro.url.searchParams);
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 
@@ -45,6 +51,10 @@ if (services.length === 0 || !stylist) {
 }
 
 const servicesParamValue = services.map((svc) => svc.id).join(",");
+const showNewClientsModal = !isAcceptingNewClients(stylist) && !existingAck;
+
+const existingQuery = existingAck ? `&${EXISTING_CLIENT_ACK_PARAM}=1` : "";
+const flowQuery = showStylistStep ? "&flow=stylist" : "";
 const totalDuration = services.reduce((sum, svc) => sum + svc.durationMinutes, 0);
 const serviceSummary =
   services.length === 1
@@ -97,9 +107,28 @@ const datesApiUrl = withBase("api/availability/dates.json");
 const slotsApiUrl = withBase("api/availability/slots.json");
 const detailsUrl = withBase("details/");
 const datetimeUrl = withBase("datetime/");
+
+const datetimeContinueParams = new URLSearchParams();
+datetimeContinueParams.set("services", servicesParamValue);
+datetimeContinueParams.set("stylist", stylist.slug);
+if (showStylistStep) datetimeContinueParams.set("flow", "stylist");
+datetimeContinueParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString()}`;
 ---
 
 <BookingLayout title="Choose date & time" step="datetime" showStylistStep={showStylistStep}>
+  {
+    showNewClientsModal && (
+      <NotAcceptingNewClientsModal
+        stylistFirstName={staffFirstName(stylist.name)}
+        stylistSlug={stylist.slug}
+        continueHref={newClientsContinueHref}
+        chooseStylistHref={withBase()}
+        autoOpen={true}
+      />
+    )
+  }
+
   <header class="page-header">
     <h1>Choose date & time</h1>
     <p class="lead">
@@ -129,6 +158,7 @@ const datetimeUrl = withBase("datetime/");
         data-stylist-slug={stylist.slug}
         data-services-param={servicesParamValue}
         data-flow={showStylistStep ? "stylist" : ""}
+        data-existing-ack={existingAck ? "1" : ""}
         data-dates-api={datesApiUrl}
         data-slots-api={slotsApiUrl}
         data-details-url={detailsUrl}
@@ -237,6 +267,9 @@ const datetimeUrl = withBase("datetime/");
                     {showStylistStep && (
                       <input type="hidden" name="flow" value="stylist" />
                     )}
+                    {existingAck && (
+                      <input type="hidden" name={EXISTING_CLIENT_ACK_PARAM} value="1" />
+                    )}
                     <input
                       type="hidden"
                       name="date"
@@ -277,7 +310,7 @@ const datetimeUrl = withBase("datetime/");
 
   <p class="back">
     <a
-      href={`${withBase("cart/")}?services=${servicesParamValue}&stylist=${stylist.slug}${showStylistStep ? "&flow=stylist" : ""}`}
+      href={`${withBase("cart/")}?services=${servicesParamValue}&stylist=${stylist.slug}${flowQuery}${existingQuery}`}
     >
       ← Back to cart
     </a>
@@ -383,7 +416,7 @@ const datetimeUrl = withBase("datetime/");
     window.history.replaceState({}, "", next);
   }
 
-  function renderTimePanel(panel, selectedDate, slots, detailsUrl, servicesParam, stylistSlug, flow) {
+  function renderTimePanel(panel, selectedDate, slots, detailsUrl, servicesParam, stylistSlug, flow, existingAck) {
     panel.innerHTML = "";
 
     if (!selectedDate) {
@@ -414,6 +447,7 @@ const datetimeUrl = withBase("datetime/");
       <input type="hidden" name="services" value="${servicesParam}" />
       <input type="hidden" name="stylist" value="${stylistSlug}" />
       ${flow ? `<input type="hidden" name="flow" value="${flow}" />` : ""}
+      ${existingAck ? `<input type="hidden" name="existing" value="1" />` : ""}
       <input type="hidden" name="date" value="${selectedDate}" data-time-date-input />
     `;
 
@@ -550,6 +584,7 @@ const datetimeUrl = withBase("datetime/");
     const servicesParam = root.dataset.servicesParam ?? "";
     const stylistSlug = root.dataset.stylistSlug ?? "";
     const flow = root.dataset.flow ?? "";
+    const existingAck = root.dataset.existingAck === "1";
 
     async function selectDate(date) {
       selectedDate = date;
@@ -565,9 +600,9 @@ const datetimeUrl = withBase("datetime/");
       panel.setAttribute("aria-busy", "true");
       try {
         const slots = await fetchSlots(root, date);
-        renderTimePanel(panel, date, slots, detailsUrl, servicesParam, stylistSlug, flow);
+        renderTimePanel(panel, date, slots, detailsUrl, servicesParam, stylistSlug, flow, existingAck);
       } catch {
-        renderTimePanel(panel, date, [], detailsUrl, servicesParam, stylistSlug, flow);
+        renderTimePanel(panel, date, [], detailsUrl, servicesParam, stylistSlug, flow, existingAck);
       } finally {
         panel.removeAttribute("aria-busy");
       }

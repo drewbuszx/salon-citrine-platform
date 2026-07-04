@@ -31,6 +31,7 @@ export const staffSchema = z.object({
   photoUrl: z.string().nullable(),
   glossgeniusToken: z.string().nullable(),
   isBookable: z.boolean(),
+  acceptingNewClients: z.boolean(),
 });
 export type Staff = z.infer<typeof staffSchema>;
 

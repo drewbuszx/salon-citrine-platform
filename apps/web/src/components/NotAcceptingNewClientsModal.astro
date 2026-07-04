@@ -1,0 +1,195 @@
+---
+import Modal from "@saloncitrine/theme/components/Modal.astro";
+import Button from "@saloncitrine/theme/components/Button.astro";
+
+interface Props {
+  stylistFirstName: string;
+  stylistSlug: string;
+  /** URL when user confirms they are an existing client */
+  continueHref: string;
+  /** URL when user wants to pick another stylist */
+  chooseStylistHref: string;
+  autoOpen?: boolean;
+}
+
+const {
+  stylistFirstName,
+  stylistSlug,
+  continueHref,
+  chooseStylistHref,
+  autoOpen = false,
+} = Astro.props;
+---
+
+<Modal
+  id="not-accepting-new-clients-modal"
+  labelledBy="not-accepting-new-clients-modal-title"
+>
+  <h2 id="not-accepting-new-clients-modal-title" class="new-clients-modal__title">
+    Not accepting new clients
+  </h2>
+
+  <div class="new-clients-modal__body">
+    <p>
+      If you have never booked with <strong>{stylistFirstName}</strong>, please
+      select another stylist.
+    </p>
+    <p>
+      If you are an existing client of <strong>{stylistFirstName}</strong>, please
+      proceed.
+    </p>
+  </div>
+
+  <div class="new-clients-modal__actions">
+    <Button
+      variant="primary"
+      type="button"
+      data-new-clients-continue
+      data-continue-href={continueHref}
+      data-stylist-slug={stylistSlug}
+    >
+      Proceed
+    </Button>
+    <Button
+      variant="secondary"
+      type="button"
+      data-new-clients-choose-stylist
+      data-choose-href={chooseStylistHref}
+    >
+      Choose another stylist
+    </Button>
+  </div>
+</Modal>
+
+<script define:vars={{ autoOpen }}>
+  const modal = document.getElementById("not-accepting-new-clients-modal");
+  const dialog = modal?.querySelector('[role="dialog"]');
+  const continueBtn = modal?.querySelector("[data-new-clients-continue]");
+  const chooseBtn = modal?.querySelector("[data-new-clients-choose-stylist]");
+  const backdrop = modal?.querySelector(".sc-modal__backdrop");
+
+  const focusableSelector =
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+  function sessionKeyForSlug(slug) {
+    return `booking-existing-client-${slug}`;
+  }
+
+  function getFocusable(container) {
+    return Array.from(container.querySelectorAll(focusableSelector)).filter(
+      (el) => !el.hasAttribute("disabled"),
+    );
+  }
+
+  function setSessionAck(slug) {
+    if (!slug) return;
+    try {
+      sessionStorage.setItem(sessionKeyForSlug(slug), "1");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function hasSessionAck(slug) {
+    if (!slug) return false;
+    try {
+      return sessionStorage.getItem(sessionKeyForSlug(slug)) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  function openModal() {
+    if (!modal || !dialog) return;
+    modal.removeAttribute("hidden");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("new-clients-modal-open");
+    continueBtn?.focus();
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.setAttribute("hidden", "");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("new-clients-modal-open");
+  }
+
+  continueBtn?.addEventListener("click", () => {
+    const slug = continueBtn.dataset.stylistSlug ?? "";
+    setSessionAck(slug);
+    const href = continueBtn.dataset.continueHref;
+    if (href) window.location.href = href;
+  });
+
+  chooseBtn?.addEventListener("click", () => {
+    const href = chooseBtn.dataset.chooseHref;
+    if (href) window.location.href = href;
+  });
+
+  backdrop?.addEventListener("click", () => {
+    const href = chooseBtn?.dataset.chooseHref;
+    if (href) window.location.href = href;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal && !modal.hasAttribute("hidden")) {
+      e.preventDefault();
+      const href = chooseBtn?.dataset.chooseHref;
+      if (href) window.location.href = href;
+    }
+
+    if (e.key === "Tab" && modal && !modal.hasAttribute("hidden") && dialog) {
+      const focusable = getFocusable(dialog);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+
+  if (autoOpen) {
+    const slug = continueBtn?.dataset.stylistSlug ?? "";
+    if (!hasSessionAck(slug)) {
+      openModal();
+    }
+  }
+</script>
+
+<style>
+  .new-clients-modal__title {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .new-clients-modal__body {
+    margin: 0 0 1.5rem;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: var(--color-text);
+  }
+
+  .new-clients-modal__body p {
+    margin: 0 0 0.85rem;
+  }
+
+  .new-clients-modal__body p:last-child {
+    margin-bottom: 0;
+  }
+
+  .new-clients-modal__actions {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  :global(body.new-clients-modal-open) {
+    overflow: hidden;
+  }
+</style>
