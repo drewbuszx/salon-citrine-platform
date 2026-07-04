@@ -118,6 +118,46 @@ textarea {
   box-shadow: 0 8px 40px var(--color-card-shadow);
 }
 
+/* Login page — solid background, centered form on desktop */
+.team-shell--login {
+  background-color: var(--color-cream);
+}
+
+[data-theme="dark"] .team-shell--login {
+  background-color: var(--color-cream);
+  background-image: none;
+}
+
+.team-content--login {
+  box-shadow: none;
+  background: var(--color-bg);
+}
+
+[data-theme="dark"] .team-content--login {
+  background: var(--color-bg);
+}
+
+@media (min-width: 40rem) {
+  .login-page {
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .login-page .page-lead,
+  .login-page .notice {
+    margin-inline: auto;
+  }
+
+  .login-page .form-label {
+    text-align: left;
+  }
+
+  .login-page .btn-primary {
+    justify-self: center;
+    width: 100%;
+  }
+}
+
 /* Site header — marketing-style grid with team nav */
 .site-header {
   position: fixed;
