@@ -1,9 +1,454 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { staff } = Astro.locals;
+const isManager = isSalonManager(staff);
 ---
 
 <TeamLayout title="Inventory" activeNav="inventory">
-  <h1 class="page-title">Inventory</h1>
-  <p class="page-lead">Back-bar and retail inventory tracking.</p>
-  <p class="empty-state">Coming soon.</p>
+  <div
+    class="inventory-page"
+    data-inventory-root
+    data-is-manager={isManager ? "1" : "0"}
+  >
+    <div class="inventory-page__header">
+      <div>
+        <h1 class="page-title">Inventory</h1>
+        <p class="page-lead">
+          Back-bar supplies — scan barcodes to log use or receive stock.
+        </p>
+      </div>
+      <div class="inventory-page__actions">
+        <button class="btn-primary inventory-page__scan" type="button" data-scan-open>
+          Scan barcode
+        </button>
+        {
+          isManager ? (
+            <button class="btn-secondary" type="button" data-add-open>
+              Add product
+            </button>
+          ) : null
+        }
+      </div>
+    </div>
+
+    <p class="notice inventory-low-stock" data-low-stock-banner hidden></p>
+    <p class="notice" data-status hidden></p>
+
+    <label class="form-label inventory-search">
+      Search products
+      <input
+        class="form-input"
+        type="search"
+        placeholder="Name, brand, barcode, SKU…"
+        autocomplete="off"
+        data-search
+      />
+    </label>
+
+    <div class="inventory-list" data-product-list>
+      <p class="empty-state">Loading products…</p>
+    </div>
+  </div>
+
+  <!-- Scanner modal -->
+  <div class="inventory-modal" data-scan-modal hidden>
+    <div class="inventory-modal__backdrop" data-modal-close="scan"></div>
+    <div class="inventory-modal__panel inventory-modal__panel--scanner" role="dialog" aria-modal="true" aria-labelledby="scan-title">
+      <div class="inventory-modal__head">
+        <h2 id="scan-title">Scan barcode</h2>
+        <button class="inventory-modal__close" type="button" data-modal-close="scan" aria-label="Close">×</button>
+      </div>
+      <div class="inventory-scanner">
+        <video class="inventory-scanner__video" data-scan-video playsinline muted></video>
+        <p class="inventory-scanner__hint">Point your camera at a UPC/EAN barcode</p>
+        <p class="notice notice--error inventory-scanner__error" data-scan-error></p>
+        <div class="inventory-scanner__manual">
+          <label class="form-label">
+            Or enter barcode manually
+            <input class="form-input" type="text" inputmode="numeric" data-manual-barcode />
+          </label>
+          <button class="btn-secondary" type="button" data-manual-barcode-submit>
+            Look up
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product detail modal -->
+  <div class="inventory-modal" data-detail-modal hidden>
+    <div class="inventory-modal__backdrop" data-modal-close="detail"></div>
+    <div class="inventory-modal__panel" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="inventory-modal__head">
+        <h2 id="detail-title" data-detail-title>Product</h2>
+        <button class="inventory-modal__close" type="button" data-modal-close="detail" aria-label="Close">×</button>
+      </div>
+      <p class="inventory-detail__meta" data-detail-meta></p>
+      <p class="inventory-detail__qty" data-detail-qty></p>
+      <div class="inventory-detail__actions">
+        <button class="btn-secondary" type="button" data-tx-action="use">Use</button>
+        <button class="btn-secondary" type="button" data-tx-action="receive">Receive</button>
+        <button class="btn-secondary" type="button" data-tx-action="adjust">Adjust</button>
+        <button class="btn-secondary" type="button" data-tx-action="count">Set count</button>
+      </div>
+      <h3 class="inventory-detail__history-title">Recent activity</h3>
+      <div class="inventory-history" data-detail-history></div>
+    </div>
+  </div>
+
+  <!-- Transaction modal -->
+  <div class="inventory-modal" data-tx-modal hidden>
+    <div class="inventory-modal__backdrop" data-modal-close="tx"></div>
+    <div class="inventory-modal__panel inventory-modal__panel--narrow" role="dialog" aria-modal="true" aria-labelledby="tx-title">
+      <div class="inventory-modal__head">
+        <h2 id="tx-title" data-tx-title>Log transaction</h2>
+        <button class="inventory-modal__close" type="button" data-modal-close="tx" aria-label="Close">×</button>
+      </div>
+      <label class="form-label">
+        Quantity
+        <input class="form-input" type="number" step="any" min="0" data-tx-qty />
+      </label>
+      <label class="form-label">
+        Notes (optional)
+        <textarea class="form-input form-input--textarea" rows="2" data-tx-notes></textarea>
+      </label>
+      <button class="btn-primary" type="button" data-tx-submit>Save</button>
+    </div>
+  </div>
+
+  <!-- Add product modal (managers) -->
+  {
+    isManager ? (
+      <div class="inventory-modal" data-add-modal hidden>
+        <div class="inventory-modal__backdrop" data-modal-close="add" />
+        <div
+          class="inventory-modal__panel inventory-modal__panel--narrow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-title"
+        >
+          <div class="inventory-modal__head">
+            <h2 id="add-title">Add product</h2>
+            <button
+              class="inventory-modal__close"
+              type="button"
+              data-modal-close="add"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <form class="form-stack" data-add-form>
+            <label class="form-label">
+              Name
+              <input class="form-input" name="name" required />
+            </label>
+            <label class="form-label">
+              Barcode
+              <input class="form-input" name="barcode" inputmode="numeric" />
+            </label>
+            <label class="form-label">
+              Brand
+              <input class="form-input" name="brand" />
+            </label>
+            <label class="form-label">
+              Category
+              <input
+                class="form-input"
+                name="category"
+                placeholder="color, shampoo, developer…"
+              />
+            </label>
+            <label class="form-label">
+              Unit
+              <input class="form-input" name="unit" value="each" />
+            </label>
+            <label class="form-label">
+              Reorder threshold
+              <input
+                class="form-input"
+                name="reorder_threshold"
+                type="number"
+                min="0"
+                step="1"
+                value="0"
+              />
+            </label>
+            <label class="form-label">
+              Initial quantity
+              <input
+                class="form-input"
+                name="initial_quantity"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+              />
+            </label>
+            <label class="form-label">
+              Notes
+              <textarea class="form-input form-input--textarea" name="notes" rows="2" />
+            </label>
+            <button class="btn-primary" type="submit">
+              Create product
+            </button>
+          </form>
+        </div>
+      </div>
+    ) : null
+  }
+
+  <script define:vars={{ apiBase: teamUrl("") }}>
+    document.body.dataset.apiBase = apiBase;
+  </script>
+  <script src="../scripts/inventory.ts"></script>
 </TeamLayout>
+
+<style>
+  .inventory-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .inventory-page__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .inventory-page__scan {
+    background: var(--color-dusty-rose-dark, var(--color-charcoal));
+  }
+
+  .inventory-search {
+    margin: 1rem 0 1.25rem;
+  }
+
+  .inventory-low-stock {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.12);
+  }
+
+  .inventory-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .inventory-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+  }
+
+  .inventory-card:hover,
+  .inventory-card:focus-visible {
+    border-color: var(--color-sage);
+    outline: none;
+  }
+
+  .inventory-card__main {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .inventory-card__name {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .inventory-card__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .inventory-card__qty {
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .inventory-badge {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid currentColor;
+  }
+
+  .inventory-badge--low {
+    color: #922;
+    border-color: #c44;
+    background: rgba(200, 60, 60, 0.08);
+  }
+
+  .inventory-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .inventory-modal[hidden] {
+    display: none;
+  }
+
+  .inventory-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .inventory-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 32rem);
+    max-height: 90vh;
+    overflow: auto;
+    padding: 1.25rem;
+    background: var(--color-booking-panel-bg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 12px 48px var(--color-card-shadow);
+  }
+
+  .inventory-modal__panel--narrow {
+    width: min(100%, 24rem);
+  }
+
+  .inventory-modal__panel--scanner {
+    width: min(100%, 28rem);
+  }
+
+  .inventory-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .inventory-modal__head h2 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .inventory-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.75rem;
+    line-height: 1;
+    padding: 0.15rem 0.35rem;
+    cursor: pointer;
+  }
+
+  .inventory-scanner__video {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: #111;
+    border: 1px solid var(--color-border);
+  }
+
+  .inventory-scanner__hint {
+    margin: 0.65rem 0 0;
+    font-size: 0.9rem;
+    color: var(--color-gray);
+  }
+
+  .inventory-scanner__error:empty {
+    display: none;
+  }
+
+  .inventory-scanner__manual {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .inventory-detail__meta {
+    margin: 0 0 0.5rem;
+    color: var(--color-gray);
+    font-size: 0.9rem;
+  }
+
+  .inventory-detail__qty {
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+
+  .inventory-detail__qty--low {
+    color: #922;
+  }
+
+  .inventory-detail__actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .inventory-detail__history-title {
+    font-size: 0.95rem;
+    margin: 0 0 0.5rem;
+  }
+
+  .inventory-history {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .inventory-history__row {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+    font-size: 0.9rem;
+  }
+
+  .inventory-history__loading {
+    margin: 0;
+    color: var(--color-gray);
+    font-size: 0.9rem;
+  }
+
+  :global(body.inventory-modal-open) {
+    overflow: hidden;
+  }
+
+  @media (min-width: 40rem) {
+    .inventory-modal {
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .inventory-detail__actions {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>
