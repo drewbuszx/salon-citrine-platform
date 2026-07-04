@@ -53,3 +53,22 @@ export function parseDateTimeLocalInput(value: string): Date {
   }
   return localDateTimeToUtc(match[1]!, match[2]!);
 }
+
+/** Snap a datetime-local string to the nearest slot increment (default 15 min). */
+export function roundDateTimeLocalToSlot(
+  value: string,
+  slotMinutes = 15,
+): string {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return value;
+
+  const hours = Number(match[2]);
+  const minutes = Number(match[3]);
+  const totalMinutes = hours * 60 + minutes;
+  const rounded = Math.round(totalMinutes / slotMinutes) * slotMinutes;
+  const dayMinutes = ((rounded % 1440) + 1440) % 1440;
+  const hh = String(Math.floor(dayMinutes / 60)).padStart(2, "0");
+  const mm = String(dayMinutes % 60).padStart(2, "0");
+
+  return `${match[1]}T${hh}:${mm}`;
+}

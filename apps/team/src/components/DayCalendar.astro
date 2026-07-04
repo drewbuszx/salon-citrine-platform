@@ -79,6 +79,8 @@ const calendarConfig = {
   api: {
     appointments: teamUrl("/api/appointments"),
     blockedTimes: teamUrl("/api/blocked-times"),
+    clientsSearch: teamUrl("/api/clients/search"),
+    clientProfile: teamUrl("/api/clients"),
   },
   reloadUrl: `${teamUrl("/")}?day=${dayParam}`,
 };
@@ -413,6 +415,27 @@ const calendarConfig = {
         return `${y}-${m}-${d}T${hh}:${mm}`;
       }
 
+      function roundDatetimeLocalToSlot(value, slotMinutes) {
+        const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(String(value || "").trim());
+        if (!match) return value;
+        const hours = Number(match[2]);
+        const minutes = Number(match[3]);
+        const totalMinutes = hours * 60 + minutes;
+        const rounded = Math.round(totalMinutes / slotMinutes) * slotMinutes;
+        const dayMinutes = ((rounded % 1440) + 1440) % 1440;
+        const hh = String(Math.floor(dayMinutes / 60)).padStart(2, "0");
+        const mm = String(dayMinutes % 60).padStart(2, "0");
+        return `${match[1]}T${hh}:${mm}`;
+      }
+
+      function snapDatetimeLocalInput(input, slotMinutes) {
+        if (!(input instanceof HTMLInputElement)) return;
+        const rounded = roundDatetimeLocalToSlot(input.value, slotMinutes);
+        if (rounded !== input.value) {
+          input.value = rounded;
+        }
+      }
+
       function staffName(staffId) {
         return (config.staff || []).find((member) => member.id === staffId)?.name || "Provider";
       }
@@ -526,13 +549,32 @@ const calendarConfig = {
       }
 
       function openNewAppointmentForm(context) {
-        const startsLocal = toDatetimeLocal(context.startsAt);
+        const slotMinutes = Number(config.slotMinutes || 15);
+        const startsLocal = roundDatetimeLocalToSlot(
+          toDatetimeLocal(context.startsAt),
+          slotMinutes,
+        );
         openModal(
           "New appointment",
           `<form class="day-cal__form" data-form="appointment-create">
             ${renderStaffSelect("staff_id", context.staffId)}
-            <label class="form-label">Start<input class="form-input" name="starts_at" type="datetime-local" value="${startsLocal}" required /></label>
-            <label class="form-label">Client name<input class="form-input" name="client_name" type="text" required autocomplete="name" /></label>
+            <label class="form-label">Start<input class="form-input" name="starts_at" type="datetime-local" step="900" value="${startsLocal}" required /></label>
+            <div class="day-cal__client-field">
+              <label class="form-label">Client name
+                <div class="day-cal__client-combobox">
+                  <input class="form-input" name="client_name" type="text" required autocomplete="off" role="combobox" aria-expanded="false" aria-controls="day-cal-client-suggestions" aria-autocomplete="list" />
+                  <input type="hidden" name="client_id" value="" />
+                  <ul class="day-cal__client-suggestions" id="day-cal-client-suggestions" role="listbox" hidden></ul>
+                </div>
+              </label>
+              <div class="day-cal__client-panel" data-client-panel hidden>
+                <p class="day-cal__client-badge" data-referral-badge hidden>Referral discount eligible on next service</p>
+                <div data-past-services hidden>
+                  <span class="label-meta">Past services</span>
+                  <ul class="day-cal__detail-list" data-past-services-list></ul>
+                </div>
+              </div>
+            </div>
             <label class="form-label">Phone<input class="form-input" name="phone" type="tel" autocomplete="tel" /></label>
             <label class="form-label">Email<input class="form-input" name="email" type="email" autocomplete="email" /></label>
             <div data-service-field>${renderServiceOptions(context.staffId, [])}</div>
@@ -543,6 +585,208 @@ const calendarConfig = {
             </div>
           </form>`,
         );
+        const form = modalBody.querySelector('[data-form="appointment-create"]');
+        if (form instanceof HTMLFormElement) {
+          setupAppointmentCreateForm(form, slotMinutes);
+        }
+      }
+
+      function setupAppointmentCreateForm(form, slotMinutes) {
+        const startsInput = form.querySelector('input[name="starts_at"]');
+        if (startsInput instanceof HTMLInputElement) {
+          startsInput.addEventListener("change", () => {
+            snapDatetimeLocalInput(startsInput, slotMinutes);
+          });
+        }
+
+        const nameInput = form.querySelector('input[name="client_name"]');
+        const clientIdInput = form.querySelector('input[name="client_id"]');
+        const phoneInput = form.querySelector('input[name="phone"]');
+        const emailInput = form.querySelector('input[name="email"]');
+        const suggestions = form.querySelector(".day-cal__client-suggestions");
+        const panel = form.querySelector("[data-client-panel]");
+        const referralBadge = form.querySelector("[data-referral-badge]");
+        const pastServicesWrap = form.querySelector("[data-past-services]");
+        const pastServicesList = form.querySelector("[data-past-services-list]");
+
+        if (
+          !(nameInput instanceof HTMLInputElement) ||
+          !(clientIdInput instanceof HTMLInputElement) ||
+          !(suggestions instanceof HTMLUListElement)
+        ) {
+          return;
+        }
+
+        let searchTimer = 0;
+        let activeIndex = -1;
+        /** @type {Array<{ id: string; fullName: string; phone?: string | null; email?: string | null }>} */
+        let matches = [];
+
+        function hideSuggestions() {
+          suggestions.hidden = true;
+          suggestions.innerHTML = "";
+          nameInput.setAttribute("aria-expanded", "false");
+          activeIndex = -1;
+          matches = [];
+        }
+
+        function clearClientPanel() {
+          if (panel instanceof HTMLElement) panel.hidden = true;
+          if (referralBadge instanceof HTMLElement) referralBadge.hidden = true;
+          if (pastServicesWrap instanceof HTMLElement) pastServicesWrap.hidden = true;
+          if (pastServicesList instanceof HTMLElement) pastServicesList.innerHTML = "";
+        }
+
+        function clearSelectedClient() {
+          clientIdInput.value = "";
+          clearClientPanel();
+        }
+
+        function showSuggestions(items) {
+          matches = items;
+          activeIndex = -1;
+          suggestions.innerHTML = items
+            .map(
+              (item, index) =>
+                `<li><button type="button" class="day-cal__client-option" role="option" data-index="${index}">${item.fullName}${item.phone ? ` · ${item.phone}` : ""}</button></li>`,
+            )
+            .join("");
+          suggestions.hidden = items.length === 0;
+          nameInput.setAttribute("aria-expanded", items.length > 0 ? "true" : "false");
+        }
+
+        async function selectClient(clientId) {
+          hideSuggestions();
+          try {
+            const res = await fetch(`${config.api.clientProfile}/${clientId}`);
+            const body = await res.json();
+            if (!res.ok || !body.client) {
+              throw new Error(body.error || "Failed to load client");
+            }
+
+            clientIdInput.value = body.client.id;
+            nameInput.value = body.client.fullName;
+            if (phoneInput instanceof HTMLInputElement) {
+              phoneInput.value = body.client.phone || "";
+            }
+            if (emailInput instanceof HTMLInputElement) {
+              emailInput.value = body.client.email || "";
+            }
+
+            if (panel instanceof HTMLElement) panel.hidden = false;
+            if (referralBadge instanceof HTMLElement) {
+              referralBadge.hidden = !body.referrals?.pendingDiscount;
+            }
+
+            if (
+              pastServicesWrap instanceof HTMLElement &&
+              pastServicesList instanceof HTMLElement
+            ) {
+              const services = Array.isArray(body.pastServices) ? body.pastServices : [];
+              if (services.length === 0) {
+                pastServicesWrap.hidden = true;
+                pastServicesList.innerHTML = "";
+              } else {
+                pastServicesWrap.hidden = false;
+                pastServicesList.innerHTML = services
+                  .slice(0, 8)
+                  .map((entry) => {
+                    const when = entry.date
+                      ? new Intl.DateTimeFormat("en-US", {
+                          timeZone: TIMEZONE,
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        }).format(new Date(entry.date))
+                      : "";
+                    return `<li>${entry.serviceName}${when ? ` · ${when}` : ""}</li>`;
+                  })
+                  .join("");
+              }
+            }
+          } catch (err) {
+            clearSelectedClient();
+            showError(form, err instanceof Error ? err.message : "Failed to load client");
+          }
+        }
+
+        async function searchClients(query) {
+          const q = query.trim();
+          if (q.length < 2) {
+            hideSuggestions();
+            return;
+          }
+
+          try {
+            const res = await fetch(
+              `${config.api.clientsSearch}?q=${encodeURIComponent(q)}`,
+            );
+            const body = await res.json();
+            if (!res.ok) {
+              throw new Error(body.error || "Search failed");
+            }
+            showSuggestions(Array.isArray(body.clients) ? body.clients : []);
+          } catch {
+            hideSuggestions();
+          }
+        }
+
+        nameInput.addEventListener("input", () => {
+          clearSelectedClient();
+          window.clearTimeout(searchTimer);
+          searchTimer = window.setTimeout(() => {
+            searchClients(nameInput.value);
+          }, 300);
+        });
+
+        nameInput.addEventListener("keydown", (event) => {
+          if (suggestions.hidden || matches.length === 0) return;
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, matches.length - 1);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+          } else if (event.key === "Enter" && activeIndex >= 0) {
+            event.preventDefault();
+            selectClient(matches[activeIndex].id);
+            return;
+          } else if (event.key === "Escape") {
+            hideSuggestions();
+            return;
+          } else {
+            return;
+          }
+
+          suggestions.querySelectorAll(".day-cal__client-option").forEach((btn, index) => {
+            if (btn instanceof HTMLElement) {
+              btn.classList.toggle("is-active", index === activeIndex);
+            }
+          });
+        });
+
+        suggestions.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          const option = target.closest(".day-cal__client-option");
+          if (!(option instanceof HTMLElement)) return;
+          const index = Number(option.dataset.index);
+          if (Number.isNaN(index) || !matches[index]) return;
+          selectClient(matches[index].id);
+        });
+
+        function onModalMouseDown(event) {
+          if (!(event.target instanceof Node)) return;
+          if (!form.isConnected) {
+            modal.removeEventListener("mousedown", onModalMouseDown);
+            return;
+          }
+          const combobox = form.querySelector(".day-cal__client-combobox");
+          if (combobox instanceof HTMLElement && combobox.contains(event.target)) return;
+          hideSuggestions();
+        }
+
+        modal.addEventListener("mousedown", onModalMouseDown);
       }
 
       function openBlockTimeForm(context, endsAt) {
@@ -1083,13 +1327,24 @@ const calendarConfig = {
         try {
           if (formType === "appointment-create") {
             const data = new FormData(form);
+            const slotMinutes = Number(config.slotMinutes || 15);
+            const startsAt = roundDatetimeLocalToSlot(
+              String(data.get("starts_at") || ""),
+              slotMinutes,
+            );
+            const startsInput = form.querySelector('input[name="starts_at"]');
+            if (startsInput instanceof HTMLInputElement) {
+              startsInput.value = startsAt;
+            }
+            const clientId = String(data.get("client_id") || "").trim();
             const serviceIds = data.getAll("service_ids").map(String);
             const res = await fetch(config.api.appointments, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 staff_id: String(data.get("staff_id") || ""),
-                starts_at: String(data.get("starts_at") || ""),
+                starts_at: startsAt,
+                client_id: clientId || undefined,
                 client_name: String(data.get("client_name") || ""),
                 phone: String(data.get("phone") || ""),
                 email: String(data.get("email") || ""),
@@ -1793,6 +2048,69 @@ const calendarConfig = {
     background: rgba(200, 60, 60, 0.08);
     color: #922;
     font-size: 0.85rem;
+  }
+
+  .day-cal__client-field {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .day-cal__client-combobox {
+    position: relative;
+  }
+
+  .day-cal__client-suggestions {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.15rem);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 0.25rem 0;
+    list-style: none;
+    max-height: 12rem;
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-bg);
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.12);
+  }
+
+  .day-cal__client-option {
+    display: block;
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .day-cal__client-option:hover,
+  .day-cal__client-option:focus-visible,
+  .day-cal__client-option.is-active {
+    background: color-mix(in srgb, var(--color-citrine) 18%, var(--color-bg));
+    outline: none;
+  }
+
+  .day-cal__client-panel {
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-booking-card-bg, var(--color-bg));
+  }
+
+  .day-cal__client-badge {
+    margin: 0 0 0.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0.25rem;
+    background: color-mix(in srgb, var(--color-citrine) 22%, transparent);
+    color: var(--color-text);
+    font-size: 0.82rem;
+    font-weight: 600;
   }
 
   .day-cal__detail {

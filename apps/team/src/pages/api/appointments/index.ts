@@ -6,11 +6,16 @@ import {
   parseClientName,
   requireApiAuth,
 } from "../../../lib/api-calendar";
-import { parseDateTimeLocalInput } from "../../../lib/datetime";
+import {
+  parseDateTimeLocalInput,
+  roundDateTimeLocalToSlot,
+} from "../../../lib/datetime";
+import { CALENDAR_SLOT_MINUTES } from "../../../lib/calendar";
 
 type CreateAppointmentBody = {
   staff_id?: string;
   starts_at?: string;
+  client_id?: string;
   client_name?: string;
   client_first_name?: string;
   client_last_name?: string;
@@ -37,7 +42,11 @@ export const POST: APIRoute = async (context) => {
   }
 
   const staffId = String(body.staff_id ?? "");
-  const startsRaw = String(body.starts_at ?? "");
+  const startsRaw = roundDateTimeLocalToSlot(
+    String(body.starts_at ?? ""),
+    CALENDAR_SLOT_MINUTES,
+  );
+  const clientIdFromBody = String(body.client_id ?? "").trim() || null;
   const serviceIds = Array.isArray(body.service_ids)
     ? body.service_ids.map(String).filter(Boolean)
     : [];
@@ -58,7 +67,7 @@ export const POST: APIRoute = async (context) => {
         lastName: String(body.client_last_name ?? "").trim(),
       };
 
-  if (!parsedName?.firstName || !parsedName.lastName) {
+  if (!clientIdFromBody && (!parsedName?.firstName || !parsedName.lastName)) {
     return jsonError("Client name is required", 400);
   }
 
@@ -119,9 +128,26 @@ export const POST: APIRoute = async (context) => {
     String(body.email ?? body.client_email ?? "").trim().toLowerCase() || null;
   const notes = String(body.notes ?? "").trim() || null;
 
-  let clientId: string | null = null;
+  let clientId: string | null = clientIdFromBody;
 
-  if (phone) {
+  if (clientId) {
+    const { data: existingClient, error: existingClientError } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("id", clientId)
+      .maybeSingle();
+
+    if (existingClientError) {
+      console.error("client lookup failed", existingClientError);
+      return jsonError("Failed to load client", 500);
+    }
+
+    if (!existingClient) {
+      return jsonError("Client not found", 400);
+    }
+  }
+
+  if (!clientId && phone) {
     const { data } = await supabase
       .from("clients")
       .select("id")
@@ -140,6 +166,10 @@ export const POST: APIRoute = async (context) => {
   }
 
   if (!clientId) {
+    if (!parsedName) {
+      return jsonError("Client name is required", 400);
+    }
+
     const { data: createdClient, error: clientError } = await supabase
       .from("clients")
       .insert({
