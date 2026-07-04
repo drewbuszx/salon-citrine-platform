@@ -754,14 +754,16 @@ const calendarConfig = {
     justify-content: space-between;
     gap: 1rem;
     margin-bottom: 1rem;
-    padding-left: clamp(1rem, 3vw, 2.5rem);
-    padding-right: clamp(1rem, 3vw, 2.5rem);
+    padding: 0.85rem clamp(1rem, 3vw, 2.5rem);
+    background: var(--color-dusty-rose);
+    color: var(--color-on-brand-section);
   }
 
   .day-cal__title {
     font-size: clamp(1.15rem, 3vw, 1.35rem);
     margin: 0;
     font-weight: 500;
+    color: inherit;
   }
 
   .day-cal__actions {
@@ -769,27 +771,30 @@ const calendarConfig = {
     gap: 0.5rem;
   }
 
-  .day-cal__btn {
+  .day-cal__toolbar .day-cal__btn {
     padding: 0.4rem 0.75rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-booking-card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.15);
     font-family: var(--font-sans);
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     text-decoration: none;
-    color: inherit;
-    transition: opacity 0.2s ease;
+    color: var(--color-on-brand-section);
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease;
   }
 
-  .day-cal__btn:hover,
-  .day-cal__btn:focus-visible {
-    opacity: 0.75;
+  .day-cal__toolbar .day-cal__btn:hover,
+  .day-cal__toolbar .day-cal__btn:focus-visible {
+    background: rgba(255, 255, 255, 0.28);
     outline: none;
   }
 
-  .day-cal__btn--today {
-    border-color: var(--color-sage);
+  .day-cal__toolbar .day-cal__btn--today {
+    border-color: var(--color-citrine);
+    background: rgba(255, 255, 255, 0.22);
   }
 
   .day-cal__frame {
