@@ -7,8 +7,21 @@ export type CalendarAppointment = {
   startsAt: string;
   endsAt: string;
   status: string;
+  notes: string | null;
   clientLabel: string;
+  clientFirstName: string;
+  clientLastName: string;
+  clientPhone: string | null;
+  clientEmail: string | null;
   serviceLabel: string | null;
+  serviceIds: string[];
+  serviceNames: string[];
+};
+
+export type StaffServiceOption = {
+  id: string;
+  name: string;
+  durationMinutes: number;
 };
 
 export type CalendarBlockedTime = {
@@ -239,7 +252,7 @@ export async function loadCalendarData(
   let appointmentsQuery = supabase
     .from("appointments")
     .select(
-      "id, staff_id, starts_at, ends_at, status, clients(first_name, last_name), appointment_services(services(name))",
+      "id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name))",
     )
     .gte("starts_at", startIso)
     .lt("starts_at", endIso)
@@ -290,14 +303,25 @@ export async function loadCalendarData(
   const appointments: CalendarAppointment[] = (appointmentsResult.data ?? []).map(
     (row) => {
       const client = row.clients as
-        | { first_name: string; last_name: string }
+        | {
+            first_name: string;
+            last_name: string;
+            phone: string | null;
+            email: string | null;
+          }
         | null
         | undefined;
       const services = row.appointment_services as
-        | Array<{ services: { name: string } | null }>
+        | Array<{ service_id: string; services: { name: string } | null }>
         | null
         | undefined;
-      const serviceName = services?.[0]?.services?.name ?? null;
+      const serviceNames =
+        services
+          ?.map((item) => item.services?.name)
+          .filter((name): name is string => Boolean(name)) ?? [];
+      const serviceIds =
+        services?.map((item) => item.service_id).filter(Boolean) ?? [];
+      const serviceName = serviceNames[0] ?? null;
       const clientLabel = client
         ? `${client.first_name} ${client.last_name.charAt(0)}.`
         : "Client";
@@ -308,8 +332,15 @@ export async function loadCalendarData(
         startsAt: row.starts_at,
         endsAt: row.ends_at,
         status: row.status,
+        notes: row.notes ?? null,
         clientLabel,
+        clientFirstName: client?.first_name ?? "",
+        clientLastName: client?.last_name ?? "",
+        clientPhone: client?.phone ?? null,
+        clientEmail: client?.email ?? null,
         serviceLabel: serviceName,
+        serviceIds,
+        serviceNames,
       };
     },
   );
@@ -325,6 +356,57 @@ export async function loadCalendarData(
   );
 
   return { staff, appointments, blockedTimes };
+}
+
+export async function loadStaffServicesByStaff(
+  supabase: App.Locals["supabase"],
+  staffIds: string[],
+) {
+  if (staffIds.length === 0) {
+    return {} as Record<string, StaffServiceOption[]>;
+  }
+
+  const { data, error } = await supabase
+    .from("staff_services")
+    .select("staff_id, services(id, name, duration_minutes)")
+    .in("staff_id", staffIds);
+
+  if (error) {
+    throw error;
+  }
+
+  const grouped: Record<string, StaffServiceOption[]> = {};
+  for (const row of data ?? []) {
+    const raw = row.services as
+      | { id: string; name: string; duration_minutes: number }
+      | Array<{ id: string; name: string; duration_minutes: number }>
+      | null;
+    const svc = Array.isArray(raw) ? raw[0] : raw;
+    if (!svc) continue;
+    const list = grouped[row.staff_id] ?? [];
+    list.push({
+      id: svc.id,
+      name: svc.name,
+      durationMinutes: svc.duration_minutes,
+    });
+    grouped[row.staff_id] = list;
+  }
+
+  for (const id of staffIds) {
+    grouped[id] = (grouped[id] ?? []).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }
+
+  return grouped;
+}
+
+export function slotStartsAtIso(dayStart: Date, totalMinutes: number) {
+  const dateStr = formatDayParam(dayStart);
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return localDateTimeToUtc(dateStr, timeStr).toISOString();
 }
 
 export function staffEventsForDay(

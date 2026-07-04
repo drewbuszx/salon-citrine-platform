@@ -1,6 +1,29 @@
 import type { APIRoute } from "astro";
+import { canManageStaffColumn, jsonError, jsonResponse, requireTeamStaff } from "../../lib/api-calendar";
 import { isSalonManager, loadStaffProfile } from "../../lib/auth";
+import { loadStaffServicesByStaff } from "../../lib/calendar";
 import { createSupabaseServerClient, teamUrl } from "../../lib/supabase-server";
+
+export const GET: APIRoute = async ({ request, cookies, url }) => {
+  const auth = await requireTeamStaff(request, cookies);
+  if ("error" in auth && auth.error) {
+    return auth.error;
+  }
+  const { supabase, staff } = auth;
+
+  const staffId = url.searchParams.get("staff_id") ?? staff.id;
+  if (!canManageStaffColumn(staff, staffId)) {
+    return jsonError("Forbidden", 403);
+  }
+
+  try {
+    const servicesByStaff = await loadStaffServicesByStaff(supabase, [staffId]);
+    return jsonResponse({ services: servicesByStaff[staffId] ?? [] });
+  } catch (error) {
+    console.error("staff services load failed", error);
+    return jsonError("Failed to load services", 500);
+  }
+};
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const supabase = createSupabaseServerClient(request, cookies);
