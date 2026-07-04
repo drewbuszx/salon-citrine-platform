@@ -1245,7 +1245,6 @@ const calendarConfig = {
     flex: 0 0 var(--day-staff-width);
     width: var(--day-staff-width);
     min-width: var(--day-staff-width);
-    max-width: var(--day-staff-width);
     border-right: 1px solid var(--color-border);
   }
 
@@ -1262,7 +1261,7 @@ const calendarConfig = {
     height: var(--day-header-height);
     min-height: var(--day-header-height);
     max-height: var(--day-header-height);
-    padding: 0 0.35rem;
+    padding: 0;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg);
     color: var(--color-text);
@@ -1654,6 +1653,14 @@ const calendarConfig = {
     color: var(--color-text);
     font-size: 0.9rem;
     line-height: 1.45;
+  }
+
+  @media (min-width: 48rem) {
+    .day-cal__column {
+      flex: 1 1 var(--day-staff-width);
+      width: auto;
+      max-width: none;
+    }
   }
 
   @media (max-width: 48rem) {

@@ -2,87 +2,74 @@ import type { APIRoute } from "astro";
 import {
   canManageStaffColumn,
   jsonError,
-  jsonResponse,
-  requireTeamStaff,
+  jsonOk,
+  requireApiAuth,
 } from "../../../lib/api-calendar";
 import { parseDateTimeLocalInput } from "../../../lib/datetime";
 
-async function loadBlockedTime(
-  supabase: App.Locals["supabase"],
-  id: string,
-) {
-  const { data, error } = await supabase
-    .from("blocked_times")
-    .select("id, staff_id, starts_at, ends_at, reason")
-    .eq("id", id)
-    .maybeSingle();
+type PatchBlockedTimeBody = {
+  starts_at?: string;
+  ends_at?: string;
+  reason?: string;
+};
 
-  if (error) {
-    console.error("blocked_times lookup failed", error);
-    return { error: jsonError("Failed to load blocked time", 500) as Response };
-  }
-  if (!data) {
-    return { error: jsonError("Blocked time not found", 404) as Response };
-  }
-  return { blockedTime: data };
-}
+export const PATCH: APIRoute = async (context) => {
+  const auth = await requireApiAuth(context);
+  if (!auth.ok) return auth.response;
 
-export const PATCH: APIRoute = async ({ params, request, cookies }) => {
-  const auth = await requireTeamStaff(request, cookies);
-  if ("error" in auth && auth.error) {
-    return auth.error;
-  }
-  const { supabase, staff } = auth;
-  const id = params.id;
-  if (!id) {
+  const blockedId = context.params.id;
+  if (!blockedId) {
     return jsonError("Missing blocked time id", 400);
   }
 
-  const loaded = await loadBlockedTime(supabase, id);
-  if ("error" in loaded && loaded.error) {
-    return loaded.error;
+  const { supabase, staff } = auth;
+
+  const { data: existing, error: loadError } = await supabase
+    .from("blocked_times")
+    .select("id, staff_id, starts_at, ends_at, reason")
+    .eq("id", blockedId)
+    .maybeSingle();
+
+  if (loadError || !existing) {
+    return jsonError("Blocked time not found", 404);
   }
-  const existing = loaded.blockedTime!;
 
   if (!canManageStaffColumn(staff, existing.staff_id)) {
-    return jsonError("Forbidden", 403);
+    return jsonError("Not allowed to edit this block", 403);
   }
 
-  let body: Record<string, unknown>;
+  let body: PatchBlockedTimeBody;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await context.request.json()) as PatchBlockedTimeBody;
   } catch {
     return jsonError("Invalid JSON body", 400);
   }
 
   const updates: Record<string, string | null> = {};
 
-  if (body.reason !== undefined) {
-    updates.reason = String(body.reason ?? "").trim() || null;
-  }
-
-  let startsAt = new Date(existing.starts_at);
-  let endsAt = new Date(existing.ends_at);
-
   if (body.starts_at !== undefined) {
     try {
-      startsAt = parseDateTimeLocalInput(String(body.starts_at));
-      updates.starts_at = startsAt.toISOString();
+      updates.starts_at = parseDateTimeLocalInput(String(body.starts_at)).toISOString();
     } catch {
-      return jsonError("Invalid start time", 400);
+      return jsonError("Invalid starts_at", 400);
     }
   }
 
   if (body.ends_at !== undefined) {
     try {
-      endsAt = parseDateTimeLocalInput(String(body.ends_at));
-      updates.ends_at = endsAt.toISOString();
+      updates.ends_at = parseDateTimeLocalInput(String(body.ends_at)).toISOString();
     } catch {
-      return jsonError("Invalid end time", 400);
+      return jsonError("Invalid ends_at", 400);
     }
   }
 
-  if (startsAt >= endsAt) {
+  if (body.reason !== undefined) {
+    updates.reason = String(body.reason).trim() || null;
+  }
+
+  const nextStarts = updates.starts_at ?? existing.starts_at;
+  const nextEnds = updates.ends_at ?? existing.ends_at;
+  if (new Date(nextStarts) >= new Date(nextEnds)) {
     return jsonError("End time must be after start time", 400);
   }
 
@@ -90,48 +77,53 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
     return jsonError("No updates provided", 400);
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("blocked_times")
     .update(updates)
-    .eq("id", id)
-    .select("id, staff_id, starts_at, ends_at, reason")
-    .single();
+    .eq("id", blockedId);
 
-  if (error || !data) {
+  if (error) {
     console.error("blocked_times update failed", error);
-    return jsonError("Failed to update blocked time", 500);
+    return jsonError("Could not update blocked time", 500);
   }
 
-  return jsonResponse({ blockedTime: data });
+  return jsonOk();
 };
 
-export const DELETE: APIRoute = async ({ params, request, cookies }) => {
-  const auth = await requireTeamStaff(request, cookies);
-  if ("error" in auth && auth.error) {
-    return auth.error;
-  }
-  const { supabase, staff } = auth;
-  const id = params.id;
-  if (!id) {
+export const DELETE: APIRoute = async (context) => {
+  const auth = await requireApiAuth(context);
+  if (!auth.ok) return auth.response;
+
+  const blockedId = context.params.id;
+  if (!blockedId) {
     return jsonError("Missing blocked time id", 400);
   }
 
-  const loaded = await loadBlockedTime(supabase, id);
-  if ("error" in loaded && loaded.error) {
-    return loaded.error;
+  const { supabase, staff } = auth;
+
+  const { data: existing, error: loadError } = await supabase
+    .from("blocked_times")
+    .select("id, staff_id")
+    .eq("id", blockedId)
+    .maybeSingle();
+
+  if (loadError || !existing) {
+    return jsonError("Blocked time not found", 404);
   }
-  const existing = loaded.blockedTime!;
 
   if (!canManageStaffColumn(staff, existing.staff_id)) {
-    return jsonError("Forbidden", 403);
+    return jsonError("Not allowed to delete this block", 403);
   }
 
-  const { error } = await supabase.from("blocked_times").delete().eq("id", id);
+  const { error } = await supabase
+    .from("blocked_times")
+    .delete()
+    .eq("id", blockedId);
 
   if (error) {
     console.error("blocked_times delete failed", error);
-    return jsonError("Failed to delete blocked time", 500);
+    return jsonError("Could not delete blocked time", 500);
   }
 
-  return jsonResponse({ ok: true });
+  return jsonOk();
 };

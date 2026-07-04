@@ -2,37 +2,48 @@ import type { APIRoute } from "astro";
 import {
   canManageStaffColumn,
   jsonError,
-  jsonResponse,
+  jsonOk,
   parseClientName,
-  requireTeamStaff,
-} from "../../lib/api-calendar";
-import { parseDateTimeLocalInput } from "../../lib/datetime";
+  requireApiAuth,
+} from "../../../lib/api-calendar";
+import { parseDateTimeLocalInput } from "../../../lib/datetime";
 
-export const POST: APIRoute = async ({ request, cookies }) => {
-  const auth = await requireTeamStaff(request, cookies);
-  if ("error" in auth && auth.error) {
-    return auth.error;
-  }
+type CreateAppointmentBody = {
+  staff_id?: string;
+  starts_at?: string;
+  client_name?: string;
+  client_first_name?: string;
+  client_last_name?: string;
+  phone?: string;
+  email?: string;
+  client_phone?: string;
+  client_email?: string;
+  service_ids?: string[];
+  notes?: string;
+  status?: string;
+};
+
+export const POST: APIRoute = async (context) => {
+  const auth = await requireApiAuth(context);
+  if (!auth.ok) return auth.response;
+
   const { supabase, staff } = auth;
+  let body: CreateAppointmentBody;
 
-  let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
+    body = (await context.request.json()) as CreateAppointmentBody;
   } catch {
     return jsonError("Invalid JSON body", 400);
   }
 
   const staffId = String(body.staff_id ?? "");
   const startsRaw = String(body.starts_at ?? "");
-  const clientName = String(body.client_name ?? "").trim();
-  const phone = String(body.phone ?? "").trim() || null;
-  const email = String(body.email ?? "").trim().toLowerCase() || null;
-  const notes = String(body.notes ?? "").trim() || null;
   const serviceIds = Array.isArray(body.service_ids)
     ? body.service_ids.map(String).filter(Boolean)
     : [];
+  const status = body.status === "pending" ? "pending" : "confirmed";
 
-  if (!staffId || !startsRaw || !clientName || serviceIds.length === 0) {
+  if (!staffId || !startsRaw || serviceIds.length === 0) {
     return jsonError("Missing required fields", 400);
   }
 
@@ -40,8 +51,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return jsonError("Forbidden", 403);
   }
 
-  const parsedName = parseClientName(clientName);
-  if (!parsedName) {
+  const parsedName = body.client_name
+    ? parseClientName(String(body.client_name))
+    : {
+        firstName: String(body.client_first_name ?? "").trim(),
+        lastName: String(body.client_last_name ?? "").trim(),
+      };
+
+  if (!parsedName?.firstName || !parsedName.lastName) {
     return jsonError("Client name is required", 400);
   }
 
@@ -69,8 +86,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   let totalMinutes = 0;
-  const serviceRows: Array<{ service_id: string; price_cents: number | null }> =
-    [];
+  const serviceRows: Array<{ service_id: string; price_cents: number | null }> = [];
 
   for (const serviceId of serviceIds) {
     const row = matched.find((item) => item.service_id === serviceId);
@@ -96,7 +112,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  const endsAt = new Date(startsAt.getTime() + totalMinutes * 60 * 1000);
+  const endsAt = new Date(startsAt.getTime() + totalMinutes * 60_000);
+  const phone =
+    String(body.phone ?? body.client_phone ?? "").trim() || null;
+  const email =
+    String(body.email ?? body.client_email ?? "").trim().toLowerCase() || null;
+  const notes = String(body.notes ?? "").trim() || null;
 
   let clientId: string | null = null;
 
@@ -106,9 +127,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .select("id")
       .eq("phone", phone)
       .maybeSingle();
-    if (data) {
-      clientId = data.id;
-    }
+    if (data) clientId = data.id;
   }
 
   if (!clientId && email) {
@@ -117,9 +136,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .select("id")
       .eq("email", email)
       .maybeSingle();
-    if (data) {
-      clientId = data.id;
-    }
+    if (data) clientId = data.id;
   }
 
   if (!clientId) {
@@ -148,10 +165,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       staff_id: staffId,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
-      status: "confirmed",
+      status,
       notes,
     })
-    .select("id, staff_id, starts_at, ends_at, status")
+    .select("id")
     .single();
 
   if (appointmentError || !appointment) {
@@ -169,8 +186,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   if (servicesError) {
     console.error("appointment_services insert failed", servicesError);
+    await supabase.from("appointments").delete().eq("id", appointment.id);
     return jsonError("Failed to attach services", 500);
   }
 
-  return jsonResponse({ appointment }, 201);
+  return jsonOk({ id: appointment.id });
 };

@@ -11,7 +11,38 @@ export function jsonResponse(body: unknown, status = 200) {
 }
 
 export function jsonError(message: string, status: number) {
-  return jsonResponse({ error: message }, status);
+  return jsonResponse({ ok: false, error: message }, status);
+}
+
+export function jsonOk(data: Record<string, unknown> = {}) {
+  return jsonResponse({ ok: true, ...data });
+}
+
+export async function requireApiAuth(
+  context: { request: Request; cookies: AstroCookies; locals: App.Locals },
+) {
+  const { locals, request, cookies } = context;
+
+  if (locals.staff && locals.user && locals.supabase) {
+    return {
+      ok: true as const,
+      supabase: locals.supabase,
+      staff: locals.staff,
+      user: locals.user,
+    };
+  }
+
+  const result = await requireTeamStaff(request, cookies);
+  if ("error" in result && result.error) {
+    return { ok: false as const, response: result.error };
+  }
+
+  return {
+    ok: true as const,
+    supabase: result.supabase,
+    staff: result.staff,
+    user: (await result.supabase.auth.getUser()).data.user!,
+  };
 }
 
 export async function requireTeamStaff(request: Request, cookies: AstroCookies) {

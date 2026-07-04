@@ -16,6 +16,7 @@ export type CalendarAppointment = {
   serviceLabel: string | null;
   serviceIds: string[];
   serviceNames: string[];
+  serviceCount: number;
 };
 
 export type StaffServiceOption = {
@@ -47,7 +48,9 @@ export type CalendarEvent =
       startsAt: string;
       endsAt: string;
       clientLabel: string;
+      clientFullName: string;
       serviceLabel: string | null;
+      serviceCount: number;
     }
   | {
       kind: "blocked";
@@ -63,7 +66,6 @@ export const CALENDAR_END_HOUR = 20;
 export const CALENDAR_SLOT_MINUTES = 15;
 export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
-export const STAFF_COL_PADDING_REM = 0.7;
 
 export function parseDayParam(value: string | null): Date {
   if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -126,6 +128,23 @@ export function formatTimeInSalon(iso: string) {
 
 export function formatTimeRangeInSalon(startsAt: string, endsAt: string) {
   return `${formatTimeInSalon(startsAt)} – ${formatTimeInSalon(endsAt)}`;
+}
+
+export function formatCompactTimeInSalon(iso: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    hour: "numeric",
+    minute: "2-digit",
+  })
+    .format(new Date(iso))
+    .replace(/\s/g, "")
+    .replace(/AM/i, "am")
+    .replace(/PM/i, "pm")
+    .replace(/:00(?=[ap]m$)/i, "");
+}
+
+export function formatCompactTimeRangeInSalon(startsAt: string, endsAt: string) {
+  return `${formatCompactTimeInSalon(startsAt)} - ${formatCompactTimeInSalon(endsAt)}`;
 }
 
 export function salonDateString(date: Date) {
@@ -241,17 +260,17 @@ export function formatSlotTimeLabel(totalMinutes: number) {
   }).format(date);
 }
 
-/** Uniform staff column width (rem) from avatar + longest name. */
+/** Minimum uniform staff column width (rem) from avatar + longest name, no side padding. */
 export function staffColumnWidthRem(staff: Pick<CalendarStaff, "name">[]) {
   if (staff.length === 0) {
-    return 4.5;
+    return STAFF_AVATAR_SIZE_REM;
   }
   const nameCharWidthRem = 0.36;
   const maxNameWidth = Math.max(
     ...staff.map((member) => member.name.length * nameCharWidthRem),
   );
   const contentWidth = Math.max(STAFF_AVATAR_SIZE_REM, maxNameWidth);
-  return Math.ceil((contentWidth + STAFF_COL_PADDING_REM) * 100) / 100;
+  return Math.ceil(contentWidth * 100) / 100;
 }
 
 function dayBounds(dayStart: Date) {
@@ -356,6 +375,9 @@ export async function loadCalendarData(
       const serviceIds =
         services?.map((item) => item.service_id).filter(Boolean) ?? [];
       const serviceName = serviceNames[0] ?? null;
+      const clientFullName = client
+        ? `${client.first_name} ${client.last_name}`.trim()
+        : "Client";
       const clientLabel = client
         ? `${client.first_name} ${client.last_name.charAt(0)}.`
         : "Client";
@@ -375,6 +397,7 @@ export async function loadCalendarData(
         serviceLabel: serviceName,
         serviceIds,
         serviceNames,
+        serviceCount: serviceNames.length,
       };
     },
   );
@@ -461,7 +484,9 @@ export function staffEventsForDay(
       startsAt: item.startsAt,
       endsAt: item.endsAt,
       clientLabel: item.clientLabel,
+      clientFullName: `${item.clientFirstName} ${item.clientLastName}`.trim() || "Client",
       serviceLabel: item.serviceLabel,
+      serviceCount: item.serviceCount,
     }));
 
   const blocks: CalendarEvent[] = blockedTimes
