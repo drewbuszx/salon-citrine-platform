@@ -298,7 +298,8 @@ const calendarConfig = {
       const modalBody = document.getElementById("day-cal-modal-body");
       if (!menu || !modal || !modalTitle || !modalBody) return;
 
-      document.body.append(menu, modal);
+      if (root.dataset.dayCalReady === "true") return;
+      root.dataset.dayCalReady = "true";
 
       /** @type {{ staffId: string; startsAt: string; slotMinutes: number } | null} */
       let slotContext = null;
@@ -344,15 +345,11 @@ const calendarConfig = {
       }
 
       function openSheet(sheet) {
-        sheet.classList.remove("is-open");
         sheet.hidden = false;
         sheet.setAttribute("aria-hidden", "false");
+        sheet.classList.remove("is-open");
         void sheet.offsetHeight;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            sheet.classList.add("is-open");
-          });
-        });
+        sheet.classList.add("is-open");
       }
 
       function closeSheet(sheet, onClosed) {
@@ -552,30 +549,35 @@ const calendarConfig = {
         return { staffId, startsAt, slotMinutes };
       }
 
-      root.querySelectorAll(".day-cal__slot").forEach((slot) => {
-        slot.addEventListener("click", (event) => {
+      function hitTarget(event, className) {
+        return document.elementsFromPoint(event.clientX, event.clientY).find(
+          (el) => el instanceof HTMLElement && el.classList.contains(className),
+        );
+      }
+
+      root.querySelectorAll(".day-cal__grid").forEach((grid) => {
+        grid.addEventListener("click", (event) => {
+          const block = hitTarget(event, "day-cal__block");
+          if (block instanceof HTMLElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeMenu();
+            const kind = block.dataset.kind;
+            const id = block.dataset.id;
+            if (kind === "appointment" && id) openAppointmentModal(id);
+            if (kind === "blocked" && id) openBlockedModal(id);
+            return;
+          }
+
+          const slot = hitTarget(event, "day-cal__slot");
+          if (!(slot instanceof HTMLElement)) return;
+
           event.preventDefault();
           event.stopPropagation();
           const context = slotContextFrom(slot);
           if (!context) return;
           openMenu(context);
         });
-      });
-
-      root.addEventListener("click", (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-
-        const block = target.closest(".day-cal__block");
-        if (!(block instanceof HTMLElement)) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-        closeMenu();
-        const kind = block.dataset.kind;
-        const id = block.dataset.id;
-        if (kind === "appointment" && id) openAppointmentModal(id);
-        if (kind === "blocked" && id) openBlockedModal(id);
       });
 
       menu.addEventListener("click", (event) => {
@@ -948,7 +950,7 @@ const calendarConfig = {
 
   .day-cal__slot {
     position: relative;
-    z-index: 0;
+    z-index: 1;
     display: block;
     width: 100%;
     padding: 0;
@@ -957,6 +959,8 @@ const calendarConfig = {
     border-bottom: 1px solid var(--color-border-subtle);
     background: var(--color-booking-card-bg);
     cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
     transition: background 0.15s ease;
   }
 
@@ -1065,10 +1069,6 @@ const calendarConfig = {
     display: none !important;
   }
 
-  .day-cal__sheet.is-open {
-    pointer-events: auto;
-  }
-
   .day-cal__sheet-backdrop {
     position: absolute;
     inset: 0;
@@ -1084,10 +1084,6 @@ const calendarConfig = {
     background: rgba(0, 0, 0, 0.6);
   }
 
-  .day-cal__sheet.is-open .day-cal__sheet-backdrop {
-    opacity: 1;
-  }
-
   .day-cal__sheet-panel {
     position: relative;
     z-index: 1;
@@ -1101,10 +1097,6 @@ const calendarConfig = {
     transform: translateY(100%);
     transition: transform 0.25s ease;
     padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-
-  .day-cal__sheet.is-open .day-cal__sheet-panel {
-    transform: translateY(0);
   }
 
   .day-cal__sheet-header {
@@ -1257,5 +1249,19 @@ const calendarConfig = {
       --day-col-min-width: min(78vw, 11rem);
     }
 
+  }
+</style>
+
+<style is:global>
+  .day-cal__sheet.is-open {
+    pointer-events: auto;
+  }
+
+  .day-cal__sheet.is-open .day-cal__sheet-backdrop {
+    opacity: 1;
+  }
+
+  .day-cal__sheet.is-open .day-cal__sheet-panel {
+    transform: translateY(0);
   }
 </style>
