@@ -13,6 +13,10 @@ interface ImportMetaEnv {
   readonly TWILIO_ACCOUNT_SID?: string;
   readonly TWILIO_AUTH_TOKEN?: string;
   readonly TWILIO_PHONE_NUMBER?: string;
+  readonly CRON_SECRET?: string;
+  readonly REMINDER_DRY_RUN?: string;
+  readonly REMINDER_DEV_HOURS?: string;
+  readonly APP_URL?: string;
 }
 
 interface ImportMeta {

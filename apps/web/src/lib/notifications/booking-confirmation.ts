@@ -1,6 +1,15 @@
 import { BUSINESS } from "@saloncitrine/shared";
 import { formatConfirmationWhen } from "../appointment-confirmation";
-import { getServerEnv } from "../server-env";
+import {
+  escapeHtml,
+  formatSalonAddress,
+  getResendFromEmail,
+  isResendConfigured,
+  isTwilioConfigured,
+  sendResendEmail,
+  sendTwilioSms,
+  toE164,
+} from "./shared";
 
 export type BookingConfirmationPayload = {
   clientFirstName: string;
@@ -13,26 +22,11 @@ export type BookingConfirmationPayload = {
   smsOptIn: boolean;
 };
 
-function formatSalonAddress(): string {
-  const { street, city, state, zip } = BUSINESS.address;
-  return `${street}, ${city}, ${state} ${zip}`;
-}
-
-/** Normalize US phone numbers to E.164 for Twilio. */
-function toE164(phone: string): string | null {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
-  if (phone.trim().startsWith("+") && digits.length >= 10) return `+${digits}`;
-  return null;
-}
-
-function buildEmailSubject(payload: BookingConfirmationPayload): string {
+function buildEmailSubject(): string {
   return `Your appointment at ${BUSINESS.name} is confirmed`;
 }
 
 function buildEmailText(payload: BookingConfirmationPayload): string {
-  const clientName = `${payload.clientFirstName} ${payload.clientLastName}`.trim();
   const when = formatConfirmationWhen(payload.startsAt);
   const servicesList = payload.services.map((s) => s.name).join(", ");
 
@@ -80,29 +74,10 @@ function buildSmsBody(payload: BookingConfirmationPayload): string {
   return `${BUSINESS.name}: You're booked with ${payload.stylistName} on ${when}. ${formatSalonAddress()}. Reply STOP to opt out.`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** Dev without a verified domain must use onboarding@resend.dev (Resend sandbox sender). */
-function getResendFromEmail(): string {
-  const fromEnv = getServerEnv("RESEND_FROM_EMAIL")?.trim();
-  if (fromEnv) return fromEnv;
-  if (!import.meta.env?.PROD) return "onboarding@resend.dev";
-  return BUSINESS.bookingEmail;
-}
-
 export async function sendBookingConfirmationEmail(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
-  const apiKey = getServerEnv("RESEND_API_KEY");
-  const fromEmail = getResendFromEmail();
-
-  if (!apiKey) {
+  if (!isResendConfigured()) {
     console.log(
       "booking-confirmation: email skipped — RESEND_API_KEY not set (check process.env / .env)",
     );
@@ -114,44 +89,29 @@ export async function sendBookingConfirmationEmail(
     return;
   }
 
+  const fromEmail = getResendFromEmail();
   console.log("booking-confirmation: sending email", {
     to: payload.clientEmail,
     from: fromEmail,
   });
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: `${BUSINESS.name} <${fromEmail}>`,
-      to: [payload.clientEmail],
-      subject: buildEmailSubject(payload),
-      html: buildEmailHtml(payload),
-      text: buildEmailText(payload),
-    }),
+  const result = await sendResendEmail({
+    to: payload.clientEmail,
+    subject: buildEmailSubject(),
+    html: buildEmailHtml(payload),
+    text: buildEmailText(payload),
+    template: "booking_confirmation",
+    metadata: { startsAt: payload.startsAt },
   });
 
-  const body = await response.text().catch(() => "");
-
-  if (!response.ok) {
-    console.error("booking-confirmation: email failed:", body || response.statusText);
+  if (!result.ok) {
+    console.error("booking-confirmation: email failed:", result.error);
     return;
-  }
-
-  let resendId: string | undefined;
-  try {
-    const parsed = JSON.parse(body) as { id?: string };
-    resendId = parsed.id;
-  } catch {
-    // non-JSON success body
   }
 
   console.log("booking-confirmation: email sent", {
     to: payload.clientEmail,
-    id: resendId ?? "(no id in response)",
+    id: result.resendId ?? "(no id in response)",
   });
 }
 
@@ -163,64 +123,33 @@ export async function sendBookingConfirmationSms(
     return;
   }
 
-  const accountSid = getServerEnv("TWILIO_ACCOUNT_SID");
-  const authToken = getServerEnv("TWILIO_AUTH_TOKEN");
-  const from = getServerEnv("TWILIO_PHONE_NUMBER")?.trim();
-
-  if (!accountSid || !authToken || !from) {
+  if (!isTwilioConfigured()) {
     console.log(
       "booking-confirmation: SMS skipped — Twilio env vars not set (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER)",
     );
     return;
   }
 
-  const to = toE164(payload.clientPhone);
-  if (!to) {
+  if (!toE164(payload.clientPhone)) {
     console.log("booking-confirmation: SMS skipped — invalid client phone");
     return;
   }
 
-  console.log("booking-confirmation: sending SMS", { to });
+  console.log("booking-confirmation: sending SMS", { to: payload.clientPhone });
 
-  // Production: register a Twilio 10DLC campaign before sending at scale.
-  const params = new URLSearchParams({ To: to, Body: buildSmsBody(payload) });
-  if (from.startsWith("MG")) {
-    params.set("MessagingServiceSid", from);
-  } else {
-    params.set("From", from);
-  }
+  const result = await sendTwilioSms({
+    to: payload.clientPhone,
+    body: buildSmsBody(payload),
+  });
 
-  const auth = btoa(`${accountSid}:${authToken}`);
-  const response = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-    },
-  );
-
-  const body = await response.text().catch(() => "");
-
-  if (!response.ok) {
-    console.error("booking-confirmation: SMS failed:", body || response.statusText);
+  if (!result.ok) {
+    console.error("booking-confirmation: SMS failed:", result.error);
     return;
   }
 
-  let messageSid: string | undefined;
-  try {
-    const parsed = JSON.parse(body) as { sid?: string };
-    messageSid = parsed.sid;
-  } catch {
-    // non-JSON success body
-  }
-
   console.log("booking-confirmation: SMS sent", {
-    to,
-    sid: messageSid ?? "(no sid in response)",
+    to: payload.clientPhone,
+    sid: result.messageSid ?? "(no sid in response)",
   });
 }
 
@@ -228,11 +157,8 @@ export async function sendBookingConfirmationSms(
 export async function sendBookingConfirmations(
   payload: BookingConfirmationPayload,
 ): Promise<void> {
-  const hasResend = Boolean(getServerEnv("RESEND_API_KEY"));
-  const hasTwilio =
-    Boolean(getServerEnv("TWILIO_ACCOUNT_SID")) &&
-    Boolean(getServerEnv("TWILIO_AUTH_TOKEN")) &&
-    Boolean(getServerEnv("TWILIO_PHONE_NUMBER")?.trim());
+  const hasResend = isResendConfigured();
+  const hasTwilio = isTwilioConfigured();
 
   console.log(`booking-confirmation: Resend configured ${hasResend ? "yes" : "no"}`);
   console.log(`booking-confirmation: Twilio configured ${hasTwilio ? "yes" : "no"}`);

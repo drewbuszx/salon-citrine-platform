@@ -1,6 +1,8 @@
 /**
  * Smoke test for booking notification env + Resend/Twilio APIs.
- * Usage: node scripts/test-booking-notification.mjs [recipient@email.com]
+ * Usage:
+ *   node scripts/test-booking-notification.mjs [recipient@email.com]
+ *   node scripts/test-booking-notification.mjs --health
  *
  * Dev Resend: from must be onboarding@resend.dev; recipient must be your Resend account email
  * until the salon domain is verified.
@@ -21,15 +23,32 @@ for (const [key, value] of Object.entries(env)) {
 }
 
 const resendKey = process.env.RESEND_API_KEY;
+const healthOnly = process.argv.includes("--health");
 const fromEmail =
   process.env.RESEND_FROM_EMAIL?.trim() ||
   (mode !== "production" ? "onboarding@resend.dev" : "bookings@saloncitrineindy.com");
-const toEmail = process.argv[2] ?? "delivered@resend.dev";
+const toEmail = process.argv.find((a) => a.includes("@")) ?? "delivered@resend.dev";
 
 console.log("Env loaded from:", platformRoot);
 console.log("RESEND_API_KEY present:", Boolean(resendKey), resendKey ? `${resendKey.slice(0, 6)}...` : "");
 console.log("RESEND_FROM_EMAIL:", fromEmail);
 console.log("Test recipient:", toEmail);
+
+const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioFrom = process.env.TWILIO_PHONE_NUMBER?.trim();
+const cronSecret = process.env.CRON_SECRET?.trim();
+
+console.log("Notification health:");
+console.log("  RESEND:", Boolean(resendKey));
+console.log("  RESEND_FROM_EMAIL:", fromEmail);
+console.log("  Twilio:", Boolean(twilioSid && twilioToken && twilioFrom));
+console.log("  CRON_SECRET:", Boolean(cronSecret));
+console.log("  REMINDER_DRY_RUN:", process.env.REMINDER_DRY_RUN ?? "(unset)");
+
+if (healthOnly) {
+  process.exit(resendKey ? 0 : 1);
+}
 
 let failed = false;
 
@@ -66,18 +85,9 @@ if (!resendKey) {
   }
 }
 
-const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioFrom = process.env.TWILIO_PHONE_NUMBER?.trim();
-
 console.log(
-  "Twilio configured:",
-  Boolean(twilioSid && twilioToken && twilioFrom),
-  twilioSid ? `${twilioSid.slice(0, 6)}...` : "",
+  "Twilio send:",
+  twilioSid && twilioToken && twilioFrom ? "configured (skipped in smoke test)" : "not configured",
 );
-
-if (twilioSid && twilioToken && twilioFrom) {
-  console.log("(Twilio send skipped in smoke test — verify credentials in Twilio console after a real booking with SMS opt-in)");
-}
 
 process.exit(failed ? 1 : 0);

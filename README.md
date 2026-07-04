@@ -102,6 +102,8 @@ Apply role-scoped RLS with `migrations/0004_team_rls.sql`.
 - `migrations/0003_public_read_availability.sql` — anon read on blocked_times + `appointment_availability` view for slot conflict checks.
 - `migrations/0004_team_rls.sql` — role-scoped team app policies (appointments, blocked_times, services, clients).
 - `seed/seed.sql` — generated seed: 7 staff (GlossGenius tokens + slugs), business hours, policies, full service menu from `menu-services.json`.
+- `migrations/0017_calendar_overlap_prevention.sql` — prevent overlapping appointments.
+- `migrations/0018_appointment_reminders.sql` — `reminder_48h_sent_at` / `reminder_24h_sent_at` on appointments.
 - Regenerate after editing `seed/data/menu-services.json`:
 
 ```bash
@@ -144,12 +146,30 @@ psql $DATABASE_URL -f packages/db/scripts/wipe-test-appointments.sql
 - `/team/block-time` — create `blocked_times` (scoped by RLS)
 - `/team/services` — edit `duration_minutes` (owners/front desk only)
 
+## Notifications & reminders
+
+Booking confirmations (Resend + Twilio) fire on `POST /book/api/booking/appointments`. **48h and 24h reminders** run via hourly cron:
+
+```bash
+POST /book/api/cron/send-reminders
+Authorization: Bearer $CRON_SECRET
+```
+
+Local dry run:
+
+```bash
+node apps/web/scripts/send-reminders.mjs --dry-run
+curl http://localhost:4321/book/api/health/notifications
+```
+
+Full production setup (Resend domain, Twilio 10DLC, Cloudflare cron): see [docs/PRODUCTION_COMMS.md](docs/PRODUCTION_COMMS.md).
+
 ## Next steps (recommended order)
 
 1. **Stripe test mode** — create account, add test keys to `.env`, wire SetupIntent on `/book/details`.
-2. **Resend** — verify `saloncitrineindy.com` domain in Cloudflare DNS; build confirmation email template.
+2. **Resend** — verify `saloncitrineindy.com` domain in Cloudflare DNS; set prod `RESEND_FROM_EMAIL`.
 3. **Twilio** — start 10DLC registration early; add test credentials for confirmation SMS.
-4. **Cloudflare Pages** — deploy `apps/web` → `/book`, `apps/team` → `team.saloncitrineindy.com`.
+4. **Cloudflare Pages** — deploy `apps/web` → `/book`, schedule cron for `/book/api/cron/send-reminders`.
 5. **Marketing site cutover** — flip `BOOKING_URL` to `/book` after parallel testing with GlossGenius.
 
 ## Conventions
