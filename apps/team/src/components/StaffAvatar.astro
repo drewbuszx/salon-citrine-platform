@@ -1,0 +1,37 @@
+---
+import type { PhotoCrop } from "../lib/staff-photo";
+import { staffPhotoStyle } from "../lib/staff-photo";
+
+interface Props {
+  src: string;
+  alt?: string;
+  crop?: PhotoCrop | null;
+  size?: "header" | "preview" | "editor";
+  class?: string;
+}
+
+const {
+  src,
+  alt = "",
+  crop = null,
+  size = "header",
+  class: className = "",
+} = Astro.props;
+
+const sizeClass =
+  size === "preview"
+    ? "staff-avatar-frame--preview"
+    : size === "editor"
+      ? "staff-avatar-frame--editor"
+      : "staff-avatar-frame--header";
+---
+
+<div class:list={["staff-avatar-frame", sizeClass, className]}>
+  <img
+    class="staff-avatar-frame__img"
+    src={src}
+    alt={alt}
+    style={staffPhotoStyle(crop)}
+    draggable="false"
+  />
+</div>

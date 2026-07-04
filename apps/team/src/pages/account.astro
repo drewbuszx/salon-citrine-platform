@@ -1,5 +1,8 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import StaffAvatar from "../components/StaffAvatar.astro";
+import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
+import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff, user } = Astro.locals;
@@ -10,7 +13,7 @@ if (!staff || !user) {
 
 const { data: profile, error } = await supabase
   .from("staff")
-  .select("id, name, bio, phone, photo_url")
+  .select("id, name, bio, phone, photo_url, photo_crop, slug")
   .eq("id", staff.id)
   .maybeSingle();
 
@@ -19,7 +22,12 @@ if (error || !profile) {
   return Astro.redirect(teamUrl("/login?error=unlinked"));
 }
 
+const photoCrop = normalizePhotoCrop(parsePhotoCrop(profile.photo_crop));
+const photoSrc = staffPhotoSrc(profile.photo_url, profile.slug);
+const initials = staffInitials(profile.name);
+
 const saved = Astro.url.searchParams.get("saved") === "1";
+const photoSaved = Astro.url.searchParams.get("photo") === "1";
 const emailPending = Astro.url.searchParams.get("email") === "pending";
 const errorCode = Astro.url.searchParams.get("error");
 const errorMessage =
@@ -27,7 +35,15 @@ const errorMessage =
     ? "Could not save your profile. Try again."
     : errorCode === "email"
       ? "Could not update email. Check the address and try again."
-      : null;
+      : errorCode === "photo_type"
+        ? "Use a JPEG, PNG, or WebP image for your profile photo."
+        : errorCode === "photo_size"
+          ? "Profile photo must be 2 MB or smaller."
+          : errorCode === "photo_upload"
+            ? "Could not upload your photo. Try again."
+            : errorCode === "photo_save"
+              ? "Photo uploaded but framing could not be saved. Try again."
+              : null;
 ---
 
 <TeamLayout title="Account" activeNav="account">
@@ -35,7 +51,11 @@ const errorMessage =
     <h1 class="page-title">Account</h1>
     <p class="page-lead">Update your staff profile and contact information.</p>
 
-    {saved ? <p class="notice notice--success" role="status">Profile saved.</p> : null}
+    {saved ? (
+      <p class="notice notice--success" role="status">
+        {photoSaved ? "Profile photo saved." : "Profile saved."}
+      </p>
+    ) : null}
     {
       emailPending ? (
         <p class="notice notice--success" role="status">
@@ -44,6 +64,96 @@ const errorMessage =
       ) : null
     }
     {errorMessage ? <p class="notice notice--error" role="alert">{errorMessage}</p> : null}
+
+    <section
+      class="account-photo"
+      aria-label="Profile photo"
+      data-account-photo
+      data-crop-x={photoCrop.x}
+      data-crop-y={photoCrop.y}
+      data-crop-scale={photoCrop.scale}
+    >
+      <h2 class="account-photo__title">Profile photo</h2>
+      <p class="account-photo__lead">
+        This photo appears in the team header and calendar. Drag to reposition after uploading.
+      </p>
+
+      <div class="account-photo__current">
+        {
+          photoSrc ? (
+            <StaffAvatar src={photoSrc} crop={photoCrop} size="preview" />
+          ) : (
+            <span class="staff-avatar-frame staff-avatar-frame--preview staff-avatar-frame--initials">
+              {initials}
+            </span>
+          )
+        }
+        <div class="account-photo__actions">
+          <button class="btn-secondary" type="button" data-change-photo>
+            Change photo
+          </button>
+          {
+            photoSrc ? (
+              <button class="btn-secondary" type="button" data-edit-position>
+                Edit position
+              </button>
+            ) : null
+          }
+        </div>
+      </div>
+
+      <div class="account-photo__editor" data-photo-editor hidden>
+        <p class="account-photo__status" data-photo-status hidden></p>
+        <p class="notice notice--error account-photo__error" data-photo-error hidden></p>
+
+        <div class="account-photo__editor-grid">
+          <div class="account-photo__editor-frame" data-editor-frame>
+            <p class="label-meta">Drag to reposition</p>
+            <StaffAvatar
+              src={photoSrc ?? ""}
+              crop={photoCrop}
+              size="editor"
+              class="account-photo__editor-target"
+            />
+          </div>
+
+          <div class="account-photo__editor-preview" data-preview-frame>
+            <p class="label-meta">Header preview</p>
+            <StaffAvatar src={photoSrc ?? ""} crop={photoCrop} size="header" />
+          </div>
+        </div>
+
+        <label class="form-label account-photo__zoom">
+          Zoom
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.01"
+            value={photoCrop.scale}
+            data-zoom-input
+          />
+        </label>
+
+        <form
+          class="account-photo__form"
+          method="post"
+          action={teamUrl("/api/account/photo")}
+          enctype="multipart/form-data"
+          data-photo-form
+        >
+          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden data-photo-input />
+          <input type="hidden" name="crop_x" value={photoCrop.x} />
+          <input type="hidden" name="crop_y" value={photoCrop.y} />
+          <input type="hidden" name="crop_scale" value={photoCrop.scale} />
+
+          <div class="account-photo__form-actions">
+            <button class="btn-primary" type="submit" data-save-photo>Save photo</button>
+            <button class="btn-secondary" type="button" data-cancel-editor>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <form class="form-stack" method="post" action={teamUrl("/api/account")}>
       <label class="form-label">
@@ -98,3 +208,99 @@ const errorMessage =
     </form>
   </section>
 </TeamLayout>
+
+<script src="../scripts/account-photo-editor.ts"></script>
+
+<style>
+  .account-photo {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem 0 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .account-photo__title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    font-weight: 400;
+  }
+
+  .account-photo__lead {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    color: var(--color-gray);
+  }
+
+  .account-photo__current {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .account-photo__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .account-photo__editor {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-card-bg);
+  }
+
+  .account-photo__editor-grid {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 32rem) {
+    .account-photo__editor-grid {
+      grid-template-columns: auto auto;
+      align-items: start;
+    }
+  }
+
+  .account-photo__editor-frame,
+  .account-photo__editor-preview {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+  }
+
+  .account-photo__editor-target .staff-avatar-frame__img {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .account-photo__editor-target .staff-avatar-frame__img:active {
+    cursor: grabbing;
+  }
+
+  .account-photo__zoom input[type="range"] {
+    width: 100%;
+    max-width: 16rem;
+  }
+
+  .account-photo__form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .account-photo__status {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    color: var(--color-gray);
+  }
+
+  .account-photo__error {
+    margin: 0;
+  }
+</style>

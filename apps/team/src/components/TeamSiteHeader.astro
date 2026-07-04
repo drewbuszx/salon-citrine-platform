@@ -1,7 +1,9 @@
 ---
 import { BUSINESS } from "@saloncitrine/shared";
 import type { StaffProfile } from "../env.d.ts";
+import StaffAvatar from "./StaffAvatar.astro";
 import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
+import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -39,6 +41,7 @@ const secondaryTabs = [
 
 const mobileTabs = [...primaryTabs, ...secondaryTabs];
 const photoSrc = staff ? staffPhotoSrc(staff.photo_url, staff.slug) : null;
+const photoCrop = staff ? normalizePhotoCrop(parsePhotoCrop(staff.photo_crop)) : null;
 const initials = staff ? staffInitials(staff.name) : "";
 ---
 
@@ -130,12 +133,11 @@ const initials = staff ? staffInitials(staff.name) : "";
             >
               {
                 photoSrc ? (
-                  <img
-                    class="team-header__avatar"
+                  <StaffAvatar
                     src={photoSrc}
-                    alt=""
-                    width="36"
-                    height="36"
+                    crop={photoCrop}
+                    size="header"
+                    class="team-header__avatar-wrap"
                   />
                 ) : (
                   <span class="team-header__avatar team-header__avatar--initials" aria-hidden="true">

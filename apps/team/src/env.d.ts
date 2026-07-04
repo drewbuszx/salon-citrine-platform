@@ -4,6 +4,12 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 export type StaffRole = "owner" | "stylist" | "esthetician" | "front_desk";
 
+export type PhotoCrop = {
+  x: number;
+  y: number;
+  scale: number;
+};
+
 export type StaffProfile = {
   id: string;
   slug: string;
@@ -12,6 +18,7 @@ export type StaffProfile = {
   bio?: string | null;
   phone?: string | null;
   photo_url?: string | null;
+  photo_crop?: PhotoCrop | null;
 };
 
 declare global {
