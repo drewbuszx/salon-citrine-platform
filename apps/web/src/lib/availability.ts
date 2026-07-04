@@ -54,12 +54,35 @@ function scheduleForDate(
   dateStr: string,
 ): StaffScheduleRow | undefined {
   const dow = dayOfWeekInTimezone(dateStr);
-  return schedules.find((row) => {
+  const matching = schedules.filter((row) => {
     if (row.day_of_week !== dow) return false;
     if (dateStr < row.effective_from) return false;
     if (row.effective_until && dateStr > row.effective_until) return false;
     return true;
   });
+  if (matching.length === 0) return undefined;
+  return matching.reduce((best, row) =>
+    row.effective_from > best.effective_from ? row : best,
+  );
+}
+
+/** Round up to the next 15-minute boundary (unchanged if already aligned). */
+export function alignToSlotInterval(minutes: number): number {
+  const remainder = minutes % SLOT_INTERVAL_MINUTES;
+  if (remainder === 0) return minutes;
+  return minutes + (SLOT_INTERVAL_MINUTES - remainder);
+}
+
+/** True when a slot start + service duration fits entirely within schedule hours. */
+export function slotFitsScheduleWindow(
+  slotStartMin: number,
+  durationMinutes: number,
+  workStartMin: number,
+  workEndMin: number,
+): boolean {
+  if (slotStartMin < workStartMin) return false;
+  if (slotStartMin % SLOT_INTERVAL_MINUTES !== 0) return false;
+  return slotStartMin + durationMinutes <= workEndMin;
 }
 
 function rangesOverlap(
@@ -105,8 +128,9 @@ export function computeSlotsForDate(
 
   const workStartMin = parseTimeToMinutes(schedule.start_time);
   const workEndMin = parseTimeToMinutes(schedule.end_time);
+  const firstSlotMin = alignToSlotInterval(workStartMin);
   const lastStartMin = workEndMin - ctx.durationMinutes;
-  if (lastStartMin < workStartMin) return [];
+  if (lastStartMin < firstSlotMin) return [];
 
   const { start: dayStart, end: dayEnd } = localDayUtcBounds(dateStr);
   const dayBlocked = ctx.blockedTimes.filter((b) => {
@@ -124,10 +148,21 @@ export function computeSlotsForDate(
   const nowMs = now.getTime();
 
   for (
-    let cursor = workStartMin;
+    let cursor = firstSlotMin;
     cursor <= lastStartMin;
     cursor += SLOT_INTERVAL_MINUTES
   ) {
+    if (
+      !slotFitsScheduleWindow(
+        cursor,
+        ctx.durationMinutes,
+        workStartMin,
+        workEndMin,
+      )
+    ) {
+      continue;
+    }
+
     const timeStr = minutesToTimeString(cursor);
     const slotStart = localDateTimeToUtc(dateStr, timeStr);
     const slotEnd = new Date(slotStart.getTime() + ctx.durationMinutes * 60_000);
@@ -219,6 +254,20 @@ export async function getAvailableSlots(
   const { start, end } = localDayUtcBounds(dateStr);
   const ctx = await fetchAvailabilityContext(staffId, serviceIds, start, end);
   return computeSlotsForDate(ctx, dateStr);
+}
+
+/**
+ * Server-side guard: true when the selected display label matches a slot
+ * that is within staff hours and free of blocks/appointments.
+ */
+export async function isBookingSlotAvailable(
+  staffId: string,
+  serviceIds: string | string[],
+  dateStr: string,
+  timeLabel: string,
+): Promise<boolean> {
+  const slots = await getAvailableSlots(staffId, serviceIds, dateStr);
+  return slots.some((slot) => slot.label === timeLabel);
 }
 
 export async function getAvailableDatesInRange(

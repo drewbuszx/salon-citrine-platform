@@ -13,6 +13,7 @@ import {
   parseServiceIdsFromParams,
   sumServiceDuration,
 } from "../lib/booking-data";
+import { isBookingSlotAvailable } from "../lib/availability";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -44,6 +45,22 @@ if (
   policyAck !== "true"
 ) {
   return Astro.redirect(`${withBase("details/")}?${Astro.url.searchParams.toString()}`);
+}
+
+const slotAvailable = await isBookingSlotAvailable(
+  stylist.id,
+  serviceIds,
+  date,
+  time,
+);
+if (!slotAvailable) {
+  const params = new URLSearchParams({
+    services: serviceIds.join(","),
+    stylist: stylist.slug,
+    date,
+  });
+  if (showStylistStep) params.set("flow", "stylist");
+  return Astro.redirect(`${withBase("datetime/")}?${params.toString()}`);
 }
 
 const serviceSummary =

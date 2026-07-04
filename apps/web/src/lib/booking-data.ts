@@ -30,7 +30,14 @@ type StaffServiceRow = {
   staff_id: string;
   service_id: string;
   returning_clients_only: boolean;
+  client_booking_block: "none" | "soft" | "hard";
 };
+
+export type ClientBookingBlock = "none" | "soft" | "hard";
+
+export function isClientBookable(block: ClientBookingBlock | null | undefined): boolean {
+  return (block ?? "none") === "none";
+}
 
 export type BookingCatalog = {
   staff: Staff[];
@@ -135,7 +142,7 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
       .order("sort_order"),
     supabase
       .from("staff_services")
-      .select("staff_id, service_id, returning_clients_only"),
+      .select("staff_id, service_id, returning_clients_only, client_booking_block"),
   ]);
 
   if (staffResult.error) throw staffResult.error;
@@ -148,6 +155,9 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
   const staffServiceReturningOnly: Record<string, boolean> = {};
 
   for (const row of staffServicesResult.data as StaffServiceRow[]) {
+    if (!isClientBookable(row.client_booking_block)) {
+      continue;
+    }
     const list = staffServiceIds[row.staff_id] ?? [];
     list.push(row.service_id);
     staffServiceIds[row.staff_id] = list;
@@ -355,13 +365,16 @@ export async function fetchStaffForService(
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("staff_services")
-    .select("staff_id, returning_clients_only, staff(*)")
+    .select("staff_id, returning_clients_only, client_booking_block, staff(*)")
     .eq("service_id", serviceId);
 
   if (error) throw error;
 
   const staff: Staff[] = [];
   for (const row of data ?? []) {
+    if (!isClientBookable(row.client_booking_block)) {
+      continue;
+    }
     const raw = row.staff as StaffRow | StaffRow[] | null;
     const staffRow = Array.isArray(raw) ? raw[0] : raw;
     if (staffRow?.is_bookable) {
@@ -498,10 +511,14 @@ export async function fetchServicesByIds(
     if (staff) {
       const { data, error } = await supabase
         .from("staff_services")
-        .select("service_id")
+        .select("service_id, client_booking_block")
         .eq("staff_id", staff.id);
       if (error) throw error;
-      allowedIds = new Set((data ?? []).map((row) => row.service_id));
+      allowedIds = new Set(
+        (data ?? [])
+          .filter((row) => isClientBookable(row.client_booking_block))
+          .map((row) => row.service_id),
+      );
     }
   }
 
@@ -542,13 +559,14 @@ export async function fetchCartSuggestions(
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
     .from("staff_services")
-    .select("service_id, services(*)")
+    .select("service_id, client_booking_block, services(*)")
     .eq("staff_id", staff.id);
 
   if (error) throw error;
 
   const staffServices: Service[] = [];
   for (const row of data ?? []) {
+    if (!isClientBookable(row.client_booking_block)) continue;
     const raw = row.services as ServiceRow | ServiceRow[] | null;
     const svcRow = Array.isArray(raw) ? raw[0] : raw;
     if (svcRow?.is_active) staffServices.push(mapService(svcRow));
