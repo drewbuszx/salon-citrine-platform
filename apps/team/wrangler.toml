@@ -1,9 +1,10 @@
 name = "salon-citrine-team"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = "dist"
 
-# SESSION KV must be bound in Pages dashboard (Settings -> Bindings)
+[[kv_namespaces]]
+binding = "SESSION"
+id = "15711a0ae59f411693baf6e64bd304dd"
 
 [images]
 binding = "IMAGES"
