@@ -1,43 +1,38 @@
-# Deploy to Cloudflare (Workers)
+# Deploy to Cloudflare Workers (Workers Builds)
 
-Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. **Astro 6+ no longer supports Cloudflare Pages SSR** — each app deploys as a **Cloudflare Worker with static assets**, not as a static Pages upload.
+Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. **They must deploy as Cloudflare Workers, not Cloudflare Pages.**
 
-## Why deployments 404
+## Why Pages does not work (confirmed)
 
-If the build log ends with **"Assets published!"** only (no Worker deploy), or routes like `/team/login` return 404 while files appear at wrong paths (e.g. `/client/team/_astro/*`), the project was deployed as **static-only Pages**:
+- `@astrojs/cloudflare` v13+ (Astro 6+) dropped Cloudflare Pages support. The build produces a **Workers-format** config (`dist/server/wrangler.json` with `main` + `assets`), never a Pages config.
+- The **Pages build pipeline only accepts configs containing `pages_build_output_dir`**. When it sees the Workers-format config it logs *"A Wrangler configuration file was found but it does not appear to be valid... Skipping file and continuing."* and falls back to a **static-only upload** ("Assets published!"). No SSR worker is deployed, so server routes 404 and assets appear at wrong paths like `/client/team/_astro/*`.
+- Adding `pages_build_output_dir` back breaks the build instead: *"The name 'ASSETS' is reserved in Pages projects."*
 
-| Mistake | Result |
-|---------|--------|
-| `pages_build_output_dir` in `wrangler.toml` | Wrangler treats the project as Pages and uploads the whole `dist/` tree as static files |
-| Dashboard **Build output directory** set to `dist` or `apps/team/dist` | Same static-only upload; SSR worker is never deployed |
-| Repo-root `wrangler.toml` with Setup A while dashboard root is `apps/team` | Wrong config path; static-only or missing bindings |
-
-**Fix:** Use Setup B below. Remove `pages_build_output_dir`. Leave dashboard build output **empty**. Let `@astrojs/cloudflare` generate the Worker config during build.
+No Pages project configuration can deploy this app's SSR worker. Use **Workers Builds** (a Worker with Git integration) instead.
 
 ## Prerequisites
 
-- GitHub repo connected to Cloudflare Pages (Workers deploy via Pages CI)
+- GitHub repo `drewbuszx/salon-citrine-platform` accessible from your Cloudflare account
 - Supabase project with migrations applied (see [README](../README.md))
 - Node **22** (matches `engines` in root `package.json`)
 
-## Team app — recommended settings (Setup B)
+## Team app — Workers Builds setup
 
-Configure the **salon-citrine-platform** Pages project exactly as follows:
+In the Cloudflare dashboard:
+
+1. **Workers & Pages → Create → Workers → Import a repository**, select `drewbuszx/salon-citrine-platform` (branch `master`).
+2. Configure the build:
 
 | Setting | Value |
 |---------|--------|
+| **Worker name** | `salon-citrine-team` (matches `name` in `apps/team/wrangler.toml`) |
 | **Root directory** | `apps/team` |
 | **Build command** | `cd ../.. && npm ci && npm run build --workspace apps/team` |
-| **Build output directory** | *(leave empty)* |
-| **NODE_VERSION** (env var) | `22` |
-| **Custom domain** | `team.saloncitrineindy.com` |
-| **Live path on `*.pages.dev`** | `/team/` (app uses `base: '/team'`) |
+| **Deploy command** | `npx wrangler deploy` |
 
-After saving, trigger a new deployment. The build log should show **Worker** bindings (SESSION, IMAGES, ASSETS) and deploy the SSR worker — not just "Assets published!".
-
-### Environment variables
-
-Set in **Production** (and Preview if needed):
+3. Add build variable `NODE_VERSION` = `22`.
+4. **Save and Deploy.**
+5. After the first deploy, set runtime variables under **Worker → Settings → Variables and Secrets** (use type **Secret**):
 
 | Variable | Purpose |
 |----------|---------|
@@ -46,38 +41,36 @@ Set in **Production** (and Preview if needed):
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin operations |
 | `TZ` | `America/Indiana/Indianapolis` |
 
-### KV binding
+6. Custom domain: **Worker → Settings → Domains & Routes → Add → Custom domain** → `team.saloncitrineindy.com`.
 
-`apps/team/wrangler.toml` declares the **SESSION** KV namespace. You can also bind **SESSION** in the dashboard: **Pages → Settings → Functions → KV namespace bindings**.
+**Bindings:** `apps/team/wrangler.toml` already declares the `SESSION` KV namespace (real ID) and the `IMAGES` binding; the build adds the `ASSETS` binding. `wrangler deploy` applies all of them — **no dashboard binding setup is needed**. Verify after deploy under **Worker → Settings → Bindings**.
+
+**URL:** the Worker serves at `https://salon-citrine-team.<account-subdomain>.workers.dev`. The app uses `base: '/team'`, so the login page is `/team/login`.
+
+**Old Pages project:** once the Worker is live and the custom domain has moved over, delete the old `salon-citrine-platform` Pages project.
 
 ## Book app (`apps/web`)
 
-Use a **separate** Pages project with the same pattern:
+Create a **second** Worker from the same repo with the same pattern:
 
 | Setting | Value |
 |---------|--------|
+| **Worker name** | `salon-citrine-book` |
 | **Root directory** | `apps/web` |
 | **Build command** | `cd ../.. && npm ci && npm run build --workspace apps/web` |
-| **Build output directory** | *(leave empty)* |
-| **NODE_VERSION** | `22` |
+| **Deploy command** | `npx wrangler deploy` |
 | **Custom domain** | `book.saloncitrineindy.com` |
-| **Live path on `*.pages.dev`** | `/book/` |
+| **Live path** | `/book/` (app uses `base: '/book'`) |
 
-**Environment variables** — copy from [`.env.example`](../.env.example). See [PRODUCTION_COMMS.md](./PRODUCTION_COMMS.md) for Resend/Twilio and cron setup.
+Before the first deploy, replace `REPLACE_WITH_KV_NAMESPACE_ID` in `apps/web/wrangler.toml` with a real KV namespace ID (reusing the SESSION namespace is fine).
 
-## Wrangler config (`apps/team/wrangler.toml`)
+**Environment variables** — copy from [`.env.example`](../.env.example) as Worker secrets. See [PRODUCTION_COMMS.md](./PRODUCTION_COMMS.md) for Resend/Twilio and cron setup.
 
-The committed file declares **bindings and compatibility only**. Do **not** add `pages_build_output_dir` or `main` — `@astrojs/cloudflare` generates `dist/server/wrangler.json` during build with the Worker entrypoint and assets directory.
+## How the config works
 
-Required bindings:
+`apps/team/wrangler.toml` declares **bindings and compatibility only** (no `main`, no `pages_build_output_dir`). During `astro build`, `@astrojs/cloudflare` generates the full Worker config at `dist/server/wrangler.json` (entrypoint `entry.mjs`, assets directory `../client`) plus a redirect at `.wrangler/deploy/config.json`. Running `wrangler deploy` from `apps/team` follows the redirect automatically — the log shows *"Using redirected Wrangler configuration"*.
 
-| Binding | Type | Purpose |
-|---------|------|---------|
-| `SESSION` | KV namespace | Astro session storage (auth cookies) |
-| `IMAGES` | Cloudflare Images | Image processing in production |
-| `ASSETS` | Static assets | Auto-generated at build time |
-
-`.assetsignore` in `dist/client/` (generated by Astro) excludes `wrangler.json` and `.dev.vars` from static uploads.
+The build must run **before** the deploy command (Workers Builds runs them in order). `.assetsignore` in `dist/client/` (generated by Astro) keeps `wrangler.json` and `.dev.vars` out of the static upload.
 
 ## Verify locally before deploy
 
@@ -86,32 +79,31 @@ From the repo root:
 ```bash
 npm run build --workspace apps/team
 cd apps/team
+npx wrangler deploy --dry-run
+```
+
+Expect SESSION / IMAGES / ASSETS bindings listed and no errors. To run it locally:
+
+```bash
 npx wrangler dev
 ```
 
-Then open `http://127.0.0.1:8787/team/login` — expect **200**, not 404.
-
-Or use Astro preview:
-
-```bash
-npm run build --workspace apps/team
-npm run preview --workspace apps/team
-```
+Then open `http://127.0.0.1:8787/team/login` — expect **200**.
 
 ## Manual deploy (optional)
 
 From `apps/team` after a build:
 
 ```bash
-npx wrangler deploy
+npx wrangler deploy    # or: npm run deploy
 ```
 
 ## After deploy — test URLs
 
-| App | pages.dev | Custom domain |
-|-----|-----------|---------------|
-| Team | `https://salon-citrine-platform.pages.dev/team/login` | `https://team.saloncitrineindy.com/team/login` |
-| Book | `https://<book-project>.pages.dev/book/` | `https://book.saloncitrineindy.com/book/` |
+| App | workers.dev | Custom domain |
+|-----|-------------|---------------|
+| Team | `https://salon-citrine-team.<account>.workers.dev/team/login` | `https://team.saloncitrineindy.com/team/login` |
+| Book | `https://salon-citrine-book.<account>.workers.dev/book/` | `https://book.saloncitrineindy.com/book/` |
 
 Smoke checks:
 
@@ -122,8 +114,9 @@ Smoke checks:
 
 | Symptom | Fix |
 |---------|-----|
-| Build OK, `/team/login` 404; assets at `/client/team/_astro/*` | Static-only deploy. Clear dashboard **Build output directory**. Remove `pages_build_output_dir` from `wrangler.toml`. Set root to `apps/team`. Redeploy. |
-| "The name 'ASSETS' is reserved in Pages projects" | `pages_build_output_dir` is still set somewhere. Remove it; use Workers format (this repo's current config). |
-| "No Wrangler configuration file found" | Root directory must be `apps/team` so CI finds `apps/team/wrangler.toml`. |
-| Auth/session errors | Bind **SESSION** KV; confirm Supabase env vars. |
-| Wrong app on subdomain | Custom domain attached to wrong Pages project. |
+| Pages log: "configuration file... does not appear to be valid... Skipping file"; only "Assets published!"; routes 404; assets at `/client/team/_astro/*` | You deployed via a **Pages** project. Pages cannot deploy this app. Create a **Worker** with Git integration as above. |
+| "The name 'ASSETS' is reserved in Pages projects" | `pages_build_output_dir` is set somewhere. Remove it; this repo uses Workers format. |
+| Deploy fails: config not found / not valid | The deploy ran without a prior build. The build command must run first so `dist/server/wrangler.json` and `.wrangler/deploy/config.json` exist. Root directory must be `apps/team`. |
+| Env vars disappear after a deploy | Set them as **Secrets** (not plain variables) in Worker → Settings → Variables and Secrets. |
+| Auth/session errors | Confirm SESSION KV binding and Supabase secrets on the Worker. |
+| Wrong app on subdomain | Custom domain attached to the wrong Worker. |
