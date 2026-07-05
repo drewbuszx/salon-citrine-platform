@@ -1,0 +1,209 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { formatBookingPolicySummary } from "@saloncitrine/shared";
+import {
+  defaultPolicyResponse,
+  mapPolicyRow,
+  POLICY_SELECT,
+  type BookingPolicyRow,
+} from "../lib/booking-policy";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase } = Astro.locals;
+
+const { data, error } = await supabase
+  .from("booking_policy_settings")
+  .select(POLICY_SELECT)
+  .eq("is_active", true)
+  .order("updated_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+const policy = data
+  ? mapPolicyRow(data as BookingPolicyRow)
+  : defaultPolicyResponse();
+const summary = formatBookingPolicySummary(policy);
+const depositValueDollars =
+  policy.depositValue != null ? (policy.depositValue / 100).toFixed(2) : "";
+---
+
+<TeamLayout title="Booking policy">
+  <section
+    class="form-stack form-stack--medium"
+    data-booking-policy
+    data-api-base={teamUrl("/api/booking-policy")}
+  >
+    <h1 class="page-title">Booking policy</h1>
+    <p class="page-lead">
+      Online booking uses the active policy below. Existing appointments keep the
+      policy snapshot stored at booking time.
+    </p>
+
+    <p class="notice notice--success" data-policy-success hidden role="status">
+      Policy saved.
+    </p>
+    <p class="notice notice--error" data-policy-error hidden role="alert"></p>
+
+    {
+      error ? (
+        <p class="notice notice--error" role="alert">
+          Failed to load booking policy settings.
+        </p>
+      ) : null
+    }
+
+    <form class="card-grid" data-policy-form>
+      <label class="form-label">
+        Policy title
+        <input
+          class="form-input"
+          name="title"
+          type="text"
+          maxlength="200"
+          value={policy.title}
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        Cancellation window (hours)
+        <input
+          class="form-input"
+          name="cancellationWindowHours"
+          type="number"
+          min="1"
+          max="168"
+          value={policy.cancellationWindowHours}
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        Late-cancel fee (%)
+        <input
+          class="form-input"
+          name="lateCancelFeePercent"
+          type="number"
+          min="0"
+          max="100"
+          value={policy.lateCancelFeePercent}
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        No-show fee (%)
+        <input
+          class="form-input"
+          name="noShowFeePercent"
+          type="number"
+          min="0"
+          max="100"
+          value={policy.noShowFeePercent}
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        Late grace (minutes)
+        <input
+          class="form-input"
+          name="lateGraceMinutes"
+          type="number"
+          min="0"
+          max="120"
+          value={policy.lateGraceMinutes}
+          required
+        />
+      </label>
+
+      <label class="form-label">
+        Deposit type
+        <select class="form-input" name="depositType" data-deposit-type>
+          <option value="card_on_file" selected={policy.depositType === "card_on_file"}>
+            Card on file only
+          </option>
+          <option value="none" selected={policy.depositType === "none"}>
+            None
+          </option>
+          <option value="fixed" selected={policy.depositType === "fixed"}>
+            Fixed amount
+          </option>
+          <option value="percent" selected={policy.depositType === "percent"}>
+            Percent of service total
+          </option>
+        </select>
+      </label>
+
+      <label class="form-label" data-deposit-value-wrap hidden={policy.depositType !== "fixed" && policy.depositType !== "percent"}>
+        Deposit value
+        <input
+          class="form-input"
+          name="depositValueDollars"
+          type="number"
+          min="0"
+          step="0.01"
+          value={depositValueDollars}
+          data-deposit-value
+        />
+        <span class="label-meta" data-deposit-value-hint>
+          {
+            policy.depositType === "percent"
+              ? "Percent of cart subtotal (e.g. 25 for 25%)"
+              : "Fixed deposit in dollars"
+          }
+        </span>
+      </label>
+
+      <label class="form-label form-label--checkbox">
+        <input
+          type="checkbox"
+          name="sameWeekRescheduleWaivesFee"
+          checked={policy.sameWeekRescheduleWaivesFee}
+        />
+        Same-week reschedule waives fees
+      </label>
+
+      <label class="form-label form-label--checkbox">
+        <input
+          type="checkbox"
+          name="requiresCardOnFile"
+          checked={policy.requiresCardOnFile}
+        />
+        Require card on file
+      </label>
+
+      <label class="form-label form-label--checkbox">
+        <input type="checkbox" name="isActive" checked={policy.isActive} />
+        Policy active for new bookings
+      </label>
+
+      <div class="card-row card-row--1">
+        <button class="btn-primary" type="submit">Save policy</button>
+      </div>
+    </form>
+
+    <section class="page-section">
+      <h2>Guest-facing summary</h2>
+      <p class="page-section__lead" data-policy-summary>{summary}</p>
+    </section>
+
+    <p class="label-meta">
+      <a href={teamUrl("/services")}>Back to services</a>
+    </p>
+  </section>
+
+  <script src="../scripts/booking-policy.ts"></script>
+</TeamLayout>
+
+<style>
+  .form-label--checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .form-label--checkbox input {
+    width: auto;
+  }
+</style>
