@@ -4,12 +4,40 @@ import {
   type CookieMethodsServer,
 } from "@supabase/ssr";
 import type { AstroCookies } from "astro";
+import { env as workerEnv } from "cloudflare:workers";
 
-function requireEnv(name: "SUPABASE_URL" | "SUPABASE_ANON_KEY") {
-  const value = import.meta.env[name];
+type RequiredSupabaseEnv = "SUPABASE_URL" | "SUPABASE_ANON_KEY";
+
+function resolveEnv(name: RequiredSupabaseEnv) {
+  const fromImportMeta = import.meta.env[name];
+  if (fromImportMeta) {
+    return fromImportMeta;
+  }
+
+  const fromWorkerBinding = workerEnv[name];
+  if (fromWorkerBinding) {
+    return fromWorkerBinding;
+  }
+
+  const fromProcess = process.env[name];
+  if (fromProcess) {
+    return fromProcess;
+  }
+
+  const publicName =
+    name === "SUPABASE_URL" ? "PUBLIC_SUPABASE_URL" : "PUBLIC_SUPABASE_ANON_KEY";
+  return (
+    import.meta.env[publicName] ??
+    workerEnv[publicName] ??
+    process.env[publicName]
+  );
+}
+
+function requireEnv(name: RequiredSupabaseEnv) {
+  const value = resolveEnv(name);
   if (!value) {
     throw new Error(
-      `Missing ${name}. Add it to the repo root .env (see .env.example).`,
+      `Missing required runtime configuration for ${name}. Set it in Worker runtime bindings or environment variables.`,
     );
   }
   return value;
