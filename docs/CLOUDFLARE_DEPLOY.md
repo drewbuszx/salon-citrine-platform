@@ -32,14 +32,19 @@ In the Cloudflare dashboard:
 
 3. Add build variable `NODE_VERSION` = `22`.
 4. **Save and Deploy.**
-5. After the first deploy, set runtime variables under **Worker → Settings → Variables and Secrets** (use type **Secret**):
+5. After the first deploy, configure runtime env under **Worker → Settings → Variables and Secrets**:
 
 | Variable | Purpose |
 |----------|---------|
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anon key (server + auth) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin operations |
-| `TZ` | `America/Indiana/Indianapolis` |
+| `SUPABASE_ANON_KEY` | Supabase anon key (server + auth) - **Secret** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin operations - **Secret** |
+| `STRIPE_SECRET_KEY` | Stripe server secret - **Secret** |
+| `RESEND_API_KEY` | Resend API key - **Secret** |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token - **Secret** |
+
+`SUPABASE_URL` and `TZ` come from `[vars]` in `apps/team/wrangler.toml` and are committed as non-secret config.
+
+> Build variables are not sufficient for this app's private env values. With `nodejs_compat`, Astro server code reads private env at runtime via `process.env` on Workers, so required secrets must exist as Worker runtime bindings.
 
 6. Custom domain: **Worker → Settings → Domains & Routes → Add → Custom domain** → `team.saloncitrineindy.com`.
 
@@ -117,6 +122,6 @@ Smoke checks:
 | Pages log: "configuration file... does not appear to be valid... Skipping file"; only "Assets published!"; routes 404; assets at `/client/team/_astro/*` | You deployed via a **Pages** project. Pages cannot deploy this app. Create a **Worker** with Git integration as above. |
 | "The name 'ASSETS' is reserved in Pages projects" | `pages_build_output_dir` is set somewhere. Remove it; this repo uses Workers format. |
 | Deploy fails: config not found / not valid | The deploy ran without a prior build. The build command must run first so `dist/server/wrangler.json` and `.wrangler/deploy/config.json` exist, and the deploy command must run from `apps/team` (`cd apps/team && npx wrangler deploy`). |
-| Env vars disappear after a deploy | Set them as **Secrets** (not plain variables) in Worker → Settings → Variables and Secrets. |
+| Env vars disappear after a deploy | Plain-text dashboard variables are overwritten by `wrangler deploy` when not declared in `wrangler.toml`. Put non-secret values in `[vars]` and put secrets in **Secrets**. |
 | Auth/session errors | Confirm SESSION KV binding and Supabase secrets on the Worker. |
 | Wrong app on subdomain | Custom domain attached to the wrong Worker. |

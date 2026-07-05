@@ -1,6 +1,10 @@
 name = "salon-citrine-team"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-09-01"
 compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SUPABASE_URL = "https://kkhdkmplbxzsckjhpsgf.supabase.co"
+TZ = "America/Indiana/Indianapolis"
 
 [[kv_namespaces]]
 binding = "SESSION"
