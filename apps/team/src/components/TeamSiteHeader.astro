@@ -7,12 +7,16 @@ import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
 
+/** Boulevard-style top bar sections mapped to team routes */
 export type TeamActiveNav =
-  | "book"
-  | "inventory"
-  | "tasks"
-  | "docs"
-  | "events"
+  | "front-desk"
+  | "calendar"
+  | "messages"
+  | "sales"
+  | "clients"
+  | "reports"
+  | "marketing"
+  | "manage"
   | "account";
 
 interface Props {
@@ -24,36 +28,151 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-const logoLightSrc = withBase("images/salon-citrine-logo.png");
-const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
+/** Drop compact logo at public/images/salon-citrine-logo-compact.png (120×32 recommended) */
+const logoCompactSrc = withBase("images/salon-citrine-logo-compact.png");
+const logoFallbackSrc = withBase("images/salon-citrine-logo.png");
 const profileMenuId = "team-profile-menu";
 
-const primaryTabs = [
-  { id: "book" as const, label: "Book", href: teamUrl("/") },
-  { id: "inventory" as const, label: "Inventory", href: teamUrl("/inventory") },
-  { id: "tasks" as const, label: "Tasks", href: teamUrl("/tasks") },
+const navTabs: {
+  id: TeamActiveNav;
+  label: string;
+  href: string;
+  disabled?: boolean;
+}[] = [
+  { id: "front-desk", label: "Front Desk", href: teamUrl("/") },
+  { id: "calendar", label: "Calendar", href: teamUrl("/") },
+  { id: "messages", label: "Messages", href: teamUrl("/tasks") },
+  { id: "sales", label: "Sales", href: teamUrl("/inventory") },
+  { id: "clients", label: "Clients", href: teamUrl("/clients") },
+  { id: "reports", label: "Reports", href: teamUrl("/docs") },
+  { id: "marketing", label: "Marketing", href: teamUrl("/events") },
+  { id: "manage", label: "Manage", href: teamUrl("/services") },
 ];
 
-const secondaryTabs = [
-  { id: "docs" as const, label: "Docs", href: teamUrl("/docs") },
-  { id: "events" as const, label: "Calendar", href: teamUrl("/events") },
-];
-
-const mobileTabs = [...primaryTabs, ...secondaryTabs];
 const photoSrc = staff ? staffPhotoSrc(staff.photo_url, staff.slug) : null;
 const photoCrop = staff ? normalizePhotoCrop(parsePhotoCrop(staff.photo_crop)) : null;
 const initials = staff ? staffInitials(staff.name) : "";
 ---
 
-<header class="site-header team-site-header">
-  <div class="site-header__inner">
+<header class="team-bar">
+  <div class="team-bar__inner">
+    <div class="team-bar__brand">
+      <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
+        <img
+          class="team-bar__logo-img"
+          src={logoCompactSrc}
+          alt=""
+          width="120"
+          height="32"
+          loading="eager"
+        />
+      </a>
+    </div>
+
     {
       isAuthenticated ? (
-        <div class="team-header__left">
-          <div class="site-header__controls">
+        <>
+          <nav class="team-bar__nav" aria-label="Team">
+            {navTabs.map((item) => (
+              <a
+                class:list={[
+                  "team-bar__tab",
+                  { "team-bar__tab--active": activeNav === item.id },
+                ]}
+                href={item.href}
+                aria-current={activeNav === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
+          <div class="team-bar__utilities">
             <button
-              class="site-header__menu-toggle"
               type="button"
+              class="team-bar__icon-btn"
+              aria-label="Notifications (coming soon)"
+              title="Notifications"
+              disabled
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                <path
+                  d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7M13.73 21a2 2 0 01-3.46 0"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path>
+              </svg>
+            </button>
+
+            <a class="team-bar__icon-btn" href={teamUrl("/account")} aria-label="Settings" title="Account settings">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"></circle>
+                <path
+                  d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"></path>
+              </svg>
+            </a>
+
+            <div class="team-bar__profile" data-profile-dropdown>
+              <button
+                class="team-bar__profile-btn"
+                type="button"
+                aria-expanded="false"
+                aria-haspopup="true"
+                aria-controls={profileMenuId}
+                data-profile-trigger
+                title={staff?.name ?? "Account"}
+              >
+                {
+                  photoSrc ? (
+                    <StaffAvatar
+                      src={photoSrc}
+                      crop={photoCrop}
+                      size="header"
+                      class="team-bar__avatar-wrap"
+                    />
+                  ) : (
+                    <span class="team-bar__avatar team-bar__avatar--initials" aria-hidden="true">
+                      {initials}
+                    </span>
+                  )}
+              </button>
+              <ul
+                id={profileMenuId}
+                class="team-bar__profile-menu"
+                role="menu"
+                aria-label="Account"
+                data-profile-menu
+              >
+                <li role="none">
+                  <span class="team-bar__profile-label" role="presentation">{staff?.name}</span>
+                </li>
+                <li role="none">
+                  <a class="team-bar__profile-item" href={teamUrl("/account")} role="menuitem">
+                    Account
+                  </a>
+                </li>
+                <li role="none">
+                  <a class="team-bar__profile-item" href={teamUrl("/my-book")} role="menuitem">
+                    My book
+                  </a>
+                </li>
+                <li role="none">
+                  <form method="post" action={teamUrl("/api/auth/logout")} role="none">
+                    <button class="team-bar__profile-item team-bar__profile-item--button" type="submit" role="menuitem">
+                      Sign out
+                    </button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              class="team-bar__menu-toggle"
               aria-label="Open menu"
               aria-expanded="false"
               data-menu-toggle
@@ -64,12 +183,12 @@ const initials = staff ? staffInitials(staff.name) : "";
             </button>
           </div>
 
-          <nav class="site-header__nav site-header__nav--left team-header__tabs" aria-label="Team primary">
-            {primaryTabs.map((item) => (
+          <nav class="team-bar__nav team-bar__nav--mobile" aria-label="Mobile" data-mobile-nav>
+            {navTabs.map((item) => (
               <a
                 class:list={[
-                  "site-header__link",
-                  { "site-header__link--active": activeNav === item.id },
+                  "team-bar__tab",
+                  { "team-bar__tab--active": activeNav === item.id },
                 ]}
                 href={item.href}
                 aria-current={activeNav === item.id ? "page" : undefined}
@@ -77,158 +196,317 @@ const initials = staff ? staffInitials(staff.name) : "";
                 {item.label}
               </a>
             ))}
-          </nav>
-        </div>
-      ) : (
-        <div class="team-header__left team-header__left--empty" aria-hidden="true" />
-      )
-    }
-
-    <a class="site-header__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
-      <img
-        class="site-header__logo-image site-header__logo-image--light"
-        src={logoLightSrc}
-        alt={BUSINESS.name}
-        width="1180"
-        height="430"
-        fetchpriority="high"
-      />
-      <img
-        class="site-header__logo-image site-header__logo-image--dark"
-        src={logoDarkSrc}
-        alt=""
-        width="1180"
-        height="430"
-        fetchpriority="high"
-        aria-hidden="true"
-      />
-    </a>
-
-    {
-      isAuthenticated && staff ? (
-        <div class="team-header__right">
-          <nav class="site-header__nav site-header__nav--right team-header__tabs" aria-label="Team secondary">
-            {secondaryTabs.map((item) => (
-              <a
-                class:list={[
-                  "site-header__link",
-                  { "site-header__link--active": activeNav === item.id },
-                ]}
-                href={item.href}
-                aria-current={activeNav === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-
-          <div class="team-header__profile" data-profile-dropdown>
             <button
-              class="team-header__profile-trigger"
+              class="team-bar__theme-toggle"
               type="button"
-              aria-expanded="false"
-              aria-haspopup="true"
-              aria-controls={profileMenuId}
-              data-profile-trigger
+              aria-label="Switch theme"
+              data-theme-toggle
             >
-              {
-                photoSrc ? (
-                  <StaffAvatar
-                    src={photoSrc}
-                    crop={photoCrop}
-                    size="header"
-                    class="team-header__avatar-wrap"
-                  />
-                ) : (
-                  <span class="team-header__avatar team-header__avatar--initials" aria-hidden="true">
-                    {initials}
-                  </span>
-                )}
-              <span class="team-header__profile-name">{staff.name}</span>
+              Theme
             </button>
-            <ul
-              id={profileMenuId}
-              class="team-header__profile-menu"
-              role="menu"
-              aria-label="Account"
-              data-profile-menu
-            >
-              <li role="none">
-                <a
-                  class="team-header__profile-item"
-                  href={teamUrl("/account")}
-                  role="menuitem"
-                >
-                  Account
-                </a>
-              </li>
-              <li role="none">
-                <form method="post" action={teamUrl("/api/auth/logout")} role="none">
-                  <button class="team-header__profile-item team-header__profile-item--button" type="submit" role="menuitem">
-                    Sign out
-                  </button>
-                </form>
-              </li>
-            </ul>
-          </div>
-        </div>
+            <button class="team-bar__menu-close" type="button" aria-label="Close menu" data-menu-close>
+              ×
+            </button>
+          </nav>
+        </>
       ) : (
-        <div class="team-header__right team-header__right--empty" aria-hidden="true" />
+        <div class="team-bar__guest" aria-hidden="true"></div>
       )
-    }
-
-    {
-      isAuthenticated ? (
-        <nav
-          class="site-header__nav site-header__nav--mobile"
-          aria-label="Mobile"
-          data-mobile-nav
-        >
-          {mobileTabs.map((item) => (
-            <a
-              class:list={[
-                "site-header__link",
-                { "site-header__link--active": activeNav === item.id },
-              ]}
-              href={item.href}
-              aria-current={activeNav === item.id ? "page" : undefined}
-            >
-              {item.label}
-            </a>
-          ))}
-
-          <button
-            class="site-header__theme-toggle site-header__theme-toggle--mobile"
-            type="button"
-            aria-label="Switch to dark mode"
-            data-theme-toggle
-          >
-            <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>
-            <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="5"></circle>
-              <line x1="12" y1="1" x2="12" y2="3"></line>
-              <line x1="12" y1="21" x2="12" y2="23"></line>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-              <line x1="1" y1="12" x2="3" y2="12"></line>
-              <line x1="21" y1="12" x2="23" y2="12"></line>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>
-          </button>
-
-          <button
-            class="site-header__menu-close"
-            type="button"
-            aria-label="Close menu"
-            data-menu-close
-          >
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </nav>
-      ) : null
     }
   </div>
 </header>
+
+<style>
+  .team-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 120;
+    height: var(--team-bar-height, 3.25rem);
+    background: var(--team-bar-bg, #2f2a28);
+    border-bottom: 1px solid var(--team-bar-border, rgba(255, 255, 255, 0.1));
+    color: var(--team-bar-text, rgba(255, 255, 255, 0.92));
+  }
+
+  .team-bar__inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 100%;
+    max-width: 100%;
+    padding: 0 0.65rem 0 0.85rem;
+  }
+
+  .team-bar__brand {
+    flex: 0 0 auto;
+  }
+
+  .team-bar__logo {
+    display: flex;
+    align-items: center;
+    line-height: 0;
+  }
+
+  .team-bar__logo-img {
+    display: block;
+    height: 1.75rem;
+    width: auto;
+    max-width: 7.5rem;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    opacity: 0.95;
+  }
+
+  .team-bar__logo-img--fallback {
+    height: 1.35rem;
+    max-width: 5.5rem;
+  }
+
+  .team-bar__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .team-bar__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .team-bar__tab {
+    flex: 0 0 auto;
+    padding: 0.45rem 0.65rem;
+    border-radius: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.72);
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .team-bar__tab:hover,
+  .team-bar__tab:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+
+  .team-bar__tab--active {
+    color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.12);
+  }
+
+  .team-bar__utilities {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .team-bar__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .team-bar__icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .team-bar__icon-btn:not(:disabled):hover,
+  .team-bar__icon-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    outline: none;
+  }
+
+  .team-bar__icon-btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .team-bar__profile {
+    position: relative;
+  }
+
+  .team-bar__profile-btn {
+    display: inline-flex;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+
+  .team-bar__avatar,
+  .team-bar__avatar-wrap {
+    width: 1.85rem;
+    height: 1.85rem;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-radius: 50%;
+  }
+
+  .team-bar__avatar--initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-dusty-rose);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .team-bar__profile-menu {
+    position: absolute;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    z-index: 130;
+    min-width: 11rem;
+    margin: 0;
+    padding: 0.35rem 0;
+    list-style: none;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      visibility 0.15s;
+  }
+
+  .team-bar__profile.is-open .team-bar__profile-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .team-bar__profile-label {
+    display: block;
+    padding: 0.45rem 0.85rem 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .team-bar__profile-item {
+    display: block;
+    width: 100%;
+    padding: 0.55rem 0.85rem;
+    border: none;
+    background: none;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    text-align: left;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .team-bar__profile-item:hover,
+  .team-bar__profile-item:focus-visible {
+    background: var(--color-light);
+    outline: none;
+  }
+
+  .team-bar__menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.22rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .team-bar__menu-toggle span {
+    display: block;
+    width: 1.1rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+  }
+
+  .team-bar__nav--mobile {
+    display: none;
+  }
+
+  @media (max-width: 1100px) {
+    .team-bar__nav:not(.team-bar__nav--mobile) {
+      display: none;
+    }
+
+    .team-bar__menu-toggle {
+      display: inline-flex;
+    }
+
+    .team-bar__nav--mobile {
+      display: none;
+      position: fixed;
+      top: var(--team-bar-height, 3.25rem);
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+      overflow-y: auto;
+      padding: 0.5rem;
+      background: var(--team-bar-bg, #2f2a28);
+      border-bottom: 1px solid var(--team-bar-border);
+    }
+
+    .team-bar__nav--mobile.is-open {
+      display: flex;
+    }
+
+    .team-bar__nav--mobile .team-bar__tab {
+      padding: 0.75rem 0.85rem;
+      border-radius: 0.35rem;
+    }
+
+    .team-bar__theme-toggle,
+    .team-bar__menu-close {
+      margin-top: 0.35rem;
+      padding: 0.65rem 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 0.35rem;
+      background: transparent;
+      color: inherit;
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+  }
+</style>

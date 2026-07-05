@@ -1,0 +1,200 @@
+---
+export const prerender = false;
+
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import { teamUrl } from "../../lib/supabase-server";
+
+const { staff } = Astro.locals;
+if (!staff) {
+  return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
+}
+
+const clientId = Astro.params.id;
+if (!clientId) {
+  return Astro.redirect(teamUrl("/clients"));
+}
+---
+
+<TeamLayout title="Client profile" activeNav="clients" wide>
+  <div
+    class="client-profile"
+    data-client-profile
+    data-client-id={clientId}
+    data-api-url={teamUrl(`/api/clients/${clientId}`)}
+    data-notes-api-url={teamUrl(`/api/clients/${clientId}/notes`)}
+    data-book-url={import.meta.env.PUBLIC_BOOK_URL ?? "https://saloncitrineindy.com/book"}
+  >
+    <p class="empty-state" data-loading>Loading client…</p>
+    <p class="notice notice--error" data-error hidden></p>
+
+    <div data-profile-content hidden>
+      <header class="client-profile__header">
+        <div>
+          <p class="label-meta">Client chart</p>
+          <h1 class="page-title" data-client-name></h1>
+          <p class="client-profile__stats" data-client-stats></p>
+        </div>
+        <div class="client-profile__actions">
+          <a class="btn-secondary" href={teamUrl("/clients")}>← All clients</a>
+          <a class="btn-primary" data-book-again href="#" hidden>Book again</a>
+        </div>
+      </header>
+
+      <div class="client-profile__grid">
+        <section class="client-panel">
+          <h2>Contact</h2>
+          <form class="client-form" data-contact-form>
+            <label class="form-label">First name<input class="form-input" name="firstName" required /></label>
+            <label class="form-label">Last name<input class="form-input" name="lastName" required /></label>
+            <label class="form-label">Email<input class="form-input" name="email" type="email" /></label>
+            <label class="form-label">Phone<input class="form-input" name="phone" type="tel" /></label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="smsOptIn" />
+              SMS reminders
+            </label>
+            <label class="checkbox-row">
+              <input type="checkbox" name="emailOptIn" />
+              Email marketing
+            </label>
+            <button type="submit" class="btn-primary">Save contact</button>
+          </form>
+        </section>
+
+        <section class="client-panel">
+          <h2>Preferences & notes</h2>
+          <form class="client-form" data-notes-form>
+            <label class="form-label">Client preferences<textarea class="form-input form-input--textarea" name="bookingPreferences" rows="2"></textarea></label>
+            <label class="form-label">Intake notes<textarea class="form-input form-input--textarea" name="intakeNotes" rows="2"></textarea></label>
+            <label class="form-label">Formula notes<textarea class="form-input form-input--textarea" name="formulaNotes" rows="3"></textarea></label>
+            <label class="form-label">Staff notes<textarea class="form-input form-input--textarea" name="staffNotes" rows="3"></textarea></label>
+            <label class="form-label">Tags (comma-separated)<input class="form-input" name="tags" placeholder="vip, balayage, sensitive scalp" /></label>
+            <button type="submit" class="btn-primary">Save notes</button>
+          </form>
+        </section>
+
+        <section class="client-panel client-panel--wide">
+          <h2>Visit timeline</h2>
+          <ul class="client-timeline" data-timeline></ul>
+        </section>
+
+        <section class="client-panel client-panel--wide">
+          <h2>Notes timeline</h2>
+          <form class="client-note-add" data-add-note-form>
+            <label class="form-label">
+              Add note
+              <select class="form-input" name="noteType">
+                <option value="general">General</option>
+                <option value="formula">Formula</option>
+                <option value="preference">Preference</option>
+              </select>
+            </label>
+            <label class="form-label">
+              <textarea class="form-input form-input--textarea" name="body" rows="2" required placeholder="Note for the team…"></textarea>
+            </label>
+            <button type="submit" class="btn-secondary">Add note</button>
+          </form>
+          <ul class="client-notes" data-notes-list></ul>
+        </section>
+      </div>
+    </div>
+  </div>
+</TeamLayout>
+
+<script src="../../scripts/client-profile.ts"></script>
+
+<style>
+  .client-profile__header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+
+  .client-profile__stats {
+    margin: 0.35rem 0 0;
+    color: var(--color-gray);
+  }
+
+  .client-profile__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .client-profile__grid {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 900px) {
+    .client-profile__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .client-panel--wide {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .client-panel {
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .client-panel h2 {
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .client-form,
+  .client-note-add {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .checkbox-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    font-size: 0.95rem;
+  }
+
+  .client-timeline,
+  .client-notes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .client-timeline__item,
+  .client-notes__item {
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-light);
+  }
+
+  .client-timeline__meta,
+  .client-notes__meta {
+    font-size: 0.82rem;
+    color: var(--color-gray);
+    margin-bottom: 0.25rem;
+  }
+
+  .client-timeline__status {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgba(231, 172, 70, 0.25);
+  }
+</style>

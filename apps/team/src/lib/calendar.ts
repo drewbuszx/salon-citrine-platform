@@ -56,6 +56,7 @@ export type CalendarEvent =
       staffId: string;
       startsAt: string;
       endsAt: string;
+      status: string;
       clientLabel: string;
       clientFullName: string;
       serviceLabel: string | null;
@@ -611,6 +612,7 @@ export function staffEventsForDay(
       staffId: item.staffId,
       startsAt: item.startsAt,
       endsAt: item.endsAt,
+      status: item.status,
       clientLabel: item.clientLabel,
       clientFullName: `${item.clientFirstName} ${item.clientLastName}`.trim() || "Client",
       serviceLabel: item.serviceLabel,

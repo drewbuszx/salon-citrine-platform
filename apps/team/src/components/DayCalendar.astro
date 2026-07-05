@@ -60,6 +60,27 @@ const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
 const staffColWidthRem = staffColumnWidthRem(staff);
 
+const weekStart = shiftDay(selectedDay, -selectedDay.getDay());
+const weekDays = Array.from({ length: 7 }, (_, index) => {
+  const day = shiftDay(weekStart, index);
+  const param = formatDayParam(day);
+  const count = appointments.filter((appt) =>
+    isSameDayInSalon(appt.startsAt, day),
+  ).length;
+  return {
+    param,
+    label: new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(day),
+    dayNum: day.getDate(),
+    isSelected: param === dayParam,
+    isToday: isTodayInSalon(day),
+    count,
+  };
+});
+
+function isSameDayInSalon(iso: string, day: Date): boolean {
+  return formatDayParam(day) === formatDayParam(new Date(iso));
+}
+
 function staffPhotoUrl(member: CalendarStaff) {
   if (member.photoUrl) {
     return member.photoUrl.startsWith("/")
@@ -83,9 +104,11 @@ const calendarConfig = {
     blockedTimes: teamUrl("/api/blocked-times"),
     clientsSearch: teamUrl("/api/clients/search"),
     clientProfile: teamUrl("/api/clients"),
+    clientsPage: teamUrl("/clients"),
     checkout: teamUrl("/checkout"),
   },
   reloadUrl: `${teamUrl("/")}?day=${dayParam}`,
+  weekUrl: teamUrl("/week"),
 };
 ---
 
@@ -94,72 +117,97 @@ const calendarConfig = {
   aria-label="Day calendar"
   style={`--day-staff-width: ${staffColWidthRem}rem`}
 >
-  <header class="day-cal__toolbar">
-    <nav class="day-cal__nav" aria-label="Day navigation">
-      <a
-        class="day-cal__nav-btn day-cal__nav-btn--circle"
-        href={`${teamUrl("/")}?day=${prevDay}`}
-        aria-label="Previous day"
-      >
-        <svg class="day-cal__chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M15 6l-6 6 6 6"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"></path>
-        </svg>
-      </a>
-      <h2 class="day-cal__title">{formatDayLabel(selectedDay)}</h2>
-      <a
-        class="day-cal__nav-btn day-cal__nav-btn--circle"
-        href={`${teamUrl("/")}?day=${nextDay}`}
-        aria-label="Next day"
-      >
-        <svg class="day-cal__chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M9 6l6 6-6 6"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"></path>
-        </svg>
-      </a>
-      <a
-        class="day-cal__nav-btn day-cal__nav-btn--today"
-        href={`${teamUrl("/")}?day=${todayParam}`}
-      >
-        Today
-      </a>
-    </nav>
+  <header class="day-cal__subbar">
+    <div class="day-cal__subbar-row">
+      <nav class="day-cal__date-nav" aria-label="Day navigation">
+        <a
+          class="day-cal__subbar-btn day-cal__subbar-btn--icon"
+          href={`${teamUrl("/")}?day=${prevDay}`}
+          aria-label="Previous day"
+        >
+          ‹
+        </a>
+        <label class="day-cal__date-picker">
+          <span class="visually-hidden">Jump to date</span>
+          <input
+            type="date"
+            class="day-cal__date-input"
+            value={dayParam}
+            data-date-picker
+          />
+        </label>
+        <a
+          class="day-cal__subbar-btn day-cal__subbar-btn--icon"
+          href={`${teamUrl("/")}?day=${nextDay}`}
+          aria-label="Next day"
+        >
+          ›
+        </a>
+        <a class="day-cal__subbar-btn" href={`${teamUrl("/")}?day=${todayParam}`}>Today</a>
+      </nav>
 
-    <div class="day-cal__toolbar-menu">
-      <button
-        type="button"
-        class="day-cal__menu-btn"
-        aria-label="Open menu"
-        aria-expanded="false"
-        aria-haspopup="true"
-        data-cal-menu-toggle
-      >
-        <svg class="day-cal__menu-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M4 7h16M4 12h16M4 17h16"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"></path>
-        </svg>
-      </button>
-      <div class="day-cal__toolbar-dropdown" data-cal-menu hidden>
-        <a class="day-cal__toolbar-link" href={teamUrl("/my-book")}>My Book</a>
-        <a class="day-cal__toolbar-link" href={teamUrl("/account")}>Account</a>
-        <form method="post" action={teamUrl("/api/auth/logout")} class="day-cal__toolbar-logout">
-          <button type="submit" class="day-cal__toolbar-link day-cal__toolbar-link--button">
-            Sign out
-          </button>
-        </form>
+      {
+        staff.length > 0 && (
+          <div class="day-cal__staff-filter" data-staff-filter aria-label="Filter by professional">
+            {staff.map((member) => (
+              <button
+                type="button"
+                class:list={[
+                  "day-cal__staff-chip",
+                  member.id === currentStaffId && "day-cal__staff-chip--self",
+                ]}
+                data-staff-filter-id={member.id}
+                aria-pressed="true"
+                title={member.name}
+              >
+                <img
+                  class="day-cal__staff-chip-photo"
+                  src={staffPhotoUrl(member)}
+                  alt=""
+                  width="28"
+                  height="28"
+                  loading="lazy"
+                />
+                <span class="day-cal__staff-chip-name">{member.name.split(" ")[0]}</span>
+              </button>
+            ))}
+          </div>
+        )
+      }
+
+      <div class="day-cal__subbar-actions">
+        <span class="day-cal__view-pill" aria-current="true">Day</span>
+        <a class="day-cal__subbar-btn" href={`${teamUrl("/")}?day=${dayParam}`}>Week</a>
+        <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--ghost" data-waitlist-btn disabled title="Coming soon">
+          Waitlist
+        </button>
+        <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--primary" data-new-appointment>
+          New appointment
+        </button>
       </div>
     </div>
+
+    <nav class="day-cal__week-strip" aria-label="Week">
+      {
+        weekDays.map((day) => (
+          <a
+            class:list={[
+              "day-cal__week-day",
+              day.isSelected && "day-cal__week-day--selected",
+              day.isToday && "day-cal__week-day--today",
+            ]}
+            href={`${teamUrl("/")}?day=${day.param}`}
+            aria-current={day.isSelected ? "date" : undefined}
+          >
+            <span class="day-cal__week-day-label">{day.label}</span>
+            <span class="day-cal__week-day-num">{day.dayNum}</span>
+            {day.count > 0 && (
+              <span class="day-cal__week-day-dot" aria-label={`${day.count} appointments`} />
+            )}
+          </a>
+        ))
+      }
+    </nav>
   </header>
 
   <div class="day-cal__frame">
@@ -197,7 +245,7 @@ const calendarConfig = {
             const accent = staffAccentColor(member.id);
 
             return (
-              <div class="day-cal__column">
+              <div class="day-cal__column" data-staff-column={member.id}>
                 <header class="day-cal__staff-header">
                   <div class="day-cal__avatar-wrap">
                     <img
@@ -234,6 +282,8 @@ const calendarConfig = {
                     events.map((event) => {
                       const style = eventBlockStyle(event.startsAt, event.endsAt);
                       const isBlocked = event.kind === "blocked";
+                      const apptStatus =
+                        event.kind === "appointment" ? event.status : null;
                       const timeRange = formatCompactTimeRangeInSalon(
                         event.startsAt,
                         event.endsAt,
@@ -245,6 +295,7 @@ const calendarConfig = {
                           class:list={[
                             "day-cal__block",
                             isBlocked && "day-cal__block--blocked",
+                            apptStatus && `day-cal__block--${apptStatus}`,
                           ]}
                           style={style}
                           data-kind={event.kind}
@@ -263,7 +314,9 @@ const calendarConfig = {
                             {isBlocked ? event.label : event.clientFullName}
                           </span>
                           {
-                            !isBlocked && event.serviceCount > 0 ? (
+                            !isBlocked && event.serviceLabel ? (
+                              <span class="day-cal__block-meta">{event.serviceLabel}</span>
+                            ) : !isBlocked && event.serviceCount > 0 ? (
                               <span class="day-cal__block-meta">
                                 {event.serviceCount}{" "}
                                 {event.serviceCount === 1 ? "service" : "services"}
@@ -883,7 +936,7 @@ const calendarConfig = {
         const notes = appt.notes?.trim() ? appt.notes : "—";
         const statusLabel = appt.status.replace(/_/g, " ");
         const checkoutHref = `${config.api.checkout}/${appt.id}`;
-        const profileHref = `${config.api.checkout.replace("/checkout", "/clients")}/${appt.clientId}`;
+        const profileHref = `${config.api.clientsPage}/${appt.clientId}`;
         openModal(
           clientName || "Appointment",
           `<div class="day-cal__detail">
@@ -1544,6 +1597,38 @@ const calendarConfig = {
           closeCalToolbarMenu();
         }
       });
+
+      root.querySelector("[data-date-picker]")?.addEventListener("change", (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || !input.value) return;
+        window.location.href = `${config.reloadUrl.split("?")[0]}?day=${input.value}`;
+      });
+
+      root.querySelector("[data-new-appointment]")?.addEventListener("click", () => {
+        const staffId = config.currentStaffId;
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const rounded = Math.ceil(minutes / 15) * 15;
+        now.setMinutes(rounded, 0, 0);
+        openNewAppointmentForm({
+          staffId,
+          startsAt: now.toISOString(),
+        });
+      });
+
+      root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          if (!(chip instanceof HTMLButtonElement)) return;
+          const staffId = chip.dataset.staffFilterId ?? "";
+          const pressed = chip.getAttribute("aria-pressed") !== "false";
+          chip.setAttribute("aria-pressed", pressed ? "false" : "true");
+          chip.classList.toggle("day-cal__staff-chip--off", pressed);
+          const column = root.querySelector(`[data-staff-column="${staffId}"]`);
+          if (column instanceof HTMLElement) {
+            column.hidden = pressed;
+          }
+        });
+      });
       }
 
       if (document.readyState === "loading") {
@@ -1561,177 +1646,247 @@ const calendarConfig = {
     --day-time-width: 2.35rem;
     --day-header-height: 3.75rem;
     width: 100%;
-    min-height: calc(100vh - var(--header-height));
-    background: var(--color-dusty-rose);
-    color: var(--color-on-brand-section);
+    min-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    background: var(--color-bg);
+    color: var(--color-text);
   }
 
-  .day-cal__toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0;
-    padding: 0.85rem clamp(1rem, 3vw, 2.5rem);
-    background: var(--color-dusty-rose);
-    color: var(--color-on-brand-section);
-  }
-
-  .day-cal__toolbar-menu {
-    position: relative;
-    flex-shrink: 0;
-    margin-left: auto;
-  }
-
-  .day-cal__menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-radius: 50%;
-    background: transparent;
-    color: var(--color-on-brand-section);
-    cursor: pointer;
-    transition:
-      background 0.2s ease,
-      border-color 0.2s ease;
-  }
-
-  .day-cal__menu-btn:hover,
-  .day-cal__menu-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.85);
-    outline: none;
-  }
-
-  .day-cal__menu-icon {
-    display: block;
-    width: 1.125rem;
-    height: 1.125rem;
-  }
-
-  .day-cal__toolbar-dropdown {
+  .visually-hidden {
     position: absolute;
-    top: calc(100% + 0.45rem);
-    right: 0;
-    z-index: 30;
-    min-width: 10.5rem;
-    padding: 0.35rem 0;
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    border-radius: 0.65rem;
-    background: var(--color-dusty-rose);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
-  .day-cal__toolbar-dropdown[hidden] {
-    display: none;
+  .day-cal__subbar {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.55rem clamp(0.75rem, 2vw, 1.25rem);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .day-cal__toolbar-dropdown.is-open {
-    display: block;
-  }
-
-  .day-cal__toolbar-link {
-    display: block;
-    width: 100%;
-    padding: 0.55rem 1rem;
-    border: none;
-    background: transparent;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.3;
-    text-align: left;
-    text-decoration: none;
-    color: var(--color-on-brand-section);
-    cursor: pointer;
-  }
-
-  .day-cal__toolbar-link:hover,
-  .day-cal__toolbar-link:focus-visible {
-    background: rgba(255, 255, 255, 0.12);
-    outline: none;
-  }
-
-  .day-cal__toolbar-logout {
-    margin: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.35);
-  }
-
-  .day-cal__toolbar-link--button {
-    font: inherit;
-  }
-
-  .day-cal__nav {
+  .day-cal__subbar-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.65rem;
   }
 
-  .day-cal__toolbar h2.day-cal__title {
-    margin: 0;
-    padding: 0 0.25rem;
-    font-family: var(--font-sans);
-    font-size: clamp(1.4rem, 3.5vw, 1.75rem);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    color: var(--color-on-brand-section);
-    white-space: nowrap;
+  .day-cal__date-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
   }
 
-  .day-cal__nav-btn {
+  .day-cal__date-picker {
+    display: flex;
+    align-items: center;
+  }
+
+  .day-cal__date-input {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+  }
+
+  .day-cal__subbar-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    background: transparent;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-bg);
+    color: var(--color-text);
     font-family: var(--font-sans);
-    font-size: 0.875rem;
+    font-size: 0.72rem;
     font-weight: 500;
-    line-height: 1;
-    letter-spacing: 0;
-    text-transform: none;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     text-decoration: none;
-    color: var(--color-on-brand-section);
     cursor: pointer;
-    transition:
-      background 0.2s ease,
-      border-color 0.2s ease;
+    white-space: nowrap;
   }
 
-  .day-cal__nav-btn:hover,
-  .day-cal__nav-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.85);
+  .day-cal__subbar-btn--icon {
+    width: 2rem;
+    padding: 0;
+    font-size: 1.1rem;
+  }
+
+  .day-cal__subbar-btn--primary {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
+  }
+
+  .day-cal__subbar-btn--ghost:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .day-cal__subbar-btn:hover:not(:disabled),
+  .day-cal__subbar-btn:focus-visible {
+    border-color: var(--color-citrine);
     outline: none;
   }
 
-  .day-cal__nav-btn--circle {
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0;
-    border-radius: 50%;
+  .day-cal__staff-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
-  .day-cal__chevron {
-    display: block;
-    width: 1.125rem;
-    height: 1.125rem;
-    flex-shrink: 0;
+  .day-cal__staff-filter::-webkit-scrollbar {
+    display: none;
   }
 
-  .day-cal__nav-btn--today {
-    margin-left: 0.5rem;
-    padding: 0.5rem 1.15rem;
+  .day-cal__staff-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem 0.2rem 0.2rem;
+    border: 1px solid var(--color-border);
     border-radius: 999px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    letter-spacing: 0.01em;
+    background: var(--color-light);
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+
+  .day-cal__staff-chip--self {
+    border-color: var(--color-citrine);
+    box-shadow: 0 0 0 1px rgba(231, 172, 70, 0.35);
+  }
+
+  .day-cal__staff-chip--off {
+    opacity: 0.45;
+  }
+
+  .day-cal__staff-chip-photo {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .day-cal__staff-chip-name {
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .day-cal__subbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .day-cal__view-pill {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(231, 172, 70, 0.2);
+    border: 1px solid var(--color-citrine);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .day-cal__week-strip {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .day-cal__week-day {
+    flex: 1 0 3rem;
+    min-width: 3rem;
+    display: grid;
+    gap: 0.15rem;
+    justify-items: center;
+    padding: 0.4rem 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.45rem;
+    text-decoration: none;
+    color: inherit;
+    background: var(--color-light);
+    position: relative;
+  }
+
+  .day-cal__week-day--selected {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.15);
+  }
+
+  .day-cal__week-day--today:not(.day-cal__week-day--selected) {
+    border-color: var(--color-sage);
+  }
+
+  .day-cal__week-day-label {
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .day-cal__week-day-num {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .day-cal__week-day-dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: var(--color-citrine);
+  }
+
+  .day-cal__block--booked,
+  .day-cal__block--pending {
+    border-left: 3px solid rgba(0, 0, 0, 0.25);
+  }
+
+  .day-cal__block--confirmed {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  }
+
+  .day-cal__block--arrived {
+    outline: 2px solid var(--color-sage);
+    outline-offset: -1px;
+  }
+
+  .day-cal__block--completed {
+    opacity: 0.72;
+    filter: saturate(0.85);
+  }
+
+  .day-cal__block--no_show {
+    opacity: 0.55;
+    text-decoration: line-through;
+  }
+
+  .day-cal__block--cancelled {
+    display: none;
   }
 
   .day-cal__frame {

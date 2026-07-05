@@ -77,12 +77,14 @@ textarea {
   cursor: pointer;
 }
 
-/* App shell — fixed marketing-style header */
+/* App shell — Boulevard-style compact team bar */
 .team-shell {
+  --team-bar-height: 3.25rem;
+  --header-height: var(--team-bar-height);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-top: var(--header-height);
+  padding-top: var(--team-bar-height);
 }
 
 .team-main {
@@ -102,11 +104,11 @@ textarea {
   max-width: none;
   margin: 0;
   padding: 0;
-  background-color: var(--color-dusty-rose);
+  background-color: var(--color-bg);
 }
 
 .team-shell--book {
-  background-color: var(--color-dusty-rose);
+  background-color: var(--color-bg);
   background-image: none;
 }
 
