@@ -61,6 +61,8 @@ export const clientSchema = z.object({
   stripeCustomerId: z.string().nullable(),
   smsOptIn: z.boolean(),
   emailOptIn: z.boolean(),
+  intakeNotes: z.string().nullable().optional(),
+  bookingPreferences: z.string().nullable().optional(),
 });
 export type Client = z.infer<typeof clientSchema>;
 
@@ -74,6 +76,8 @@ export const appointmentSchema = z.object({
   status: appointmentStatusSchema,
   notes: z.string().nullable(),
   stripePaymentIntentId: z.string().nullable(),
+  policySnapshot: z.record(z.unknown()).optional(),
+  depositRequiredCents: z.number().int().nonnegative().optional(),
 });
 export type Appointment = z.infer<typeof appointmentSchema>;
 
@@ -96,6 +100,8 @@ export const createAppointmentInputSchema = z.object({
     email: z.string().email(),
     phone: z.string().min(7),
     smsOptIn: z.boolean().default(false),
+    intakeNotes: z.string().max(1200).optional(),
+    bookingPreferences: z.string().max(600).optional(),
   }),
   policyAcknowledged: z.literal(true),
   setupIntentId: z.string().min(1),

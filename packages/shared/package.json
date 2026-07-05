@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Shared Zod schemas and business constants for Salon Citrine",
+  "scripts": {
+    "test:booking-policy": "node --experimental-strip-types scripts/test-booking-policy.mjs"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
