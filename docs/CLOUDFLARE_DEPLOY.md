@@ -1,6 +1,6 @@
 # Deploy to Cloudflare Pages
 
-Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. Each app needs its **own** Cloudflare Pages project, with the app directory as the project root so Pages finds `wrangler.toml` and deploys the SSR worker (without it, the build succeeds but every route 404s with “No Wrangler configuration file found”).
+Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. Each app needs its **own** Cloudflare Pages project. Pages must find a `wrangler.toml` at the project root directory you configure — without it, the build succeeds but every route 404s with “No Wrangler configuration file found” (static-only deploy, no SSR worker).
 
 ## Prerequisites
 
@@ -8,15 +8,25 @@ Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. Each
 - Supabase project with migrations applied (see [README](../README.md))
 - Node **22** (matches `engines` in root `package.json`)
 
-## Two Cloudflare Pages projects (same repo)
+## Two valid root-directory setups
 
-### Project A — Team (`apps/team`)
+Cloudflare looks for `wrangler.toml` relative to the **Root directory** setting. Pick one setup per Pages project.
+
+### Setup A — Repo root (monorepo build from root)
+
+Use this when the Pages project root directory is **empty** (repo root). The repo includes a root `wrangler.toml` that points at the team app output:
+
+```toml
+pages_build_output_dir = "apps/team/dist"
+```
+
+**Team project (Setup A):**
 
 | Setting | Value |
 |---------|--------|
-| **Root directory** | `apps/team` |
-| **Build command** | `cd ../.. && npm ci && npm run build --workspace apps/team` |
-| **Build output directory** | `dist` (relative to root directory) |
+| **Root directory** | *(empty — repo root)* |
+| **Build command** | `npm ci && npm run build --workspace apps/team` |
+| **Build output directory** | `apps/team/dist` |
 | **NODE_VERSION** | `22` |
 | **Custom domain** | `team.saloncitrineindy.com` |
 | **Live path on `*.pages.dev`** | `/team/` (app uses `base: '/team'`) |
@@ -30,7 +40,26 @@ Both apps in this monorepo are Astro 7 projects with `@astrojs/cloudflare`. Each
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only admin operations |
 | `TZ` | `America/Indiana/Indianapolis` |
 
-### Project B — Book (`apps/web`)
+### Setup B — App root (per-app `wrangler.toml`)
+
+Use this when the Pages project root directory is the app folder. Each app ships its own `wrangler.toml` with `pages_build_output_dir = "dist"`.
+
+**Team project (Setup B):**
+
+| Setting | Value |
+|---------|--------|
+| **Root directory** | `apps/team` |
+| **Build command** | `cd ../.. && npm ci && npm run build --workspace apps/team` |
+| **Build output directory** | `dist` (relative to root directory) |
+| **NODE_VERSION** | `22` |
+| **Custom domain** | `team.saloncitrineindy.com` |
+| **Live path on `*.pages.dev`** | `/team/` (app uses `base: '/team'`) |
+
+Same environment variables as Setup A.
+
+### Book project (`apps/web`)
+
+When you add a **second** Pages project for the booking app, use **Setup B** with root directory `apps/web` (and `apps/web/wrangler.toml`), **not** the repo-root `wrangler.toml` (that file is team-only). Alternatively, use a dedicated branch with its own root `wrangler.toml` if you prefer repo-root builds for both apps.
 
 | Setting | Value |
 |---------|--------|
@@ -59,8 +88,6 @@ See [PRODUCTION_COMMS.md](./PRODUCTION_COMMS.md) for Resend/Twilio domain setup 
 
 ## Wrangler bindings
 
-Each app ships a `wrangler.toml` in its directory with `pages_build_output_dir = "dist"`.
-
 After a local build, `@astrojs/cloudflare` writes `dist/server/wrangler.json` listing bindings the worker expects. **Both apps currently require:**
 
 | Binding | Type | Purpose |
@@ -68,9 +95,9 @@ After a local build, `@astrojs/cloudflare` writes `dist/server/wrangler.json` li
 | `SESSION` | KV namespace | Astro session storage (auth cookies, etc.) |
 | `IMAGES` | Cloudflare Images | Image processing in production |
 
-The committed `wrangler.toml` declares the **SESSION** KV namespace. You must either:
+The committed `wrangler.toml` (root for Setup A team deploy, or per-app for Setup B) declares the **SESSION** KV namespace. You must either:
 
-1. Replace `REPLACE_WITH_KV_NAMESPACE_ID` in `apps/team/wrangler.toml` and `apps/web/wrangler.toml` with your real namespace ID (do not commit real IDs if the repo is public), **or**
+1. Replace `REPLACE_WITH_KV_NAMESPACE_ID` in the relevant `wrangler.toml` with your real namespace ID (do not commit real IDs if the repo is public), **or**
 2. Leave the placeholder in git and bind **SESSION** in the Cloudflare dashboard: **Pages → your project → Settings → Functions → KV namespace bindings** → variable name `SESSION` → your namespace.
 
 For **IMAGES**, Cloudflare Pages usually provisions the Images binding automatically when the adapter requests it. If image routes fail at runtime, confirm under **Settings → Functions** that an Images binding named `IMAGES` exists (or add it to `wrangler.toml`):
@@ -83,7 +110,7 @@ binding = "IMAGES"
 ### KV setup (manual, once per account)
 
 1. Cloudflare dashboard → **Workers & Pages → KV** → **Create namespace** (e.g. `salon-citrine-session`).
-2. Copy the namespace ID into each app’s `wrangler.toml` **or** bind `SESSION` in both Pages projects as above.
+2. Copy the namespace ID into the relevant `wrangler.toml` **or** bind `SESSION` in both Pages projects as above.
 3. Redeploy both projects.
 
 You may use one KV namespace for both apps or separate namespaces; one shared `salon-citrine-session` namespace is fine for a single salon deployment.
@@ -118,7 +145,7 @@ Smoke checks:
 
 | Symptom | Fix |
 |---------|-----|
-| Build OK, all routes 404 | Root directory must be `apps/team` or `apps/web`; `wrangler.toml` must exist there. Redeploy. |
-| “No Wrangler configuration file found” | Same as above — Pages did not deploy the SSR worker. |
+| Build OK, all routes 404 | Pages must find `wrangler.toml` at your configured root directory. Setup A: root `wrangler.toml` + output `apps/team/dist`. Setup B: root directory `apps/team` or `apps/web` with matching app `wrangler.toml`. Redeploy. |
+| “No Wrangler configuration file found” | Same as above — Pages did not deploy the SSR worker. Check deploy log for “Found Wrangler configuration file” after fix. |
 | Auth/session errors on team app | Bind `SESSION` KV; confirm Supabase env vars. |
 | Wrong app on `/team` or `/book` | Custom domain attached to wrong Pages project, or marketing site routing conflict — point each subdomain to the correct project. |
