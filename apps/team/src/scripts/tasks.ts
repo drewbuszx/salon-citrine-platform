@@ -148,14 +148,22 @@ function renderTaskActions(task: Task) {
     return "";
   }
 
-  return `<div class="task-card__actions">${actions.join("")}</div>`;
+  return `<div class="notebook-entry__actions">${actions.join("")}</div>`;
+}
+
+function entryClasses(task: Task) {
+  const classes = ["notebook-entry"];
+  if (task.status === "done") classes.push("is-done");
+  if (task.priority === "high") classes.push("is-high");
+  if (task.priority === "low") classes.push("is-low");
+  return classes.join(" ");
 }
 
 function renderTaskCard(task: Task) {
   const due = formatDueDate(task.dueAt);
   const completed = formatCompletedDate(task.completedAt);
   const description = task.description
-    ? `<p class="task-card__description">${escapeHtml(task.description)}</p>`
+    ? `<p class="notebook-entry__description">${escapeHtml(task.description)}</p>`
     : "";
 
   const metaParts = [`<span>${escapeHtml(assigneeLabel(task))}</span>`];
@@ -171,18 +179,25 @@ function renderTaskCard(task: Task) {
     metaParts.push(`<span>Note: ${escapeHtml(task.completionNotes)}</span>`);
   }
 
+  const badges = `${priorityBadge(task.priority)}${statusBadge(task)}`;
+  const tags = badges
+    ? `<div class="notebook-entry__tags">${badges}</div>`
+    : "";
+
   return `
-    <article class="task-card" data-task-id="${task.id}">
-      <div class="task-card__top">
-        <h3 class="task-card__title">${escapeHtml(task.title)}</h3>
-        <div class="task-card__badges">
-          ${priorityBadge(task.priority)}
-          ${statusBadge(task)}
+    <article class="${entryClasses(task)}" data-task-id="${task.id}">
+      <div class="notebook-entry__row">
+        <span class="notebook-entry__check" aria-hidden="true"></span>
+        <div class="notebook-entry__body">
+          <div class="notebook-entry__main">
+            <h3 class="notebook-entry__title">${escapeHtml(task.title)}</h3>
+            ${tags}
+          </div>
+          ${description}
+          <div class="notebook-entry__meta">${metaParts.join("")}</div>
+          ${renderTaskActions(task)}
         </div>
       </div>
-      ${description}
-      <div class="task-card__meta">${metaParts.join("")}</div>
-      ${renderTaskActions(task)}
     </article>
   `;
 }
@@ -217,14 +232,14 @@ async function apiFetch(path: string, init?: RequestInit) {
 async function loadTasks() {
   if (!listEl) return;
   clearError();
-  listEl.innerHTML = '<p class="empty-state">Loading tasks…</p>';
+  listEl.innerHTML = '<p class="notebook-empty">Loading tasks…</p>';
 
   try {
     const data = await apiFetch(`?view=${encodeURIComponent(currentView)}`);
     const tasks = data.tasks ?? [];
 
     if (tasks.length === 0) {
-      listEl.innerHTML = `<p class="empty-state">${emptyMessage(currentView)}</p>`;
+      listEl.innerHTML = `<p class="notebook-empty">${emptyMessage(currentView)}</p>`;
       return;
     }
 
@@ -232,7 +247,7 @@ async function loadTasks() {
     bindTaskActions();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load tasks";
-    listEl.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
+    listEl.innerHTML = `<p class="notebook-empty">${escapeHtml(message)}</p>`;
     showError(message);
   }
 }
@@ -425,7 +440,7 @@ function bindTaskActions() {
     button.addEventListener("click", () => {
       const taskId = button.dataset.taskComplete;
       const card = button.closest<HTMLElement>("[data-task-id]");
-      const title = card?.querySelector(".task-card__title")?.textContent ?? "Task";
+      const title = card?.querySelector(".notebook-entry__title")?.textContent ?? "Task";
       if (taskId) openCompleteModal(taskId, title);
     });
   });
