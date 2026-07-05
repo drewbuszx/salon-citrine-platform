@@ -109,3 +109,44 @@ export const createAppointmentInputSchema = z.object({
 export type CreateAppointmentInput = z.infer<
   typeof createAppointmentInputSchema
 >;
+
+export const bookingPolicyDepositTypeSchema = z.enum([
+  "none",
+  "card_on_file",
+  "fixed",
+  "percent",
+]);
+export type BookingPolicyDepositType = z.infer<
+  typeof bookingPolicyDepositTypeSchema
+>;
+
+/** PATCH /api/booking-policy request body (team managers) */
+export const patchBookingPolicySettingsSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    cancellationWindowHours: z.number().int().min(1).max(168).optional(),
+    lateCancelFeePercent: z.number().int().min(0).max(100).optional(),
+    noShowFeePercent: z.number().int().min(0).max(100).optional(),
+    lateGraceMinutes: z.number().int().min(0).max(120).optional(),
+    sameWeekRescheduleWaivesFee: z.boolean().optional(),
+    requiresCardOnFile: z.boolean().optional(),
+    depositType: bookingPolicyDepositTypeSchema.optional(),
+    depositValue: z.number().int().nonnegative().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const depositType = value.depositType;
+    if (depositType !== "fixed" && depositType !== "percent") {
+      return;
+    }
+    if (value.depositValue == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Deposit value is required for fixed or percent deposits",
+        path: ["depositValue"],
+      });
+    }
+  });
+export type PatchBookingPolicySettingsInput = z.infer<
+  typeof patchBookingPolicySettingsSchema
+>;
