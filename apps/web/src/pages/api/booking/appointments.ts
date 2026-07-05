@@ -16,6 +16,7 @@ import { createSupabaseServiceClient } from "../../../lib/supabase-server";
 import { formatDateInTimezone } from "../../../lib/datetime-utils";
 import { fetchActiveBookingPolicy } from "../../../lib/booking-policy";
 import { sendBookingConfirmations } from "../../../lib/notifications/booking-confirmation";
+import { captureBookingDeposit } from "../../../lib/stripe-deposits";
 
 function stripeErrorMessage(error: unknown): string | undefined {
   if (
@@ -314,6 +315,50 @@ export const POST: APIRoute = async ({ request }) => {
       return jsonError("Failed to attach services", 500);
     }
 
+    let depositChargedCents = 0;
+    let depositPaymentIntentId: string | null = null;
+
+    if (depositRequiredCents > 0) {
+      try {
+        const deposit = await captureBookingDeposit({
+          stripe,
+          customerId: stripeCustomerId,
+          paymentMethodId,
+          amountCents: depositRequiredCents,
+          appointmentId: appointment.id,
+        });
+        depositChargedCents = deposit.chargedCents;
+        depositPaymentIntentId = deposit.paymentIntentId;
+
+        const { error: depositUpdateError } = await supabase
+          .from("appointments")
+          .update({
+            stripe_payment_intent_id: depositPaymentIntentId,
+            deposit_charged_cents: depositChargedCents,
+          })
+          .eq("id", appointment.id);
+
+        if (depositUpdateError) {
+          console.error("deposit update failed", depositUpdateError);
+          await supabase.from("appointments").delete().eq("id", appointment.id);
+          return jsonError("Failed to record deposit payment", 500);
+        }
+      } catch (depositError) {
+        console.error("booking/appointments: deposit capture failed", depositError);
+        await supabase.from("appointments").delete().eq("id", appointment.id);
+        const message =
+          depositError instanceof Error
+            ? depositError.message
+            : "Deposit payment failed";
+        return jsonError(message, 402);
+      }
+    }
+
+    const depositNote =
+      depositChargedCents > 0
+        ? ` A $${(depositChargedCents / 100).toFixed(depositChargedCents % 100 === 0 ? 0 : 2)} deposit has been charged to your card.`
+        : "";
+
     try {
       await sendBookingConfirmations({
         clientFirstName: input.client.firstName.trim(),
@@ -325,7 +370,8 @@ export const POST: APIRoute = async ({ request }) => {
         services: serviceNames.map((name) => ({ name })),
         smsOptIn: input.client.smsOptIn,
         appointmentId: appointment.id,
-        policySummary,
+        policySummary: `${policySummary}${depositNote}`,
+        depositChargedCents,
       });
     } catch (error) {
       console.error("booking/appointments: confirmation notifications failed", error);

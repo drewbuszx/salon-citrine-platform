@@ -22,6 +22,7 @@ export type BookingConfirmationPayload = {
   services: Array<{ name: string }>;
   smsOptIn: boolean;
   policySummary: string;
+  depositChargedCents?: number;
 };
 
 function buildEmailSubject(): string {

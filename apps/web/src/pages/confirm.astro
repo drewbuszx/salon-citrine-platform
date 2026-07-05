@@ -60,11 +60,15 @@ const policy = {
 };
 const policySummary = formatBookingPolicySummary(policy);
 const depositLabel =
-  appointment.depositRequiredCents > 0
-    ? `$${(appointment.depositRequiredCents / 100).toFixed(
-        appointment.depositRequiredCents % 100 === 0 ? 0 : 2,
-      )}`
-    : null;
+  appointment.depositChargedCents > 0
+    ? `$${(appointment.depositChargedCents / 100).toFixed(
+        appointment.depositChargedCents % 100 === 0 ? 0 : 2,
+      )} charged`
+    : appointment.depositRequiredCents > 0
+      ? `$${(appointment.depositRequiredCents / 100).toFixed(
+          appointment.depositRequiredCents % 100 === 0 ? 0 : 2,
+        )} required`
+      : null;
 ---
 
 <BookingLayout title="Booking confirmed" step="confirm" showStylistStep={showStylistStep}>
@@ -100,7 +104,7 @@ const depositLabel =
         depositLabel && (
           <div>
             <dt>Deposit</dt>
-            <dd>{depositLabel} required</dd>
+            <dd>{depositLabel}</dd>
           </div>
         )
       }

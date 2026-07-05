@@ -9,6 +9,7 @@ export type ConfirmationDetails = {
   status: string;
   policySnapshot: Record<string, unknown>;
   depositRequiredCents: number;
+  depositChargedCents: number;
   client: {
     firstName: string;
     lastName: string;
@@ -43,6 +44,7 @@ export async function fetchAppointmentConfirmation(
       status,
       policy_snapshot,
       deposit_required_cents,
+      deposit_charged_cents,
       clients(first_name, last_name, email, phone),
       staff(name, slug),
       appointment_services(
@@ -113,6 +115,7 @@ export async function fetchAppointmentConfirmation(
     status: data.status,
     policySnapshot: (data.policy_snapshot as Record<string, unknown> | null) ?? {},
     depositRequiredCents: data.deposit_required_cents ?? 0,
+    depositChargedCents: data.deposit_charged_cents ?? 0,
     client: {
       firstName: client.first_name,
       lastName: client.last_name,
