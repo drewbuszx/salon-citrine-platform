@@ -324,7 +324,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
   </p>
 </BookingLayout>
 
-<script>
+<script define:vars={{ existingClientAckParam: EXISTING_CLIENT_ACK_PARAM }}>
   function monthParam(year, month) {
     return `${year}-${String(month).padStart(2, "0")}`;
   }
@@ -454,7 +454,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
       <input type="hidden" name="services" value="${servicesParam}" />
       <input type="hidden" name="stylist" value="${stylistSlug}" />
       ${flow ? `<input type="hidden" name="flow" value="${flow}" />` : ""}
-      ${existingAck ? `<input type="hidden" name="existing" value="1" />` : ""}
+      ${existingAck ? `<input type="hidden" name="${existingClientAckParam}" value="1" />` : ""}
       <input type="hidden" name="startsAt" value="" data-starts-at-input />
       <input type="hidden" name="date" value="${selectedDate}" data-time-date-input />
     `;

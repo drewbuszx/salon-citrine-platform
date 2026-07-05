@@ -1,9 +1,14 @@
 ---
 import Modal from "@saloncitrine/theme/components/Modal.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
-import { CANCELLATION_POLICY } from "@saloncitrine/shared";
+import { formatBookingPolicySummary, type BookingPolicy } from "@saloncitrine/shared";
 
-const policyText = `Reschedule ${CANCELLATION_POLICY.rescheduleCutoffHours}+ hours before your appointment to avoid a fee. Cancel within 48 hours: ${CANCELLATION_POLICY.lateCancelFeePercent}% charge. No-show: ${CANCELLATION_POLICY.noShowFeePercent}% charge. Arriving ${CANCELLATION_POLICY.lateGraceMinutes}+ minutes late without contact counts as a no-show.${CANCELLATION_POLICY.feesWaivedIfRescheduledSameWeek ? " Fees are waived if you reschedule within the same week." : ""} A card on file is required to secure your booking.`;
+interface Props {
+  policy: BookingPolicy;
+}
+
+const { policy } = Astro.props;
+const policyText = formatBookingPolicySummary(policy);
 ---
 
 <Modal id="policy-modal" labelledBy="policy-modal-title">

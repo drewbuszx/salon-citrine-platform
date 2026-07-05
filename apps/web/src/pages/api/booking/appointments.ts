@@ -1,13 +1,20 @@
 export const prerender = false;
 
 import type { APIRoute } from "astro";
-import { createAppointmentInputSchema } from "@saloncitrine/shared";
+import {
+  APPOINTMENT_CONFLICT_MESSAGE,
+  calculateRequiredDepositCents,
+  createAppointmentInputSchema,
+  formatBookingPolicySummary,
+  isOverlapConflictError,
+} from "@saloncitrine/shared";
 import { isBookingSlotAvailableByStartsAt } from "../../../lib/availability";
 import { getStaffBySlug } from "../../../lib/booking-data";
 import { jsonError, jsonOk } from "../../../lib/api-booking";
 import { getStripeClient } from "../../../lib/stripe-server";
 import { createSupabaseServiceClient } from "../../../lib/supabase-server";
 import { formatDateInTimezone } from "../../../lib/datetime-utils";
+import { fetchActiveBookingPolicy } from "../../../lib/booking-policy";
 import { sendBookingConfirmations } from "../../../lib/notifications/booking-confirmation";
 
 function stripeErrorMessage(error: unknown): string | undefined {
@@ -160,6 +167,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     let totalMinutes = 0;
+    let subtotalCents = 0;
     const serviceRows: Array<{ service_id: string; price_cents: number | null }> = [];
     const serviceNames: string[] = [];
 
@@ -190,6 +198,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       totalMinutes += svc.duration_minutes;
+      subtotalCents += svc.base_price_cents ?? 0;
       serviceNames.push(svc.name);
       serviceRows.push({
         service_id: serviceId,
@@ -198,6 +207,12 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const endsAt = new Date(startsAt.getTime() + totalMinutes * 60_000);
+    const activePolicy = await fetchActiveBookingPolicy();
+    const policySummary = formatBookingPolicySummary(activePolicy);
+    const depositRequiredCents = calculateRequiredDepositCents(
+      activePolicy,
+      subtotalCents,
+    );
 
     let clientId: string | null = null;
 
@@ -228,6 +243,8 @@ export const POST: APIRoute = async ({ request }) => {
           phone,
           email,
           sms_opt_in: input.client.smsOptIn,
+          intake_notes: input.client.intakeNotes?.trim() || null,
+          booking_preferences: input.client.bookingPreferences?.trim() || null,
           stripe_customer_id: stripeCustomerId,
         })
         .eq("id", clientId);
@@ -245,6 +262,8 @@ export const POST: APIRoute = async ({ request }) => {
           phone,
           email,
           sms_opt_in: input.client.smsOptIn,
+          intake_notes: input.client.intakeNotes?.trim() || null,
+          booking_preferences: input.client.bookingPreferences?.trim() || null,
           stripe_customer_id: stripeCustomerId,
         })
         .select("id")
@@ -265,13 +284,19 @@ export const POST: APIRoute = async ({ request }) => {
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
         status: "confirmed",
+        notes: input.client.intakeNotes?.trim() || null,
         policy_acknowledged_at: new Date().toISOString(),
+        policy_snapshot: activePolicy,
+        deposit_required_cents: depositRequiredCents,
       })
       .select("id")
       .single();
 
     if (appointmentError || !appointment) {
       console.error("appointment insert failed", appointmentError);
+      if (isOverlapConflictError(appointmentError)) {
+        return jsonError(APPOINTMENT_CONFLICT_MESSAGE, 409);
+      }
       return jsonError("Failed to create appointment", 500);
     }
 
@@ -299,6 +324,8 @@ export const POST: APIRoute = async ({ request }) => {
         startsAt: startsAt.toISOString(),
         services: serviceNames.map((name) => ({ name })),
         smsOptIn: input.client.smsOptIn,
+        appointmentId: appointment.id,
+        policySummary,
       });
     } catch (error) {
       console.error("booking/appointments: confirmation notifications failed", error);

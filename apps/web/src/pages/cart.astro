@@ -433,6 +433,18 @@ const bookBase = withBase();
   }
 
   continueBtn?.addEventListener("click", () => {
+    const requiredSection = suggestionSections.find((section) => section.required);
+    if (requiredSection) {
+      const hasRequired = requiredSection.services.some((service) => cartHas(service.id));
+      if (!hasRequired) {
+        root?.querySelector('[data-section="required"]')?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        return;
+      }
+    }
+
     const base = continueBtn.dataset.datetimeBase ?? "";
     const params = new URLSearchParams();
     params.set("services", cart.map((item) => item.id).join(","));

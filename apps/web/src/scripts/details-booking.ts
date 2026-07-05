@@ -66,6 +66,11 @@ function checkboxChecked(name: string) {
   return el instanceof HTMLInputElement && el.checked;
 }
 
+function policyAcknowledged(): boolean {
+  const el = form?.elements.namedItem("policyAck");
+  return el instanceof HTMLInputElement && el.value === "true";
+}
+
 function logBookingError(phase: string, error: unknown, extra?: Record<string, unknown>) {
   if (!import.meta.env.DEV) return;
   console.error(`[booking/details] ${phase}`, error, extra ?? "");
@@ -212,6 +217,16 @@ async function completeBooking() {
     return;
   }
 
+  if (!form?.reportValidity()) {
+    showError("Please complete the required fields.");
+    return;
+  }
+
+  if (!policyAcknowledged()) {
+    showError("Please review and acknowledge the booking policy.");
+    return;
+  }
+
   if (!stripe || !elements || !setupIntentId || setupIntentEmail !== email) {
     await ensureStripeElements(setupIntentEmail !== null && setupIntentEmail !== email);
     if (!stripe || !elements || !setupIntentId) {
@@ -269,8 +284,10 @@ async function completeBooking() {
         email: formValue("email"),
         phone: formValue("phone"),
         smsOptIn: checkboxChecked("smsOptIn"),
+        intakeNotes: formValue("intakeNotes") || undefined,
+        bookingPreferences: formValue("bookingPreferences") || undefined,
       },
-      policyAcknowledged: true,
+      policyAcknowledged: policyAcknowledged(),
       setupIntentId: verifiedSetupIntentId,
     };
 

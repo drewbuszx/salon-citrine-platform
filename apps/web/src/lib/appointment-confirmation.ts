@@ -7,11 +7,15 @@ export type ConfirmationDetails = {
   startsAt: string;
   endsAt: string;
   status: string;
+  policySnapshot: Record<string, unknown>;
+  depositRequiredCents: number;
   client: {
     firstName: string;
     lastName: string;
     email: string | null;
     phone: string | null;
+    intakeNotes?: string | null;
+    bookingPreferences?: string | null;
   };
   staff: {
     name: string;
@@ -37,6 +41,8 @@ export async function fetchAppointmentConfirmation(
       starts_at,
       ends_at,
       status,
+      policy_snapshot,
+      deposit_required_cents,
       clients(first_name, last_name, email, phone),
       staff(name, slug),
       appointment_services(
@@ -105,6 +111,8 @@ export async function fetchAppointmentConfirmation(
     startsAt: data.starts_at,
     endsAt: data.ends_at,
     status: data.status,
+    policySnapshot: (data.policy_snapshot as Record<string, unknown> | null) ?? {},
+    depositRequiredCents: data.deposit_required_cents ?? 0,
     client: {
       firstName: client.first_name,
       lastName: client.last_name,

@@ -12,6 +12,7 @@ import {
 } from "./shared";
 
 export type BookingConfirmationPayload = {
+  appointmentId: string;
   clientFirstName: string;
   clientLastName: string;
   clientEmail: string;
@@ -20,6 +21,7 @@ export type BookingConfirmationPayload = {
   startsAt: string;
   services: Array<{ name: string }>;
   smsOptIn: boolean;
+  policySummary: string;
 };
 
 function buildEmailSubject(): string {
@@ -38,12 +40,13 @@ function buildEmailText(payload: BookingConfirmationPayload): string {
     `When: ${when}`,
     `Stylist: ${payload.stylistName}`,
     `Services: ${servicesList}`,
+    `Confirmation: ${payload.appointmentId.slice(0, 8).toUpperCase()}`,
     "",
     BUSINESS.name,
     formatSalonAddress(),
     BUSINESS.phone,
     "",
-    "Need to reschedule? Contact us at least 48 hours before your appointment.",
+    payload.policySummary,
   ].join("\n");
 }
 
@@ -61,17 +64,19 @@ function buildEmailHtml(payload: BookingConfirmationPayload): string {
     <tr><td style="padding: 4px 16px 4px 0; color: #666;">When</td><td><strong>${escapeHtml(when)}</strong></td></tr>
     <tr><td style="padding: 4px 16px 4px 0; color: #666;">Stylist</td><td>${escapeHtml(payload.stylistName)}</td></tr>
     <tr><td style="padding: 4px 16px 4px 0; color: #666; vertical-align: top;">Services</td><td>${escapeHtml(servicesList)}</td></tr>
+    <tr><td style="padding: 4px 16px 4px 0; color: #666;">Confirmation</td><td>${escapeHtml(payload.appointmentId.slice(0, 8).toUpperCase())}</td></tr>
     <tr><td style="padding: 4px 16px 4px 0; color: #666; vertical-align: top;">Location</td><td>${escapeHtml(BUSINESS.name)}<br>${escapeHtml(address)}</td></tr>
   </table>
   <p style="color: #666; font-size: 14px;">Questions? Call us at ${escapeHtml(BUSINESS.phone)}.</p>
-  <p style="color: #666; font-size: 14px;">Need to reschedule? Contact us at least 48 hours before your appointment.</p>
+  <p style="color: #666; font-size: 14px;">${escapeHtml(payload.policySummary)}</p>
 </body>
 </html>`;
 }
 
 function buildSmsBody(payload: BookingConfirmationPayload): string {
   const when = formatConfirmationWhen(payload.startsAt);
-  return `${BUSINESS.name}: You're booked with ${payload.stylistName} on ${when}. ${formatSalonAddress()}. Reply STOP to opt out.`;
+  const policySnippet = payload.policySummary.split(".")[0]?.trim() ?? "";
+  return `${BUSINESS.name}: Booked ${when} w/ ${payload.stylistName}. ${policySnippet}. Reply STOP to opt out.`;
 }
 
 export async function sendBookingConfirmationEmail(

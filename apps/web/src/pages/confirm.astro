@@ -3,7 +3,12 @@ export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
-import { BUSINESS } from "@saloncitrine/shared";
+import {
+  BUSINESS,
+  DEFAULT_BOOKING_POLICY,
+  formatBookingPolicySummary,
+  type BookingPolicy,
+} from "@saloncitrine/shared";
 import {
   estimateCartPrice,
   formatDuration,
@@ -49,6 +54,17 @@ const priceEstimate = estimateCartPrice(servicesForEstimate);
 const totalDuration = sumServiceDuration(servicesForEstimate);
 const whenLabel = formatConfirmationWhen(appointment.startsAt);
 const shortId = appointment.id.slice(0, 8).toUpperCase();
+const policy = {
+  ...DEFAULT_BOOKING_POLICY,
+  ...(appointment.policySnapshot as Partial<BookingPolicy>),
+};
+const policySummary = formatBookingPolicySummary(policy);
+const depositLabel =
+  appointment.depositRequiredCents > 0
+    ? `$${(appointment.depositRequiredCents / 100).toFixed(
+        appointment.depositRequiredCents % 100 === 0 ? 0 : 2,
+      )}`
+    : null;
 ---
 
 <BookingLayout title="Booking confirmed" step="confirm" showStylistStep={showStylistStep}>
@@ -80,11 +96,18 @@ const shortId = appointment.id.slice(0, 8).toUpperCase();
           {appointment.client.email && ` · ${appointment.client.email}`}
         </dd>
       </div>
+      {
+        depositLabel && (
+          <div>
+            <dt>Deposit</dt>
+            <dd>{depositLabel} required</dd>
+          </div>
+        )
+      }
     </dl>
 
     <p class="confirm__note">
-      Your card is on file to secure this appointment. A confirmation email and
-      text reminder will be sent shortly.
+      {policySummary} A confirmation email and text reminder will be sent shortly.
     </p>
 
     <Button href="https://saloncitrineindy.com/" variant="secondary">

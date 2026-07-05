@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { BUSINESS, TIMEZONE } from "@saloncitrine/shared";
 import { formatConfirmationWhen } from "../appointment-confirmation";
 import { createSupabaseServiceClient } from "../supabase-server";
+import { fetchActiveBookingPolicy } from "../booking-policy";
+import { formatBookingPolicySummary } from "@saloncitrine/shared";
 import { getServerEnv } from "../server-env";
 import {
   escapeHtml,
@@ -133,7 +135,11 @@ function buildReminderEmailSubject(kind: ReminderKind): string {
   return `Reminder: your ${BUSINESS.name} appointment is ${lead}`;
 }
 
-function buildReminderEmailText(payload: ReminderAppointmentPayload, kind: ReminderKind): string {
+function buildReminderEmailText(
+  payload: ReminderAppointmentPayload,
+  kind: ReminderKind,
+  policySummary: string,
+): string {
   const when = formatConfirmationWhen(payload.startsAt);
   const servicesList = payload.services.map((s) => s.name).join(", ");
   const lead = kind === "48h" ? "two days" : "tomorrow";
@@ -152,11 +158,15 @@ function buildReminderEmailText(payload: ReminderAppointmentPayload, kind: Remin
     formatSalonAddress(),
     BUSINESS.phone,
     "",
-    `Need to reschedule or cancel? Contact us at least 48 hours before your appointment to avoid fees. Visit ${site} or call ${BUSINESS.phone}.`,
+    `${policySummary} Visit ${site} or call ${BUSINESS.phone}.`,
   ].join("\n");
 }
 
-function buildReminderEmailHtml(payload: ReminderAppointmentPayload, kind: ReminderKind): string {
+function buildReminderEmailHtml(
+  payload: ReminderAppointmentPayload,
+  kind: ReminderKind,
+  policySummary: string,
+): string {
   const when = formatConfirmationWhen(payload.startsAt);
   const servicesList = payload.services.map((s) => s.name).join(", ");
   const address = formatSalonAddress();
@@ -175,16 +185,20 @@ function buildReminderEmailHtml(payload: ReminderAppointmentPayload, kind: Remin
     <tr><td style="padding: 4px 16px 4px 0; color: #666; vertical-align: top;">Location</td><td>${escapeHtml(BUSINESS.name)}<br>${escapeHtml(address)}</td></tr>
   </table>
   <p style="color: #666; font-size: 14px;">Questions? Call ${escapeHtml(BUSINESS.phone)}.</p>
-  <p style="color: #666; font-size: 14px;">Reschedule or cancel at least 48 hours ahead to avoid fees. <a href="${escapeHtml(site)}">${escapeHtml(site)}</a></p>
+  <p style="color: #666; font-size: 14px;">${escapeHtml(policySummary)} <a href="${escapeHtml(site)}">${escapeHtml(site)}</a></p>
 </body>
 </html>`;
 }
 
-function buildReminderSmsBody(payload: ReminderAppointmentPayload, kind: ReminderKind): string {
+function buildReminderSmsBody(
+  payload: ReminderAppointmentPayload,
+  kind: ReminderKind,
+  policySummary: string,
+): string {
   const when = formatShortWhen(payload.startsAt);
   const lead = kind === "48h" ? "2 days" : "24 hrs";
-  // Keep under 160 chars when possible
-  return `${BUSINESS.name}: Appt in ${lead} w/ ${payload.stylistName}, ${when}. ${BUSINESS.address.street}. Call ${BUSINESS.phone} to reschedule. STOP to opt out.`;
+  const shortPolicy = policySummary.split(".")[0]?.trim() ?? "";
+  return `${BUSINESS.name}: Appt in ${lead} w/ ${payload.stylistName}, ${when}. ${shortPolicy}. STOP to opt out.`;
 }
 
 function rowToPayload(row: AppointmentRow): ReminderAppointmentPayload | null {
@@ -252,6 +266,7 @@ async function sendReminderForAppointment(
   payload: ReminderAppointmentPayload,
   kind: ReminderKind,
   dryRun: boolean,
+  policySummary: string,
 ): Promise<ReminderSendResult> {
   const { sentColumn, template } = REMINDER_CONFIG[kind];
   const shouldEmail = Boolean(payload.clientEmail?.trim()) && payload.emailOptIn !== false;
@@ -289,8 +304,8 @@ async function sendReminderForAppointment(
     const emailResult = await sendResendEmail({
       to: payload.clientEmail!.trim(),
       subject: buildReminderEmailSubject(kind),
-      html: buildReminderEmailHtml(payload, kind),
-      text: buildReminderEmailText(payload, kind),
+      html: buildReminderEmailHtml(payload, kind, policySummary),
+      text: buildReminderEmailText(payload, kind, policySummary),
       template,
       supabase,
       metadata: { appointmentId: payload.appointmentId, kind },
@@ -308,7 +323,7 @@ async function sendReminderForAppointment(
   if (shouldSms && isTwilioConfigured()) {
     const smsResult = await sendTwilioSms({
       to: payload.clientPhone!.trim(),
-      body: buildReminderSmsBody(payload, kind),
+      body: buildReminderSmsBody(payload, kind, policySummary),
       supabase,
     });
     smsOk = smsResult.ok;
@@ -353,6 +368,8 @@ export async function sendAppointmentReminders(options?: {
   const devHoursOverride = options?.devHoursOverride ?? parseDevHoursOverride();
   const supabase = options?.supabase ?? createSupabaseServiceClient();
   const now = new Date();
+  const activePolicy = await fetchActiveBookingPolicy();
+  const policySummary = formatBookingPolicySummary(activePolicy);
   const processed: ReminderSendResult[] = [];
   const errors: string[] = [];
 
@@ -383,7 +400,13 @@ export async function sendAppointmentReminders(options?: {
           continue;
         }
 
-        const sendResult = await sendReminderForAppointment(supabase, payload, kind, dryRun);
+        const sendResult = await sendReminderForAppointment(
+          supabase,
+          payload,
+          kind,
+          dryRun,
+          policySummary,
+        );
         processed.push(sendResult);
       }
     } catch (error) {

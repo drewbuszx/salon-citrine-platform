@@ -12,6 +12,7 @@ import {
   sumServiceDuration,
 } from "../lib/booking-data";
 import { resolveBookingSlot } from "../lib/availability";
+import { fetchActiveBookingPolicy } from "../lib/booking-policy";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -25,9 +26,10 @@ const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const servicesParamValue = serviceIds.join(",");
 
-const [services, stylist] = await Promise.all([
+const [services, stylist, bookingPolicy] = await Promise.all([
   fetchServicesByIds(serviceIds, stylistSlug),
   getStaffBySlug(stylistSlug),
+  fetchActiveBookingPolicy(),
 ]);
 
 if (services.length === 0 || !stylist || !date || (!time && !startsAtParam)) {
@@ -114,6 +116,26 @@ const confirmUrl = withBase("confirm/");
       <span>Text me appointment reminders (optional)</span>
     </label>
 
+    <label class="field">
+      <span>Appointment notes (optional)</span>
+      <textarea
+        name="intakeNotes"
+        rows="3"
+        maxlength="1200"
+        placeholder="Allergies, accessibility needs, or must-know details."
+      />
+    </label>
+
+    <label class="field">
+      <span>Service preferences (optional)</span>
+      <textarea
+        name="bookingPreferences"
+        rows="2"
+        maxlength="600"
+        placeholder="Tone goals, styling preferences, or products to avoid."
+      />
+    </label>
+
     <div class="card-section">
       <p class="card-section__label">Card on file</p>
       <p class="card-section__hint">
@@ -130,7 +152,7 @@ const confirmUrl = withBase("confirm/");
     </Button>
   </form>
 
-  <PolicyModal />
+  <PolicyModal policy={bookingPolicy} />
 
   <p class="back">
     <a
@@ -174,6 +196,15 @@ const confirmUrl = withBase("confirm/");
     border: 1px solid var(--color-border);
     background: var(--color-bg);
     color: var(--color-text);
+  }
+
+  .field textarea {
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    resize: vertical;
   }
 
   .checkbox {
