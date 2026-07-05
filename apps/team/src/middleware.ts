@@ -18,25 +18,51 @@ function normalizePath(pathname: string, base: string) {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const supabase = createSupabaseServerClient(
-    context.request,
-    context.cookies,
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  context.locals.supabase = supabase;
-  context.locals.user = user;
-  context.locals.staff = user
-    ? await loadStaffProfile(supabase, user.id)
-    : null;
-
   const routePath = normalizePath(context.url.pathname, import.meta.env.BASE_URL);
   const isApiRoute = routePath.startsWith("/api/");
   const isPublicRoute = PUBLIC_PATHS.has(routePath);
   const isPublicApi = routePath === "/api/auth/login";
+
+  let user = null;
+  try {
+    const supabase = createSupabaseServerClient(
+      context.request,
+      context.cookies,
+    );
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+    context.locals.supabase = supabase;
+    context.locals.user = user;
+    context.locals.staff = user
+      ? await loadStaffProfile(supabase, user.id)
+      : null;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Missing required runtime configuration")
+    ) {
+      context.locals.user = null;
+      context.locals.staff = null;
+
+      if (
+        isPublicRoute ||
+        routePath.startsWith("/_astro/") ||
+        routePath.startsWith("/fonts/") ||
+        routePath.startsWith("/images/")
+      ) {
+        return next();
+      }
+
+      const message = isPublicApi
+        ? "Team auth is temporarily unavailable due to missing runtime configuration."
+        : "Team app is temporarily unavailable due to missing runtime configuration.";
+      return new Response(message, { status: 503 });
+    }
+    throw error;
+  }
+
   const needsPasswordChange = mustChangePassword(user);
 
   if (routePath === CHANGE_PASSWORD_PATH) {
