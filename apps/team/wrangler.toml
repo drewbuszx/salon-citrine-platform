@@ -5,4 +5,4 @@ pages_build_output_dir = "dist"
 [[kv_namespaces]]
 binding = "SESSION"
 # Replace with your KV namespace ID from Cloudflare dashboard (Workers & Pages → KV)
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "15711a0ae59f411693baf6e64bd304dd"

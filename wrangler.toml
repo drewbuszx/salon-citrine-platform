@@ -6,4 +6,4 @@ pages_build_output_dir = "apps/team/dist"
 binding = "SESSION"
 # Replace with your KV namespace ID, or bind SESSION in the Cloudflare dashboard
 # (Pages → Settings → Functions → KV namespace bindings) instead of editing this file.
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "15711a0ae59f411693baf6e64bd304dd"
