@@ -26,9 +26,9 @@ In the Cloudflare dashboard:
 | Setting | Value |
 |---------|--------|
 | **Worker name** | `salon-citrine-team` (matches `name` in `apps/team/wrangler.toml`) |
-| **Root directory** | `apps/team` |
-| **Build command** | `cd ../.. && npm ci && npm run build --workspace apps/team` |
-| **Deploy command** | `npx wrangler deploy` |
+| **Root directory** | repo root (the root-directory setting is not applied; commands run from the repo root) |
+| **Build command** | `npm run build --workspace apps/team` |
+| **Deploy command** | `cd apps/team && npx wrangler deploy` |
 
 3. Add build variable `NODE_VERSION` = `22`.
 4. **Save and Deploy.**
@@ -116,7 +116,7 @@ Smoke checks:
 |---------|-----|
 | Pages log: "configuration file... does not appear to be valid... Skipping file"; only "Assets published!"; routes 404; assets at `/client/team/_astro/*` | You deployed via a **Pages** project. Pages cannot deploy this app. Create a **Worker** with Git integration as above. |
 | "The name 'ASSETS' is reserved in Pages projects" | `pages_build_output_dir` is set somewhere. Remove it; this repo uses Workers format. |
-| Deploy fails: config not found / not valid | The deploy ran without a prior build. The build command must run first so `dist/server/wrangler.json` and `.wrangler/deploy/config.json` exist. Root directory must be `apps/team`. |
+| Deploy fails: config not found / not valid | The deploy ran without a prior build. The build command must run first so `dist/server/wrangler.json` and `.wrangler/deploy/config.json` exist, and the deploy command must run from `apps/team` (`cd apps/team && npx wrangler deploy`). |
 | Env vars disappear after a deploy | Set them as **Secrets** (not plain variables) in Worker → Settings → Variables and Secrets. |
 | Auth/session errors | Confirm SESSION KV binding and Supabase secrets on the Worker. |
 | Wrong app on subdomain | Custom domain attached to the wrong Worker. |
