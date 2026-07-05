@@ -109,6 +109,13 @@ const isManager = isSalonManager(staff);
         <button class="btn-secondary" type="button" data-tx-action="use">Use</button>
         <button class="btn-secondary" type="button" data-tx-action="adjust">Adjust</button>
         <button class="btn-secondary" type="button" data-tx-action="count">Set count</button>
+        {
+          isManager ? (
+            <button class="btn-secondary inventory-detail__edit" type="button" data-edit-open>
+              Edit product
+            </button>
+          ) : null
+        }
       </div>
       <h3 class="inventory-detail__history-title">Recent activity</h3>
       <div class="inventory-history" data-detail-history></div>
@@ -184,6 +191,9 @@ const isManager = isSalonManager(staff);
             </label>
             <label class="form-label">
               Reorder threshold
+              <span class="form-hint">
+                When on-hand quantity is at or below this number, the product is flagged as low stock. Use 0 to disable alerts.
+              </span>
               <input
                 class="form-input"
                 name="reorder_threshold"
@@ -195,6 +205,9 @@ const isManager = isSalonManager(staff);
             </label>
             <label class="form-label">
               Image URL
+              <span class="form-hint">
+                Public URL (external link or Supabase Storage product-images bucket).
+              </span>
               <input
                 class="form-input"
                 name="image_url"
@@ -220,6 +233,80 @@ const isManager = isSalonManager(staff);
             </label>
             <button class="btn-primary" type="submit">
               Create product
+            </button>
+          </form>
+        </div>
+      </div>
+    ) : null
+  }
+
+  <!-- Edit product modal (managers) -->
+  {
+    isManager ? (
+      <div class="inventory-modal" data-edit-modal hidden>
+        <div class="inventory-modal__backdrop" data-modal-close="edit" />
+        <div
+          class="inventory-modal__panel inventory-modal__panel--narrow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-title"
+        >
+          <div class="inventory-modal__head">
+            <h2 id="edit-title">Edit product</h2>
+            <button
+              class="inventory-modal__close"
+              type="button"
+              data-modal-close="edit"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <form class="form-stack" data-edit-form>
+            <label class="form-label">
+              Name
+              <input class="form-input" name="name" required />
+            </label>
+            <label class="form-label">
+              Barcode
+              <input class="form-input" name="barcode" inputmode="numeric" />
+            </label>
+            <label class="form-label">
+              Category
+              <input
+                class="form-input"
+                name="category"
+                placeholder="color, shampoo, developer…"
+              />
+            </label>
+            <label class="form-label">
+              Reorder threshold
+              <span class="form-hint">
+                When on-hand quantity is at or below this number, the product is flagged as low stock. Use 0 to disable alerts.
+              </span>
+              <input
+                class="form-input"
+                name="reorder_threshold"
+                type="number"
+                min="0"
+                step="1"
+              />
+            </label>
+            <label class="form-label">
+              Image URL
+              <span class="form-hint">
+                Public URL (external link or Supabase Storage product-images bucket).
+              </span>
+              <input
+                class="form-input"
+                name="image_url"
+                type="url"
+                placeholder="https://…"
+                inputmode="url"
+              />
+            </label>
+            <button class="btn-primary" type="submit">
+              Save changes
             </button>
           </form>
         </div>
@@ -529,6 +616,19 @@ const isManager = isSalonManager(staff);
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
     margin-bottom: 1.25rem;
+  }
+
+  .inventory-detail__edit {
+    grid-column: 1 / -1;
+  }
+
+  .form-hint {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-gray);
+    line-height: 1.35;
   }
 
   .inventory-detail__history-title {
