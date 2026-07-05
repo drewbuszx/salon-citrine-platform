@@ -43,7 +43,7 @@ In the Cloudflare dashboard:
 
 6. Custom domain: **Worker → Settings → Domains & Routes → Add → Custom domain** → `team.saloncitrineindy.com`.
 
-**Bindings:** `apps/team/wrangler.toml` already declares the `SESSION` KV namespace (real ID) and the `IMAGES` binding; the build adds the `ASSETS` binding. `wrangler deploy` applies all of them — **no dashboard binding setup is needed**. Verify after deploy under **Worker → Settings → Bindings**.
+**Bindings:** Do not commit KV namespace IDs in `wrangler.toml` (invalid placeholders break Worker deployment). Bind **SESSION** in the Cloudflare dashboard: **Pages → your project → Settings → Bindings** → KV namespace → variable name `SESSION` → your namespace (e.g. `salon-citrine-session`). For **IMAGES**, confirm an Images binding exists under Bindings or add it to `wrangler.toml` if image routes fail.
 
 **URL:** the Worker serves at `https://salon-citrine-team.<account-subdomain>.workers.dev`. The app uses `base: '/team'`, so the login page is `/team/login`.
 
