@@ -4,8 +4,10 @@
  */
 
 export const CALENDAR_BLOCKING_APPOINTMENT_STATUSES = [
+  "booked",
   "pending",
   "confirmed",
+  "arrived",
 ] as const;
 
 export type CalendarBlockingAppointmentStatus =

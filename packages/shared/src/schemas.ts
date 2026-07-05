@@ -14,8 +14,10 @@ export const staffRoleSchema = z.enum([
 export type StaffRole = z.infer<typeof staffRoleSchema>;
 
 export const appointmentStatusSchema = z.enum([
+  "booked",
   "pending",
   "confirmed",
+  "arrived",
   "completed",
   "cancelled",
   "no_show",
@@ -105,6 +107,10 @@ export const createAppointmentInputSchema = z.object({
   }),
   policyAcknowledged: z.literal(true),
   setupIntentId: z.string().min(1),
+  /** Boulevard cart reservation — required when slot was held server-side */
+  cartId: z.string().uuid().optional(),
+  clientMessage: z.string().max(1200).optional(),
+  referralSource: z.string().max(200).optional(),
 });
 export type CreateAppointmentInput = z.infer<
   typeof createAppointmentInputSchema
