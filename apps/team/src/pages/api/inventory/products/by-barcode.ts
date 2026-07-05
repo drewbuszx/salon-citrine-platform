@@ -1,9 +1,10 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../../lib/api-calendar";
-import { mapProduct, type ProductRow } from "../../../../lib/api-inventory";
-
-const PRODUCT_SELECT =
-  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, inventory_stock ( quantity )";
+import {
+  mapProduct,
+  PRODUCT_SELECT,
+  type ProductRow,
+} from "../../../../lib/api-inventory";
 
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);

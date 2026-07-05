@@ -1,13 +1,12 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../../lib/api-calendar";
 import {
+  groupProductsByCategory,
   mapProduct,
+  PRODUCT_SELECT,
   requireManager,
   type ProductRow,
 } from "../../../../lib/api-inventory";
-
-const PRODUCT_SELECT =
-  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, inventory_stock ( quantity )";
 
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
@@ -15,6 +14,7 @@ export const GET: APIRoute = async (context) => {
 
   const { supabase } = auth;
   const q = String(context.url.searchParams.get("q") ?? "").trim();
+  const lowStockOnly = context.url.searchParams.get("lowStockOnly") === "1";
   const includeInactive =
     context.url.searchParams.get("includeInactive") === "1" &&
     requireManager(auth.staff);
@@ -42,10 +42,16 @@ export const GET: APIRoute = async (context) => {
     return jsonError("Failed to load products", 500);
   }
 
-  const products = (data ?? []).map((row) => mapProduct(row as ProductRow));
+  let products = (data ?? []).map((row) => mapProduct(row as ProductRow));
   const lowStockCount = products.filter((p) => p.isLowStock).length;
 
-  return jsonOk({ products, lowStockCount });
+  if (lowStockOnly) {
+    products = products.filter((p) => p.isLowStock);
+  }
+
+  const categories = groupProductsByCategory(products);
+
+  return jsonOk({ products, categories, lowStockCount });
 };
 
 type CreateProductBody = {
@@ -56,6 +62,7 @@ type CreateProductBody = {
   category?: string;
   unit?: string;
   reorder_threshold?: number;
+  image_url?: string;
   notes?: string;
   initial_quantity?: number;
 };
@@ -86,6 +93,7 @@ export const POST: APIRoute = async (context) => {
   const category = String(body.category ?? "").trim() || null;
   const unit = String(body.unit ?? "each").trim() || "each";
   const notes = String(body.notes ?? "").trim() || null;
+  const imageUrl = String(body.image_url ?? "").trim() || null;
   const reorderThreshold = Number(body.reorder_threshold ?? 0);
   const initialQuantity = Number(body.initial_quantity ?? 0);
 
@@ -109,6 +117,7 @@ export const POST: APIRoute = async (context) => {
       category,
       unit,
       reorder_threshold: reorderThreshold,
+      image_url: imageUrl,
       notes,
     })
     .select(PRODUCT_SELECT)

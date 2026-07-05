@@ -2,12 +2,10 @@ import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../../lib/api-calendar";
 import {
   mapProduct,
+  PRODUCT_SELECT,
   requireManager,
   type ProductRow,
 } from "../../../../lib/api-inventory";
-
-const PRODUCT_SELECT =
-  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, inventory_stock ( quantity )";
 
 type UpdateProductBody = {
   name?: string;
@@ -17,6 +15,7 @@ type UpdateProductBody = {
   category?: string | null;
   unit?: string;
   reorder_threshold?: number;
+  image_url?: string | null;
   notes?: string | null;
   is_active?: boolean;
 };
@@ -74,6 +73,9 @@ export const PATCH: APIRoute = async (context) => {
   }
   if (body.notes !== undefined) {
     updates.notes = body.notes ? String(body.notes).trim() : null;
+  }
+  if (body.image_url !== undefined) {
+    updates.image_url = body.image_url ? String(body.image_url).trim() : null;
   }
   if (body.is_active !== undefined) {
     updates.is_active = Boolean(body.is_active);

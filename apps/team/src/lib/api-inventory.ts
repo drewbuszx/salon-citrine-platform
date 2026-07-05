@@ -3,6 +3,9 @@ import type { StaffProfile } from "../env.d.ts";
 
 export type InventoryTransactionType = "receive" | "use" | "adjust" | "count";
 
+export const PRODUCT_SELECT =
+  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, image_url, inventory_stock ( quantity )";
+
 export type ProductRow = {
   id: string;
   name: string;
@@ -14,7 +17,16 @@ export type ProductRow = {
   reorder_threshold: number;
   is_active: boolean;
   notes: string | null;
+  image_url: string | null;
   inventory_stock: { quantity: number } | { quantity: number }[] | null;
+};
+
+export type ProductDto = ReturnType<typeof mapProduct>;
+
+export type ProductCategoryGroup = {
+  name: string;
+  products: ProductDto[];
+  lowStockCount: number;
 };
 
 export function mapProduct(row: ProductRow) {
@@ -35,9 +47,34 @@ export function mapProduct(row: ProductRow) {
     reorderThreshold,
     isActive: row.is_active,
     notes: row.notes,
+    imageUrl: row.image_url,
     quantity,
     isLowStock: reorderThreshold > 0 && quantity <= reorderThreshold,
   };
+}
+
+export function groupProductsByCategory(products: ProductDto[]): ProductCategoryGroup[] {
+  const map = new Map<string, ProductDto[]>();
+
+  for (const product of products) {
+    const category = product.category?.trim() || "Uncategorized";
+    const list = map.get(category) ?? [];
+    list.push(product);
+    map.set(category, list);
+  }
+
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, categoryProducts]) => {
+      const sorted = [...categoryProducts].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+      return {
+        name,
+        products: sorted,
+        lowStockCount: sorted.filter((p) => p.isLowStock).length,
+      };
+    });
 }
 
 export function requireManager(staff: StaffProfile) {

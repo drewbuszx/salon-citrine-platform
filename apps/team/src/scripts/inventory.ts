@@ -11,7 +11,14 @@ type Product = {
   reorderThreshold: number;
   quantity: number;
   isLowStock: boolean;
+  imageUrl: string | null;
   notes: string | null;
+};
+
+type ProductCategoryGroup = {
+  name: string;
+  products: Product[];
+  lowStockCount: number;
 };
 
 type Transaction = {
@@ -56,6 +63,7 @@ function initInventory(root: HTMLElement) {
   const isManager = root.dataset.isManager === "1";
   const listEl = root.querySelector<HTMLElement>("[data-product-list]");
   const searchInput = root.querySelector<HTMLInputElement>("[data-search]");
+  const lowStockFilter = root.querySelector<HTMLInputElement>("[data-low-stock-filter]");
   const lowStockEl = root.querySelector<HTMLElement>("[data-low-stock-banner]");
   const statusEl = root.querySelector<HTMLElement>("[data-status]");
 
@@ -83,6 +91,7 @@ function initInventory(root: HTMLElement) {
   const addForm = root.querySelector<HTMLFormElement>("[data-add-form]");
 
   let products: Product[] = [];
+  let categories: ProductCategoryGroup[] = [];
   let selectedProduct: Product | null = null;
   let pendingTxType: TransactionType | null = null;
   let scanner: { stop: () => void } | null = null;
@@ -132,16 +141,18 @@ function initInventory(root: HTMLElement) {
   async function fetchProducts(query = "") {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
+    if (lowStockFilter?.checked) params.set("lowStockOnly", "1");
     const res = await fetch(apiUrl(`/api/inventory/products?${params}`));
     const data = await res.json();
     if (!res.ok || !data.ok) {
       throw new Error(data.error ?? "Failed to load products");
     }
     products = data.products as Product[];
+    categories = data.categories as ProductCategoryGroup[];
     renderProducts();
     if (lowStockEl) {
       const count = data.lowStockCount as number;
-      lowStockEl.hidden = count === 0;
+      lowStockEl.hidden = count === 0 || Boolean(lowStockFilter?.checked);
       lowStockEl.textContent =
         count === 1
           ? "1 product is at or below reorder threshold."
@@ -149,28 +160,60 @@ function initInventory(root: HTMLElement) {
     }
   }
 
+  function renderProductImage(product: Product) {
+    if (product.imageUrl) {
+      return `<img class="inventory-tile__img" src="${escapeAttr(product.imageUrl)}" alt="" loading="lazy" />`;
+    }
+    const initial = (product.category?.trim()?.[0] ?? product.name.trim()[0] ?? "?")
+      .toUpperCase();
+    return `<span class="inventory-tile__placeholder" aria-hidden="true">${escapeHtml(initial)}</span>`;
+  }
+
+  function escapeAttr(value: string) {
+    return value
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;")
+      .replaceAll("<", "&lt;");
+  }
+
+  function renderProductTile(product: Product) {
+    return `
+      <button type="button" class="inventory-tile${product.isLowStock ? " inventory-tile--low" : ""}" data-product-id="${product.id}">
+        <span class="inventory-tile__media">
+          ${renderProductImage(product)}
+          ${product.isLowStock ? '<span class="inventory-badge inventory-badge--low inventory-tile__badge">Low</span>' : ""}
+        </span>
+        <span class="inventory-tile__name">${escapeHtml(product.name)}</span>
+        <span class="inventory-tile__meta label-meta">${escapeHtml([product.brand, formatQty(product.quantity) + " " + product.unit].filter(Boolean).join(" · "))}</span>
+      </button>`;
+  }
+
   function renderProducts() {
     if (!listEl) return;
-    if (products.length === 0) {
+    if (categories.length === 0) {
       listEl.innerHTML =
         '<p class="empty-state">No products found. Try a different search or add a product.</p>';
       return;
     }
 
-    listEl.innerHTML = products
-      .map(
-        (p) => `
-        <button type="button" class="inventory-card" data-product-id="${p.id}">
-          <div class="inventory-card__main">
-            <span class="inventory-card__name">${escapeHtml(p.name)}</span>
-            <span class="label-meta">${escapeHtml([p.brand, p.category].filter(Boolean).join(" · ") || "Uncategorized")}</span>
+    listEl.innerHTML = categories
+      .map((category) => {
+        const lowLabel =
+          category.lowStockCount > 0
+            ? ` · ${category.lowStockCount} low`
+            : "";
+        return `
+        <section class="inventory-category">
+          <h2 class="inventory-category__title">
+            ${escapeHtml(category.name)}
+            <span class="inventory-category__count label-meta">${category.products.length} item${category.products.length === 1 ? "" : "s"}${lowLabel}</span>
+          </h2>
+          <div class="inventory-grid">
+            ${category.products.map((product) => renderProductTile(product)).join("")}
           </div>
-          <div class="inventory-card__meta">
-            <span class="inventory-card__qty">${formatQty(p.quantity)} ${escapeHtml(p.unit)}</span>
-            ${p.isLowStock ? '<span class="inventory-badge inventory-badge--low">Low stock</span>' : ""}
-          </div>
-        </button>`,
-      )
+        </section>`;
+      })
       .join("");
 
     listEl.querySelectorAll<HTMLButtonElement>("[data-product-id]").forEach(
@@ -230,9 +273,24 @@ function initInventory(root: HTMLElement) {
         product.category,
         product.barcode ? `Barcode ${product.barcode}` : null,
         product.sku ? `SKU ${product.sku}` : null,
+        product.reorderThreshold > 0
+          ? `Reorder at ${formatQty(product.reorderThreshold)}`
+          : null,
       ]
         .filter(Boolean)
         .join(" · ");
+    }
+    const detailImage = root.querySelector<HTMLImageElement>("[data-detail-image]");
+    const detailImageWrap = root.querySelector<HTMLElement>("[data-detail-image-wrap]");
+    if (detailImage && detailImageWrap) {
+      if (product.imageUrl) {
+        detailImage.src = product.imageUrl;
+        detailImage.alt = product.name;
+        detailImageWrap.hidden = false;
+      } else {
+        detailImage.removeAttribute("src");
+        detailImageWrap.hidden = true;
+      }
     }
     if (detailQty) {
       detailQty.textContent = `${formatQty(product.quantity)} ${product.unit}`;
@@ -445,6 +503,7 @@ function initInventory(root: HTMLElement) {
         category: String(formData.get("category") ?? "").trim() || undefined,
         unit: String(formData.get("unit") ?? "each").trim() || "each",
         reorder_threshold: Number(formData.get("reorder_threshold") ?? 0),
+        image_url: String(formData.get("image_url") ?? "").trim() || undefined,
         initial_quantity: Number(formData.get("initial_quantity") ?? 0),
         notes: String(formData.get("notes") ?? "").trim() || undefined,
       };
@@ -473,6 +532,12 @@ function initInventory(root: HTMLElement) {
         setStatus(err instanceof Error ? err.message : "Load failed", true);
       });
     }, 250);
+  });
+
+  lowStockFilter?.addEventListener("change", () => {
+    void fetchProducts(searchInput?.value ?? "").catch((err) => {
+      setStatus(err instanceof Error ? err.message : "Load failed", true);
+    });
   });
 
   document.addEventListener("keydown", (event) => {

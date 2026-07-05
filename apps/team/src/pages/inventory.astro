@@ -48,6 +48,11 @@ const isManager = isSalonManager(staff);
       />
     </label>
 
+    <label class="inventory-filter">
+      <input type="checkbox" data-low-stock-filter />
+      Show low stock only
+    </label>
+
     <div class="inventory-list" data-product-list>
       <p class="empty-state">Loading products…</p>
     </div>
@@ -93,6 +98,9 @@ const isManager = isSalonManager(staff);
       <div class="inventory-modal__head">
         <h2 id="detail-title" data-detail-title>Product</h2>
         <button class="inventory-modal__close" type="button" data-modal-close="detail" aria-label="Close">×</button>
+      </div>
+      <div class="inventory-detail__image-wrap" data-detail-image-wrap hidden>
+        <img class="inventory-detail__image" data-detail-image alt="" />
       </div>
       <p class="inventory-detail__meta" data-detail-meta></p>
       <p class="inventory-detail__qty" data-detail-qty></p>
@@ -186,6 +194,16 @@ const isManager = isSalonManager(staff);
               />
             </label>
             <label class="form-label">
+              Image URL
+              <input
+                class="form-input"
+                name="image_url"
+                type="url"
+                placeholder="https://…"
+                inputmode="url"
+              />
+            </label>
+            <label class="form-label">
               Initial quantity
               <input
                 class="form-input"
@@ -259,7 +277,22 @@ const isManager = isSalonManager(staff);
   }
 
   .inventory-search {
-    margin: 1rem 0 1.25rem;
+    margin: 1rem 0 0.75rem;
+  }
+
+  .inventory-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .inventory-filter input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-sage);
   }
 
   .inventory-low-stock {
@@ -269,52 +302,94 @@ const isManager = isSalonManager(staff);
 
   .inventory-list {
     display: grid;
-    gap: 0.65rem;
+    gap: 1.75rem;
   }
 
-  .inventory-card {
+  .inventory-category__title {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+    text-transform: capitalize;
+  }
+
+  .inventory-category__count {
+    font-weight: 400;
+  }
+
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
-    width: 100%;
-    padding: 0.85rem 1rem;
+  }
+
+  .inventory-tile {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0;
     border: 1px solid var(--color-border);
     background: var(--color-booking-card-bg);
     text-align: left;
     cursor: pointer;
+    overflow: hidden;
     transition: border-color 0.2s ease;
   }
 
-  .inventory-card:hover,
-  .inventory-card:focus-visible {
+  .inventory-tile:hover,
+  .inventory-tile:focus-visible {
     border-color: var(--color-sage);
     outline: none;
   }
 
-  .inventory-card__main {
-    display: grid;
-    gap: 0.15rem;
-    min-width: 0;
+  .inventory-tile--low {
+    border-color: #c44;
   }
 
-  .inventory-card__name {
-    font-size: 1rem;
-    line-height: 1.3;
-  }
-
-  .inventory-card__meta {
+  .inventory-tile__media {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--color-booking-panel-bg);
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.25rem;
-    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
 
-  .inventory-card__qty {
+  .inventory-tile__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .inventory-tile__placeholder {
     font-family: var(--font-sans);
-    font-size: 0.95rem;
+    font-size: 1.75rem;
     font-weight: 600;
+    color: var(--color-gray);
+    opacity: 0.55;
+  }
+
+  .inventory-tile__badge {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.35rem;
+  }
+
+  .inventory-tile__name {
+    padding: 0 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .inventory-tile__meta {
+    padding: 0 0.5rem 0.5rem;
+    font-size: 0.75rem;
   }
 
   .inventory-badge {
@@ -420,6 +495,18 @@ const isManager = isSalonManager(staff);
     border-top: 1px solid var(--color-border);
   }
 
+  .inventory-detail__image-wrap {
+    margin-bottom: 0.75rem;
+  }
+
+  .inventory-detail__image {
+    width: 100%;
+    max-height: 12rem;
+    object-fit: contain;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-panel-bg);
+  }
+
   .inventory-detail__meta {
     margin: 0 0 0.5rem;
     color: var(--color-gray);
@@ -496,6 +583,10 @@ const isManager = isSalonManager(staff);
 
     .inventory-detail__actions {
       grid-template-columns: repeat(4, 1fr);
+    }
+
+    .inventory-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>
