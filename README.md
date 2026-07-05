@@ -164,12 +164,16 @@ curl http://localhost:4321/book/api/health/notifications
 
 Full production setup (Resend domain, Twilio 10DLC, Cloudflare cron): see [docs/PRODUCTION_COMMS.md](docs/PRODUCTION_COMMS.md).
 
+## Deploy to Cloudflare
+
+Two Pages projects (team + book), KV session binding, and env var checklist: **[docs/CLOUDFLARE_DEPLOY.md](docs/CLOUDFLARE_DEPLOY.md)**.
+
 ## Next steps (recommended order)
 
 1. **Stripe test mode** — create account, add test keys to `.env`, wire SetupIntent on `/book/details`.
 2. **Resend** — verify `saloncitrineindy.com` domain in Cloudflare DNS; set prod `RESEND_FROM_EMAIL`.
 3. **Twilio** — start 10DLC registration early; add test credentials for confirmation SMS.
-4. **Cloudflare Pages** — deploy `apps/web` → `/book`, schedule cron for `/book/api/cron/send-reminders`.
+4. **Cloudflare Pages** — follow [docs/CLOUDFLARE_DEPLOY.md](docs/CLOUDFLARE_DEPLOY.md); schedule cron for `/book/api/cron/send-reminders`.
 5. **Marketing site cutover** — flip `BOOKING_URL` to `/book` after parallel testing with GlossGenius.
 
 ## Conventions
