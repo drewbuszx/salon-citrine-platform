@@ -3,6 +3,7 @@ import { localDateTimeToUtc } from "./datetime";
 
 export type CalendarAppointment = {
   id: string;
+  clientId: string;
   staffId: string;
   startsAt: string;
   endsAt: string;
@@ -401,7 +402,7 @@ export async function loadCalendarData(
   let appointmentsQuery = supabase
     .from("appointments")
     .select(
-      "id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name))",
+      "id, client_id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name))",
     )
     .gte("starts_at", startIso)
     .lt("starts_at", endIso)
@@ -497,6 +498,7 @@ export async function loadCalendarData(
 
       return {
         id: row.id,
+        clientId: row.client_id,
         staffId: row.staff_id,
         startsAt: row.starts_at,
         endsAt: row.ends_at,

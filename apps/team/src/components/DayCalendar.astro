@@ -83,6 +83,7 @@ const calendarConfig = {
     blockedTimes: teamUrl("/api/blocked-times"),
     clientsSearch: teamUrl("/api/clients/search"),
     clientProfile: teamUrl("/api/clients"),
+    checkout: teamUrl("/checkout"),
   },
   reloadUrl: `${teamUrl("/")}?day=${dayParam}`,
 };
@@ -881,6 +882,8 @@ const calendarConfig = {
           : "—";
         const notes = appt.notes?.trim() ? appt.notes : "—";
         const statusLabel = appt.status.replace(/_/g, " ");
+        const checkoutHref = `${config.api.checkout}/${appt.id}`;
+        const profileHref = `${config.api.checkout.replace("/checkout", "/clients")}/${appt.clientId}`;
         openModal(
           clientName || "Appointment",
           `<div class="day-cal__detail">
@@ -890,11 +893,16 @@ const calendarConfig = {
             <p><span class="label-meta">Email</span><br />${email}</p>
             <div><span class="label-meta">Services (${appt.serviceCount})</span>${servicesList}</div>
             <p><span class="label-meta">Notes</span><br />${notes}</p>
+            <div class="day-cal__detail-actions">
+              <a class="day-cal__link-btn" href="${profileHref}">View client profile</a>
+              ${appt.status !== "cancelled" && appt.status !== "completed" ? `<a class="day-cal__link-btn day-cal__link-btn--primary" href="${checkoutHref}">Checkout</a>` : ""}
+              ${appt.status === "completed" ? `<a class="day-cal__link-btn" href="${checkoutHref}">View receipt</a>` : ""}
+            </div>
           </div>
           <form class="day-cal__form" data-form="appointment-edit" data-id="${appt.id}">
             <label class="form-label">Status
               <select class="form-input" name="status">
-                ${["pending", "confirmed", "completed", "no_show", "cancelled"]
+                ${["booked", "pending", "confirmed", "arrived", "completed", "no_show", "cancelled"]
                   .map(
                     (status) =>
                       `<option value="${status}"${status === appt.status ? " selected" : ""}>${status.replace("_", " ")}</option>`,
@@ -2229,6 +2237,7 @@ const calendarConfig = {
   }
 
   .day-cal__btn-secondary,
+  .day-cal__link-btn {
   .day-cal__btn-danger {
     padding: 0.7rem 1rem;
     border: 1px solid var(--color-border);
