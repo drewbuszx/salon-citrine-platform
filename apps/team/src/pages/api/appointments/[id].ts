@@ -5,6 +5,11 @@ import {
   jsonOk,
   requireApiAuth,
 } from "../../../lib/api-calendar";
+import {
+  mapOverlapDbError,
+  validateAppointmentTimeRange,
+} from "../../../lib/calendar-overlap";
+import { isSalonManager } from "../../../lib/auth";
 import { parseDateTimeLocalInput } from "../../../lib/datetime";
 
 const ALLOWED_STATUSES = new Set([
@@ -94,6 +99,21 @@ export const PATCH: APIRoute = async (context) => {
     return jsonError("No updates provided", 400);
   }
 
+  const nextStatus = updates.status ?? existing.status;
+  if (updates.starts_at !== undefined || updates.ends_at !== undefined || updates.status !== undefined) {
+    const validation = await validateAppointmentTimeRange(supabase, {
+      staffId: existing.staff_id,
+      startsAt: new Date(nextStarts),
+      endsAt: new Date(nextEnds),
+      excludeAppointmentId: appointmentId,
+      status: nextStatus,
+      isManager: isSalonManager(staff),
+    });
+    if (!validation.ok) {
+      return jsonError(validation.message, validation.status);
+    }
+  }
+
   const { error } = await supabase
     .from("appointments")
     .update(updates)
@@ -101,6 +121,10 @@ export const PATCH: APIRoute = async (context) => {
 
   if (error) {
     console.error("appointment update failed", error);
+    const conflict = mapOverlapDbError(error);
+    if (conflict) {
+      return jsonError(conflict.message, conflict.status);
+    }
     return jsonError("Could not update appointment", 500);
   }
 
