@@ -1,3 +1,8 @@
+import {
+  CART_RESERVATION_MINUTES,
+  type BookableDate,
+  type BookableTime,
+} from "@saloncitrine/shared";
 import { TIMEZONE } from "@saloncitrine/shared";
 import { createSupabaseClient } from "./supabase";
 import {
@@ -22,6 +27,8 @@ export type TimeSlot = {
   label: string;
   /** UTC ISO timestamp for the slot start. */
   startsAt: string;
+  /** UTC ISO timestamp for the slot end. */
+  endsAt: string;
 };
 
 type StaffScheduleRow = {
@@ -42,10 +49,16 @@ type AppointmentRow = {
   ends_at: string;
 };
 
+type ReservationRow = {
+  starts_at: string;
+  ends_at: string;
+};
+
 type AvailabilityContext = {
   schedules: StaffScheduleRow[];
   blockedTimes: BlockedTimeRow[];
   appointments: AppointmentRow[];
+  reservations: ReservationRow[];
   durationMinutes: number;
 };
 
@@ -99,6 +112,7 @@ function isSlotAvailable(
   slotEnd: Date,
   blockedTimes: BlockedTimeRow[],
   appointments: AppointmentRow[],
+  reservations: ReservationRow[] = [],
 ): boolean {
   const startMs = slotStart.getTime();
   const endMs = slotEnd.getTime();
@@ -113,6 +127,12 @@ function isSlotAvailable(
     const aStart = new Date(appt.starts_at).getTime();
     const aEnd = new Date(appt.ends_at).getTime();
     if (rangesOverlap(startMs, endMs, aStart, aEnd)) return false;
+  }
+
+  for (const reservation of reservations) {
+    const rStart = new Date(reservation.starts_at).getTime();
+    const rEnd = new Date(reservation.ends_at).getTime();
+    if (rangesOverlap(startMs, endMs, rStart, rEnd)) return false;
   }
 
   return true;
@@ -143,6 +163,11 @@ export function computeSlotsForDate(
     const aEnd = new Date(a.ends_at).getTime();
     return aStart < dayEnd.getTime() && aEnd > dayStart.getTime();
   });
+  const dayReservations = ctx.reservations.filter((r) => {
+    const rStart = new Date(r.starts_at).getTime();
+    const rEnd = new Date(r.ends_at).getTime();
+    return rStart < dayEnd.getTime() && rEnd > dayStart.getTime();
+  });
 
   const slots: TimeSlot[] = [];
   const nowMs = now.getTime();
@@ -169,7 +194,7 @@ export function computeSlotsForDate(
 
     if (slotStart.getTime() <= nowMs) continue;
     if (
-      !isSlotAvailable(slotStart, slotEnd, dayBlocked, dayAppointments)
+      !isSlotAvailable(slotStart, slotEnd, dayBlocked, dayAppointments, dayReservations)
     ) {
       continue;
     }
@@ -177,6 +202,7 @@ export function computeSlotsForDate(
     slots.push({
       label: formatSlotLabel(slotStart),
       startsAt: slotStart.toISOString(),
+      endsAt: slotEnd.toISOString(),
     });
   }
 
@@ -201,7 +227,7 @@ async function fetchAvailabilityContext(
   const ids = normalizeServiceIds(serviceIds);
   const supabase = createSupabaseClient();
 
-  const [schedulesResult, servicesResult, blockedResult, appointmentsResult] =
+  const [schedulesResult, servicesResult, blockedResult, appointmentsResult, reservationsResult] =
     await Promise.all([
       supabase
         .from("staff_schedules")
@@ -223,12 +249,19 @@ async function fetchAvailabilityContext(
         .eq("staff_id", staffId)
         .lt("starts_at", rangeEnd.toISOString())
         .gt("ends_at", rangeStart.toISOString()),
+      supabase
+        .from("booking_cart_reservations")
+        .select("starts_at, ends_at")
+        .eq("staff_id", staffId)
+        .lt("starts_at", rangeEnd.toISOString())
+        .gt("ends_at", rangeStart.toISOString()),
     ]);
 
   if (schedulesResult.error) throw schedulesResult.error;
   if (servicesResult.error) throw servicesResult.error;
   if (blockedResult.error) throw blockedResult.error;
   if (appointmentsResult.error) throw appointmentsResult.error;
+  if (reservationsResult.error) throw reservationsResult.error;
   if (!servicesResult.data?.length) {
     throw new Error(`Services not found: ${ids.join(", ")}`);
   }
@@ -242,6 +275,7 @@ async function fetchAvailabilityContext(
     schedules: schedulesResult.data as StaffScheduleRow[],
     blockedTimes: blockedResult.data as BlockedTimeRow[],
     appointments: appointmentsResult.data as AppointmentRow[],
+    reservations: (reservationsResult.data ?? []) as ReservationRow[],
     durationMinutes,
   };
 }
@@ -354,6 +388,21 @@ export async function getAvailableDates(
   const endDate = addDaysToDateString(startDate, daysAhead - 1);
   return getAvailableDatesInRange(staffId, serviceIds, startDate, endDate);
 }
+
+export function toBookableDates(dates: string[]): BookableDate[] {
+  return dates.map((date) => ({ date, bookable: true }));
+}
+
+export function toBookableTimes(slots: TimeSlot[]): BookableTime[] {
+  return slots.map((slot) => ({
+    id: slot.startsAt,
+    startTime: slot.startsAt,
+    endTime: slot.endsAt,
+    bookable: true,
+  }));
+}
+
+export { CART_RESERVATION_MINUTES };
 
 /** Format a date string for the date picker UI. */
 export function formatAvailableDateLabel(dateStr: string): string {

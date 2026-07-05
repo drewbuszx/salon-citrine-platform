@@ -1,14 +1,27 @@
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
+import {
+  fetchCartExpiry,
+  formatReservationCountdown,
+  lookupExistingClient,
+} from "./booking-cart-client";
 
 const form = document.querySelector<HTMLFormElement>("[data-booking-details-form]");
 const paymentMount = document.getElementById("payment-element");
 const errorEl = document.querySelector<HTMLElement>("[data-form-error]");
 const submitBtn = document.querySelector<HTMLButtonElement>("[data-open-policy-modal]");
+const lookupStatusEl = document.querySelector<HTMLElement>("[data-lookup-status]");
+const reservationHoldEl = document.querySelector<HTMLElement>("[data-reservation-hold]");
+const reservationCountdownEl = document.querySelector<HTMLElement>(
+  "[data-reservation-countdown]",
+);
 
 const stripePublishableKey = form?.dataset.stripePublishableKey ?? "";
 const setupIntentUrl = form?.dataset.setupIntentUrl ?? "";
 const appointmentsUrl = form?.dataset.appointmentsUrl ?? "";
 const confirmUrl = form?.dataset.confirmUrl ?? "";
+const clientLookupUrl = form?.dataset.clientLookupUrl ?? "";
+const cartApiUrl = form?.dataset.cartApiUrl ?? "";
+const cartId = form?.dataset.cartId ?? "";
 
 let stripe: Stripe | null = null;
 let elements: StripeElements | null = null;
@@ -20,6 +33,8 @@ let confirmedSetupIntentId: string | null = null;
 let pendingSubmit = false;
 let initializing = false;
 let submitting = false;
+let lookupInFlight = false;
+let reservationTimer: ReturnType<typeof setInterval> | null = null;
 
 function showError(message: string) {
   if (!errorEl) return;
@@ -198,7 +213,89 @@ paymentMount?.addEventListener("focusin", () => {
 
 form?.querySelector('input[name="email"]')?.addEventListener("blur", () => {
   void ensureStripeElements();
+  void lookupClientByEmail();
 });
+
+async function lookupClientByEmail() {
+  const email = formValue("email");
+  if (!email || !clientLookupUrl || lookupInFlight) return;
+
+  lookupInFlight = true;
+  if (lookupStatusEl) {
+    lookupStatusEl.hidden = false;
+    lookupStatusEl.textContent = "Looking up your profile…";
+  }
+
+  try {
+    const result = await lookupExistingClient({ lookupUrl: clientLookupUrl, email });
+    if (result.found && result.client) {
+      const firstNameEl = form?.elements.namedItem("firstName");
+      const lastNameEl = form?.elements.namedItem("lastName");
+      const phoneEl = form?.elements.namedItem("phone");
+      const notesEl = form?.elements.namedItem("intakeNotes");
+      const prefsEl = form?.elements.namedItem("bookingPreferences");
+
+      if (firstNameEl instanceof HTMLInputElement && !firstNameEl.value) {
+        firstNameEl.value = result.client.firstName;
+      }
+      if (lastNameEl instanceof HTMLInputElement && !lastNameEl.value) {
+        lastNameEl.value = result.client.lastName;
+      }
+      if (phoneEl instanceof HTMLInputElement && !phoneEl.value && result.client.phone) {
+        phoneEl.value = result.client.phone;
+      }
+      if (notesEl instanceof HTMLTextAreaElement && !notesEl.value && result.client.intakeNotes) {
+        notesEl.value = result.client.intakeNotes;
+      }
+      if (
+        prefsEl instanceof HTMLTextAreaElement &&
+        !prefsEl.value &&
+        result.client.bookingPreferences
+      ) {
+        prefsEl.value = result.client.bookingPreferences;
+      }
+
+      if (lookupStatusEl) {
+        lookupStatusEl.textContent = `Welcome back, ${result.client.firstName}! We filled in your details.`;
+      }
+    } else if (lookupStatusEl) {
+      lookupStatusEl.textContent = "";
+      lookupStatusEl.hidden = true;
+    }
+  } catch {
+    if (lookupStatusEl) {
+      lookupStatusEl.textContent = "";
+      lookupStatusEl.hidden = true;
+    }
+  } finally {
+    lookupInFlight = false;
+  }
+}
+
+async function startReservationCountdown() {
+  if (!cartId || !cartApiUrl || !reservationHoldEl) return;
+
+  reservationHoldEl.hidden = false;
+
+  async function tick() {
+    const expiresAt = await fetchCartExpiry({ cartApiUrl, cartId });
+    if (!expiresAt) {
+      if (reservationCountdownEl) reservationCountdownEl.textContent = "a limited time";
+      return;
+    }
+    const label = formatReservationCountdown(expiresAt);
+    if (reservationCountdownEl) reservationCountdownEl.textContent = label;
+    if (label === "Expired") {
+      showError("Your time hold expired. Please choose a new time.");
+      if (reservationTimer) clearInterval(reservationTimer);
+    }
+  }
+
+  await tick();
+  reservationTimer = setInterval(() => void tick(), 30_000);
+}
+
+void startReservationCountdown();
 
 form?.querySelector('input[name="email"]')?.addEventListener("input", () => {
   const email = formValue("email");
@@ -278,6 +375,7 @@ async function completeBooking() {
       staffSlug: formValue("stylist"),
       serviceIds: formValue("services").split(",").filter(Boolean),
       startsAt: formValue("startsAt"),
+      cartId: formValue("cartId") || undefined,
       client: {
         firstName: formValue("firstName"),
         lastName: formValue("lastName"),

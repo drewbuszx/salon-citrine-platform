@@ -10,6 +10,11 @@ import {
 } from "@saloncitrine/shared";
 import { isBookingSlotAvailableByStartsAt } from "../../../lib/availability";
 import { getStaffBySlug } from "../../../lib/booking-data";
+import {
+  completeBookingCart,
+  getDefaultLocationId,
+  validateReservedCart,
+} from "../../../lib/booking-cart";
 import { jsonError, jsonOk } from "../../../lib/api-booking";
 import { getStripeClient } from "../../../lib/stripe-server";
 import { createSupabaseServiceClient } from "../../../lib/supabase-server";
@@ -84,6 +89,27 @@ export const POST: APIRoute = async ({ request }) => {
         input.startsAt,
       );
       return jsonError("That time is no longer available", 409);
+    }
+
+    if (input.cartId) {
+      const cartValid = await validateReservedCart({
+        cartId: input.cartId,
+        staffId: staff.id,
+        startsAt: input.startsAt,
+      });
+      if (!cartValid) {
+        return jsonError(
+          "Your time hold has expired. Please choose a new time.",
+          409,
+        );
+      }
+    }
+
+    let locationId: string | null = null;
+    try {
+      locationId = await getDefaultLocationId();
+    } catch (locationError) {
+      console.error("booking/appointments: location lookup", locationError);
     }
 
     const stripe = getStripeClient();
@@ -282,10 +308,13 @@ export const POST: APIRoute = async ({ request }) => {
       .insert({
         client_id: clientId,
         staff_id: staff.id,
+        location_id: locationId,
         starts_at: startsAt.toISOString(),
         ends_at: endsAt.toISOString(),
-        status: "confirmed",
+        status: "booked",
         notes: input.client.intakeNotes?.trim() || null,
+        client_message: input.clientMessage?.trim() || null,
+        referral_source: input.referralSource?.trim() || null,
         policy_acknowledged_at: new Date().toISOString(),
         policy_snapshot: activePolicy,
         deposit_required_cents: depositRequiredCents,
@@ -351,6 +380,14 @@ export const POST: APIRoute = async ({ request }) => {
             ? depositError.message
             : "Deposit payment failed";
         return jsonError(message, 402);
+      }
+    }
+
+    if (input.cartId) {
+      try {
+        await completeBookingCart(input.cartId);
+      } catch (cartError) {
+        console.error("booking/appointments: cart completion failed", cartError);
       }
     }
 

@@ -324,6 +324,8 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
   </p>
 </BookingLayout>
 
+<script src="../scripts/datetime-booking.ts"></script>
+
 <script define:vars={{ existingClientAckParam: EXISTING_CLIENT_ACK_PARAM }}>
   function monthParam(year, month) {
     return `${year}-${String(month).padStart(2, "0")}`;

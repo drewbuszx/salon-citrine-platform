@@ -3,30 +3,31 @@ import { withBase } from "../lib/paths";
 
 export type BookingStepId =
   | "service"
-  | "stylist"
   | "cart"
+  | "stylist"
   | "datetime"
   | "details"
   | "confirm";
 
 interface Props {
   current: BookingStepId;
-  /** Include the stylist step when booking started with "Any Professional" */
-  showStylist?: boolean;
+  /** Show professional step when user chose "Any Professional" */
+  showStylistStep?: boolean;
 }
 
-const { current, showStylist = false } = Astro.props;
+const { current, showStylistStep = false } = Astro.props;
 
+/** Boulevard SelectServiceFirst: services → cart → staff → time → client → confirm */
 const BASE_STEPS: { id: BookingStepId; label: string; href: string }[] = [
-  { id: "service", label: "Service", href: withBase() },
-  { id: "stylist", label: "Stylist", href: withBase("stylist/") },
+  { id: "service", label: "Services", href: withBase() },
   { id: "cart", label: "Cart", href: withBase("cart/") },
+  { id: "stylist", label: "Professional", href: withBase("stylist/") },
   { id: "datetime", label: "Date & time", href: withBase("datetime/") },
-  { id: "details", label: "Details", href: withBase("details/") },
+  { id: "details", label: "Details & pay", href: withBase("details/") },
   { id: "confirm", label: "Confirm", href: withBase("confirm/") },
 ];
 
-const steps = showStylist
+const steps = showStylistStep
   ? BASE_STEPS
   : BASE_STEPS.filter((step) => step.id !== "stylist");
 
@@ -61,7 +62,7 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem 1rem;
+    gap: 0.5rem 0.75rem;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -70,12 +71,19 @@ const currentIndex = steps.findIndex((step) => step.id === current);
   .steps__item {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     font-family: var(--font-sans);
-    font-size: 0.68rem;
-    letter-spacing: 0.08em;
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--color-gray);
+  }
+
+  @media (min-width: 640px) {
+    .steps__item {
+      font-size: 0.68rem;
+      gap: 0.4rem;
+    }
   }
 
   .steps__item--current {
@@ -93,11 +101,11 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.4rem;
+    height: 1.4rem;
     border: 1px solid var(--color-border);
     border-radius: 50%;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
   }
 
   .steps__item--current .steps__num {

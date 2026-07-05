@@ -1,0 +1,43 @@
+---
+import { BUSINESS } from "@saloncitrine/shared";
+---
+
+<div class="location-context" aria-label="Salon location">
+  <p class="location-context__label">Location</p>
+  <p class="location-context__name">{BUSINESS.name}</p>
+  <p class="location-context__address">
+    {BUSINESS.address.street}, {BUSINESS.address.city}, {BUSINESS.address.state}{" "}
+    {BUSINESS.address.zip}
+  </p>
+</div>
+
+<style>
+  .location-context {
+    margin-bottom: 1.5rem;
+    padding: 0.85rem 1rem;
+    background: var(--color-light);
+    border-left: 3px solid var(--color-sage);
+    text-align: center;
+  }
+
+  .location-context__label {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .location-context__name {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .location-context__address {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--color-gray);
+  }
+</style>

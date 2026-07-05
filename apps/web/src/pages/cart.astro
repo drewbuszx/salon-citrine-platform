@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import BookingLayout from "../layouts/BookingLayout.astro";
+import LocationContext from "../components/LocationContext.astro";
 import ReturningClientsModal from "../components/ReturningClientsModal.astro";
 import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
@@ -21,14 +22,16 @@ import {
   staffFirstName,
   sumServiceDuration,
 } from "../lib/booking-data";
+import { datetimeUrl, stylistUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
-const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 const returningAck = Astro.url.searchParams.get("returning") === "1";
 const existingAck = hasExistingClientAck(Astro.url.searchParams);
+/** Show professional step in progress when stylist not chosen yet */
+const showStylistStep = !stylistSlug;
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const primaryServiceId = serviceIds[0] ?? serviceParam;
@@ -51,17 +54,22 @@ const [primaryService, stylist, cartServices, suggestions, returningClientsOnly]
     : Promise.resolve(false),
 ]);
 
-if (!primaryService || !stylist) {
+if (!primaryService) {
   return Astro.redirect(withBase());
 }
 
-const showReturningModal = returningClientsOnly && !returningAck;
-const showNewClientsModal = !isAcceptingNewClients(stylist) && !existingAck;
+const showReturningModal = stylist && returningClientsOnly && !returningAck;
+const showNewClientsModal = stylist && !isAcceptingNewClients(stylist) && !existingAck;
+
+const flowFlags = {
+  showStylistStep,
+  returningAck,
+  existingAck,
+};
 
 const cartParams = new URLSearchParams();
 cartParams.set("services", serviceIds.length > 0 ? serviceIds.join(",") : primaryService.id);
-cartParams.set("stylist", stylist.slug);
-if (showStylistStep) cartParams.set("flow", "stylist");
+if (stylist) cartParams.set("stylist", stylist.slug);
 if (returningAck) cartParams.set("returning", "1");
 cartParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
 const continueHref = `${withBase("cart/")}?${cartParams.toString()}`;
@@ -70,9 +78,22 @@ const returningContinueParams = new URLSearchParams(cartParams);
 returningContinueParams.set("returning", "1");
 const returningContinueHref = `${withBase("cart/")}?${returningContinueParams.toString()}`;
 
-const chooseStylistParams = new URLSearchParams();
-chooseStylistParams.set("service", primaryService.id);
-const chooseStylistHref = `${withBase("stylist/")}?${chooseStylistParams.toString()}`;
+const chooseStylistHref = stylistUrl(
+  serviceIds.length > 0 ? serviceIds : [primaryService.id],
+  flowFlags,
+);
+
+const continueTargetUrl = stylist
+  ? datetimeUrl(
+      serviceIds.length > 0 ? serviceIds : [primaryService.id],
+      stylist.slug,
+      flowFlags,
+    )
+  : stylistUrl(
+      serviceIds.length > 0 ? serviceIds : [primaryService.id],
+      flowFlags,
+    );
+const continueLabel = stylist ? "Continue to date & time" : "Choose a professional";
 
 const initialCartIds =
   cartServices.length > 0 ? cartServices.map((svc) => svc.id) : [primaryService.id];
@@ -135,7 +156,6 @@ const suggestionsJson = JSON.stringify(
   })),
 );
 
-const datetimeBase = withBase("datetime/");
 const bookBase = withBase();
 ---
 
@@ -144,20 +164,21 @@ const bookBase = withBase();
   step="cart"
   showStylistStep={showStylistStep}
 >
+  <LocationContext />
   {
-    showNewClientsModal && (
+    showNewClientsModal && stylist && (
       <NotAcceptingNewClientsModal
         stylistFirstName={staffFirstName(stylist.name)}
         stylistSlug={stylist.slug}
         continueHref={continueHref}
-        chooseStylistHref={withBase()}
+        chooseStylistHref={chooseStylistHref}
         autoOpen={true}
       />
     )
   }
 
   {
-    showReturningModal && (
+    showReturningModal && stylist && (
       <ReturningClientsModal
         serviceName={primaryService.name}
         serviceDescription={primaryService.description}
@@ -179,7 +200,15 @@ const bookBase = withBase();
     <p class="cart-page__kicker">Build your visit</p>
     <h1>Your appointment</h1>
     <p class="lead">
-      with <strong>{stylist.name}</strong> — add extras or continue when ready.
+      {
+        stylist ? (
+          <>
+            with <strong>{stylist.name}</strong> — add extras or continue when ready.
+          </>
+        ) : (
+          <>Review your services, then choose who you'd like to book with.</>
+        )
+      }
     </p>
   </header>
 
@@ -224,16 +253,18 @@ const bookBase = withBase();
           type="button"
           variant="primary"
           data-continue-btn
-          data-datetime-base={datetimeBase}
+          data-continue-url={continueTargetUrl}
         >
-          Continue to date & time
+          {continueLabel}
         </Button>
       </div>
     </footer>
   </section>
 
   <p class="back">
-    <a href={`${bookBase}?stylist=${stylist.slug}`}>← Back to services</a>
+    <a href={stylist ? `${bookBase}?stylist=${stylist.slug}` : bookBase}>
+      ← Back to services
+    </a>
   </p>
 </BookingLayout>
 
@@ -241,7 +272,7 @@ const bookBase = withBase();
   define:vars={{
     cartJson,
     suggestionsJson,
-    stylistSlug,
+    stylistSlug: stylistSlug ?? "",
     showStylistStep,
     primaryServiceId,
     existingAck,
@@ -419,8 +450,7 @@ const bookBase = withBase();
   function syncUrl() {
     const params = new URLSearchParams();
     params.set("services", cart.map((item) => item.id).join(","));
-    params.set("stylist", stylistSlug);
-    if (showStylistStep) params.set("flow", "stylist");
+    if (stylistSlug) params.set("stylist", stylistSlug);
     if (existingAck) params.set(existingClientAckParam, "1");
     window.history.replaceState({}, "", `?${params.toString()}`);
   }
@@ -445,13 +475,13 @@ const bookBase = withBase();
       }
     }
 
-    const base = continueBtn.dataset.datetimeBase ?? "";
+    const base = continueBtn.dataset.continueUrl ?? "";
     const params = new URLSearchParams();
     params.set("services", cart.map((item) => item.id).join(","));
-    params.set("stylist", stylistSlug);
-    if (showStylistStep) params.set("flow", "stylist");
+    if (stylistSlug) params.set("stylist", stylistSlug);
     if (existingAck) params.set(existingClientAckParam, "1");
-    window.location.href = `${base}?${params.toString()}`;
+    const separator = base.includes("?") ? "&" : "?";
+    window.location.href = `${base}${separator}${params.toString()}`;
   });
 
   renderSuggestions();

@@ -1,5 +1,6 @@
 ---
 import BookingLayout from "../layouts/BookingLayout.astro";
+import LocationContext from "../components/LocationContext.astro";
 import ServiceBooking from "../components/ServiceBooking.astro";
 import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
 import {
@@ -39,6 +40,7 @@ const continueHref = `${withBase()}?${continueParams.toString()}`;
 ---
 
 <BookingLayout title="Choose a service" step="service">
+  <LocationContext />
   {
     showNewClientsModal && preselectedStylist && (
       <NotAcceptingNewClientsModal

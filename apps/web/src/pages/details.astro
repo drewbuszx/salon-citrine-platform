@@ -13,6 +13,7 @@ import {
 } from "../lib/booking-data";
 import { resolveBookingSlot } from "../lib/availability";
 import { fetchActiveBookingPolicy } from "../lib/booking-policy";
+import { bookingApi } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -21,6 +22,7 @@ const stylistSlug = Astro.url.searchParams.get("stylist");
 const date = Astro.url.searchParams.get("date");
 const time = Astro.url.searchParams.get("time");
 const startsAtParam = Astro.url.searchParams.get("startsAt");
+const cartId = Astro.url.searchParams.get("cartId");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
@@ -74,6 +76,14 @@ const confirmUrl = withBase("confirm/");
     {date} at {slot.label}
   </p>
 
+  {
+    cartId && (
+      <p class="reservation-hold" data-reservation-hold data-cart-id={cartId} hidden>
+        Your time is held for <strong data-reservation-countdown>…</strong>.
+      </p>
+    )
+  }
+
   <form
     class="details-form"
     data-booking-details-form
@@ -81,6 +91,9 @@ const confirmUrl = withBase("confirm/");
     data-setup-intent-url={setupIntentUrl}
     data-appointments-url={appointmentsUrl}
     data-confirm-url={confirmUrl}
+    data-client-lookup-url={bookingApi.clientLookup}
+    data-cart-api-url={bookingApi.cart}
+    data-cart-id={cartId ?? ""}
     novalidate
   >
     <input type="hidden" name="services" value={servicesParamValue} />
@@ -89,7 +102,10 @@ const confirmUrl = withBase("confirm/");
     <input type="hidden" name="date" value={date} />
     <input type="hidden" name="time" value={slot.label} />
     <input type="hidden" name="startsAt" value={slot.startsAt} />
+    {cartId && <input type="hidden" name="cartId" value={cartId} />}
     <input type="hidden" id="policy-ack" name="policyAck" value="false" />
+
+    <p class="lookup-status" data-lookup-status hidden aria-live="polite"></p>
 
     <label class="field">
       <span>First name</span>
@@ -170,6 +186,20 @@ const confirmUrl = withBase("confirm/");
     padding: 1rem;
     background: var(--color-light);
     border-left: 3px solid var(--color-sage);
+  }
+
+  .reservation-hold {
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    background: rgba(231, 172, 70, 0.15);
+    border: 1px solid var(--color-citrine);
+    font-size: 0.95rem;
+  }
+
+  .lookup-status {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-sage);
   }
 
   .details-form {

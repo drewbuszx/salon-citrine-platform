@@ -12,35 +12,49 @@ import {
   formatPrice,
   getServiceById,
   getStaffBySlug,
+  hasExistingClientAck,
   isAcceptingNewClients,
+  parseServiceIdsFromParams,
   staffFirstName,
 } from "../lib/booking-data";
+import { datetimeUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
-const serviceId = Astro.url.searchParams.get("service");
+const serviceParam = Astro.url.searchParams.get("service");
+const servicesParam = Astro.url.searchParams.get("services");
 const stylistSlug = Astro.url.searchParams.get("stylist");
+const returningAck = Astro.url.searchParams.get("returning") === "1";
+const existingAck = hasExistingClientAck(Astro.url.searchParams);
 
-const [service, preselectedStylist, returningOnlySlugs] = await Promise.all([
-  getServiceById(serviceId),
+const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
+const primaryServiceId = serviceIds[0] ?? serviceParam;
+
+const [primaryService, preselectedStylist, returningOnlySlugs] = await Promise.all([
+  getServiceById(primaryServiceId),
   getStaffBySlug(stylistSlug),
-  serviceId ? fetchReturningOnlyStaffSlugs(serviceId) : Promise.resolve(new Set<string>()),
+  primaryServiceId ? fetchReturningOnlyStaffSlugs(primaryServiceId) : Promise.resolve(new Set<string>()),
 ]);
 
-if (!service) {
+if (!primaryService) {
+  return Astro.redirect(withBase());
+}
+
+const resolvedServiceIds =
+  serviceIds.length > 0 ? serviceIds : [primaryService.id];
+
+const flowFlags = {
+  showStylistStep: true,
+  returningAck,
+  existingAck,
+};
+
+if (preselectedStylist) {
   return Astro.redirect(
-    `${withBase()}${stylistSlug ? `?stylist=${stylistSlug}` : ""}`,
+    datetimeUrl(resolvedServiceIds, preselectedStylist.slug, flowFlags),
   );
 }
 
-if (preselectedStylist) {
-  const params = new URLSearchParams();
-  params.set("service", service.id);
-  params.set("stylist", preselectedStylist.slug);
-  return Astro.redirect(`${withBase("cart/")}?${params.toString()}`);
-}
-
-const staff = await fetchStaffForService(service.id);
-const cartBase = withBase("cart/");
+const staff = await fetchStaffForService(primaryService.id);
 const bookBase = withBase();
 const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
 ---
@@ -50,7 +64,8 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     <p class="stylist-page__kicker">Almost there</p>
     <h1>Choose a professional</h1>
     <p class="lead">
-      For <strong>{service.name}</strong> — select who you'd like to book with.
+      For <strong>{primaryService.name}</strong>
+      {resolvedServiceIds.length > 1 && ` + ${resolvedServiceIds.length - 1} more`} — select who you'd like to book with.
     </p>
   </header>
 
@@ -60,9 +75,9 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
         const isReturningRestricted = returningOnlySlugs.has(member.slug);
         const isNotAcceptingNew = !isAcceptingNewClients(member);
         const isRestricted = isReturningRestricted || isNotAcceptingNew;
-        const cartHref = `${cartBase}?service=${service.id}&stylist=${member.slug}&flow=stylist`;
-        const continueHref = `${cartHref}&returning=1`;
-        const existingContinueHref = `${cartHref}&${EXISTING_CLIENT_ACK_PARAM}=1`;
+        const datetimeHref = datetimeUrl(resolvedServiceIds, member.slug, flowFlags);
+        const continueHref = `${datetimeHref}${datetimeHref.includes("?") ? "&" : "?"}returning=1`;
+        const existingContinueHref = `${datetimeHref}${datetimeHref.includes("?") ? "&" : "?"}${EXISTING_CLIENT_ACK_PARAM}=1`;
 
         return (
           <li>
@@ -112,7 +127,7 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
                 <span class="stylist-card__action">Select</span>
               </button>
             ) : (
-              <a class="stylist-card" href={cartHref}>
+              <a class="stylist-card" href={datetimeHref}>
                 {member.photoUrl ? (
                   <img
                     class="stylist-card__photo"
@@ -155,32 +170,34 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
   }
 
   <ReturningClientsModal
-    serviceName={service.name}
-    serviceDescription={service.description}
+    serviceName={primaryService.name}
+    serviceDescription={primaryService.description}
     stylistName=""
-    durationLabel={formatDuration(service.durationMinutes)}
-    priceLabel={formatPrice(service)}
-    continueHref={cartBase}
-    chooseStylistHref={`${withBase("stylist/")}?service=${service.id}`}
+    durationLabel={formatDuration(primaryService.durationMinutes)}
+    priceLabel={formatPrice(primaryService)}
+    continueHref={bookBase}
+    chooseStylistHref={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}
   />
 
   <NotAcceptingNewClientsModal
     stylistFirstName=""
     stylistSlug=""
-    continueHref={cartBase}
-    chooseStylistHref={`${withBase("stylist/")}?service=${service.id}`}
+    continueHref={bookBase}
+    chooseStylistHref={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}
   />
 
   <p class="back">
-    <a href={bookBase}>← Back to services</a>
+    <a href={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}>
+      ← Back to cart
+    </a>
   </p>
 </BookingLayout>
 
 <script
   define:vars={{
     returningOnlyJson,
-    serviceDuration: formatDuration(service.durationMinutes),
-    servicePrice: formatPrice(service),
+    serviceDuration: formatDuration(primaryService.durationMinutes),
+    servicePrice: formatPrice(primaryService),
   }}
 >
   const returningOnly = new Set(JSON.parse(returningOnlyJson));

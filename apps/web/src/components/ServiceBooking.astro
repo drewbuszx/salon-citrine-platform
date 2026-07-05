@@ -7,6 +7,7 @@ import {
   HAIR_STYLIST_CATEGORY_ORDER,
   VIEW_ALL_LABEL,
 } from "../lib/booking-data";
+import { cartUrl, stylistUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 interface Props {
@@ -276,8 +277,8 @@ const stylistBase = withBase("stylist/");
       link.className = "service-card__select sc-button sc-button--primary";
       link.textContent = "Select";
       link.href = staffSlug
-        ? `${cartBase}?service=${service.id}&stylist=${staffSlug}`
-        : `${stylistBase}?service=${service.id}`;
+        ? cartUrl([service.id], staffSlug)
+        : cartUrl([service.id]);
       actions.appendChild(link);
 
       li.appendChild(body);
