@@ -89,7 +89,6 @@ function initInventory(root: HTMLElement) {
 
   const addModal = root.querySelector<HTMLElement>("[data-add-modal]");
   const addForm = root.querySelector<HTMLFormElement>("[data-add-form]");
-
   const editModal = root.querySelector<HTMLElement>("[data-edit-modal]");
   const editForm = root.querySelector<HTMLFormElement>("[data-edit-form]");
 
@@ -308,6 +307,22 @@ function initInventory(root: HTMLElement) {
     openModal(detailModal);
   }
 
+  function openEditModal(product: Product) {
+    if (!editForm) return;
+    selectedProduct = product;
+    const setField = (name: string, value: string) => {
+      const input = editForm.querySelector<HTMLInputElement>(`[name="${name}"]`);
+      if (input) input.value = value;
+    };
+    setField("name", product.name);
+    setField("barcode", product.barcode ?? "");
+    setField("category", product.category ?? "");
+    setField("reorder_threshold", String(product.reorderThreshold));
+    setField("image_url", product.imageUrl ?? "");
+    closeModal(detailModal);
+    openModal(editModal);
+  }
+
   function openTransactionModal(
     type: TransactionType,
     product: Product,
@@ -463,28 +478,8 @@ function initInventory(root: HTMLElement) {
     openModal(addModal);
   });
 
-  function openEditModal(product: Product) {
-    if (!editForm) return;
-    selectedProduct = product;
-    editForm.reset();
-    const setField = (name: string, value: string) => {
-      const input = editForm.querySelector<HTMLInputElement>(`[name="${name}"]`);
-      if (input) input.value = value;
-    };
-    setField("name", product.name);
-    setField("barcode", product.barcode ?? "");
-    setField("category", product.category ?? "");
-    setField("reorder_threshold", String(product.reorderThreshold));
-    setField("image_url", product.imageUrl ?? "");
-    openModal(editModal);
-    window.requestAnimationFrame(() => {
-      editForm.querySelector<HTMLInputElement>('[name="name"]')?.focus();
-    });
-  }
-
   root.querySelector("[data-edit-open]")?.addEventListener("click", () => {
-    if (!selectedProduct) return;
-    openEditModal(selectedProduct);
+    if (selectedProduct) openEditModal(selectedProduct);
   });
 
   root.querySelectorAll("[data-modal-close]").forEach((btn) => {
@@ -521,40 +516,6 @@ function initInventory(root: HTMLElement) {
     },
   );
 
-  editForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-    void (async () => {
-      if (!selectedProduct) return;
-      const formData = new FormData(editForm);
-      const payload = {
-        name: String(formData.get("name") ?? "").trim(),
-        barcode: String(formData.get("barcode") ?? "").trim() || null,
-        category: String(formData.get("category") ?? "").trim() || null,
-        reorder_threshold: Number(formData.get("reorder_threshold") ?? 0),
-        image_url: String(formData.get("image_url") ?? "").trim() || null,
-      };
-
-      const res = await fetch(
-        apiUrl(`/api/inventory/products/${encodeURIComponent(selectedProduct.id)}`),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setStatus(data.error ?? "Could not update product", true);
-        return;
-      }
-
-      closeModal(editModal);
-      closeModal(detailModal);
-      setStatus("Product updated.");
-      await fetchProducts(searchInput?.value ?? "");
-    })();
-  });
-
   addForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     void (async () => {
@@ -585,6 +546,42 @@ function initInventory(root: HTMLElement) {
       closeModal(addModal);
       setStatus("Product added.");
       await fetchProducts(searchInput?.value ?? "");
+    })();
+  });
+
+  editForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void (async () => {
+      if (!selectedProduct) return;
+      const formData = new FormData(editForm);
+      const payload = {
+        name: String(formData.get("name") ?? "").trim(),
+        barcode: String(formData.get("barcode") ?? "").trim() || null,
+        category: String(formData.get("category") ?? "").trim() || null,
+        reorder_threshold: Number(formData.get("reorder_threshold") ?? 0),
+        image_url: String(formData.get("image_url") ?? "").trim() || null,
+      };
+
+      const res = await fetch(
+        apiUrl(`/api/inventory/products/${selectedProduct.id}`),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setStatus(data.error ?? "Could not update product", true);
+        return;
+      }
+
+      const updated = data.product as Product;
+      closeModal(editModal);
+      setStatus("Product updated.");
+      await fetchProducts(searchInput?.value ?? "");
+      const refreshed = products.find((item) => item.id === updated.id) ?? updated;
+      openProductDetail(refreshed);
     })();
   });
 

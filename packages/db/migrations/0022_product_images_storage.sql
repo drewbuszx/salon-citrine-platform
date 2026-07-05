@@ -13,35 +13,51 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
-create policy "Public read product images"
-  on storage.objects for select
-  using (bucket_id = 'product-images');
+do $$ begin
+  create policy "Public read product images"
+    on storage.objects for select
+    using (bucket_id = 'product-images');
+exception
+  when duplicate_object then null;
+end $$;
 
-create policy "Managers upload product images"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'product-images'
-    and auth.role() = 'authenticated'
-    and public.is_salon_manager()
-  );
+do $$ begin
+  create policy "Managers upload product images"
+    on storage.objects for insert
+    with check (
+      bucket_id = 'product-images'
+      and auth.role() = 'authenticated'
+      and public.is_salon_manager()
+    );
+exception
+  when duplicate_object then null;
+end $$;
 
-create policy "Managers update product images"
-  on storage.objects for update
-  using (
-    bucket_id = 'product-images'
-    and auth.role() = 'authenticated'
-    and public.is_salon_manager()
-  )
-  with check (
-    bucket_id = 'product-images'
-    and auth.role() = 'authenticated'
-    and public.is_salon_manager()
-  );
+do $$ begin
+  create policy "Managers update product images"
+    on storage.objects for update
+    using (
+      bucket_id = 'product-images'
+      and auth.role() = 'authenticated'
+      and public.is_salon_manager()
+    )
+    with check (
+      bucket_id = 'product-images'
+      and auth.role() = 'authenticated'
+      and public.is_salon_manager()
+    );
+exception
+  when duplicate_object then null;
+end $$;
 
-create policy "Managers delete product images"
-  on storage.objects for delete
-  using (
-    bucket_id = 'product-images'
-    and auth.role() = 'authenticated'
-    and public.is_salon_manager()
-  );
+do $$ begin
+  create policy "Managers delete product images"
+    on storage.objects for delete
+    using (
+      bucket_id = 'product-images'
+      and auth.role() = 'authenticated'
+      and public.is_salon_manager()
+    );
+exception
+  when duplicate_object then null;
+end $$;
