@@ -1,9 +1,0 @@
-name = "salon-citrine-team"
-compatibility_date = "2024-09-23"
-pages_build_output_dir = "apps/team/dist"
-
-[[kv_namespaces]]
-binding = "SESSION"
-# Replace with your KV namespace ID, or bind SESSION in the Cloudflare dashboard
-# (Pages → Settings → Functions → KV namespace bindings) instead of editing this file.
-id = "15711a0ae59f411693baf6e64bd304dd"

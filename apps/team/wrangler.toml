@@ -1,8 +1,10 @@
 name = "salon-citrine-team"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = "dist"
+compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "SESSION"
-# Replace with your KV namespace ID from Cloudflare dashboard (Workers & Pages → KV)
 id = "15711a0ae59f411693baf6e64bd304dd"
+
+[images]
+binding = "IMAGES"
