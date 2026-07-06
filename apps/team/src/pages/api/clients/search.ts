@@ -33,6 +33,7 @@ export const GET: APIRoute = async (context) => {
   const referral = String(params.get("referral") ?? "").trim();
   const providerId = String(params.get("provider") ?? "").trim();
   const purchased = params.get("purchased") === "1";
+  const hasVisits = params.get("hasVisits") === "1";
 
   const { count: totalCount, error: countError } = await supabase
     .from("clients")
@@ -94,6 +95,10 @@ export const GET: APIRoute = async (context) => {
     query = query.gt("lifetime_value_cents", 0);
   }
 
+  if (hasVisits) {
+    query = query.gt("visit_count", 0);
+  }
+
   const { data, error } = await query.limit(term.length >= 2 ? SEARCH_LIMIT : LIST_LIMIT);
 
   if (error) {
@@ -107,6 +112,7 @@ export const GET: APIRoute = async (context) => {
   if (referral) filtersApplied += 1;
   if (providerId) filtersApplied += 1;
   if (purchased) filtersApplied += 1;
+  if (hasVisits) filtersApplied += 1;
 
   return jsonOk({
     clients,

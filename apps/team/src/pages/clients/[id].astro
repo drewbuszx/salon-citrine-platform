@@ -74,38 +74,43 @@ if (!clientId) {
                   <input type="checkbox" name="emailOptIn" />
                   Email marketing
                 </label>
-                <button type="submit" class="btn-primary">Save contact</button>
+                <button type="submit" class="btn-primary" data-save-contact>Save contact</button>
               </form>
             </section>
 
-            <section class="team-panel" id="client-intake">
+            <section class="team-panel client-panel" id="client-intake">
               <h2 class="team-panel__title">Intake profile</h2>
+              <p class="client-panel__lead">Birthday, address, and how they found us — used for reminders and marketing.</p>
               <form class="client-form" data-intake-form>
                 <label class="form-label">
                   Birthday
                   <input class="form-input" name="birthday" type="date" />
+                  <span class="form-hint">Optional — for birthday offers.</span>
                 </label>
-                <label class="form-label">
-                  Street address
-                  <input class="form-input" name="addressLine1" autocomplete="address-line1" />
-                </label>
-                <label class="form-label">
-                  Address line 2
-                  <input class="form-input" name="addressLine2" autocomplete="address-line2" />
-                </label>
-                <div class="client-form__row">
+                <div class="client-form__group">
+                  <p class="client-form__group-label">Mailing address</p>
                   <label class="form-label">
-                    City
-                    <input class="form-input" name="addressCity" autocomplete="address-level2" />
+                    Street address
+                    <input class="form-input" name="addressLine1" autocomplete="address-line1" />
                   </label>
                   <label class="form-label">
-                    State
-                    <input class="form-input" name="addressState" maxlength="2" autocomplete="address-level1" />
+                    Address line 2
+                    <input class="form-input" name="addressLine2" autocomplete="address-line2" placeholder="Apt, suite, etc." />
                   </label>
-                  <label class="form-label">
-                    ZIP
-                    <input class="form-input" name="addressZip" inputmode="numeric" autocomplete="postal-code" />
-                  </label>
+                  <div class="client-form__row">
+                    <label class="form-label">
+                      City
+                      <input class="form-input" name="addressCity" autocomplete="address-level2" />
+                    </label>
+                    <label class="form-label">
+                      State
+                      <input class="form-input" name="addressState" maxlength="2" autocomplete="address-level1" placeholder="IN" />
+                    </label>
+                    <label class="form-label">
+                      ZIP
+                      <input class="form-input" name="addressZip" inputmode="numeric" autocomplete="postal-code" />
+                    </label>
+                  </div>
                 </div>
                 <label class="form-label">
                   Preferred contact
@@ -120,7 +125,7 @@ if (!clientId) {
                 </label>
                 <fieldset class="client-form__fieldset">
                   <legend class="form-label">How they heard about us</legend>
-                  <div class="client-form__checks">
+                  <div class="client-form__checks client-form__checks--grid">
                     {
                       INTAKE_REFERRAL_SOURCES.map((source) => (
                         <label class="checkbox-row">
@@ -131,7 +136,7 @@ if (!clientId) {
                     }
                   </div>
                 </fieldset>
-                <button type="submit" class="btn-primary">Save intake</button>
+                <button type="submit" class="btn-primary" data-save-intake>Save intake</button>
               </form>
             </section>
 
@@ -143,7 +148,7 @@ if (!clientId) {
                 <label class="form-label">Formula notes<textarea class="form-input form-input--textarea" name="formulaNotes" rows="3"></textarea></label>
                 <label class="form-label">Staff notes<textarea class="form-input form-input--textarea" name="staffNotes" rows="3"></textarea></label>
                 <label class="form-label">Tags (comma-separated)<input class="form-input" name="tags" placeholder="vip, balayage, sensitive scalp" /></label>
-                <button type="submit" class="btn-primary">Save notes</button>
+                <button type="submit" class="btn-primary" data-save-notes>Save notes</button>
               </form>
             </section>
           </aside>
@@ -242,9 +247,59 @@ if (!clientId) {
     border: 0;
   }
 
+  .client-panel__lead {
+    margin: -0.35rem 0 0.85rem;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-500);
+  }
+
+  .client-form__group {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .client-form__group-label {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .form-hint {
+    font-size: var(--text-xs);
+    letter-spacing: normal;
+    text-transform: none;
+    font-weight: 400;
+    color: var(--color-stone-400);
+  }
+
   .client-form__checks {
     display: grid;
     gap: 0.35rem;
+  }
+
+  .client-form__checks--grid {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+    gap: 0.45rem 0.75rem;
+  }
+
+  .client-panel .btn-primary[aria-busy="true"] {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  .client-panel .btn-primary--saved {
+    background: var(--color-sage);
+    color: var(--color-stone-50);
   }
 
   .checkbox-row {

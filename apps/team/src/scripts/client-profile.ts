@@ -196,72 +196,88 @@ async function patchClient(payload: Record<string, unknown>) {
   if (!res.ok) throw new Error(body.error || "Save failed");
 }
 
-contactForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
+function setSaveBusy(button: HTMLButtonElement | null, busy: boolean, label: string, savedLabel?: string) {
+  if (!button) return;
+  button.disabled = busy;
+  button.setAttribute("aria-busy", busy ? "true" : "false");
+  button.textContent = busy ? "Saving…" : label;
+  button.classList.toggle("btn-primary--saved", Boolean(savedLabel && !busy));
+  if (savedLabel && !busy) {
+    window.setTimeout(() => {
+      button.classList.remove("btn-primary--saved");
+      button.textContent = label;
+    }, 1600);
+  }
+}
+
+async function handleFormSave(
+  form: HTMLFormElement,
+  button: HTMLButtonElement | null,
+  label: string,
+  savedLabel: string,
+  buildPayload: () => Record<string, unknown>,
+) {
+  setSaveBusy(button, true, label);
   try {
-    await patchClient({
-      firstName: readField(contactForm, "firstName"),
-      lastName: readField(contactForm, "lastName"),
-      email: readField(contactForm, "email") || null,
-      phone: readField(contactForm, "phone") || null,
-      smsOptIn: readCheckbox(contactForm, "smsOptIn"),
-      emailOptIn: readCheckbox(contactForm, "emailOptIn"),
-    });
+    await patchClient(buildPayload());
     showError("");
-    showToast("Contact saved.", "success");
+    showToast(savedLabel, "success");
+    setSaveBusy(button, false, label, savedLabel);
     await loadProfile();
   } catch (err) {
     const msg = friendlyError(err, "Save failed");
     showError(msg);
     showToast(msg, "error");
+    setSaveBusy(button, false, label);
   }
+}
+
+const saveContactBtn = root?.querySelector<HTMLButtonElement>("[data-save-contact]");
+const saveIntakeBtn = root?.querySelector<HTMLButtonElement>("[data-save-intake]");
+const saveNotesBtn = root?.querySelector<HTMLButtonElement>("[data-save-notes]");
+
+contactForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!contactForm) return;
+  await handleFormSave(contactForm, saveContactBtn, "Save contact", "Contact saved.", () => ({
+    firstName: readField(contactForm, "firstName"),
+    lastName: readField(contactForm, "lastName"),
+    email: readField(contactForm, "email") || null,
+    phone: readField(contactForm, "phone") || null,
+    smsOptIn: readCheckbox(contactForm, "smsOptIn"),
+    emailOptIn: readCheckbox(contactForm, "emailOptIn"),
+  }));
 });
 
 intakeForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  try {
-    await patchClient({
-      birthday: readField(intakeForm, "birthday") || null,
-      addressLine1: readField(intakeForm, "addressLine1") || null,
-      addressLine2: readField(intakeForm, "addressLine2") || null,
-      addressCity: readField(intakeForm, "addressCity") || null,
-      addressState: readField(intakeForm, "addressState").toUpperCase() || null,
-      addressZip: readField(intakeForm, "addressZip") || null,
-      preferredContactMethod: readField(intakeForm, "preferredContactMethod") || null,
-      referralSources: readCheckboxGroup(intakeForm, "referralSources"),
-    });
-    showError("");
-    showToast("Intake details saved.", "success");
-    await loadProfile();
-  } catch (err) {
-    const msg = friendlyError(err, "Save failed");
-    showError(msg);
-    showToast(msg, "error");
-  }
+  if (!intakeForm) return;
+  await handleFormSave(intakeForm, saveIntakeBtn, "Save intake", "Intake saved.", () => ({
+    birthday: readField(intakeForm, "birthday") || null,
+    addressLine1: readField(intakeForm, "addressLine1") || null,
+    addressLine2: readField(intakeForm, "addressLine2") || null,
+    addressCity: readField(intakeForm, "addressCity") || null,
+    addressState: readField(intakeForm, "addressState").toUpperCase() || null,
+    addressZip: readField(intakeForm, "addressZip") || null,
+    preferredContactMethod: readField(intakeForm, "preferredContactMethod") || null,
+    referralSources: readCheckboxGroup(intakeForm, "referralSources"),
+  }));
 });
 
 notesForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!notesForm) return;
   const tagsRaw = readField(notesForm, "tags");
   const tags = tagsRaw
     ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean)
     : [];
-  try {
-    await patchClient({
-      bookingPreferences: readField(notesForm, "bookingPreferences") || null,
-      intakeNotes: readField(notesForm, "intakeNotes") || null,
-      formulaNotes: readField(notesForm, "formulaNotes") || null,
-      staffNotes: readField(notesForm, "staffNotes") || null,
-      tags,
-    });
-    showError("");
-    showToast("Notes saved.", "success");
-    await loadProfile();
-  } catch (err) {
-    const msg = friendlyError(err, "Save failed");
-    showError(msg);
-    showToast(msg, "error");
-  }
+  await handleFormSave(notesForm, saveNotesBtn, "Save notes", "Notes saved.", () => ({
+    bookingPreferences: readField(notesForm, "bookingPreferences") || null,
+    intakeNotes: readField(notesForm, "intakeNotes") || null,
+    formulaNotes: readField(notesForm, "formulaNotes") || null,
+    staffNotes: readField(notesForm, "staffNotes") || null,
+    tags,
+  }));
 });
 
 addNoteForm?.addEventListener("submit", async (event) => {
