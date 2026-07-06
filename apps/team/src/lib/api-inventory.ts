@@ -4,7 +4,7 @@ import type { StaffProfile } from "../env.d.ts";
 export type InventoryTransactionType = "receive" | "use" | "adjust" | "count";
 
 export const PRODUCT_SELECT =
-  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, image_url, inventory_stock ( quantity )";
+  "id, name, sku, barcode, brand, category, unit, reorder_threshold, is_active, notes, image_url, retail_price_cents, inventory_stock ( quantity )";
 
 export type ProductRow = {
   id: string;
@@ -18,6 +18,7 @@ export type ProductRow = {
   is_active: boolean;
   notes: string | null;
   image_url: string | null;
+  retail_price_cents: number | null;
   inventory_stock: { quantity: number } | { quantity: number }[] | null;
 };
 
@@ -48,6 +49,7 @@ export function mapProduct(row: ProductRow) {
     isActive: row.is_active,
     notes: row.notes,
     imageUrl: row.image_url,
+    retailPriceCents: row.retail_price_cents,
     quantity,
     isLowStock: reorderThreshold > 0 && quantity <= reorderThreshold,
   };

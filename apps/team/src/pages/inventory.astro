@@ -1,64 +1,109 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
 const { staff } = Astro.locals;
 const isManager = isSalonManager(staff);
+
+const filterCategories = [
+  "Category",
+  "Brand",
+  "Stock Level",
+  "Low Stock",
+  "Location",
+  "Tags",
+];
 ---
 
-<TeamLayout title="Inventory" activeNav="stock" plain wide>
+<TeamLayout title="Stock" activeNav="stock" plain wide fullBleed>
   <div
-    class="inventory-page"
+    class="stock-page"
     data-inventory-root
     data-is-manager={isManager ? "1" : "0"}
   >
-    <TeamPage
-      title="Inventory"
-      lead="Back-bar supplies — scan a barcode or QR code to check in received stock."
-      toolbar
-    >
-      <div slot="actions" class="inventory-page__actions inventory-page__actions--desktop">
-        <button class="btn-primary inventory-page__scan" type="button" data-scan-open>
+    <header class="stock-page__subheader">
+      <h1 class="stock-page__title">Stock</h1>
+      <div class="stock-page__header-actions">
+        <button class="stock-page__btn-secondary stock-page__scan-desktop" type="button" data-scan-open>
           Scan to check in
         </button>
         {
           isManager ? (
-            <button class="btn-secondary" type="button" data-add-open>
+            <button class="stock-page__btn-primary" type="button" data-add-open>
               Add product
             </button>
           ) : null
         }
       </div>
+    </header>
 
-      <div slot="toolbar" class="inventory-toolbar">
-        <label class="team-toolbar-field team-toolbar-field--grow">
-          <span class="team-toolbar-label">Search</span>
+    <div class="stock-page__body">
+      <aside class="stock-page__sidebar" aria-label="Refine your search">
+        <h2 class="stock-page__sidebar-title">Refine Your Search</h2>
+        <div class="stock-page__filters">
+          {
+            filterCategories.map((label) => (
+              <details class="stock-filter">
+                <summary class="stock-filter__trigger">
+                  <span>{label}</span>
+                  <svg class="stock-filter__chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </summary>
+                <div class="stock-filter__body">
+                  <p class="stock-filter__placeholder">Filter options coming soon.</p>
+                </div>
+              </details>
+            ))
+          }
+        </div>
+        <label class="stock-page__sidebar-filter">
+          <input type="checkbox" data-low-stock-filter />
+          Low stock only
+        </label>
+        <button class="stock-page__export" type="button" data-coming-soon>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          Export current list
+        </button>
+      </aside>
+
+      <main class="stock-page__main">
+        <h2 class="stock-page__main-title">Your Products</h2>
+        <p class="stock-page__stats">
+          Total: <span data-total-count>—</span>
+          · Low stock: <span data-low-stock-count>—</span>
+          · <span data-filter-count>0</span> filters applied
+        </p>
+
+        <p class="stock-page__notice stock-page__notice--banner" data-low-stock-banner hidden></p>
+
+        <label class="stock-page__search">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+          </svg>
           <input
-            class="form-input"
+            class="stock-page__search-input"
             type="search"
-            placeholder="Name, brand, barcode, SKU…"
+            placeholder="Search by name, brand, barcode, SKU, or category"
             autocomplete="off"
             data-search
           />
         </label>
-        <label class="inventory-filter">
-          <input type="checkbox" data-low-stock-filter />
-          Low stock only
-        </label>
-      </div>
 
-      <p class="notice inventory-low-stock" data-low-stock-banner hidden></p>
-      <p class="notice" data-status hidden></p>
+        <p class="stock-page__notice" data-status hidden aria-live="polite"></p>
 
-      <div class="inventory-list" data-product-list>
-        <p class="empty-state">Loading products…</p>
-      </div>
-    </TeamPage>
+        <div class="stock-page__list" data-product-list>
+          <p class="stock-page__empty">Loading products…</p>
+        </div>
+      </main>
+    </div>
 
-    <div class="inventory-scan-bar">
-      <button class="btn-primary inventory-scan-bar__btn" type="button" data-scan-open>
+    <div class="stock-scan-bar">
+      <button class="stock-page__btn-primary stock-scan-bar__btn" type="button" data-scan-open>
         Scan to check in
       </button>
     </div>
@@ -77,48 +122,17 @@ const isManager = isSalonManager(staff);
         <p class="inventory-scanner__hint">
           Point your camera at a barcode (UPC/EAN) or QR code on the product
         </p>
-        <p class="notice notice--error inventory-scanner__error" data-scan-error></p>
+        <p class="inventory-scanner__error" data-scan-error></p>
         <div class="inventory-scanner__manual">
-          <label class="form-label">
+          <label class="inventory-form-label">
             Or enter code manually
-            <input class="form-input" type="text" data-manual-barcode placeholder="Barcode or QR value" />
+            <input class="inventory-form-input" type="text" data-manual-barcode placeholder="Barcode or QR value" />
           </label>
-          <button class="btn-secondary" type="button" data-manual-barcode-submit>
+          <button class="stock-page__btn-secondary" type="button" data-manual-barcode-submit>
             Check in
           </button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Product detail modal -->
-  <div class="inventory-modal" data-detail-modal hidden>
-    <div class="inventory-modal__backdrop" data-modal-close="detail"></div>
-    <div class="inventory-modal__panel" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-      <div class="inventory-modal__head">
-        <h2 id="detail-title" data-detail-title>Product</h2>
-        <button class="inventory-modal__close" type="button" data-modal-close="detail" aria-label="Close">×</button>
-      </div>
-      <div class="inventory-detail__image-wrap" data-detail-image-wrap hidden>
-        <img class="inventory-detail__image" data-detail-image alt="" />
-      </div>
-      <p class="inventory-detail__meta" data-detail-meta></p>
-      <p class="inventory-detail__qty" data-detail-qty></p>
-      <div class="inventory-detail__actions">
-        <button class="btn-primary" type="button" data-tx-action="receive">Check in</button>
-        <button class="btn-secondary" type="button" data-tx-action="use">Use</button>
-        <button class="btn-secondary" type="button" data-tx-action="adjust">Adjust</button>
-        <button class="btn-secondary" type="button" data-tx-action="count">Set count</button>
-        {
-          isManager ? (
-            <button class="btn-secondary inventory-detail__edit" type="button" data-edit-open>
-              Edit product
-            </button>
-          ) : null
-        }
-      </div>
-      <h3 class="inventory-detail__history-title">Recent activity</h3>
-      <div class="inventory-history" data-detail-history></div>
     </div>
   </div>
 
@@ -130,15 +144,15 @@ const isManager = isSalonManager(staff);
         <h2 id="tx-title" data-tx-title>Log transaction</h2>
         <button class="inventory-modal__close" type="button" data-modal-close="tx" aria-label="Close">×</button>
       </div>
-      <label class="form-label">
+      <label class="inventory-form-label">
         Quantity
-        <input class="form-input" type="number" step="any" min="0" data-tx-qty />
+        <input class="inventory-form-input" type="number" step="any" min="0" data-tx-qty />
       </label>
-      <label class="form-label">
+      <label class="inventory-form-label">
         Notes (optional)
-        <textarea class="form-input form-input--textarea" rows="2" data-tx-notes></textarea>
+        <textarea class="inventory-form-input inventory-form-input--textarea" rows="2" data-tx-notes></textarea>
       </label>
-      <button class="btn-primary" type="button" data-tx-submit>Save</button>
+      <button class="stock-page__btn-primary" type="button" data-tx-submit>Save</button>
     </div>
   </div>
 
@@ -164,38 +178,38 @@ const isManager = isSalonManager(staff);
               ×
             </button>
           </div>
-          <form class="form-stack" data-add-form>
-            <label class="form-label">
+          <form class="inventory-form-stack" data-add-form>
+            <label class="inventory-form-label">
               Name
-              <input class="form-input" name="name" required />
+              <input class="inventory-form-input" name="name" required />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Barcode
-              <input class="form-input" name="barcode" inputmode="numeric" />
+              <input class="inventory-form-input" name="barcode" inputmode="numeric" />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Brand
-              <input class="form-input" name="brand" />
+              <input class="inventory-form-input" name="brand" />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Category
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="category"
                 placeholder="color, shampoo, developer…"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Unit
-              <input class="form-input" name="unit" value="each" />
+              <input class="inventory-form-input" name="unit" value="each" />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Reorder threshold
-              <span class="form-hint">
+              <span class="inventory-form-hint">
                 When on-hand quantity is at or below this number, the product is flagged as low stock. Use 0 to disable alerts.
               </span>
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="reorder_threshold"
                 type="number"
                 min="0"
@@ -203,23 +217,23 @@ const isManager = isSalonManager(staff);
                 value="0"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Image URL
-              <span class="form-hint">
+              <span class="inventory-form-hint">
                 Public URL (external link or Supabase Storage product-images bucket).
               </span>
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="image_url"
                 type="url"
                 placeholder="https://…"
                 inputmode="url"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Initial quantity
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="initial_quantity"
                 type="number"
                 min="0"
@@ -227,11 +241,11 @@ const isManager = isSalonManager(staff);
                 value="0"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Notes
-              <textarea class="form-input form-input--textarea" name="notes" rows="2" />
+              <textarea class="inventory-form-input inventory-form-input--textarea" name="notes" rows="2" />
             </label>
-            <button class="btn-primary" type="submit">
+            <button class="stock-page__btn-primary" type="submit">
               Create product
             </button>
           </form>
@@ -262,50 +276,50 @@ const isManager = isSalonManager(staff);
               ×
             </button>
           </div>
-          <form class="form-stack" data-edit-form>
-            <label class="form-label">
+          <form class="inventory-form-stack" data-edit-form>
+            <label class="inventory-form-label">
               Name
-              <input class="form-input" name="name" required />
+              <input class="inventory-form-input" name="name" required />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Barcode
-              <input class="form-input" name="barcode" inputmode="numeric" />
+              <input class="inventory-form-input" name="barcode" inputmode="numeric" />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Category
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="category"
                 placeholder="color, shampoo, developer…"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Reorder threshold
-              <span class="form-hint">
+              <span class="inventory-form-hint">
                 When on-hand quantity is at or below this number, the product is flagged as low stock. Use 0 to disable alerts.
               </span>
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="reorder_threshold"
                 type="number"
                 min="0"
                 step="1"
               />
             </label>
-            <label class="form-label">
+            <label class="inventory-form-label">
               Image URL
-              <span class="form-hint">
+              <span class="inventory-form-hint">
                 Public URL (external link or Supabase Storage product-images bucket).
               </span>
               <input
-                class="form-input"
+                class="inventory-form-input"
                 name="image_url"
                 type="url"
                 placeholder="https://…"
                 inputmode="url"
               />
             </label>
-            <button class="btn-primary" type="submit">
+            <button class="stock-page__btn-primary" type="submit">
               Save changes
             </button>
           </form>
@@ -314,6 +328,8 @@ const isManager = isSalonManager(staff);
     ) : null
   }
 
+  <div class="stock-toast" data-toast hidden role="status"></div>
+
   <script define:vars={{ apiBase: teamUrl("") }}>
     document.body.dataset.apiBase = apiBase;
   </script>
@@ -321,175 +337,632 @@ const isManager = isSalonManager(staff);
 </TeamLayout>
 
 <style>
-  .inventory-toolbar {
+  .stock-page {
     display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 0.75rem 1rem;
-    width: 100%;
+    flex-direction: column;
+    min-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    font-family: var(--font-sans);
+    background: #fff;
+    color: #111827;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .inventory-page__actions {
+  .stock-page__subheader {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+  }
+
+  .stock-page__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .stock-page__header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
   }
 
-  .inventory-page__actions--desktop {
+  .stock-page__btn-primary,
+  .stock-page__btn-secondary {
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .stock-page__btn-primary {
+    border: none;
+    background: #0096ff;
+    color: #fff;
+  }
+
+  .stock-page__btn-primary:hover,
+  .stock-page__btn-primary:focus-visible {
+    background: #0084e0;
+    outline: none;
+  }
+
+  .stock-page__btn-secondary {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+  }
+
+  .stock-page__btn-secondary:hover,
+  .stock-page__btn-secondary:focus-visible {
+    background: #f9fafb;
+    outline: none;
+  }
+
+  .stock-page__scan-desktop {
     display: none;
   }
 
-  .inventory-scan-bar {
+  .stock-page__body {
+    display: grid;
+    grid-template-columns: minmax(220px, 23%) 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .stock-page__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 0.85rem 1.25rem;
+    border-right: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+
+  .stock-page__sidebar-title {
+    margin: 0 0 0.35rem;
+    padding: 0 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .stock-page__filters {
+    display: grid;
+    gap: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .stock-filter {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .stock-filter__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .stock-filter__trigger::-webkit-details-marker {
+    display: none;
+  }
+
+  .stock-filter__chevron {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+    transition: transform 0.15s ease;
+  }
+
+  .stock-filter[open] .stock-filter__chevron {
+    transform: rotate(180deg);
+  }
+
+  .stock-filter__body {
+    padding: 0 0.35rem 0.75rem;
+  }
+
+  .stock-filter__placeholder {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+  }
+
+  .stock-page__sidebar-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .stock-page__sidebar-filter input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #0096ff;
+  }
+
+  .stock-page__export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin-top: auto;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .stock-page__export svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .stock-page__export:hover,
+  .stock-page__export:focus-visible {
+    background: #f3f4f6;
+    outline: none;
+  }
+
+  .stock-page__main {
+    padding: 1.25rem 1.5rem 2rem;
+    background: #fff;
+    min-width: 0;
+  }
+
+  .stock-page__main-title {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .stock-page__stats {
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: #6b7280;
+  }
+
+  .stock-page__search {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+  }
+
+  .stock-page__search svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+  }
+
+  .stock-page__search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #111827;
+    outline: none;
+  }
+
+  .stock-page__search-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .stock-page__notice {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+  }
+
+  .stock-page__notice--error {
+    color: #b91c1c;
+  }
+
+  .stock-page__notice--banner {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid #fcd34d;
+    border-radius: 0.25rem;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .stock-page__notice--banner.stock-page__notice--actionable {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .stock-page__list {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .stock-category__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: capitalize;
+  }
+
+  .stock-category__count {
+    font-weight: 400;
+    color: #9ca3af;
+  }
+
+  .stock-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .stock-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.35rem;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .stock-card:hover {
+    border-color: #d1d5db;
+  }
+
+  .stock-card--expanded {
+    border-color: #0096ff;
+    box-shadow: 0 2px 12px rgba(0, 150, 255, 0.1);
+  }
+
+  .stock-card--low {
+    border-color: #fca5a5;
+  }
+
+  .stock-card--low.stock-card--expanded {
+    border-color: #f87171;
+  }
+
+  .stock-card__header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .stock-card__header:focus-visible {
+    outline: 2px solid #0096ff;
+    outline-offset: -2px;
+  }
+
+  .stock-card__thumb {
+    position: relative;
+    width: 3.5rem;
+    height: 3.5rem;
+    flex-shrink: 0;
+    border-radius: 0.25rem;
+    background: #f3f4f6;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .stock-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .stock-card__placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: #9ca3af;
+  }
+
+  .stock-card__placeholder svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .stock-card__badge {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    font-family: var(--font-sans);
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.15rem;
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+
+  .stock-card__summary {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .stock-card__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .stock-card__meta {
+    font-size: 0.75rem;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stock-card__chevron {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+    transition: transform 0.25s ease;
+  }
+
+  .stock-card--expanded .stock-card__chevron {
+    transform: rotate(180deg);
+  }
+
+  .stock-card__expand {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+  }
+
+  .stock-card--expanded .stock-card__expand {
+    grid-template-rows: 1fr;
+  }
+
+  .stock-card__body {
+    overflow: hidden;
+  }
+
+  .stock-card__body-inner {
+    padding: 0 0.75rem 0.75rem;
+    border-top: 1px solid transparent;
+    transition: border-color 0.2s ease;
+  }
+
+  .stock-card--expanded .stock-card__body-inner {
+    border-top-color: #f3f4f6;
+    padding-top: 0.75rem;
+  }
+
+  .stock-card__detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 1rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .stock-card__detail-item {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .stock-card__detail-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+  }
+
+  .stock-card__detail-value {
+    font-size: 0.8125rem;
+    color: #374151;
+  }
+
+  .stock-card__detail-value--qty {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .stock-card__detail-value--qty-low {
+    color: #991b1b;
+  }
+
+  .stock-card__notes {
+    margin: 0 0 0.85rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.45;
+  }
+
+  .stock-card__hero-img {
+    width: 100%;
+    max-height: 10rem;
+    object-fit: contain;
+    border-radius: 0.25rem;
+    background: #f9fafb;
+    margin-bottom: 0.85rem;
+  }
+
+  .stock-card__actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.45rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .stock-card__actions .stock-page__btn-secondary,
+  .stock-card__actions .stock-page__btn-primary {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .stock-card__actions .stock-card__edit-btn {
+    grid-column: 1 / -1;
+  }
+
+  .stock-card__close {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    cursor: pointer;
+  }
+
+  .stock-card__close:hover,
+  .stock-card__close:focus-visible {
+    color: #374151;
+    outline: none;
+  }
+
+  .stock-card__history-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+  }
+
+  .stock-card__history {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .stock-card__history-row {
+    display: grid;
+    gap: 0.05rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.8125rem;
+  }
+
+  .stock-card__history-meta {
+    font-size: 0.6875rem;
+    color: #9ca3af;
+  }
+
+  .stock-card__history-loading {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #9ca3af;
+  }
+
+  .stock-page__empty {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #9ca3af;
+  }
+
+  .stock-scan-bar {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 200;
     padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    background: var(--color-booking-panel-bg);
-    border-top: 1px solid var(--color-border);
-    box-shadow: 0 -4px 24px var(--color-card-shadow);
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
   }
 
-  .inventory-scan-bar__btn {
+  .stock-scan-bar__btn {
     width: 100%;
     min-height: 3rem;
-    font-size: 1.05rem;
-    background: var(--color-dusty-rose-dark, var(--color-charcoal));
+    font-size: 1rem;
   }
 
-  .inventory-page {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  .inventory-filter {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  .stock-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 400;
+    transform: translateX(-50%);
+    padding: 0.65rem 1rem;
+    border-radius: 0.35rem;
+    background: #111827;
+    color: #fff;
     font-family: var(--font-sans);
-    font-size: 0.78rem;
-    white-space: nowrap;
-    cursor: pointer;
+    font-size: 0.8125rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
 
-  .inventory-filter input {
-    width: 1rem;
-    height: 1rem;
-    accent-color: var(--color-sage);
+  .stock-toast[hidden] {
+    display: none;
   }
 
-  .inventory-low-stock {
-    border-color: var(--color-citrine);
-    background: rgba(231, 172, 70, 0.12);
-  }
-
-  .inventory-list {
-    display: grid;
-    gap: 1.75rem;
-  }
-
-  .inventory-category__title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem;
-    font-size: 1.05rem;
-    text-transform: capitalize;
-  }
-
-  .inventory-category__count {
-    font-weight: 400;
-  }
-
-  .inventory-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-
-  .inventory-tile {
-    display: grid;
-    gap: 0.35rem;
-    padding: 0;
-    border: 1px solid var(--color-border);
-    background: var(--color-booking-card-bg);
-    text-align: left;
-    cursor: pointer;
-    overflow: hidden;
-    transition: border-color 0.2s ease;
-  }
-
-  .inventory-tile:hover,
-  .inventory-tile:focus-visible {
-    border-color: var(--color-sage);
-    outline: none;
-  }
-
-  .inventory-tile--low {
-    border-color: #c44;
-  }
-
-  .inventory-tile__media {
-    position: relative;
-    aspect-ratio: 1;
-    background: var(--color-booking-panel-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .inventory-tile__img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .inventory-tile__placeholder {
-    font-family: var(--font-sans);
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--color-gray);
-    opacity: 0.55;
-  }
-
-  .inventory-tile__badge {
-    position: absolute;
-    top: 0.35rem;
-    right: 0.35rem;
-  }
-
-  .inventory-tile__name {
-    padding: 0 0.5rem;
-    font-size: 0.85rem;
-    line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .inventory-tile__meta {
-    padding: 0 0.5rem 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .inventory-badge {
-    font-family: var(--font-sans);
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 0.15rem 0.4rem;
-    border: 1px solid currentColor;
-  }
-
-  .inventory-badge--low {
-    color: #922;
-    border-color: #c44;
-    background: rgba(200, 60, 60, 0.08);
-  }
-
+  /* Modals */
   .inventory-modal {
     position: fixed;
     inset: 0;
@@ -507,7 +980,7 @@ const isManager = isSalonManager(staff);
   .inventory-modal__backdrop {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(17, 24, 39, 0.45);
   }
 
   .inventory-modal__panel {
@@ -517,9 +990,9 @@ const isManager = isSalonManager(staff);
     max-height: 90vh;
     overflow: auto;
     padding: 1.25rem;
-    background: var(--color-booking-panel-bg);
-    border: 1px solid var(--color-border);
-    box-shadow: 0 12px 48px var(--color-card-shadow);
+    background: #fff;
+    border-radius: 0.35rem 0.35rem 0 0;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
   }
 
   .inventory-modal__panel--narrow {
@@ -540,15 +1013,17 @@ const isManager = isSalonManager(staff);
 
   .inventory-modal__head h2 {
     margin: 0;
-    font-size: 1.15rem;
+    font-family: var(--font-sans);
+    font-size: 1.05rem;
+    font-weight: 600;
   }
 
   .inventory-modal__close {
     border: none;
     background: none;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     line-height: 1;
-    padding: 0.15rem 0.35rem;
+    color: #6b7280;
     cursor: pointer;
   }
 
@@ -557,13 +1032,20 @@ const isManager = isSalonManager(staff);
     aspect-ratio: 4 / 3;
     object-fit: cover;
     background: #111;
-    border: 1px solid var(--color-border);
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
   }
 
   .inventory-scanner__hint {
     margin: 0.65rem 0 0;
-    font-size: 0.9rem;
-    color: var(--color-gray);
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .inventory-scanner__error {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: #b91c1c;
   }
 
   .inventory-scanner__error:empty {
@@ -575,101 +1057,91 @@ const isManager = isSalonManager(staff);
     gap: 0.65rem;
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid #e5e7eb;
   }
 
-  .inventory-detail__image-wrap {
-    margin-bottom: 0.75rem;
-  }
-
-  .inventory-detail__image {
-    width: 100%;
-    max-height: 12rem;
-    object-fit: contain;
-    border: 1px solid var(--color-border);
-    background: var(--color-booking-panel-bg);
-  }
-
-  .inventory-detail__meta {
-    margin: 0 0 0.5rem;
-    color: var(--color-gray);
-    font-size: 0.9rem;
-  }
-
-  .inventory-detail__qty {
-    margin: 0 0 1rem;
-    font-family: var(--font-sans);
-    font-size: 1.35rem;
-    font-weight: 600;
-  }
-
-  .inventory-detail__qty--low {
-    color: #922;
-  }
-
-  .inventory-detail__actions {
+  .inventory-form-label {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .inventory-detail__edit {
-    grid-column: 1 / -1;
-  }
-
-  .form-hint {
+    gap: 0.35rem;
     font-family: var(--font-sans);
-    font-size: 0.85rem;
-    letter-spacing: normal;
-    text-transform: none;
-    color: var(--color-gray);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .inventory-form-input {
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #111827;
+  }
+
+  .inventory-form-input:focus-visible {
+    outline: none;
+    border-color: #0096ff;
+    box-shadow: 0 0 0 2px rgba(0, 150, 255, 0.2);
+  }
+
+  .inventory-form-input--textarea {
+    resize: vertical;
+    min-height: 4rem;
+  }
+
+  .inventory-form-hint {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: #9ca3af;
     line-height: 1.35;
   }
 
-  .inventory-detail__history-title {
-    font-size: 0.95rem;
-    margin: 0 0 0.5rem;
-  }
-
-  .inventory-history {
+  .inventory-form-stack {
     display: grid;
-    gap: 0.5rem;
-  }
-
-  .inventory-history__row {
-    display: grid;
-    gap: 0.1rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--color-border-subtle);
-    font-size: 0.9rem;
-  }
-
-  .inventory-history__loading {
-    margin: 0;
-    color: var(--color-gray);
-    font-size: 0.9rem;
+    gap: 0.85rem;
   }
 
   :global(body.inventory-modal-open) {
     overflow: hidden;
   }
 
-  @media (min-width: 40rem) {
-    .inventory-page__actions--desktop {
-      display: flex;
+  @media (min-width: 640px) {
+    .stock-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .inventory-scan-bar {
-      display: none;
+    .stock-card__actions {
+      grid-template-columns: repeat(4, 1fr);
     }
 
-    .inventory-page {
+    .stock-card__actions .stock-card__edit-btn {
+      grid-column: auto;
+    }
+  }
+
+  @media (min-width: 900px) {
+    .stock-page {
       padding-bottom: 0;
     }
 
-    .inventory-page__scan {
-      background: var(--color-dusty-rose-dark, var(--color-charcoal));
+    .stock-page__body {
+      grid-template-columns: minmax(220px, 23%) 1fr;
+    }
+
+    .stock-page__scan-desktop {
+      display: inline-flex;
+    }
+
+    .stock-scan-bar {
+      display: none;
+    }
+
+    .stock-toast {
+      bottom: 1.5rem;
+    }
+
+    .stock-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .inventory-modal {
@@ -677,12 +1149,36 @@ const isManager = isSalonManager(staff);
       padding: 1rem;
     }
 
-    .inventory-detail__actions {
-      grid-template-columns: repeat(4, 1fr);
+    .inventory-modal__panel {
+      border-radius: 0.35rem;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    .stock-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 900px) {
+    .stock-page__body {
+      grid-template-columns: 1fr;
     }
 
-    .inventory-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .stock-page__sidebar {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      max-height: 16rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stock-page__subheader {
+      padding-inline: 1rem;
+    }
+
+    .stock-page__main {
+      padding-inline: 1rem;
     }
   }
 </style>
