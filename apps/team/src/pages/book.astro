@@ -44,7 +44,7 @@ try {
   );
 } catch (error) {
   console.error("Failed to load calendar", error);
-  calendar = { staff: [], appointments: [], blockedTimes: [] };
+  calendar = { staff: [], appointments: [], blockedTimes: [], staffSchedules: {} };
 }
 ---
 
@@ -55,6 +55,7 @@ try {
     staff={calendar.staff}
     appointments={calendar.appointments}
     blockedTimes={calendar.blockedTimes}
+    staffSchedules={calendar.staffSchedules ?? {}}
     servicesByStaff={servicesByStaff}
     currentStaffId={staff.id}
     managerView={managerView}

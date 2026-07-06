@@ -9,9 +9,11 @@ import type {
 import {
   CALENDAR_ROW_HEIGHT_REM,
   CALENDAR_SLOT_MINUTES,
+  CALENDAR_START_HOUR,
   calendarGridHeightRem,
   calendarTimeSlots,
   currentTimeLineTopRem,
+  defaultCalendarScrollTopRem,
   eventBlockStyle,
   formatDayLabel,
   formatDayParam,
@@ -35,6 +37,7 @@ interface Props {
   staff: CalendarStaff[];
   appointments: CalendarAppointment[];
   blockedTimes: CalendarBlockedTime[];
+  staffSchedules: Record<string, StaffSchedule[]>;
   servicesByStaff: Record<string, StaffServiceOption[]>;
   currentStaffId: string;
   managerView: boolean;
@@ -46,6 +49,7 @@ const {
   staff,
   appointments,
   blockedTimes,
+  staffSchedules,
   servicesByStaff,
   currentStaffId,
   managerView,
@@ -59,6 +63,7 @@ const gridHeight = calendarGridHeightRem();
 const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
 const staffColWidthRem = staffColumnWidthRem(staff);
+const defaultScrollTopRem = defaultCalendarScrollTopRem(dayParam);
 
 const weekStart = shiftDay(selectedDay, -selectedDay.getDay());
 const weekDays = Array.from({ length: 7 }, (_, index) => {
@@ -109,6 +114,8 @@ const calendarConfig = {
   },
   reloadUrl: `${teamUrl("/book")}?day=${dayParam}`,
   weekUrl: teamUrl("/week"),
+  defaultScrollTopRem,
+  calendarStartHour: CALENDAR_START_HOUR,
 };
 ---
 
@@ -211,28 +218,28 @@ const calendarConfig = {
   </header>
 
   <div class="day-cal__frame">
-    <div class="day-cal__time-axis" aria-hidden="true">
-      <div class="day-cal__time-spacer"></div>
-      {
-        timeSlots.map((minutes) => {
-          const hourLabel = formatSlotHourLabel(minutes);
-          const minuteLabel = formatSlotMinuteLabel(minutes);
-          return (
-            <div
-              class:list={[
-                "day-cal__time-label",
-                minuteLabel && "day-cal__time-label--minute",
-              ]}
-              style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
-            >
-              {hourLabel || minuteLabel}
-            </div>
-          );
-        })
-      }
-    </div>
+    <div class="day-cal__viewport" data-calendar-viewport>
+      <div class="day-cal__time-axis" aria-hidden="true">
+        <div class="day-cal__time-spacer"></div>
+        {
+          timeSlots.map((minutes) => {
+            const hourLabel = formatSlotHourLabel(minutes);
+            const minuteLabel = formatSlotMinuteLabel(minutes);
+            return (
+              <div
+                class:list={[
+                  "day-cal__time-label",
+                  minuteLabel && "day-cal__time-label--minute",
+                ]}
+                style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+              >
+                {hourLabel || minuteLabel}
+              </div>
+            );
+          })
+        }
+      </div>
 
-    <div class="day-cal__scroll">
       <div class="day-cal__columns">
         {
           staff.map((member) => {
@@ -243,6 +250,7 @@ const calendarConfig = {
               blockedTimes,
             );
             const accent = staffAccentColor(member.id);
+            const memberSchedules = staffSchedules[member.id] ?? [];
 
             return (
               <div class="day-cal__column" data-staff-column={member.id}>
@@ -265,17 +273,27 @@ const calendarConfig = {
                   style={`height: ${gridHeight}rem; --staff-accent: ${accent}`}
                 >
                   {
-                    timeSlots.map((minutes) => (
-                      <button
-                        type="button"
-                        class="day-cal__slot"
-                        style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
-                        data-staff-id={member.id}
-                        data-starts-at={slotStartsAtIso(selectedDay, minutes)}
-                        data-slot-minutes={CALENDAR_SLOT_MINUTES}
-                        aria-label={`Open actions for ${member.name} at ${formatSlotTimeLabel(minutes)}`}
-                      />
-                    ))
+                    timeSlots.map((minutes) => {
+                      const isAvailable = isSlotWithinStaffSchedule(
+                        minutes,
+                        memberSchedules,
+                        dayParam,
+                      );
+                      return (
+                        <button
+                          type="button"
+                          class:list={[
+                            "day-cal__slot",
+                            isAvailable && "day-cal__slot--available",
+                          ]}
+                          style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+                          data-staff-id={member.id}
+                          data-starts-at={slotStartsAtIso(selectedDay, minutes)}
+                          data-slot-minutes={CALENDAR_SLOT_MINUTES}
+                          aria-label={`Open actions for ${member.name} at ${formatSlotTimeLabel(minutes)}`}
+                        />
+                      );
+                    })
                   }
 
                   {
@@ -464,6 +482,13 @@ const calendarConfig = {
 
       if (root.dataset.dayCalReady === "true") return;
       root.dataset.dayCalReady = "true";
+
+      const viewport = root.querySelector("[data-calendar-viewport]");
+      const scrollTopRem = Number(config.defaultScrollTopRem || 0);
+      if (viewport instanceof HTMLElement && scrollTopRem > 0) {
+        const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        viewport.scrollTop = scrollTopRem * remPx;
+      }
 
       /** @type {{ staffId: string; startsAt: string; slotMinutes: number; endsAt?: string } | null} */
       let slotContext = null;
@@ -1645,8 +1670,11 @@ const calendarConfig = {
     --day-staff-width: 5rem;
     --day-time-width: 2.35rem;
     --day-header-height: 3.75rem;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    min-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    height: calc(100vh - var(--team-bar-height, 3.25rem));
+    min-height: 0;
     background: var(--color-bg);
     color: var(--color-text);
   }
@@ -1890,14 +1918,29 @@ const calendarConfig = {
   }
 
   .day-cal__frame {
+    flex: 1;
+    min-height: 0;
     display: flex;
     background: var(--color-bg);
     overflow: hidden;
     width: 100%;
   }
 
+  .day-cal__viewport {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    width: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--color-bg);
+  }
+
   .day-cal__time-axis {
     flex: 0 0 var(--day-time-width);
+    position: sticky;
+    left: 0;
+    z-index: 5;
     border-right: 1px solid var(--color-border);
     background: var(--color-bg);
   }
@@ -1907,6 +1950,9 @@ const calendarConfig = {
     flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg);
+    position: sticky;
+    top: 0;
+    z-index: 6;
   }
 
   .day-cal__time-label {
@@ -1928,17 +1974,12 @@ const calendarConfig = {
     opacity: 0.75;
   }
 
-  .day-cal__scroll {
-    flex: 1;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    background: var(--color-bg);
-  }
-
   .day-cal__columns {
     display: flex;
-    width: 100%;
+    flex: 1 1 auto;
     min-width: max-content;
+    width: max-content;
+    background: var(--color-bg);
   }
 
   .day-cal__column {
@@ -1967,6 +2008,9 @@ const calendarConfig = {
     color: var(--color-text);
     text-align: center;
     overflow: visible;
+    position: sticky;
+    top: 0;
+    z-index: 4;
   }
 
   .day-cal__avatar-wrap {
@@ -2021,10 +2065,32 @@ const calendarConfig = {
     transition: background 0.15s ease;
   }
 
+  .day-cal__slot--available {
+    background: color-mix(
+      in srgb,
+      var(--staff-accent, var(--color-citrine)) 16%,
+      var(--color-bg)
+    );
+  }
+
+  .day-cal__slot--available:hover,
+  .day-cal__slot--available:focus-visible {
+    background: color-mix(
+      in srgb,
+      var(--staff-accent, var(--color-citrine)) 24%,
+      var(--color-bg)
+    );
+    outline: none;
+  }
+
   .day-cal__slot:hover,
   .day-cal__slot:focus-visible {
-    background: rgba(141, 158, 136, 0.12);
     outline: none;
+  }
+
+  .day-cal__slot:not(.day-cal__slot--available):hover,
+  .day-cal__slot:not(.day-cal__slot--available):focus-visible {
+    background: rgba(141, 158, 136, 0.12);
   }
 
   .day-cal--selecting .day-cal__slot:hover,
@@ -2068,27 +2134,42 @@ const calendarConfig = {
   }
 
   .day-cal__block--blocked {
-    background: #b8b8b8;
-    color: #2a2a2a;
+    background: #c8c8c8;
+    color: #3a3a3a;
+    border: 1px dashed #9a9a9a;
+    box-shadow: none;
+    opacity: 0.92;
     background-image: repeating-linear-gradient(
       -45deg,
       transparent,
-      transparent 5px,
-      rgba(255, 255, 255, 0.15) 5px,
-      rgba(255, 255, 255, 0.15) 10px
+      transparent 6px,
+      rgba(255, 255, 255, 0.22) 6px,
+      rgba(255, 255, 255, 0.22) 12px
     );
   }
 
+  .day-cal__block--blocked .day-cal__block-time,
+  .day-cal__block--blocked .day-cal__block-title {
+    color: #444;
+    font-weight: 500;
+  }
+
   [data-theme="dark"] .day-cal__block--blocked {
-    background: #5a5a5a;
-    color: #f0f0f0;
+    background: #4a4a4a;
+    color: #e8e8e8;
+    border-color: #666;
     background-image: repeating-linear-gradient(
       -45deg,
       transparent,
-      transparent 5px,
-      rgba(255, 255, 255, 0.06) 5px,
-      rgba(255, 255, 255, 0.06) 10px
+      transparent 6px,
+      rgba(255, 255, 255, 0.05) 6px,
+      rgba(255, 255, 255, 0.05) 12px
     );
+  }
+
+  [data-theme="dark"] .day-cal__block--blocked .day-cal__block-time,
+  [data-theme="dark"] .day-cal__block--blocked .day-cal__block-title {
+    color: #e0e0e0;
   }
 
   .day-cal__block-time {

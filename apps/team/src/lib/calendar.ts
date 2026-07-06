@@ -1,4 +1,4 @@
-import { TIMEZONE } from "@saloncitrine/shared";
+import { BUSINESS_HOURS, TIMEZONE } from "@saloncitrine/shared";
 import { localDateTimeToUtc } from "./datetime";
 
 export type CalendarAppointment = {
@@ -71,8 +71,9 @@ export type CalendarEvent =
       label: string;
     };
 
-export const CALENDAR_START_HOUR = 9;
-export const CALENDAR_END_HOUR = 20;
+/** Full bookable day grid: 4:00 AM through 11:59 PM (midnight end). */
+export const CALENDAR_START_HOUR = 4;
+export const CALENDAR_END_HOUR = 24;
 export const CALENDAR_SLOT_MINUTES = 15;
 export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
@@ -361,6 +362,27 @@ export function isSlotWithinStaffSchedule(
   const startMin = parseTimeToMinutes(schedule.startTime);
   const endMin = parseTimeToMinutes(schedule.endTime);
   return slotMinutes >= startMin && slotMinutes < endMin;
+}
+
+/** Salon open time (minutes from midnight) for a calendar day, or null when closed. */
+export function salonOpenMinutesForDay(dateStr: string) {
+  const hours = BUSINESS_HOURS[dayOfWeekInSalon(dateStr)];
+  if (!hours) return null;
+  return parseTimeToMinutes(hours.open);
+}
+
+/**
+ * Default vertical scroll offset (rem) — one hour before salon opens that day.
+ * Falls back to 8:00 AM when the salon is closed or hours are unavailable.
+ */
+export function defaultCalendarScrollTopRem(dateStr: string) {
+  const gridStart = CALENDAR_START_HOUR * 60;
+  const openMinutes = salonOpenMinutesForDay(dateStr) ?? 9 * 60;
+  const targetMinutes = Math.max(gridStart, openMinutes - 60);
+  return (
+    ((targetMinutes - gridStart) / CALENDAR_SLOT_MINUTES) *
+    CALENDAR_ROW_HEIGHT_REM
+  );
 }
 
 export async function loadCalendarData(
