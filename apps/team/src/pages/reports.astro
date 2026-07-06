@@ -1,0 +1,102 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+if (!isSalonManager(staff)) {
+  return Astro.redirect(teamUrl("/"));
+}
+
+const today = new Date();
+const fromDefault = new Date(today);
+fromDefault.setDate(fromDefault.getDate() - 30);
+const toValue = today.toISOString().slice(0, 10);
+const fromValue = fromDefault.toISOString().slice(0, 10);
+---
+
+<TeamLayout title="Reports" activeNav="reports" plain wide>
+  <div
+    class="reports-page"
+    data-reports-app
+    data-api-base={teamUrl("/api/reports")}
+    data-from={fromValue}
+    data-to={toValue}
+  >
+    <TeamPage title="Reports" lead="Business summaries from live salon data." toolbar>
+      <button slot="actions" class="btn-secondary" type="button" data-export-csv>
+        Export CSV
+      </button>
+
+      <div slot="toolbar" class="reports-toolbar">
+        <label class="team-toolbar-field team-toolbar-field--compact">
+          <span class="team-toolbar-label">From</span>
+          <input class="form-input" type="date" data-range-from value={fromValue} />
+        </label>
+        <label class="team-toolbar-field team-toolbar-field--compact">
+          <span class="team-toolbar-label">To</span>
+          <input class="form-input" type="date" data-range-to value={toValue} />
+        </label>
+        <button class="btn-primary" type="button" data-range-apply>Apply</button>
+        <span class="team-toolbar-spacer"></span>
+        <span class="label-meta" data-range-label aria-live="polite"></span>
+      </div>
+
+      <p class="notice notice--error" data-reports-error hidden role="alert"></p>
+
+      <div class="team-stat-grid" data-revenue-stats>
+        <p class="empty-state">Loading reports…</p>
+      </div>
+
+      <section class="team-panel reports-section" aria-labelledby="reports-staff-title">
+        <h2 class="team-panel__title" id="reports-staff-title">Appointments by staff</h2>
+        <div class="team-data-table-wrap" data-staff-table>
+          <p class="empty-state">Loading…</p>
+        </div>
+      </section>
+
+      <section class="team-panel reports-section" aria-labelledby="reports-cancel-title">
+        <h2 class="team-panel__title" id="reports-cancel-title">Cancellations & no-shows</h2>
+        <div data-cancel-stats>
+          <p class="empty-state">Loading…</p>
+        </div>
+      </section>
+
+      <section class="team-panel reports-section" aria-labelledby="reports-inventory-title">
+        <h2 class="team-panel__title" id="reports-inventory-title">Low stock inventory</h2>
+        <div data-inventory-stats>
+          <p class="empty-state">Loading…</p>
+        </div>
+      </section>
+    </TeamPage>
+  </div>
+</TeamLayout>
+
+<script src="../scripts/reports.ts"></script>
+
+<style>
+  .reports-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.65rem 1rem;
+    width: 100%;
+  }
+
+  .reports-section {
+    margin-top: 1.25rem;
+  }
+
+  .reports-cancel-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    margin-bottom: 1rem;
+  }
+</style>
