@@ -1,6 +1,7 @@
+/** Resolved hex values so inline --staff-accent works reliably in color-mix(). */
 export const STAFF_ACCENT_COLORS = [
-  "var(--color-citrine)",
-  "var(--color-sage)",
+  "#e7ac46", // citrine
+  "#8d9e88", // sage
   "#d4a5a5",
   "#9cb4d4",
   "#c4b0d8",
