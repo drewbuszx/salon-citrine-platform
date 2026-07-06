@@ -27,6 +27,7 @@ const currentStaffId = root.dataset.currentStaffId ?? "";
 const calendarEl = root.querySelector<HTMLElement>("[data-events-calendar]");
 const listEl = root.querySelector<HTMLElement>("[data-events-list]");
 const listTitleEl = root.querySelector<HTMLElement>("[data-events-list-title]");
+const clearDayBtn = root.querySelector<HTMLButtonElement>("[data-events-clear-day]");
 const errorEl = root.querySelector<HTMLElement>("[data-events-error]");
 const monthLabel = root.querySelector<HTMLElement>("[data-month-label]");
 const monthHeader = root.querySelector<HTMLElement>("[data-month-header]");
@@ -311,6 +312,10 @@ function renderList() {
       : "Upcoming";
   }
 
+  if (clearDayBtn) {
+    clearDayBtn.hidden = !selectedDay;
+  }
+
   const listed = eventsForList();
 
   if (listed.length === 0) {
@@ -327,12 +332,9 @@ function renderList() {
         event.eventType === "time_off" && event.staffName
           ? event.staffName
           : event.createdByName ?? "";
-      const staffLine = staffName
-        ? `<span class="event-row__staff">${escapeHtml(staffName)}</span>`
-        : "";
-      const descriptionLine = event.description?.trim()
-        ? `<span class="event-row__description">${escapeHtml(event.description.trim())}</span>`
-        : "";
+      const metaParts = [formatEventRange(event)];
+      if (staffName) metaParts.push(staffName);
+      const metaLine = `<span class="event-row__meta">${escapeHtml(metaParts.join(" · "))}</span>`;
       const startDate = new Date(event.startsAt);
       const eventDayKey = dayKey(
         startDate.getFullYear(),
@@ -349,9 +351,7 @@ function renderList() {
         >
           <span class="event-row__dot" aria-hidden="true"></span>
           <span class="event-row__title">${escapeHtml(event.title)}</span>
-          <span class="event-row__when">${escapeHtml(formatEventRange(event))}</span>
-          ${descriptionLine}
-          ${staffLine}
+          ${metaLine}
           ${typeBadge(event.eventType)}
         </button>
       `;
@@ -558,6 +558,15 @@ todayBtn?.addEventListener("click", () => {
   selectedDay = null;
   void loadEvents();
 });
+
+function clearSelectedDay() {
+  if (!selectedDay) return;
+  selectedDay = null;
+  renderCalendar();
+  renderList();
+}
+
+clearDayBtn?.addEventListener("click", clearSelectedDay);
 
 calendarEl?.addEventListener("click", (event) => {
   const cell = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-calendar-day]");
