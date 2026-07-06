@@ -138,7 +138,7 @@ const isAuthenticated = Boolean(user && staff);
           if (fallback && img.dataset.fallbackUsed !== "1") {
             img.dataset.fallbackUsed = "1";
             img.src = fallback;
-            img.classList.remove("team-bar__logo-img--fallback");
+            img.classList.add("team-bar__logo-img--fallback");
             return;
           }
           logoLink?.classList.add("is-wordmark");

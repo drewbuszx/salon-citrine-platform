@@ -65,8 +65,8 @@ const initials = staff ? staffInitials(staff.name) : "";
           src={logoPrimarySrc}
           data-fallback-src={logoFallbackSrc}
           alt={BUSINESS.name}
-          width="160"
-          height="32"
+          width="200"
+          height="40"
           loading="eager"
         />
         <span class="team-bar__logo-wordmark">{BUSINESS.name}</span>
@@ -284,11 +284,13 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__logo-img {
     display: block;
-    height: 1.65rem;
+    height: calc(var(--team-bar-height, 3.25rem) - 0.75rem);
+    max-height: calc(var(--team-bar-height, 3.25rem) - 0.75rem);
     width: auto;
-    max-width: 9rem;
+    max-width: 12rem;
     object-fit: contain;
-    opacity: 0.92;
+    object-position: left center;
+    opacity: 0.96;
     transition: opacity var(--transition-fast);
   }
 
@@ -298,8 +300,9 @@ const initials = staff ? staffInitials(staff.name) : "";
   }
 
   .team-bar__logo-img--fallback {
-    height: 1.35rem;
-    max-width: 5.5rem;
+    height: calc(var(--team-bar-height, 3.25rem) - 1.15rem);
+    max-height: calc(var(--team-bar-height, 3.25rem) - 1.15rem);
+    max-width: 7rem;
     filter: brightness(0) invert(1);
   }
 
