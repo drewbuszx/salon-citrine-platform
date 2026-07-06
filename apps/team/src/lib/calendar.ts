@@ -704,3 +704,107 @@ export function staffEventsForDay(
     a.startsAt.localeCompare(b.startsAt),
   );
 }
+
+function slotRangeOverlapsEvents(
+  startMinutes: number,
+  endMinutes: number,
+  events: CalendarEvent[],
+) {
+  return events.some((event) => {
+    const evStart = minutesFromDayStart(event.startsAt);
+    const evEnd = minutesFromDayStart(event.endsAt);
+    return startMinutes < evEnd && endMinutes > evStart;
+  });
+}
+
+export type NextOpenGap = {
+  staffId: string;
+  staffName: string;
+  startsAt: string;
+  label: string;
+};
+
+/** First open gap (default 60 min) on the selected day, earliest across staff. */
+export function findNextOpenGap(
+  selectedDay: Date,
+  dayParam: string,
+  staff: CalendarStaff[],
+  appointments: CalendarAppointment[],
+  blockedTimes: CalendarBlockedTime[],
+  staffSchedules: Record<string, StaffSchedule[]>,
+  minDurationMinutes = 60,
+): NextOpenGap | null {
+  const slotsNeeded = Math.ceil(minDurationMinutes / CALENDAR_SLOT_MINUTES);
+  const timeSlots = calendarTimeSlots();
+  const afterMinutes = isTodayInSalon(selectedDay)
+    ? minutesFromDayStart(new Date().toISOString())
+    : 0;
+
+  let earliest: {
+    staffId: string;
+    staffName: string;
+    startsAt: string;
+    slotMinutes: number;
+  } | null = null;
+
+  for (const member of staff) {
+    const events = staffEventsForDay(
+      member.id,
+      selectedDay,
+      appointments,
+      blockedTimes,
+    );
+    const schedules = staffSchedules[member.id] ?? [];
+
+    for (let i = 0; i <= timeSlots.length - slotsNeeded; i++) {
+      const startSlot = timeSlots[i]!;
+      if (startSlot < afterMinutes) continue;
+      if (!isSlotWithinStaffSchedule(startSlot, schedules, dayParam)) continue;
+
+      let allFree = true;
+      for (let j = 0; j < slotsNeeded; j++) {
+        const slotMin = timeSlots[i + j];
+        if (
+          slotMin === undefined ||
+          !isSlotWithinStaffSchedule(slotMin, schedules, dayParam)
+        ) {
+          allFree = false;
+          break;
+        }
+        if (
+          slotRangeOverlapsEvents(
+            slotMin,
+            slotMin + CALENDAR_SLOT_MINUTES,
+            events,
+          )
+        ) {
+          allFree = false;
+          break;
+        }
+      }
+
+      if (allFree) {
+        const candidate = {
+          staffId: member.id,
+          staffName: member.name,
+          startsAt: slotStartsAtIso(selectedDay, startSlot),
+          slotMinutes: startSlot,
+        };
+        if (!earliest || startSlot < earliest.slotMinutes) {
+          earliest = candidate;
+        }
+        break;
+      }
+    }
+  }
+
+  if (!earliest) return null;
+
+  const firstName = earliest.staffName.split(" ")[0] ?? earliest.staffName;
+  return {
+    staffId: earliest.staffId,
+    staffName: earliest.staffName,
+    startsAt: earliest.startsAt,
+    label: `${formatTimeInSalon(earliest.startsAt)} with ${firstName}`,
+  };
+}

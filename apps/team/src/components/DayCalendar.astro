@@ -28,6 +28,7 @@ import {
   shiftDay,
   slotStartsAtIso,
   staffEventsForDay,
+  findNextOpenGap,
 } from "../lib/calendar";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -66,6 +67,14 @@ const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
 const staffColWidthRem = staffColumnWidthRem(staff);
 const defaultScrollTopRem = defaultCalendarScrollTopRem(dayParam);
+const nextOpenGap = findNextOpenGap(
+  selectedDay,
+  dayParam,
+  staff,
+  appointments,
+  blockedTimes,
+  staffSchedules,
+);
 
 const weekStart = shiftDay(selectedDay, -selectedDay.getDay());
 const weekDays = Array.from({ length: 7 }, (_, index) => {
@@ -137,12 +146,13 @@ const calendarConfig = {
           ‹
         </a>
         <label class="day-cal__date-picker">
-          <span class="visually-hidden">Jump to date</span>
+          <span class="day-cal__date-label">{formatDayLabel(selectedDay)}</span>
           <input
             type="date"
             class="day-cal__date-input"
             value={dayParam}
             data-date-picker
+            aria-label={`Jump to date, currently ${formatDayLabel(selectedDay)}`}
           />
         </label>
         <a
@@ -152,7 +162,17 @@ const calendarConfig = {
         >
           ›
         </a>
-        <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${todayParam}`}>Today</a>
+        <a
+          class:list={[
+            "day-cal__subbar-btn",
+            "day-cal__subbar-btn--today",
+            isToday && "day-cal__subbar-btn--today-active",
+          ]}
+          href={`${teamUrl("/book")}?day=${todayParam}`}
+          aria-current={isToday ? "date" : undefined}
+        >
+          Today
+        </a>
       </nav>
 
       {
@@ -187,11 +207,25 @@ const calendarConfig = {
       <div class="day-cal__subbar-actions">
         <span class="day-cal__view-pill" aria-current="true">Day</span>
         <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${dayParam}`}>Week</a>
-        <a class="day-cal__subbar-btn day-cal__subbar-btn--ghost day-cal__subbar-btn--waitlist" href={teamUrl("/waitlist")}>
+        <a
+          class:list={[
+            "day-cal__subbar-btn",
+            "day-cal__subbar-btn--ghost",
+            "day-cal__subbar-btn--waitlist",
+            waitlistCount > 0 && "day-cal__subbar-btn--waitlist-hot",
+          ]}
+          href={teamUrl("/waitlist")}
+        >
           Waitlist
-          {waitlistCount > 0 ? (
-            <span class="day-cal__waitlist-badge" aria-label={`${waitlistCount} on waitlist`}>{waitlistCount}</span>
-          ) : null}
+          <span
+            class:list={[
+              "day-cal__waitlist-badge",
+              waitlistCount > 0 && "day-cal__waitlist-badge--active",
+            ]}
+            aria-label={`${waitlistCount} on waitlist`}
+          >
+            {waitlistCount}
+          </span>
         </a>
         <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--primary" data-new-appointment>
           New appointment
@@ -220,6 +254,30 @@ const calendarConfig = {
         ))
       }
     </nav>
+
+    {
+      (waitlistCount > 0 || nextOpenGap) && (
+        <p class="day-cal__gap-hint">
+          {waitlistCount > 0 && (
+            <span class="day-cal__gap-hint-waitlist">
+              {waitlistCount} {waitlistCount === 1 ? "client" : "clients"} waiting
+            </span>
+          )}
+          {waitlistCount > 0 && nextOpenGap && (
+            <span class="day-cal__gap-hint-sep" aria-hidden="true">
+              ·
+            </span>
+          )}
+          {nextOpenGap ? (
+            <span class="day-cal__gap-hint-slot">
+              Next open: <strong>{nextOpenGap.label}</strong>
+            </span>
+          ) : waitlistCount > 0 ? (
+            <span class="day-cal__gap-hint-slot">No open 60-min gaps today</span>
+          ) : null}
+        </p>
+      )
+    }
   </header>
 
   <div class="day-cal__frame">
@@ -268,6 +326,7 @@ const calendarConfig = {
                       width="40"
                       height="40"
                       loading="lazy"
+                      style={`border-color: ${accent}`}
                     />
                   </div>
                   <span class="day-cal__staff-name">{member.name}</span>
@@ -320,7 +379,7 @@ const calendarConfig = {
                             isBlocked && "day-cal__block--blocked",
                             apptStatus && `day-cal__block--${apptStatus}`,
                           ]}
-                          style={style}
+                          style={`${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join("; ")}; --block-accent: ${accent}`}
                           data-kind={event.kind}
                           data-id={event.id}
                           data-staff-id={event.staffId}
@@ -656,9 +715,63 @@ const calendarConfig = {
         el.textContent = message;
       }
 
+      function showFieldError(field, message) {
+        if (!(field instanceof HTMLElement)) return;
+        const label = field.closest(".form-label, .day-cal__form-field");
+        if (!(label instanceof HTMLElement)) return;
+        label.classList.add("day-cal__form-field--invalid");
+        let hint = label.querySelector(".day-cal__field-error");
+        if (!hint) {
+          hint = document.createElement("span");
+          hint.className = "day-cal__field-error";
+          hint.setAttribute("role", "alert");
+          label.appendChild(hint);
+        }
+        hint.textContent = message;
+      }
+
+      function clearFieldErrors(form) {
+        form.querySelectorAll(".day-cal__form-field--invalid").forEach((el) => {
+          el.classList.remove("day-cal__form-field--invalid");
+        });
+        form.querySelectorAll(".day-cal__field-error").forEach((el) => el.remove());
+      }
+
       function clearError(form) {
         const el = form.querySelector(".day-cal__form-error");
         if (el) el.remove();
+        clearFieldErrors(form);
+      }
+
+      function validateAppointmentCreateForm(form) {
+        clearFieldErrors(form);
+        let valid = true;
+
+        const nameInput = form.querySelector('input[name="client_name"]');
+        if (nameInput instanceof HTMLInputElement && !nameInput.value.trim()) {
+          showFieldError(nameInput, "Enter a client name");
+          valid = false;
+        }
+
+        const serviceSelect = form.querySelector('select[name="service_ids"]');
+        if (serviceSelect instanceof HTMLSelectElement) {
+          const selected = Array.from(serviceSelect.selectedOptions);
+          if (selected.length === 0) {
+            showFieldError(serviceSelect, "Select at least one service");
+            valid = false;
+          }
+        }
+
+        const startsInput = form.querySelector('input[name="starts_at"]');
+        if (startsInput instanceof HTMLInputElement && !startsInput.value.trim()) {
+          showFieldError(startsInput, "Choose a start time");
+          valid = false;
+        }
+
+        if (!valid) {
+          showError(form, "Fix the highlighted fields to save.");
+        }
+        return valid;
       }
 
       function renderStaffSelect(name, selectedId) {
@@ -671,7 +784,7 @@ const calendarConfig = {
               `<option value="${member.id}"${member.id === selectedId ? " selected" : ""}>${member.name}</option>`,
           )
           .join("");
-        return `<label class="form-label">Provider<select class="form-input" name="${name}" required>${options}</select></label>`;
+        return `<label class="form-label day-cal__form-field">Provider<select class="form-input" name="${name}" required>${options}</select></label>`;
       }
 
       function renderServiceOptions(staffId, selectedIds) {
@@ -679,7 +792,7 @@ const calendarConfig = {
         if (services.length === 0) {
           return `<p class="day-cal__hint">No services assigned to this provider.</p>`;
         }
-        return `<label class="form-label">Services<select class="form-input day-cal__multi" name="service_ids" multiple required size="${Math.min(services.length, 6)}">${services
+        return `<label class="form-label day-cal__form-field">Services<select class="form-input day-cal__multi" name="service_ids" multiple required size="${Math.min(services.length, 6)}">${services
           .map(
             (service) =>
               `<option value="${service.id}"${selectedIds.includes(service.id) ? " selected" : ""}>${service.name} (${service.durationMinutes} min)</option>`,
@@ -695,29 +808,42 @@ const calendarConfig = {
         );
         openModal(
           "New appointment",
-          `<form class="day-cal__form" data-form="appointment-create">
-            ${renderStaffSelect("staff_id", context.staffId)}
-            <label class="form-label">Start<input class="form-input" name="starts_at" type="datetime-local" step="900" value="${startsLocal}" required /></label>
-            <div class="day-cal__client-field">
-              <label class="form-label">Client name
-                <div class="day-cal__client-combobox">
-                  <input class="form-input" name="client_name" type="text" required autocomplete="off" role="combobox" aria-expanded="false" aria-controls="day-cal-client-suggestions" aria-autocomplete="list" />
-                  <input type="hidden" name="client_id" value="" />
-                  <ul class="day-cal__client-suggestions" id="day-cal-client-suggestions" role="listbox" hidden></ul>
-                </div>
-              </label>
-              <div class="day-cal__client-panel" data-client-panel hidden>
-                <p class="day-cal__client-badge" data-referral-badge hidden>Referral discount eligible on next service</p>
-                <div data-past-services hidden>
-                  <span class="label-meta">Past services</span>
-                  <ul class="day-cal__detail-list" data-past-services-list></ul>
+          `<form class="day-cal__form day-cal__form--create" data-form="appointment-create">
+            <div class="day-cal__form-section">
+              <h4 class="day-cal__form-section-title">When</h4>
+              ${renderStaffSelect("staff_id", context.staffId)}
+              <label class="form-label day-cal__form-field">Start<input class="form-input" name="starts_at" type="datetime-local" step="900" value="${startsLocal}" required /></label>
+            </div>
+            <div class="day-cal__form-section">
+              <h4 class="day-cal__form-section-title">Client</h4>
+              <div class="day-cal__client-field">
+                <label class="form-label day-cal__form-field">Name
+                  <div class="day-cal__client-combobox">
+                    <input class="form-input" name="client_name" type="text" required autocomplete="off" role="combobox" aria-expanded="false" aria-controls="day-cal-client-suggestions" aria-autocomplete="list" placeholder="Search or type name" />
+                    <input type="hidden" name="client_id" value="" />
+                    <ul class="day-cal__client-suggestions" id="day-cal-client-suggestions" role="listbox" hidden></ul>
+                  </div>
+                </label>
+                <div class="day-cal__client-panel" data-client-panel hidden>
+                  <p class="day-cal__client-badge" data-referral-badge hidden>Referral discount eligible on next service</p>
+                  <div data-past-services hidden>
+                    <span class="label-meta">Past services</span>
+                    <ul class="day-cal__detail-list" data-past-services-list></ul>
+                  </div>
                 </div>
               </div>
+              <div class="day-cal__form-row">
+                <label class="form-label day-cal__form-field">Phone<input class="form-input" name="phone" type="tel" autocomplete="tel" /></label>
+                <label class="form-label day-cal__form-field">Email<input class="form-input" name="email" type="email" autocomplete="email" /></label>
+              </div>
             </div>
-            <label class="form-label">Phone<input class="form-input" name="phone" type="tel" autocomplete="tel" /></label>
-            <label class="form-label">Email<input class="form-input" name="email" type="email" autocomplete="email" /></label>
-            <div data-service-field>${renderServiceOptions(context.staffId, [])}</div>
-            <label class="form-label">Notes<textarea class="form-input form-input--textarea" name="notes" rows="3"></textarea></label>
+            <div class="day-cal__form-section">
+              <h4 class="day-cal__form-section-title">Services</h4>
+              <div data-service-field>${renderServiceOptions(context.staffId, [])}</div>
+            </div>
+            <div class="day-cal__form-section day-cal__form-section--notes">
+              <label class="form-label day-cal__form-field">Notes<textarea class="form-input form-input--textarea" name="notes" rows="2" placeholder="Optional"></textarea></label>
+            </div>
             <div class="day-cal__form-actions">
               <button type="submit" class="btn-primary">Save appointment</button>
               <button type="button" class="day-cal__btn-secondary" data-close-modal>Cancel</button>
@@ -1472,6 +1598,9 @@ const calendarConfig = {
 
         try {
           if (formType === "appointment-create") {
+            if (!validateAppointmentCreateForm(form)) {
+              return;
+            }
             const data = new FormData(form);
             const slotMinutes = Number(config.slotMinutes || 15);
             const startsAt = roundDatetimeLocalToSlot(
@@ -1721,16 +1850,29 @@ const calendarConfig = {
   .day-cal__date-picker {
     display: flex;
     align-items: center;
-  }
-
-  .day-cal__date-input {
-    padding: 0.35rem 0.5rem;
+    gap: 0.35rem;
+    position: relative;
+    padding: 0.35rem 0.55rem;
     border: 1px solid var(--color-border);
     border-radius: 0.35rem;
     background: var(--color-bg);
-    color: var(--color-text);
+  }
+
+  .day-cal__date-label {
     font-family: var(--font-sans);
     font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .day-cal__date-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
   }
 
   .day-cal__subbar-btn {
@@ -1769,23 +1911,69 @@ const calendarConfig = {
     cursor: not-allowed;
   }
 
+  .day-cal__subbar-btn--today-active {
+    background: var(--color-citrine-muted, rgba(231, 172, 70, 0.12));
+    border-color: var(--color-citrine);
+    color: var(--color-text);
+    pointer-events: none;
+  }
+
   .day-cal__subbar-btn--waitlist {
-    gap: 0.35rem;
+    gap: 0.4rem;
+  }
+
+  .day-cal__subbar-btn--waitlist-hot {
+    border-color: var(--color-citrine);
+    background: color-mix(in srgb, var(--color-citrine) 8%, var(--color-bg));
   }
 
   .day-cal__waitlist-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 1.1rem;
-    height: 1.1rem;
-    padding: 0 0.25rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.3rem;
     border-radius: 999px;
-    background: var(--color-citrine);
-    color: #fff;
-    font-size: 0.625rem;
+    background: var(--color-stone-200, var(--color-border));
+    color: var(--color-gray);
+    font-size: 0.65rem;
     font-weight: 700;
     line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .day-cal__waitlist-badge--active {
+    background: var(--color-citrine);
+    color: var(--color-black, #1a1a1a);
+    box-shadow: 0 0 0 1px rgba(231, 172, 70, 0.35);
+  }
+
+  .day-cal__gap-hint {
+    margin: 0;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.35rem;
+    background: color-mix(in srgb, var(--color-citrine) 10%, var(--color-light));
+    border: 1px solid color-mix(in srgb, var(--color-citrine) 28%, var(--color-border));
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: var(--color-text);
+    line-height: 1.4;
+  }
+
+  .day-cal__gap-hint-waitlist {
+    font-weight: 600;
+    color: var(--color-citrine-dark, #c9952e);
+  }
+
+  .day-cal__gap-hint-sep {
+    margin: 0 0.25rem;
+    color: var(--color-gray);
+  }
+
+  .day-cal__gap-hint-slot strong {
+    font-weight: 600;
   }
 
   .day-cal__subbar-btn:hover:not(:disabled),
@@ -2137,19 +2325,25 @@ const calendarConfig = {
     z-index: 2;
     display: flex;
     flex-direction: column;
-    gap: 0.05rem;
-    padding: 0.2rem 0.35rem;
+    gap: 0.08rem;
+    padding: 0.22rem 0.4rem 0.22rem 0.45rem;
     border: none;
+    border-left: 3px solid color-mix(in srgb, var(--block-accent, var(--staff-accent, var(--color-citrine))) 65%, #1a1a1a);
     border-radius: 4px;
-    background: var(--staff-accent, var(--color-citrine));
+    background: color-mix(
+      in srgb,
+      var(--block-accent, var(--staff-accent, var(--color-citrine))) 88%,
+      #fff 12%
+    );
     color: #1a1a1a;
-    font-size: 0.62rem;
-    line-height: 1.2;
+    font-family: var(--font-sans);
+    font-size: 0.64rem;
+    line-height: 1.25;
     overflow: hidden;
     text-align: left;
     cursor: pointer;
     touch-action: manipulation;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
   }
 
   [data-theme="dark"] .day-cal__block {
@@ -2198,24 +2392,27 @@ const calendarConfig = {
 
   .day-cal__block-time {
     font-size: 0.58rem;
-    font-weight: 600;
-    opacity: 0.9;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    opacity: 0.92;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   .day-cal__block-title {
-    font-weight: 600;
-    font-size: 0.64rem;
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.01em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .day-cal__block-meta {
-    font-size: 0.56rem;
-    opacity: 0.85;
+    font-size: 0.58rem;
+    font-weight: 500;
+    opacity: 0.88;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2489,20 +2686,71 @@ const calendarConfig = {
     gap: 0.85rem;
   }
 
+  .day-cal__form--create {
+    gap: 1rem;
+  }
+
+  .day-cal__form-section {
+    display: grid;
+    gap: 0.65rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__form-section:last-of-type,
+  .day-cal__form-section--notes {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .day-cal__form-section-title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .day-cal__form-row {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  @media (max-width: 28rem) {
+    .day-cal__form-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .day-cal__form-field--invalid .form-input,
+  .day-cal__form-field--invalid select.form-input {
+    border-color: #c44;
+    box-shadow: 0 0 0 1px rgba(200, 60, 60, 0.2);
+  }
+
+  .day-cal__field-error {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.78rem;
+    color: #922;
+  }
+
   .day-cal__form-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
+    padding-top: 0.25rem;
   }
 
-  .day-cal__btn-secondary,
-  .day-cal__link-btn {
   .day-cal__btn-danger {
     padding: 0.7rem 1rem;
-    border: 1px solid var(--color-border);
+    border: 1px solid #c44;
     background: transparent;
-    color: var(--color-text);
+    color: #922;
     font-family: var(--font-sans);
     font-size: 0.75rem;
     letter-spacing: 0.08em;
@@ -2510,15 +2758,11 @@ const calendarConfig = {
     cursor: pointer;
   }
 
-  .day-cal__btn-danger {
-    border-color: #c44;
-    color: #922;
-  }
-
   .day-cal__form-error {
     margin: 0;
     padding: 0.55rem 0.65rem;
     border: 1px solid #c44;
+    border-radius: 0.25rem;
     background: rgba(200, 60, 60, 0.08);
     color: #922;
     font-size: 0.85rem;
