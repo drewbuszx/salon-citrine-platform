@@ -1,5 +1,6 @@
 @import "./fonts.css";
 @import "@saloncitrine/theme/tokens.css";
+@import "./team-list-sidebar.css";
 
 :root {
   --team-max-width: 960px;

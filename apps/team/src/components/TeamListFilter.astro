@@ -1,4 +1,6 @@
 ---
+import TeamSidebarFilter from "./TeamSidebarFilter.astro";
+
 interface Props {
   label: string;
   placeholder?: string;
@@ -6,26 +8,9 @@ interface Props {
   open?: boolean;
 }
 
-const { label, placeholder = "No options yet.", count = null, open = false } = Astro.props;
-const hasCustomBody = Astro.slots.has("default");
+const props = Astro.props;
 ---
 
-<details class="team-list-layout__filter" open={open}>
-  <summary class="team-list-layout__filter-trigger">
-    <span class="team-list-layout__filter-label">
-      {label}{count != null && count !== "" ? ` (${count})` : ""}
-    </span>
-    <svg class="team-list-layout__filter-chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none">
-      <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
-    </svg>
-  </summary>
-  <div class="team-list-layout__filter-body">
-    {
-      hasCustomBody ? (
-        <slot />
-      ) : (
-        <p class="team-list-layout__filter-placeholder">{placeholder}</p>
-      )
-    }
-  </div>
-</details>
+<TeamSidebarFilter {...props}>
+  <slot />
+</TeamSidebarFilter>

@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamSidebarNav from "../components/TeamSidebarNav.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -37,7 +38,7 @@ const staffOptions = staffRows ?? [];
         ) : null
       }
 
-      <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Task views">
+      <TeamSidebarNav slot="sidebarFilters" label="Task views">
         <button class="team-list-layout__sidebar-nav-btn is-active" type="button" data-view="my" aria-selected="true">
           <span>Assigned to me</span>
         </button>
@@ -58,7 +59,7 @@ const staffOptions = staffRows ?? [];
             </button>
           ) : null
         }
-      </nav>
+      </TeamSidebarNav>
 
       <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
 
