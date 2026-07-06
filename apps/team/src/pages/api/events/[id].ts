@@ -8,6 +8,7 @@ import {
   parseDateInput,
   parseDateTimeLocalInput,
   parseEventType,
+  parseOptionalDateTimeLocalInput,
   parseOptionalIsoDate,
   requireManager,
   type EventRow,
@@ -120,7 +121,7 @@ export const PATCH: APIRoute = async (context) => {
         updates.starts_at = startsAt;
       }
       if (body.ends_at !== undefined) {
-        const endsAt = parseOptionalIsoDate(body.ends_at);
+        const endsAt = parseOptionalDateTimeLocalInput(body.ends_at);
         if (typeof endsAt === "object" && endsAt !== null && "error" in endsAt) {
           return jsonError(endsAt.error, 400);
         }

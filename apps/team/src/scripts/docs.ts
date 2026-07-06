@@ -112,7 +112,7 @@ function renderList() {
           ${doc.description ? `<p class="doc-card__description">${escapeHtml(doc.description)}</p>` : ""}
           <div class="doc-card__meta">
             <span>${escapeHtml(doc.fileName)}</span>
-            ${metaParts.map((part) => `<span>${escapeHtml(String(part))}</span>`).join("")}
+            ${metaParts.map((part) => `<span>${escapeHtml(String(part))}</span>`).join('<span class="doc-card__meta-sep" aria-hidden="true">·</span>')}
           </div>
           <div class="doc-card__actions">
             <button class="team-list-layout__btn-secondary" type="button" data-doc-download="${doc.id}">Download</button>

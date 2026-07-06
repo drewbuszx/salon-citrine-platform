@@ -116,6 +116,21 @@ const managerView = isSalonManager(staff);
 <script src="../scripts/docs.ts"></script>
 
 <style>
+  .docs-page :global(.team-list-layout__btn-primary) {
+    border: none;
+    background-color: var(--color-citrine);
+    color: var(--color-black);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .docs-page :global(.team-list-layout__btn-primary:hover),
+  .docs-page :global(.team-list-layout__btn-primary:focus-visible) {
+    background-color: var(--color-citrine-dark);
+    outline: none;
+    box-shadow: var(--shadow-sm), 0 0 0 3px var(--color-focus-ring);
+  }
+
   .docs-page__filters {
     display: flex;
     flex-wrap: wrap;
@@ -179,12 +194,19 @@ const managerView = isSalonManager(staff);
   .doc-card__meta {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-2) var(--space-4);
     font-family: var(--font-body);
     font-size: var(--text-xs);
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
     color: var(--color-stone-500);
+  }
+
+  .doc-card__meta-sep {
+    color: var(--color-stone-400);
+    font-weight: 400;
+    user-select: none;
   }
 
   .doc-card__actions {

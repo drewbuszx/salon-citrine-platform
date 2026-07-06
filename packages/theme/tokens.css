@@ -11,6 +11,7 @@
   --color-white: #ffffff;
   --color-citrine: #e7ac46;
   --color-citrine-dark: #c9952e;
+  --color-citrine-hover: var(--color-citrine-dark);
   --color-citrine-light: #f0c872;
   --color-citrine-muted: rgba(231, 172, 70, 0.12);
   --color-dusty-rose: #ae948f;

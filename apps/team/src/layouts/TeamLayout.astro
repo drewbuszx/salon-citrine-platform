@@ -129,13 +129,16 @@ const isAuthenticated = Boolean(user && staff);
       });
 
       document.querySelectorAll<HTMLImageElement>(".team-bar__logo-img[data-fallback-src]").forEach((img) => {
+        if (img.complete && img.naturalWidth === 0) {
+          img.dispatchEvent(new Event("error"));
+        }
         img.addEventListener("error", () => {
           const logoLink = img.closest<HTMLElement>(".team-bar__logo");
           const fallback = img.getAttribute("data-fallback-src");
           if (fallback && img.dataset.fallbackUsed !== "1") {
             img.dataset.fallbackUsed = "1";
             img.src = fallback;
-            img.classList.add("team-bar__logo-img--fallback");
+            img.classList.remove("team-bar__logo-img--fallback");
             return;
           }
           logoLink?.classList.add("is-wordmark");

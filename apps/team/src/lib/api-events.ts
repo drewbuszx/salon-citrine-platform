@@ -109,6 +109,20 @@ export function parseDateTimeLocalInput(value: unknown): string | { error: strin
   }
 }
 
+/** Parse optional datetime-local (salon wall clock) or ISO string. */
+export function parseOptionalDateTimeLocalInput(
+  value: unknown,
+): string | null | { error: string } {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+    return parseDateTimeLocalInput(raw);
+  }
+  return parseOptionalIsoDate(value);
+}
+
 export function parseDateInput(value: unknown): string | { error: string } {
   const raw = String(value ?? "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {

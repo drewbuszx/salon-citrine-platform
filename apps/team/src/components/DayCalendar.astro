@@ -2349,14 +2349,23 @@ const calendarConfig = {
   }
 
   .day-cal__column {
+    position: relative;
     flex: 0 0 var(--day-staff-width);
     width: var(--day-staff-width);
     min-width: var(--day-staff-width);
-    border-right: 1px solid var(--color-border);
   }
 
-  .day-cal__column:last-child {
-    border-right: none;
+  /* Full-height dividers above slot backgrounds (opaque tints were hiding border-right) */
+  .day-cal__column:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--color-border);
+    z-index: 3;
+    pointer-events: none;
   }
 
   .day-cal__staff-header {

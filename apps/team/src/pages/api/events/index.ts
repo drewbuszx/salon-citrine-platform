@@ -8,6 +8,7 @@ import {
   parseDateInput,
   parseDateTimeLocalInput,
   parseEventType,
+  parseOptionalDateTimeLocalInput,
   parseOptionalIsoDate,
   requireManager,
   type EventRow,
@@ -117,7 +118,7 @@ export const POST: APIRoute = async (context) => {
     if (typeof startsAt === "object" && "error" in startsAt) {
       return jsonError(startsAt.error, 400);
     }
-    endsAt = parseOptionalIsoDate(body.ends_at);
+    endsAt = parseOptionalDateTimeLocalInput(body.ends_at);
     if (typeof endsAt === "object" && endsAt !== null && "error" in endsAt) {
       return jsonError(endsAt.error, 400);
     }

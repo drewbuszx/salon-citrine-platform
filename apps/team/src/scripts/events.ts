@@ -1,4 +1,5 @@
 import { TIMEZONE } from "@saloncitrine/shared";
+import { dayOfWeekInSalon } from "../lib/calendar";
 import { localDateTimeToUtc } from "../lib/datetime";
 import { staffAccentColor } from "../lib/staff-colors";
 
@@ -230,8 +231,8 @@ function renderCalendar() {
     monthHeader.textContent = formatMonthLabel(viewYear, viewMonth);
   }
 
-  const first = new Date(viewYear, viewMonth, 1);
-  const startOffset = first.getDay();
+  const firstDateStr = calendarDateStr(viewYear, viewMonth, 1);
+  const startOffset = dayOfWeekInSalon(firstDateStr);
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const todayStr = salonDateFromIso(new Date().toISOString());
 
@@ -248,7 +249,7 @@ function renderCalendar() {
     const dayEvents = filteredEvents().filter((event) => eventOnDate(event, viewYear, viewMonth, day));
     const markers = renderDayMarkers(dayEvents);
     const isToday = dateStr === todayStr;
-    const dayOfWeek = new Date(viewYear, viewMonth, day).getDay();
+    const dayOfWeek = dayOfWeekInSalon(dateStr);
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isSelected = selectedDay?.year === viewYear && selectedDay.month === viewMonth && selectedDay.day === day;
     const classes = [
@@ -274,7 +275,7 @@ function renderCalendar() {
         aria-pressed="${isSelected ? "true" : "false"}"
       >
         <span class="events-calendar__day">${day}</span>
-        <div class="events-calendar__markers">${markers}</div>
+        <span class="events-calendar__markers">${markers}</span>
       </button>
     `;
   }

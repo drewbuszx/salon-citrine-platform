@@ -1062,7 +1062,7 @@ textarea {
 
 .btn-primary:hover,
 .btn-primary:focus-visible {
-  background: var(--color-citrine-dark);
+  background: var(--color-citrine-hover);
   box-shadow: var(--shadow-sm);
   outline: none;
 }

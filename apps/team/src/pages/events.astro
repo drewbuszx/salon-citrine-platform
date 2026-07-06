@@ -426,6 +426,7 @@ const staffOptions = staffRows ?? [];
     margin-top: auto;
     min-height: var(--event-marker-size);
     padding-top: 0.1rem;
+    width: 100%;
   }
 
   .events-page :global(.events-calendar__marker) {
@@ -433,7 +434,8 @@ const staffOptions = staffRows ?? [];
     width: var(--event-marker-size);
     height: var(--event-marker-size);
     flex-shrink: 0;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg) 80%, transparent);
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-stone-300) 55%, transparent);
   }
 
   .events-page :global(.events-calendar__marker--closure) {
@@ -816,12 +818,12 @@ const staffOptions = staffRows ?? [];
     }
 
     .events-page :global(.events-calendar__marker) {
-      width: 0.4375rem;
-      height: 0.4375rem;
+      width: 0.5rem;
+      height: 0.5rem;
     }
 
     .events-page {
-      --event-marker-size: 0.4375rem;
+      --event-marker-size: 0.5rem;
     }
 
     .events-calendar__head {

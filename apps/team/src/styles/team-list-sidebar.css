@@ -626,7 +626,7 @@
 
 .team-list-layout__btn-primary:hover,
 .team-list-layout__btn-primary:focus-visible {
-  background-color: var(--color-citrine-dark);
+  background-color: var(--color-citrine-hover);
   outline: none;
   box-shadow: var(--shadow-sm), 0 0 0 3px var(--color-focus-ring);
 }
