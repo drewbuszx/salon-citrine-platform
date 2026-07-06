@@ -130,7 +130,7 @@ function initInventory(root: HTMLElement) {
     if (!statusEl) return;
     statusEl.textContent = message;
     statusEl.hidden = !message;
-    statusEl.classList.toggle("stock-page__notice--error", isError);
+    statusEl.classList.toggle("team-list-layout__notice--error", isError);
   }
 
   function showToast(message: string) {
@@ -207,10 +207,10 @@ function initInventory(root: HTMLElement) {
     if (lowStockEl) {
       lowStockEl.hidden = lowStockCount === 0 || Boolean(lowStockFilter?.checked);
       if (lowStockCount > 0 && !lowStockFilter?.checked) {
-        lowStockEl.classList.add("stock-page__notice--actionable");
+        lowStockEl.classList.add("team-list-layout__notice--actionable");
         lowStockEl.innerHTML = `
           <span>${lowStockCount === 1 ? "1 product is" : `${lowStockCount} products are`} at or below reorder threshold.</span>
-          <button type="button" class="stock-page__btn-secondary" data-low-stock-view>View low stock</button>`;
+          <button type="button" class="team-list-layout__btn-secondary" data-low-stock-view>View low stock</button>`;
         lowStockEl.querySelector<HTMLButtonElement>("[data-low-stock-view]")?.addEventListener(
           "click",
           () => {
@@ -222,7 +222,7 @@ function initInventory(root: HTMLElement) {
           },
         );
       } else {
-        lowStockEl.classList.remove("stock-page__notice--actionable");
+        lowStockEl.classList.remove("team-list-layout__notice--actionable");
         lowStockEl.textContent = "";
       }
     }
@@ -267,7 +267,7 @@ function initInventory(root: HTMLElement) {
       : "";
 
     const editBtn = isManager
-      ? `<button type="button" class="stock-page__btn-secondary stock-card__edit-btn" data-edit-product="${product.id}">Edit product</button>`
+      ? `<button type="button" class="team-list-layout__btn-secondary stock-card__edit-btn" data-edit-product="${product.id}">Edit product</button>`
       : "";
 
     return `
@@ -296,10 +296,10 @@ function initInventory(root: HTMLElement) {
       </div>
       ${notesBlock}
       <div class="stock-card__actions">
-        <button type="button" class="stock-page__btn-primary" data-tx-action="receive" data-product-id="${product.id}">Check in</button>
-        <button type="button" class="stock-page__btn-secondary" data-tx-action="use" data-product-id="${product.id}">Use</button>
-        <button type="button" class="stock-page__btn-secondary" data-tx-action="adjust" data-product-id="${product.id}">Adjust</button>
-        <button type="button" class="stock-page__btn-secondary" data-tx-action="count" data-product-id="${product.id}">Set count</button>
+        <button type="button" class="team-list-layout__btn-primary" data-tx-action="receive" data-product-id="${product.id}">Check in</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="use" data-product-id="${product.id}">Use</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="adjust" data-product-id="${product.id}">Adjust</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="count" data-product-id="${product.id}">Set count</button>
         ${editBtn}
       </div>
       <h4 class="stock-card__history-title">Recent activity</h4>

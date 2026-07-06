@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase } = Astro.locals;
@@ -44,11 +45,24 @@ for (const row of staffServices ?? []) {
   set.add(row.service_id);
   staffServiceIds.set(row.staff_id, set);
 }
+
+const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
 ---
 
-<TeamLayout title="Services" activeNav="manage" plain wide>
-  <TeamPage title="Services" lead="Update service durations and returning-clients-only settings per stylist.">
-    <a slot="actions" class="btn-secondary" href={teamUrl("/booking-policy")}>Booking policy</a>
+<TeamLayout title="Services" activeNav="manage" plain wide fullBleed>
+  <TeamListLayout title="Services" mainTitle="Manage services" sidebarTitle="Refine Your Search">
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>Booking policy</a>
+
+    {
+      filterCategories.map((label) => (
+        <TeamListFilter slot="sidebarFilters" label={label} />
+      ))
+    }
+
+    <Fragment slot="mainLead">
+      Update service durations and returning-clients-only settings per stylist.
+    </Fragment>
+
     {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
     updateError ? (
@@ -177,7 +191,7 @@ for (const row of staffServices ?? []) {
       </>
     )
   }
-  </TeamPage>
+  </TeamListLayout>
 </TeamLayout>
 
 <style>

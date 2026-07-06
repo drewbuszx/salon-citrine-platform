@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -18,9 +19,11 @@ const { data: staffRows } = await supabase
   .order("name");
 
 const staffOptions = staffRows ?? [];
+
+const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 ---
 
-<TeamLayout title="Events" activeNav="events" plain>
+<TeamLayout title="Events" activeNav="events" plain wide fullBleed>
   <div
     class="events-page"
     data-events-app
@@ -28,24 +31,30 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamPage
-      title="Team calendar"
-      lead="Birthdays, time off, closures, and salon announcements — not the appointment book."
-      toolbar
-    >
-      <button slot="actions" class="btn-primary" type="button" data-event-create>
+    <TeamListLayout title="Events" mainTitle="Team calendar">
+      <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-event-create>
         Add event
       </button>
 
+      {
+        filterCategories.map((label) => (
+          <TeamListFilter slot="sidebarFilters" label={label} />
+        ))
+      }
+
+      <Fragment slot="mainLead">
+        Birthdays, time off, closures, and salon announcements — not the appointment book.
+      </Fragment>
+
       <div slot="toolbar" class="events-page__toolbar">
-        <button class="btn-secondary events-page__nav-btn" type="button" data-month-prev aria-label="Previous month">
+        <button class="team-list-layout__btn-secondary events-page__nav-btn" type="button" data-month-prev aria-label="Previous month">
           ‹
         </button>
         <h2 class="events-page__month" data-month-label></h2>
-        <button class="btn-secondary events-page__nav-btn" type="button" data-month-next aria-label="Next month">
+        <button class="team-list-layout__btn-secondary events-page__nav-btn" type="button" data-month-next aria-label="Next month">
           ›
         </button>
-        <button class="btn-secondary events-page__today" type="button" data-month-today>
+        <button class="team-list-layout__btn-secondary events-page__today" type="button" data-month-today>
           Today
         </button>
       </div>
@@ -68,7 +77,7 @@ const staffOptions = staffRows ?? [];
           <p class="empty-state">Loading events…</p>
         </div>
       </section>
-    </TeamPage>
+    </TeamListLayout>
   </div>
 
   <dialog class="events-modal" data-event-modal aria-labelledby="event-modal-title">

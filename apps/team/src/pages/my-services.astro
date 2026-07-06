@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
@@ -53,13 +54,21 @@ const services = rows
 const saved = Astro.url.searchParams.get("saved") === "1";
 const updateError = Astro.url.searchParams.get("error") === "update";
 const returnTo = teamUrl("/my-services");
+
+const filterCategories = ["Category", "Returning only", "Duration"];
 ---
 
-<TeamLayout title="My services" activeNav="manage" plain>
-  <TeamPage
-    title="My services"
-    lead="Choose which services you offer are for returning clients only. New clients will see a notice before booking those services with you."
-  >
+<TeamLayout title="My services" activeNav="manage" plain wide fullBleed>
+  <TeamListLayout title="My services" mainTitle="Your services">
+    {
+      filterCategories.map((label) => (
+        <TeamListFilter slot="sidebarFilters" label={label} />
+      ))
+    }
+
+    <Fragment slot="mainLead">
+      Choose which services you offer are for returning clients only. New clients will see a notice before booking those services with you.
+    </Fragment>
 
   {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
@@ -112,7 +121,7 @@ const returnTo = teamUrl("/my-services");
       </div>
     )
   }
-  </TeamPage>
+  </TeamListLayout>
 </TeamLayout>
 
 <style>

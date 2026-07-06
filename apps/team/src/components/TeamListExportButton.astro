@@ -1,0 +1,14 @@
+---
+interface Props {
+  label?: string;
+}
+
+const { label = "Export current list" } = Astro.props;
+---
+
+<button class="team-list-layout__export" type="button" data-coming-soon>
+  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+    <path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+  {label}
+</button>

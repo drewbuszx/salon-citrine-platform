@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -18,9 +19,11 @@ const { data: staffRows } = await supabase
   .order("name");
 
 const staffOptions = staffRows ?? [];
+
+const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
 ---
 
-<TeamLayout title="Tasks" activeNav="tasks" plain>
+<TeamLayout title="Tasks" activeNav="tasks" plain wide fullBleed>
   <div
     class="tasks-page"
     data-tasks-app
@@ -28,50 +31,58 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamPage title="Tasks" lead="Team to-dos & salon checklists">
+    <TeamListLayout title="Tasks" mainTitle="Your tasks">
       {
         managerView ? (
-          <button slot="actions" class="btn-primary" type="button" data-task-create>
+          <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-task-create>
             + New entry
           </button>
         ) : null
       }
 
+      {
+        filterCategories.map((label) => (
+          <TeamListFilter slot="sidebarFilters" label={label} />
+        ))
+      }
+
+      <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
+
       <div class="notebook" aria-label="Task notebook">
-      <div class="notebook__binding" aria-hidden="true">
-        <span class="notebook__hole"></span>
-        <span class="notebook__hole"></span>
-        <span class="notebook__hole"></span>
-      </div>
-
-      <div class="notebook__paper">
-        <div class="tasks-tabs" role="tablist" aria-label="Task views">
-          <button class="tasks-tabs__btn is-active" type="button" role="tab" data-view="my" aria-selected="true">
-            My tasks
-          </button>
-          <button class="tasks-tabs__btn" type="button" role="tab" data-view="available" aria-selected="false">
-            Available
-          </button>
-          <button class="tasks-tabs__btn" type="button" role="tab" data-view="completed" aria-selected="false">
-            Completed
-          </button>
-          {
-            managerView ? (
-              <button class="tasks-tabs__btn" type="button" role="tab" data-view="all" aria-selected="false">
-                All
-              </button>
-            ) : null
-          }
+        <div class="notebook__binding" aria-hidden="true">
+          <span class="notebook__hole"></span>
+          <span class="notebook__hole"></span>
+          <span class="notebook__hole"></span>
         </div>
 
-        <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
+        <div class="notebook__paper">
+          <div class="tasks-tabs" role="tablist" aria-label="Task views">
+            <button class="tasks-tabs__btn is-active" type="button" role="tab" data-view="my" aria-selected="true">
+              My tasks
+            </button>
+            <button class="tasks-tabs__btn" type="button" role="tab" data-view="available" aria-selected="false">
+              Available
+            </button>
+            <button class="tasks-tabs__btn" type="button" role="tab" data-view="completed" aria-selected="false">
+              Completed
+            </button>
+            {
+              managerView ? (
+                <button class="tasks-tabs__btn" type="button" role="tab" data-view="all" aria-selected="false">
+                  All
+                </button>
+              ) : null
+            }
+          </div>
 
-        <div class="tasks-list" data-tasks-list aria-live="polite">
-          <p class="notebook-empty">Loading tasks…</p>
+          <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
+
+          <div class="tasks-list" data-tasks-list aria-live="polite">
+            <p class="notebook-empty">Loading tasks…</p>
+          </div>
         </div>
       </div>
-      </div>
-    </TeamPage>
+    </TeamListLayout>
   </div>
 
   <dialog class="tasks-modal" data-task-modal aria-labelledby="task-modal-title">
@@ -178,7 +189,6 @@ const staffOptions = staffRows ?? [];
     --notebook-margin-line: rgba(196, 90, 78, 0.42);
   }
 
-  /* Notebook shell */
   .notebook {
     position: relative;
     filter: drop-shadow(0 6px 24px var(--color-card-shadow));
@@ -333,7 +343,6 @@ const staffOptions = staffRows ?? [];
     line-height: var(--notebook-line);
   }
 
-  /* Task rows — aligned to ruled lines */
   .notebook-entry {
     position: relative;
     border-bottom: none;

@@ -1,6 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
 import StaffAvatar from "../components/StaffAvatar.astro";
 import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
@@ -47,8 +47,15 @@ const errorMessage =
               : null;
 ---
 
-<TeamLayout title="Account" activeNav="account" plain>
-  <TeamPage title="Account" lead="Update your staff profile and contact information.">
+<TeamLayout title="Account" activeNav="account" plain wide fullBleed>
+  <TeamListLayout title="Account" mainTitle="Your profile" sidebarTitle="Sections">
+    <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Account sections">
+      <a class="team-list-layout__sidebar-link" href="#account-photo">Profile photo</a>
+      <a class="team-list-layout__sidebar-link" href="#account-details">Contact details</a>
+    </nav>
+
+    <Fragment slot="mainLead">Update your staff profile and contact information.</Fragment>
+
   <section class="form-stack form-stack--medium">
     {saved ? (
       <p class="notice notice--success" role="status">
@@ -66,6 +73,7 @@ const errorMessage =
 
     <section
       class="account-photo"
+      id="account-photo"
       aria-label="Profile photo"
       data-account-photo
       data-crop-x={photoCrop.x}
@@ -154,7 +162,7 @@ const errorMessage =
       </div>
     </section>
 
-    <form class="form-stack" method="post" action={teamUrl("/api/account")}>
+    <form class="form-stack" id="account-details" method="post" action={teamUrl("/api/account")}>
       <label class="form-label">
         Display name
         <input
@@ -206,7 +214,7 @@ const errorMessage =
       <button class="btn-primary" type="submit">Save changes</button>
     </form>
   </section>
-  </TeamPage>
+  </TeamListLayout>
 </TeamLayout>
 
 <script src="../scripts/account-photo-editor.ts"></script>

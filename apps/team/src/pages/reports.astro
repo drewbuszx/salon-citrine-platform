@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -19,9 +20,11 @@ const fromDefault = new Date(today);
 fromDefault.setDate(fromDefault.getDate() - 30);
 const toValue = today.toISOString().slice(0, 10);
 const fromValue = fromDefault.toISOString().slice(0, 10);
+
+const filterCategories = ["Date range", "Staff", "Report type", "Metrics"];
 ---
 
-<TeamLayout title="Reports" activeNav="reports" plain wide>
+<TeamLayout title="Reports" activeNav="reports" plain wide fullBleed>
   <div
     class="reports-page"
     data-reports-app
@@ -29,10 +32,18 @@ const fromValue = fromDefault.toISOString().slice(0, 10);
     data-from={fromValue}
     data-to={toValue}
   >
-    <TeamPage title="Reports" lead="Business summaries from live salon data." toolbar>
-      <button slot="actions" class="btn-secondary" type="button" data-export-csv>
+    <TeamListLayout title="Reports" mainTitle="Business summaries">
+      <button slot="headerActions" class="team-list-layout__btn-secondary" type="button" data-export-csv>
         Export CSV
       </button>
+
+      {
+        filterCategories.map((label) => (
+          <TeamListFilter slot="sidebarFilters" label={label} />
+        ))
+      }
+
+      <Fragment slot="mainLead">Business summaries from live salon data.</Fragment>
 
       <div slot="toolbar" class="reports-toolbar">
         <label class="team-toolbar-field team-toolbar-field--compact">
@@ -43,7 +54,7 @@ const fromValue = fromDefault.toISOString().slice(0, 10);
           <span class="team-toolbar-label">To</span>
           <input class="form-input" type="date" data-range-to value={toValue} />
         </label>
-        <button class="btn-primary" type="button" data-range-apply>Apply</button>
+        <button class="team-list-layout__btn-primary" type="button" data-range-apply>Apply</button>
         <span class="team-toolbar-spacer"></span>
         <span class="label-meta" data-range-label aria-live="polite"></span>
       </div>
@@ -74,7 +85,7 @@ const fromValue = fromDefault.toISOString().slice(0, 10);
           <p class="empty-state">Loading…</p>
         </div>
       </section>
-    </TeamPage>
+    </TeamListLayout>
   </div>
 </TeamLayout>
 

@@ -1,6 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
@@ -99,14 +99,22 @@ const apiServices = teamUrl("/api/my-book/services");
 const apiProfile = teamUrl("/api/my-book/profile");
 ---
 
-<TeamLayout title="My Book" activeNav="manage" plain>
-  <TeamPage
-    title="My Book"
-    lead="Set your bookable hours and control which services clients can see online. You can still manually book any service on the team calendar."
-  >
-    <a slot="actions" class="btn-secondary" href={calendarUrl}>← Book</a>
-  <section class="page-section my-book__section" aria-labelledby="my-book-availability">
-    <h2 id="my-book-availability">Client availability</h2>
+<TeamLayout title="My Book" activeNav="manage" plain wide fullBleed>
+  <TeamListLayout title="My Book" mainTitle="Online booking settings" sidebarTitle="Sections">
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={calendarUrl}>← Book</a>
+
+    <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="My book sections">
+      <a class="team-list-layout__sidebar-link" href="#my-book-availability">Client availability</a>
+      <a class="team-list-layout__sidebar-link" href="#my-book-hours">Bookable hours</a>
+      <a class="team-list-layout__sidebar-link" href="#my-book-services">Client booking blocks</a>
+    </nav>
+
+    <Fragment slot="mainLead">
+      Set your bookable hours and control which services clients can see online. You can still manually book any service on the team calendar.
+    </Fragment>
+
+  <section class="page-section my-book__section" id="my-book-availability" aria-labelledby="my-book-availability-heading">
+    <h2 id="my-book-availability-heading">Client availability</h2>
     <p class="page-section__lead">
       When enabled, clients who have never booked with you will see a notice before
       continuing online. Existing clients can still proceed.
@@ -138,8 +146,8 @@ const apiProfile = teamUrl("/api/my-book/profile");
     <p class="my-book__status" id="profile-status" role="status" hidden></p>
   </section>
 
-  <section class="page-section my-book__section" aria-labelledby="my-book-hours">
-    <h2 id="my-book-hours">Bookable hours</h2>
+  <section class="page-section my-book__section" id="my-book-hours" aria-labelledby="my-book-hours-heading">
+    <h2 id="my-book-hours-heading">Bookable hours</h2>
     <p class="page-section__lead">
       These hours feed client availability on the booking site.
     </p>
@@ -207,8 +215,8 @@ const apiProfile = teamUrl("/api/my-book/profile");
     }
   </section>
 
-  <section class="page-section my-book__section" aria-labelledby="my-book-services">
-    <h2 id="my-book-services">Client booking blocks</h2>
+  <section class="page-section my-book__section" id="my-book-services" aria-labelledby="my-book-services-heading">
+    <h2 id="my-book-services-heading">Client booking blocks</h2>
     <p class="page-section__lead">
       Soft and hard blocks hide services from clients online. Hard block is the
       strongest client-side restriction; team manual booking always shows all
@@ -263,7 +271,7 @@ const apiProfile = teamUrl("/api/my-book/profile");
     }
     <p class="my-book__status" id="services-status" role="status" hidden></p>
   </section>
-  </TeamPage>
+  </TeamListLayout>
 </TeamLayout>
 
 <script define:vars={{ apiSchedules, apiServices, apiProfile }}>

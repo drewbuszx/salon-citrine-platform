@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -23,14 +24,23 @@ if (managerView) {
 
 const saved = Astro.url.searchParams.get("saved") === "1";
 const error = Astro.url.searchParams.get("error");
+
+const filterCategories = ["Provider", "Duration", "Reason"];
 ---
 
-<TeamLayout title="Block time" activeNav="book" plain>
-  <TeamPage
-    title="Block time"
-    lead={managerView ? "Block calendar time for any provider." : "Block time on your schedule."}
-  >
-    <a slot="actions" class="btn-secondary" href={teamUrl("/book")}>← Book</a>
+<TeamLayout title="Block time" activeNav="book" plain wide fullBleed>
+  <TeamListLayout title="Block time" mainTitle="Schedule block">
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/book")}>← Book</a>
+
+    {
+      filterCategories.map((label) => (
+        <TeamListFilter slot="sidebarFilters" label={label} />
+      ))
+    }
+
+    <Fragment slot="mainLead">
+      {managerView ? "Block calendar time for any provider." : "Block time on your schedule."}
+    </Fragment>
 
   {saved ? <p class="notice notice--success">Blocked time saved.</p> : null}
   {
@@ -82,5 +92,5 @@ const error = Astro.url.searchParams.get("error");
 
     <button class="btn-primary" type="submit">Save block</button>
   </form>
-  </TeamPage>
+  </TeamListLayout>
 </TeamLayout>

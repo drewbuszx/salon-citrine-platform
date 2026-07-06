@@ -1,6 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
 import { formatBookingPolicySummary } from "@saloncitrine/shared";
 import {
   defaultPolicyResponse,
@@ -28,13 +28,22 @@ const depositValueDollars =
   policy.depositValue != null ? (policy.depositValue / 100).toFixed(2) : "";
 ---
 
-<TeamLayout title="Booking policy" activeNav="manage" plain>
-  <TeamPage
-    title="Booking policy"
-    lead="Online booking uses the active policy below. Existing appointments keep the policy snapshot stored at booking time."
-  >
+<TeamLayout title="Booking policy" activeNav="manage" plain wide fullBleed>
+  <TeamListLayout title="Booking policy" mainTitle="Active policy" sidebarTitle="Sections">
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/services")}>← Services</a>
+
+    <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Policy sections">
+      <a class="team-list-layout__sidebar-link" href="#policy-settings">Policy settings</a>
+      <a class="team-list-layout__sidebar-link" href="#policy-summary">Guest summary</a>
+    </nav>
+
+    <Fragment slot="mainLead">
+      Online booking uses the active policy below. Existing appointments keep the policy snapshot stored at booking time.
+    </Fragment>
+
   <section
     class="form-stack form-stack--medium"
+    id="policy-settings"
     data-booking-policy
     data-api-base={teamUrl("/api/booking-policy")}
   >
@@ -182,16 +191,12 @@ const depositValueDollars =
       </div>
     </form>
 
-    <section class="page-section">
+    <section class="page-section" id="policy-summary">
       <h2>Guest-facing summary</h2>
       <p class="page-section__lead" data-policy-summary>{summary}</p>
     </section>
-
-    <p class="label-meta">
-      <a href={teamUrl("/services")}>Back to services</a>
-    </p>
   </section>
-  </TeamPage>
+  </TeamListLayout>
 
   <script src="../scripts/booking-policy.ts"></script>
 </TeamLayout>

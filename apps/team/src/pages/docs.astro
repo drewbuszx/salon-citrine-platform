@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamPage from "../components/TeamPage.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -11,23 +12,33 @@ if (!staff) {
 }
 
 const managerView = isSalonManager(staff);
+
+const filterCategories = ["Category", "File type", "Updated", "Tags"];
 ---
 
-<TeamLayout title="Docs" activeNav="docs" plain>
+<TeamLayout title="Docs" activeNav="docs" plain wide fullBleed>
   <div
     class="docs-page"
     data-docs-app
     data-api-base={teamUrl("/api/documents")}
     data-manager={managerView ? "1" : "0"}
   >
-    <TeamPage title="Docs" lead="Employee handbook, procedures, and salon resources." toolbar>
+    <TeamListLayout title="Docs" mainTitle="Your documents">
       {
         managerView ? (
-          <button slot="actions" class="btn-primary" type="button" data-doc-upload-open>
+          <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-doc-upload-open>
             Upload
           </button>
         ) : null
       }
+
+      {
+        filterCategories.map((label) => (
+          <TeamListFilter slot="sidebarFilters" label={label} />
+        ))
+      }
+
+      <Fragment slot="mainLead">Employee handbook, procedures, and salon resources.</Fragment>
 
       <div slot="toolbar" class="docs-page__filters">
         <label class="team-toolbar-field team-toolbar-field--grow">
@@ -58,7 +69,7 @@ const managerView = isSalonManager(staff);
       <div class="docs-list" data-docs-list aria-live="polite">
         <p class="empty-state">Loading documents…</p>
       </div>
-    </TeamPage>
+    </TeamListLayout>
   </div>
 
   <dialog class="docs-modal" data-doc-modal aria-labelledby="doc-modal-title">

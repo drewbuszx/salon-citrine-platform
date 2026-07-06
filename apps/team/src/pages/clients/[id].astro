@@ -2,6 +2,7 @@
 export const prerender = false;
 
 import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamListLayout from "../../components/TeamListLayout.astro";
 import { teamUrl } from "../../lib/supabase-server";
 import {
   INTAKE_REFERRAL_SOURCES,
@@ -20,7 +21,7 @@ if (!clientId) {
 }
 ---
 
-<TeamLayout title="Client profile" activeNav="clients" plain wide>
+<TeamLayout title="Client profile" activeNav="clients" plain wide fullBleed>
   <div
     class="client-profile"
     data-client-profile
@@ -33,23 +34,26 @@ if (!clientId) {
     <p class="notice notice--error" data-error hidden></p>
 
     <div data-profile-content hidden>
-      <div class="team-page">
-        <header class="team-page__header">
-          <div class="team-page__intro">
-            <p class="label-meta">Client chart</p>
-            <h1 class="client-profile__name" data-client-name></h1>
-            <p class="client-profile__stats" data-client-stats></p>
-          </div>
-          <div class="team-page__actions client-profile__actions">
-            <a class="btn-secondary" href={teamUrl("/clients")}>← All clients</a>
-            <a class="btn-primary" data-book-again href="#" hidden>Book again</a>
-          </div>
-        </header>
+      <TeamListLayout title="Client profile" sidebarTitle="Sections">
+        <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/clients")}>← All clients</a>
+        <a slot="headerActions" class="team-list-layout__btn-primary" data-book-again href="#" hidden>Book again</a>
 
-        <div class="team-page__body">
-          <div class="client-profile__layout">
+        <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Client sections">
+          <a class="team-list-layout__sidebar-link" href="#client-contact">Contact</a>
+          <a class="team-list-layout__sidebar-link" href="#client-intake">Intake profile</a>
+          <a class="team-list-layout__sidebar-link" href="#client-notes">Preferences & notes</a>
+          <a class="team-list-layout__sidebar-link" href="#client-timeline">Visit timeline</a>
+          <a class="team-list-layout__sidebar-link" href="#client-notes-timeline">Notes timeline</a>
+        </nav>
+
+        <div class="client-profile__intro">
+          <h2 class="client-profile__name" data-client-name></h2>
+          <p class="client-profile__stats" data-client-stats></p>
+        </div>
+
+        <div class="client-profile__layout">
           <aside class="client-profile__sidebar">
-            <section class="team-panel">
+            <section class="team-panel" id="client-contact">
               <h2 class="team-panel__title">Contact</h2>
               <form class="client-form" data-contact-form>
                 <label class="form-label">First name<input class="form-input" name="firstName" required /></label>
@@ -68,7 +72,7 @@ if (!clientId) {
               </form>
             </section>
 
-            <section class="team-panel">
+            <section class="team-panel" id="client-intake">
               <h2 class="team-panel__title">Intake profile</h2>
               <form class="client-form" data-intake-form>
                 <label class="form-label">
@@ -125,7 +129,7 @@ if (!clientId) {
               </form>
             </section>
 
-            <section class="team-panel">
+            <section class="team-panel" id="client-notes">
               <h2 class="team-panel__title">Preferences & notes</h2>
               <form class="client-form" data-notes-form>
                 <label class="form-label">Client preferences<textarea class="form-input form-input--textarea" name="bookingPreferences" rows="2"></textarea></label>
@@ -139,12 +143,12 @@ if (!clientId) {
           </aside>
 
           <div class="client-profile__main">
-            <section class="team-panel">
+            <section class="team-panel" id="client-timeline">
               <h2 class="team-panel__title">Visit timeline</h2>
               <ul class="client-timeline" data-timeline></ul>
             </section>
 
-            <section class="team-panel">
+            <section class="team-panel" id="client-notes-timeline">
               <h2 class="team-panel__title">Notes timeline</h2>
               <form class="client-note-add" data-add-note-form>
                 <label class="form-label">
@@ -163,9 +167,8 @@ if (!clientId) {
               <ul class="client-notes" data-notes-list></ul>
             </section>
           </div>
-          </div>
         </div>
-      </div>
+      </TeamListLayout>
     </div>
   </div>
 </TeamLayout>
@@ -173,6 +176,10 @@ if (!clientId) {
 <script src="../../scripts/client-profile.ts"></script>
 
 <style>
+  .client-profile__intro {
+    margin-bottom: 1rem;
+  }
+
   .client-profile__name {
     margin: 0.15rem 0 0;
     font-family: var(--font-sans);
@@ -185,12 +192,6 @@ if (!clientId) {
     font-family: var(--font-sans);
     font-size: 0.85rem;
     color: var(--color-gray);
-  }
-
-  .client-profile__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
   }
 
   .client-profile__layout {
