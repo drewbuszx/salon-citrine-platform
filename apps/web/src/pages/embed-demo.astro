@@ -1,0 +1,111 @@
+---
+/**
+ * Stakeholder demo: embed booking in an iframe (same pattern as saloncitrineindy.com).
+ * Live at /book/embed-demo after book Worker deploy.
+ */
+import { BUSINESS } from "@saloncitrine/shared";
+
+const bookBase =
+  import.meta.env.PUBLIC_BOOK_URL?.replace(/\/$/, "") ??
+  `${Astro.url.origin}${import.meta.env.BASE_URL}`.replace(/\/$/, "");
+
+const embedSrc = `${bookBase}?embed=1`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Embed demo · {BUSINESS.name}</title>
+    <style>
+      :root {
+        font-family: "DM Sans", system-ui, sans-serif;
+        color: #3c3835;
+        background: #f7f2ea;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+      }
+      .demo {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 3rem;
+      }
+      .demo__kicker {
+        margin: 0 0 0.5rem;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #787068;
+      }
+      .demo__title {
+        margin: 0 0 0.75rem;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
+        font-weight: 500;
+        line-height: 1.2;
+      }
+      .demo__lead {
+        margin: 0 0 1.5rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #787068;
+        max-width: 38rem;
+      }
+      .demo__frame-wrap {
+        border: 1px solid #e8e4dc;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(47, 42, 40, 0.08);
+        background: #f7f2ea;
+      }
+      .demo__frame {
+        display: block;
+        width: 100%;
+        min-height: 720px;
+        border: 0;
+        background: #f7f2ea;
+      }
+      .demo__code {
+        margin-top: 1.25rem;
+        padding: 1rem;
+        border-radius: 8px;
+        background: #efe6d8;
+        font-size: 0.75rem;
+        line-height: 1.5;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo">
+      <p class="demo__kicker">Guest booking · embed mode</p>
+      <h1 class="demo__title">Book without leaving the salon site</h1>
+      <p class="demo__lead">
+        This page mirrors how booking embeds on saloncitrineindy.com — minimal chrome, full funnel,
+        cream panel. Use it to demo iframe integration to stakeholders today.
+      </p>
+      <div class="demo__frame-wrap">
+        <iframe
+          class="demo__frame"
+          src={embedSrc}
+          title={`Book an appointment at ${BUSINESS.name}`}
+          loading="lazy"
+          allow="payment *"
+        ></iframe>
+      </div>
+      <pre class="demo__code" aria-label="iframe snippet">&lt;iframe
+  src="{embedSrc}"
+  title="Book an appointment at {BUSINESS.name}"
+  style="width:100%;min-height:720px;border:0;border-radius:8px;background:#f7f2ea;"
+  loading="lazy"
+  allow="payment *"
+&gt;&lt;/iframe&gt;</pre>
+    </div>
+  </body>
+</html>
