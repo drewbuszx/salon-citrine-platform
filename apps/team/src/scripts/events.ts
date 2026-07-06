@@ -176,9 +176,28 @@ function renderEventMarker(event: TeamEvent) {
   const color = eventStaffColor(event);
   const title = escapeHtml(event.title);
   if (HIGHLIGHT_EVENT_TYPES.has(event.eventType)) {
-    return `<span class="events-calendar__chip events-calendar__chip--${event.eventType}" style="--event-staff-color: ${color}" title="${title}">${title}</span>`;
+    return `<span class="events-calendar__pill events-calendar__pill--${event.eventType}" style="--event-staff-color: ${color}" title="${title}">${title}</span>`;
   }
-  return `<span class="events-calendar__bar" style="--event-staff-color: ${color}" title="${title}"></span>`;
+  return `<span class="events-calendar__dot" style="--event-staff-color: ${color}" title="${title}"></span>`;
+}
+
+function renderDayMarkers(dayEvents: TeamEvent[]) {
+  const highlights = dayEvents.filter((event) => HIGHLIGHT_EVENT_TYPES.has(event.eventType));
+  const timeOff = dayEvents.filter((event) => event.eventType === "time_off");
+  const shownHighlights = highlights.slice(0, 2);
+  const shownTimeOff = timeOff.slice(0, 4);
+  const shownCount = shownHighlights.length + shownTimeOff.length;
+  const pills = shownHighlights.map(renderEventMarker).join("");
+  const dots = shownTimeOff.map(renderEventMarker).join("");
+  const totalHidden = dayEvents.length - shownCount;
+  const overflow =
+    totalHidden > 0
+      ? `<span class="events-calendar__more">+${totalHidden}</span>`
+      : "";
+  const dotsHtml =
+    dots.length > 0 ? `<div class="events-calendar__dots">${dots}</div>` : "";
+
+  return `${pills}${dotsHtml}${overflow}`;
 }
 
 function renderCalendar() {
@@ -204,15 +223,13 @@ function renderCalendar() {
     const date = new Date(viewYear, viewMonth, day);
     const dayEvents = events.filter((event) => eventOnDate(event, date));
     const highlightType = dominantHighlightType(dayEvents);
-    const markers = dayEvents.slice(0, 5).map(renderEventMarker).join("");
-    const overflow =
-      dayEvents.length > 5
-        ? `<span class="events-calendar__more">+${dayEvents.length - 5}</span>`
-        : "";
+    const markers = renderDayMarkers(dayEvents);
     const isToday = sameDay(date, today);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const classes = [
       "events-calendar__cell",
       isToday ? "events-calendar__cell--today" : "",
+      isWeekend ? "events-calendar__cell--weekend" : "",
       highlightType ? `events-calendar__cell--${highlightType}` : "",
     ]
       .filter(Boolean)
@@ -221,7 +238,7 @@ function renderCalendar() {
     html += `
       <div class="${classes}">
         <span class="events-calendar__day">${day}</span>
-        <div class="events-calendar__markers">${markers}${overflow}</div>
+        <div class="events-calendar__markers">${markers}</div>
       </div>
     `;
   }
@@ -247,31 +264,25 @@ function renderList() {
   listEl.innerHTML = upcoming
     .map((event) => {
       const color = eventStaffColor(event);
-      const staffLine =
+      const staffName =
         event.eventType === "time_off" && event.staffName
-          ? `<span class="event-card__staff">${escapeHtml(event.staffName)}</span>`
-          : event.createdByName
-            ? `<span class="event-card__staff">${escapeHtml(event.createdByName)}</span>`
-            : "";
+          ? event.staffName
+          : event.createdByName ?? "";
+      const staffLine = staffName
+        ? `<span class="event-row__staff">${escapeHtml(staffName)}</span>`
+        : "";
       return `
         <button
-          class="event-card event-card--${event.eventType}"
+          class="event-row event-row--${event.eventType}"
           type="button"
           data-event-open="${event.id}"
           style="--event-staff-color: ${color}"
         >
-          <div class="event-card__accent" aria-hidden="true"></div>
-          <div class="event-card__body">
-            <div class="event-card__top">
-              <h4 class="event-card__title">${escapeHtml(event.title)}</h4>
-              ${typeBadge(event.eventType)}
-            </div>
-            ${event.description ? `<p class="event-card__description">${escapeHtml(event.description)}</p>` : ""}
-            <div class="event-card__meta">
-              <span>${escapeHtml(formatEventRange(event))}</span>
-              ${staffLine}
-            </div>
-          </div>
+          <span class="event-row__dot" aria-hidden="true"></span>
+          <span class="event-row__title">${escapeHtml(event.title)}</span>
+          <span class="event-row__when">${escapeHtml(formatEventRange(event))}</span>
+          ${staffLine}
+          ${typeBadge(event.eventType)}
         </button>
       `;
     })
