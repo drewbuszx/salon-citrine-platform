@@ -16,6 +16,13 @@ import { fetchActiveBookingPolicy } from "../lib/booking-policy";
 import { bookingApi } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 import { calculateRequiredDepositCents, formatCents } from "@saloncitrine/shared";
+import {
+  INTAKE_REFERRAL_SOURCES,
+  NEW_CLIENT_INTAKE_WELCOME,
+  PREFERRED_CONTACT_LABELS,
+  PREFERRED_CONTACT_METHODS,
+  RETURNING_CLIENT_INTAKE_NOTE,
+} from "@saloncitrine/shared";
 
 const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
@@ -119,53 +126,176 @@ const confirmUrl = withBase("confirm/");
     <input type="hidden" name="startsAt" value={slot.startsAt} />
     {cartId && <input type="hidden" name="cartId" value={cartId} />}
     <input type="hidden" id="policy-ack" name="policyAck" value="false" />
+    <input type="hidden" name="isReturningClient" value="false" data-returning-client-input />
 
     <p class="lookup-status" data-lookup-status hidden aria-live="polite"></p>
 
-    <label class="field">
-      <span>First name</span>
-      <input type="text" name="firstName" required autocomplete="given-name" />
-    </label>
+    <div class="intake-welcome" data-new-client-welcome>
+      <p class="intake-welcome__text">{NEW_CLIENT_INTAKE_WELCOME}</p>
+    </div>
 
-    <label class="field">
-      <span>Last name</span>
-      <input type="text" name="lastName" required autocomplete="family-name" />
-    </label>
+    <div class="intake-welcome intake-welcome--returning" data-returning-client-welcome hidden>
+      <p class="intake-welcome__text">{RETURNING_CLIENT_INTAKE_NOTE}</p>
+    </div>
 
-    <label class="field">
-      <span>Email</span>
-      <input type="email" name="email" required autocomplete="email" />
-    </label>
+    <fieldset class="form-section">
+      <legend>Contact information</legend>
 
-    <label class="field">
-      <span>Phone</span>
-      <input type="tel" name="phone" required autocomplete="tel" />
-    </label>
+      <div class="field-row">
+        <label class="field">
+          <span>First name</span>
+          <input type="text" name="firstName" required autocomplete="given-name" />
+        </label>
 
-    <label class="checkbox">
-      <input type="checkbox" name="smsOptIn" value="true" />
-      <span>Text me appointment reminders (optional)</span>
-    </label>
+        <label class="field">
+          <span>Last name</span>
+          <input type="text" name="lastName" required autocomplete="family-name" />
+        </label>
+      </div>
 
-    <label class="field">
-      <span>Appointment notes (optional)</span>
-      <textarea
-        name="intakeNotes"
-        rows="3"
-        maxlength="1200"
-        placeholder="Allergies, accessibility needs, or must-know details."
-      />
-    </label>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" name="email" required autocomplete="email" />
+      </label>
 
-    <label class="field">
-      <span>Service preferences (optional)</span>
-      <textarea
-        name="bookingPreferences"
-        rows="2"
-        maxlength="600"
-        placeholder="Tone goals, styling preferences, or products to avoid."
-      />
-    </label>
+      <label class="field">
+        <span>Mobile phone</span>
+        <input type="tel" name="phone" required autocomplete="tel" />
+      </label>
+
+      <fieldset class="field field--inline" data-intake-only>
+        <legend>Preferred contact method</legend>
+        <div class="radio-group">
+          {
+            PREFERRED_CONTACT_METHODS.map((method) => (
+              <label class="radio">
+                <input
+                  type="radio"
+                  name="preferredContactMethod"
+                  value={method}
+                  required
+                  data-intake-required
+                />
+                <span>{PREFERRED_CONTACT_LABELS[method]}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <label class="checkbox">
+        <input type="checkbox" name="smsOptIn" value="true" />
+        <span>Text me appointment reminders (optional)</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="form-section" data-intake-section>
+      <legend>New client intake</legend>
+
+      <label class="field">
+        <span>Birthday</span>
+        <input
+          type="date"
+          name="birthday"
+          autocomplete="bday"
+          data-intake-required
+        />
+      </label>
+
+      <label class="field">
+        <span>Street address</span>
+        <input
+          type="text"
+          name="addressLine1"
+          autocomplete="address-line1"
+          data-intake-required
+        />
+      </label>
+
+      <label class="field">
+        <span>Apartment, suite, etc. (optional)</span>
+        <input type="text" name="addressLine2" autocomplete="address-line2" />
+      </label>
+
+      <div class="field-row field-row--3">
+        <label class="field">
+          <span>City</span>
+          <input
+            type="text"
+            name="addressCity"
+            autocomplete="address-level2"
+            data-intake-required
+          />
+        </label>
+
+        <label class="field">
+          <span>State</span>
+          <input
+            type="text"
+            name="addressState"
+            maxlength="2"
+            autocomplete="address-level1"
+            placeholder="IN"
+            data-intake-required
+          />
+        </label>
+
+        <label class="field">
+          <span>ZIP</span>
+          <input
+            type="text"
+            name="addressZip"
+            inputmode="numeric"
+            autocomplete="postal-code"
+            data-intake-required
+          />
+        </label>
+      </div>
+
+      <fieldset class="field">
+        <legend>How did you hear about us?</legend>
+        <p class="field-hint">Select all that apply.</p>
+        <div class="checkbox-grid">
+          {
+            INTAKE_REFERRAL_SOURCES.map((source) => (
+              <label class="checkbox">
+                <input
+                  type="checkbox"
+                  name="referralSources"
+                  value={source}
+                  data-intake-required-group="referralSources"
+                />
+                <span>{source}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+    </fieldset>
+
+    <fieldset class="form-section form-section--optional">
+      <legend>Appointment notes (optional)</legend>
+
+      <label class="field">
+        <span>Must-know details for your visit</span>
+        <textarea
+          name="intakeNotes"
+          rows="3"
+          maxlength="1200"
+          placeholder="Allergies, accessibility needs, or other details for your stylist."
+        />
+      </label>
+
+      <label class="field">
+        <span>Service preferences</span>
+        <textarea
+          name="bookingPreferences"
+          rows="2"
+          maxlength="600"
+          placeholder="Tone goals, styling preferences, or products to avoid."
+        />
+      </label>
+    </fieldset>
 
     <div class="order-summary" aria-label="Order summary">
       <div class="order-summary__row">
@@ -188,7 +318,7 @@ const confirmUrl = withBase("confirm/");
     <div class="card-section">
       <p class="card-section__label">Payment method</p>
       <p class="card-section__hint">
-        Secure card on file — Boulevard-style checkout. Required to complete booking.
+        Secure card on file — required to complete booking.
       </p>
       <div id="payment-element" class="payment-element" aria-busy="false" aria-live="polite">
         <p class="payment-element__status">Enter your email above to load the card form.</p>
@@ -235,41 +365,113 @@ const confirmUrl = withBase("confirm/");
     color: var(--color-sage);
   }
 
+  .intake-welcome {
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    background: rgba(231, 172, 70, 0.12);
+    border-left: 3px solid var(--color-citrine);
+  }
+
+  .intake-welcome--returning {
+    background: rgba(143, 168, 143, 0.12);
+    border-left-color: var(--color-sage);
+  }
+
+  .intake-welcome__text {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
   .details-form {
     display: grid;
-    gap: 1rem;
-    max-width: 28rem;
+    gap: 1.25rem;
+    max-width: 32rem;
     margin-top: 1.5rem;
+  }
+
+  .form-section {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .form-section legend,
+  .field--inline legend,
+  .field legend {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+    padding: 0;
+  }
+
+  .form-section--optional legend {
+    color: var(--color-gray);
+  }
+
+  .field-row {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-row--3 {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+
+  @media (max-width: 520px) {
+    .field-row,
+    .field-row--3 {
+      grid-template-columns: 1fr;
+    }
   }
 
   .field {
     display: grid;
     gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
 
-  .field span {
+  .field span,
+  .field > legend {
     font-family: var(--font-sans);
     font-size: 0.72rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
-  .field input {
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    color: var(--color-text);
+  .field-hint {
+    margin: 0 0 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-gray);
   }
 
+  .field input,
   .field textarea {
     padding: 0.65rem 0.75rem;
     border: 1px solid var(--color-border);
     background: var(--color-bg);
     color: var(--color-text);
     font: inherit;
+  }
+
+  .field textarea {
     resize: vertical;
   }
 
+  .radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .radio,
   .checkbox {
     display: flex;
     gap: 0.5rem;
@@ -277,8 +479,13 @@ const confirmUrl = withBase("confirm/");
     font-size: 0.95rem;
   }
 
+  .checkbox-grid {
+    display: grid;
+    gap: 0.5rem;
+  }
+
   .order-summary {
-    margin: 1.25rem 0;
+    margin: 0.25rem 0;
     padding: 1rem;
     border: 1px solid var(--color-border);
     background: var(--color-bg);

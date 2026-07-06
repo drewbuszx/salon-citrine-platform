@@ -10,6 +10,7 @@ const timelineEl = root?.querySelector<HTMLElement>("[data-timeline]");
 const notesListEl = root?.querySelector<HTMLElement>("[data-notes-list]");
 const bookAgainEl = root?.querySelector<HTMLAnchorElement>("[data-book-again]");
 const contactForm = root?.querySelector<HTMLFormElement>("[data-contact-form]");
+const intakeForm = root?.querySelector<HTMLFormElement>("[data-intake-form]");
 const notesForm = root?.querySelector<HTMLFormElement>("[data-notes-form]");
 const addNoteForm = root?.querySelector<HTMLFormElement>("[data-add-note-form]");
 
@@ -28,7 +29,7 @@ function setField(form: HTMLFormElement | null, name: string, value: string | bo
   if (el instanceof HTMLInputElement) {
     if (el.type === "checkbox") el.checked = Boolean(value);
     else el.value = String(value ?? "");
-  } else if (el instanceof HTMLTextAreaElement) {
+  } else if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
     el.value = String(value ?? "");
   }
 }
@@ -41,9 +42,23 @@ function readField(form: HTMLFormElement, name: string): string {
   return "";
 }
 
+function readCheckboxGroup(form: HTMLFormElement, name: string): string[] {
+  return Array.from(form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)).map(
+    (el) => el.value,
+  );
+}
+
 function readCheckbox(form: HTMLFormElement, name: string): boolean {
   const el = form.elements.namedItem(name);
   return el instanceof HTMLInputElement && el.checked;
+}
+
+function setCheckboxGroup(form: HTMLFormElement | null, name: string, values: string[]) {
+  if (!form) return;
+  const selected = new Set(values);
+  for (const el of form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)) {
+    el.checked = selected.has(el.value);
+  }
 }
 
 async function loadProfile() {
@@ -74,6 +89,15 @@ async function loadProfile() {
     setField(contactForm, "phone", client.phone ?? "");
     setField(contactForm, "smsOptIn", client.smsOptIn);
     setField(contactForm, "emailOptIn", client.emailOptIn);
+
+    setField(intakeForm, "birthday", client.birthday ?? "");
+    setField(intakeForm, "addressLine1", client.addressLine1 ?? "");
+    setField(intakeForm, "addressLine2", client.addressLine2 ?? "");
+    setField(intakeForm, "addressCity", client.addressCity ?? "");
+    setField(intakeForm, "addressState", client.addressState ?? "");
+    setField(intakeForm, "addressZip", client.addressZip ?? "");
+    setField(intakeForm, "preferredContactMethod", client.preferredContactMethod ?? "");
+    setCheckboxGroup(intakeForm, "referralSources", client.referralSources ?? []);
 
     setField(notesForm, "bookingPreferences", client.bookingPreferences ?? "");
     setField(notesForm, "intakeNotes", client.intakeNotes ?? "");
@@ -176,6 +200,26 @@ contactForm?.addEventListener("submit", async (event) => {
       phone: readField(contactForm, "phone") || null,
       smsOptIn: readCheckbox(contactForm, "smsOptIn"),
       emailOptIn: readCheckbox(contactForm, "emailOptIn"),
+    });
+    showError("");
+    await loadProfile();
+  } catch (err) {
+    showError(err instanceof Error ? err.message : "Save failed");
+  }
+});
+
+intakeForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await patchClient({
+      birthday: readField(intakeForm, "birthday") || null,
+      addressLine1: readField(intakeForm, "addressLine1") || null,
+      addressLine2: readField(intakeForm, "addressLine2") || null,
+      addressCity: readField(intakeForm, "addressCity") || null,
+      addressState: readField(intakeForm, "addressState").toUpperCase() || null,
+      addressZip: readField(intakeForm, "addressZip") || null,
+      preferredContactMethod: readField(intakeForm, "preferredContactMethod") || null,
+      referralSources: readCheckboxGroup(intakeForm, "referralSources"),
     });
     showError("");
     await loadProfile();

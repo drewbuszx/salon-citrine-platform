@@ -3,6 +3,11 @@ export const prerender = false;
 
 import TeamLayout from "../../layouts/TeamLayout.astro";
 import { teamUrl } from "../../lib/supabase-server";
+import {
+  INTAKE_REFERRAL_SOURCES,
+  PREFERRED_CONTACT_LABELS,
+  PREFERRED_CONTACT_METHODS,
+} from "@saloncitrine/shared";
 
 const { staff } = Astro.locals;
 if (!staff) {
@@ -60,6 +65,63 @@ if (!clientId) {
                   Email marketing
                 </label>
                 <button type="submit" class="btn-primary">Save contact</button>
+              </form>
+            </section>
+
+            <section class="team-panel">
+              <h2 class="team-panel__title">Intake profile</h2>
+              <form class="client-form" data-intake-form>
+                <label class="form-label">
+                  Birthday
+                  <input class="form-input" name="birthday" type="date" />
+                </label>
+                <label class="form-label">
+                  Street address
+                  <input class="form-input" name="addressLine1" autocomplete="address-line1" />
+                </label>
+                <label class="form-label">
+                  Address line 2
+                  <input class="form-input" name="addressLine2" autocomplete="address-line2" />
+                </label>
+                <div class="client-form__row">
+                  <label class="form-label">
+                    City
+                    <input class="form-input" name="addressCity" autocomplete="address-level2" />
+                  </label>
+                  <label class="form-label">
+                    State
+                    <input class="form-input" name="addressState" maxlength="2" autocomplete="address-level1" />
+                  </label>
+                  <label class="form-label">
+                    ZIP
+                    <input class="form-input" name="addressZip" inputmode="numeric" autocomplete="postal-code" />
+                  </label>
+                </div>
+                <label class="form-label">
+                  Preferred contact
+                  <select class="form-input" name="preferredContactMethod">
+                    <option value="">—</option>
+                    {
+                      PREFERRED_CONTACT_METHODS.map((method) => (
+                        <option value={method}>{PREFERRED_CONTACT_LABELS[method]}</option>
+                      ))
+                    }
+                  </select>
+                </label>
+                <fieldset class="client-form__fieldset">
+                  <legend class="form-label">How they heard about us</legend>
+                  <div class="client-form__checks">
+                    {
+                      INTAKE_REFERRAL_SOURCES.map((source) => (
+                        <label class="checkbox-row">
+                          <input type="checkbox" name="referralSources" value={source} />
+                          {source}
+                        </label>
+                      ))
+                    }
+                  </div>
+                </fieldset>
+                <button type="submit" class="btn-primary">Save intake</button>
               </form>
             </section>
 
@@ -153,6 +215,29 @@ if (!clientId) {
   .client-note-add {
     display: grid;
     gap: 0.75rem;
+  }
+
+  .client-form__row {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+
+  @media (max-width: 720px) {
+    .client-form__row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .client-form__fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .client-form__checks {
+    display: grid;
+    gap: 0.35rem;
   }
 
   .checkbox-row {

@@ -10,6 +10,12 @@ const paymentMount = document.getElementById("payment-element");
 const errorEl = document.querySelector<HTMLElement>("[data-form-error]");
 const submitBtn = document.querySelector<HTMLButtonElement>("[data-open-policy-modal]");
 const lookupStatusEl = document.querySelector<HTMLElement>("[data-lookup-status]");
+const intakeSectionEl = document.querySelector<HTMLElement>("[data-intake-section]");
+const newClientWelcomeEl = document.querySelector<HTMLElement>("[data-new-client-welcome]");
+const returningWelcomeEl = document.querySelector<HTMLElement>("[data-returning-client-welcome]");
+const returningClientInput = document.querySelector<HTMLInputElement>(
+  "[data-returning-client-input]",
+);
 const reservationHoldEl = document.querySelector<HTMLElement>("[data-reservation-hold]");
 const reservationCountdownEl = document.querySelector<HTMLElement>(
   "[data-reservation-countdown]",
@@ -79,6 +85,44 @@ function formValue(name: string) {
 function checkboxChecked(name: string) {
   const el = form?.elements.namedItem(name);
   return el instanceof HTMLInputElement && el.checked;
+}
+
+function checkedValues(name: string): string[] {
+  if (!form) return [];
+  return Array.from(form.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)).map(
+    (el) => el.value,
+  );
+}
+
+function setReturningClientMode(isReturning: boolean) {
+  if (returningClientInput) returningClientInput.value = isReturning ? "true" : "false";
+  if (intakeSectionEl) intakeSectionEl.hidden = isReturning;
+  if (newClientWelcomeEl) newClientWelcomeEl.hidden = isReturning;
+  if (returningWelcomeEl) returningWelcomeEl.hidden = !isReturning;
+
+  for (const el of form?.querySelectorAll<HTMLElement>("[data-intake-only]") ?? []) {
+    el.hidden = isReturning;
+  }
+
+  for (const el of form?.querySelectorAll<HTMLInputElement>("[data-intake-required]") ?? []) {
+    if (isReturning) {
+      el.removeAttribute("required");
+    } else {
+      el.setAttribute("required", "");
+    }
+  }
+}
+
+function validateIntakeForNewClient(): boolean {
+  if (returningClientInput?.value === "true") return true;
+
+  const referralSources = checkedValues("referralSources");
+  if (referralSources.length === 0) {
+    showError("Select at least one option for how you heard about us.");
+    return false;
+  }
+
+  return true;
 }
 
 function policyAcknowledged(): boolean {
@@ -229,11 +273,19 @@ async function lookupClientByEmail() {
   try {
     const result = await lookupExistingClient({ lookupUrl: clientLookupUrl, email });
     if (result.found && result.client) {
+      setReturningClientMode(true);
+
       const firstNameEl = form?.elements.namedItem("firstName");
       const lastNameEl = form?.elements.namedItem("lastName");
       const phoneEl = form?.elements.namedItem("phone");
       const notesEl = form?.elements.namedItem("intakeNotes");
       const prefsEl = form?.elements.namedItem("bookingPreferences");
+      const birthdayEl = form?.elements.namedItem("birthday");
+      const addressLine1El = form?.elements.namedItem("addressLine1");
+      const addressLine2El = form?.elements.namedItem("addressLine2");
+      const addressCityEl = form?.elements.namedItem("addressCity");
+      const addressStateEl = form?.elements.namedItem("addressState");
+      const addressZipEl = form?.elements.namedItem("addressZip");
 
       if (firstNameEl instanceof HTMLInputElement && !firstNameEl.value) {
         firstNameEl.value = result.client.firstName;
@@ -254,13 +306,61 @@ async function lookupClientByEmail() {
       ) {
         prefsEl.value = result.client.bookingPreferences;
       }
+      if (birthdayEl instanceof HTMLInputElement && !birthdayEl.value && result.client.birthday) {
+        birthdayEl.value = result.client.birthday;
+      }
+      if (
+        addressLine1El instanceof HTMLInputElement &&
+        !addressLine1El.value &&
+        result.client.addressLine1
+      ) {
+        addressLine1El.value = result.client.addressLine1;
+      }
+      if (
+        addressLine2El instanceof HTMLInputElement &&
+        !addressLine2El.value &&
+        result.client.addressLine2
+      ) {
+        addressLine2El.value = result.client.addressLine2;
+      }
+      if (
+        addressCityEl instanceof HTMLInputElement &&
+        !addressCityEl.value &&
+        result.client.addressCity
+      ) {
+        addressCityEl.value = result.client.addressCity;
+      }
+      if (
+        addressStateEl instanceof HTMLInputElement &&
+        !addressStateEl.value &&
+        result.client.addressState
+      ) {
+        addressStateEl.value = result.client.addressState;
+      }
+      if (
+        addressZipEl instanceof HTMLInputElement &&
+        !addressZipEl.value &&
+        result.client.addressZip
+      ) {
+        addressZipEl.value = result.client.addressZip;
+      }
+
+      if (result.client.preferredContactMethod) {
+        const preferredEl = form?.querySelector<HTMLInputElement>(
+          `input[name="preferredContactMethod"][value="${result.client.preferredContactMethod}"]`,
+        );
+        if (preferredEl) preferredEl.checked = true;
+      }
 
       if (lookupStatusEl) {
         lookupStatusEl.textContent = `Welcome back, ${result.client.firstName}! We filled in your details.`;
       }
-    } else if (lookupStatusEl) {
-      lookupStatusEl.textContent = "";
-      lookupStatusEl.hidden = true;
+    } else {
+      setReturningClientMode(false);
+      if (lookupStatusEl) {
+        lookupStatusEl.textContent = "";
+        lookupStatusEl.hidden = true;
+      }
     }
   } catch {
     if (lookupStatusEl) {
@@ -319,6 +419,10 @@ async function completeBooking() {
     return;
   }
 
+  if (!validateIntakeForNewClient()) {
+    return;
+  }
+
   if (!policyAcknowledged()) {
     showError("Please review and acknowledge the booking policy.");
     return;
@@ -371,6 +475,9 @@ async function completeBooking() {
       confirmedSetupIntentId = setupIntent.id;
     }
 
+    const isReturningClient = returningClientInput?.value === "true";
+    const referralSources = checkedValues("referralSources");
+
     const bookingBody = {
       staffSlug: formValue("stylist"),
       serviceIds: formValue("services").split(",").filter(Boolean),
@@ -384,7 +491,17 @@ async function completeBooking() {
         smsOptIn: checkboxChecked("smsOptIn"),
         intakeNotes: formValue("intakeNotes") || undefined,
         bookingPreferences: formValue("bookingPreferences") || undefined,
+        birthday: formValue("birthday") || undefined,
+        addressLine1: formValue("addressLine1") || undefined,
+        addressLine2: formValue("addressLine2") || undefined,
+        addressCity: formValue("addressCity") || undefined,
+        addressState: formValue("addressState").toUpperCase() || undefined,
+        addressZip: formValue("addressZip") || undefined,
+        preferredContactMethod: formValue("preferredContactMethod") || undefined,
+        referralSources: referralSources.length > 0 ? referralSources : undefined,
+        isReturningClient,
       },
+      referralSource: referralSources.length > 0 ? referralSources.join(", ") : undefined,
       policyAcknowledged: policyAcknowledged(),
       setupIntentId: verifiedSetupIntentId,
     };

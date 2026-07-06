@@ -96,6 +96,14 @@ export async function lookupExistingClient(input: {
     phone: string | null;
     intakeNotes: string | null;
     bookingPreferences: string | null;
+    birthday: string | null;
+    addressLine1: string | null;
+    addressLine2: string | null;
+    addressCity: string | null;
+    addressState: string | null;
+    addressZip: string | null;
+    preferredContactMethod: string | null;
+    referralSources: string[];
   } | null;
 }> {
   const params = new URLSearchParams();
@@ -117,6 +125,14 @@ export async function lookupExistingClient(input: {
       phone: string | null;
       intakeNotes: string | null;
       bookingPreferences: string | null;
+      birthday: string | null;
+      addressLine1: string | null;
+      addressLine2: string | null;
+      addressCity: string | null;
+      addressState: string | null;
+      addressZip: string | null;
+      preferredContactMethod: string | null;
+      referralSources: string[];
     } | null;
   };
 }

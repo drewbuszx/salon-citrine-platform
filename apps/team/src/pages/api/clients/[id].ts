@@ -1,5 +1,9 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
+import {
+  INTAKE_REFERRAL_SOURCES,
+  PREFERRED_CONTACT_METHODS,
+} from "@saloncitrine/shared";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import { formatTimeInSalon } from "../../../lib/calendar";
 
@@ -15,6 +19,14 @@ const patchClientSchema = z.object({
   tags: z.array(z.string().max(40)).max(20).optional(),
   smsOptIn: z.boolean().optional(),
   emailOptIn: z.boolean().optional(),
+  birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  addressLine1: z.string().max(200).nullable().optional(),
+  addressLine2: z.string().max(200).nullable().optional(),
+  addressCity: z.string().max(100).nullable().optional(),
+  addressState: z.string().max(2).nullable().optional(),
+  addressZip: z.string().max(10).nullable().optional(),
+  preferredContactMethod: z.enum(PREFERRED_CONTACT_METHODS).nullable().optional(),
+  referralSources: z.array(z.enum(INTAKE_REFERRAL_SOURCES)).max(8).optional(),
 });
 
 export const GET: APIRoute = async (context) => {
@@ -27,7 +39,7 @@ export const GET: APIRoute = async (context) => {
   const { data: client, error: clientError } = await auth.supabase
     .from("clients")
     .select(
-      "id, first_name, last_name, phone, email, intake_notes, booking_preferences, staff_notes, formula_notes, tags, visit_count, last_visit_at, lifetime_value_cents, sms_opt_in, email_opt_in, created_at",
+      "id, first_name, last_name, phone, email, intake_notes, booking_preferences, staff_notes, formula_notes, tags, visit_count, last_visit_at, lifetime_value_cents, sms_opt_in, email_opt_in, created_at, birthday, address_line1, address_line2, address_city, address_state, address_zip, preferred_contact_method, referral_sources",
     )
     .eq("id", clientId)
     .maybeSingle();
@@ -148,6 +160,14 @@ export const GET: APIRoute = async (context) => {
       smsOptIn: client.sms_opt_in,
       emailOptIn: client.email_opt_in,
       memberSince: client.created_at,
+      birthday: client.birthday,
+      addressLine1: client.address_line1,
+      addressLine2: client.address_line2,
+      addressCity: client.address_city,
+      addressState: client.address_state,
+      addressZip: client.address_zip,
+      preferredContactMethod: client.preferred_contact_method,
+      referralSources: client.referral_sources ?? [],
     },
     visitTimeline,
     notes,
@@ -201,6 +221,28 @@ export const PATCH: APIRoute = async (context) => {
   if (parsed.data.tags !== undefined) updates.tags = parsed.data.tags;
   if (parsed.data.smsOptIn !== undefined) updates.sms_opt_in = parsed.data.smsOptIn;
   if (parsed.data.emailOptIn !== undefined) updates.email_opt_in = parsed.data.emailOptIn;
+  if (parsed.data.birthday !== undefined) updates.birthday = parsed.data.birthday;
+  if (parsed.data.addressLine1 !== undefined) {
+    updates.address_line1 = parsed.data.addressLine1?.trim() ?? null;
+  }
+  if (parsed.data.addressLine2 !== undefined) {
+    updates.address_line2 = parsed.data.addressLine2?.trim() ?? null;
+  }
+  if (parsed.data.addressCity !== undefined) {
+    updates.address_city = parsed.data.addressCity?.trim() ?? null;
+  }
+  if (parsed.data.addressState !== undefined) {
+    updates.address_state = parsed.data.addressState?.trim().toUpperCase() ?? null;
+  }
+  if (parsed.data.addressZip !== undefined) {
+    updates.address_zip = parsed.data.addressZip?.trim() ?? null;
+  }
+  if (parsed.data.preferredContactMethod !== undefined) {
+    updates.preferred_contact_method = parsed.data.preferredContactMethod;
+  }
+  if (parsed.data.referralSources !== undefined) {
+    updates.referral_sources = parsed.data.referralSources;
+  }
 
   if (Object.keys(updates).length === 0) {
     return jsonError("No updates provided", 400);

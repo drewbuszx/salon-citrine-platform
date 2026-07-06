@@ -7,6 +7,7 @@ import {
   createAppointmentInputSchema,
   formatBookingPolicySummary,
   isOverlapConflictError,
+  type CreateAppointmentInput,
 } from "@saloncitrine/shared";
 import { isBookingSlotAvailableByStartsAt } from "../../../lib/availability";
 import { getStaffBySlug } from "../../../lib/booking-data";
@@ -33,6 +34,29 @@ function stripeErrorMessage(error: unknown): string | undefined {
     return stripeError.message || stripeError.code;
   }
   return undefined;
+}
+
+function buildClientIntakeFields(
+  client: CreateAppointmentInput["client"],
+): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+
+  if (client.birthday) fields.birthday = client.birthday;
+  if (client.addressLine1?.trim()) fields.address_line1 = client.addressLine1.trim();
+  if (client.addressLine2?.trim()) fields.address_line2 = client.addressLine2.trim();
+  if (client.addressCity?.trim()) fields.address_city = client.addressCity.trim();
+  if (client.addressState?.trim()) {
+    fields.address_state = client.addressState.trim().toUpperCase();
+  }
+  if (client.addressZip?.trim()) fields.address_zip = client.addressZip.trim();
+  if (client.preferredContactMethod) {
+    fields.preferred_contact_method = client.preferredContactMethod;
+  }
+  if (client.referralSources?.length) {
+    fields.referral_sources = client.referralSources;
+  }
+
+  return fields;
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -273,6 +297,7 @@ export const POST: APIRoute = async ({ request }) => {
           intake_notes: input.client.intakeNotes?.trim() || null,
           booking_preferences: input.client.bookingPreferences?.trim() || null,
           stripe_customer_id: stripeCustomerId,
+          ...buildClientIntakeFields(input.client),
         })
         .eq("id", clientId);
 
@@ -292,6 +317,7 @@ export const POST: APIRoute = async ({ request }) => {
           intake_notes: input.client.intakeNotes?.trim() || null,
           booking_preferences: input.client.bookingPreferences?.trim() || null,
           stripe_customer_id: stripeCustomerId,
+          ...buildClientIntakeFields(input.client),
         })
         .select("id")
         .single();
@@ -314,7 +340,10 @@ export const POST: APIRoute = async ({ request }) => {
         status: "booked",
         notes: input.client.intakeNotes?.trim() || null,
         client_message: input.clientMessage?.trim() || null,
-        referral_source: input.referralSource?.trim() || null,
+        referral_source:
+          input.referralSource?.trim() ||
+          input.client.referralSources?.join(", ") ||
+          null,
         policy_acknowledged_at: new Date().toISOString(),
         policy_snapshot: activePolicy,
         deposit_required_cents: depositRequiredCents,
