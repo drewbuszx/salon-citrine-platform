@@ -1,0 +1,20 @@
+---
+description: After UI changes, run Visual QA in the browser on affected routes before marking work done.
+globs:
+  - apps/team/**
+  - apps/web/**
+  - packages/theme/**
+alwaysApply: false
+---
+
+# Visual QA
+
+After **team** (`apps/team`) or **guest booking** (`apps/web`) UI changes:
+
+1. Invoke the Visual QA Agent: say **"run visual QA"** or follow [docs/AGENT_VISUAL_QA.md](../../docs/AGENT_VISUAL_QA.md).
+2. Browser-check **every affected route** from [docs/VISUAL_QA_CHECKLIST.md](../../docs/VISUAL_QA_CHECKLIST.md) using cursor-ide-browser MCP (`browser_navigate`, `browser_snapshot`, `browser_take_screenshot`).
+3. Compare against [docs/DESIGN_SYSTEM.md](../../docs/DESIGN_SYSTEM.md) and [docs/UX_INTELLIGENCE_FEED.md](../../docs/UX_INTELLIGENCE_FEED.md).
+4. Update [docs/VISUAL_QA_REPORT.md](../../docs/VISUAL_QA_REPORT.md) with dated findings.
+5. **Do not mark UI work done** until affected routes are audited or auth blockers are documented.
+
+Sidebar regressions (giant chevrons, missing citrine active border) are **P1** minimum — see [docs/TEAM_SIDEBAR_DECISION.md](../../docs/TEAM_SIDEBAR_DECISION.md).
