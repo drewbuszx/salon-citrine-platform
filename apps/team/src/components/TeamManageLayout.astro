@@ -31,7 +31,8 @@ const hasHeaderActions = Astro.slots.has("headerActions");
           MANAGE_NAV.map((item) =>
             item.disabled ? (
               <span class="team-manage-layout__nav-link team-manage-layout__nav-link--disabled">
-                {item.label}
+                <span>{item.label}</span>
+                <span class="team-manage-layout__soon-badge">Soon</span>
               </span>
             ) : (
               <a
@@ -151,12 +152,31 @@ const hasHeaderActions = Astro.slots.has("headerActions");
   }
 
   .team-manage-layout__nav-link--disabled {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.6rem 1rem;
     border-left: 3px solid transparent;
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
     font-weight: 500;
-    color: #d1d5db;
+    color: var(--color-stone-400);
     cursor: not-allowed;
+  }
+
+  :global(.team-manage-layout__soon-badge) {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-400);
+    line-height: 1.2;
   }
 
   .team-manage-layout__main {
@@ -168,8 +188,8 @@ const hasHeaderActions = Astro.slots.has("headerActions");
   :global(.team-manage-layout__hub-list) {
     display: grid;
     gap: 0;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.25rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
@@ -179,12 +199,29 @@ const hasHeaderActions = Astro.slots.has("headerActions");
     align-items: center;
     gap: 1rem;
     padding: 1rem 1.15rem;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
+    border-bottom: 1px solid var(--color-stone-200);
+    background: var(--color-bg);
   }
 
   :global(.team-manage-layout__hub-row:last-child) {
     border-bottom: none;
+  }
+
+  :global(.team-manage-layout__hub-row--disabled) {
+    background: var(--color-stone-50);
+  }
+
+  :global(.team-manage-layout__hub-row--disabled .team-manage-layout__hub-icon) {
+    background: var(--color-stone-100);
+    color: var(--color-stone-400);
+  }
+
+  :global(.team-manage-layout__hub-row--disabled .team-manage-layout__hub-title) {
+    color: var(--color-stone-500);
+  }
+
+  :global(.team-manage-layout__hub-row--disabled .team-manage-layout__hub-desc) {
+    color: var(--color-stone-400);
   }
 
   :global(.team-manage-layout__hub-icon) {
@@ -193,9 +230,9 @@ const hasHeaderActions = Astro.slots.has("headerActions");
     justify-content: center;
     width: 2.25rem;
     height: 2.25rem;
-    border-radius: 0.35rem;
-    background: #f3f4f6;
-    color: #6b7280;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-100);
+    color: var(--color-stone-500);
     flex-shrink: 0;
   }
 
@@ -212,9 +249,9 @@ const hasHeaderActions = Astro.slots.has("headerActions");
 
   :global(.team-manage-layout__hub-title) {
     margin: 0;
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: #111827;
+    color: var(--color-stone-800);
   }
 
   :global(.team-manage-layout__hub-desc) {
@@ -224,67 +261,6 @@ const hasHeaderActions = Astro.slots.has("headerActions");
     line-height: var(--leading-normal);
   }
 
-  :global(.team-manage-layout__hub-action) {
-    padding: 0.5rem 0.9rem;
-    border: 1px solid var(--color-stone-300);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-wider);
-    text-transform: uppercase;
-    color: var(--color-stone-700);
-    text-decoration: none;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-      background var(--transition-fast),
-      border-color var(--transition-fast);
-  }
-
-  :global(.team-manage-layout__hub-action:hover),
-  :global(.team-manage-layout__hub-action:focus-visible) {
-    background: var(--color-stone-50);
-    border-color: var(--color-stone-400);
-    outline: none;
-  }
-
-  :global(.team-manage-layout__hub-action--disabled) {
-    opacity: 0.55;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-
-  :global(.team-list-layout__btn-primary),
-  :global(.team-list-layout__btn-secondary) {
-    padding: 0.55rem 0.9rem;
-    border-radius: 0.25rem;
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  :global(.team-list-layout__btn-primary) {
-    border: none;
-    background: var(--color-citrine);
-    color: var(--color-black);
-  }
-
-  :global(.team-list-layout__btn-secondary) {
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #374151;
-  }
-
   @media (max-width: 900px) {
     .team-manage-layout__body {
       grid-template-columns: 1fr;
@@ -292,7 +268,7 @@ const hasHeaderActions = Astro.slots.has("headerActions");
 
     .team-manage-layout__sidebar {
       border-right: none;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--color-stone-200);
       padding-bottom: 0.75rem;
     }
 

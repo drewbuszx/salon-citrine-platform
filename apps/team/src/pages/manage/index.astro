@@ -18,15 +18,25 @@ const hubIcons: Record<string, string> = {
     <div class="team-manage-layout__hub-list">
       {
         MANAGE_HUB_ITEMS.map((item) => (
-          <article class="team-manage-layout__hub-row" id={item.id}>
+          <article
+            class:list={[
+              "team-manage-layout__hub-row",
+              { "team-manage-layout__hub-row--disabled": item.disabled },
+            ]}
+            id={item.id}
+          >
             <div class="team-manage-layout__hub-icon" set:html={hubIcons[item.id] ?? hubIcons.services} />
             <div class="team-manage-layout__hub-copy">
               <h2 class="team-manage-layout__hub-title">{item.title}</h2>
               <p class="team-manage-layout__hub-desc">{item.description}</p>
             </div>
             {
-              item.disabled ? null : (
-                <a class="team-manage-layout__hub-action" href={item.href}>
+              item.disabled ? (
+                <span class="team-manage-layout__soon-badge" aria-label={`${item.title} — coming soon`}>
+                  Soon
+                </span>
+              ) : (
+                <a class="team-list-layout__btn-secondary" href={item.href}>
                   {item.actionLabel ?? "Open"}
                 </a>
               )

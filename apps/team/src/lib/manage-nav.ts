@@ -21,7 +21,7 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "products", label: "Products", href: teamUrl("/inventory") },
   { id: "staff", label: "Employees", href: teamUrl("/manage#staff"), disabled: true },
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
-  { id: "tags", label: "Tags", href: teamUrl("/manage#tags"), disabled: true },
+  { id: "tags", label: "Tags", href: teamUrl("/clients") },
   { id: "business", label: "Business Details", href: teamUrl("/manage#business"), disabled: true },
 ];
 
@@ -67,8 +67,8 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     id: "tags",
     title: "Tags",
     description: "Client tags for segmentation and marketing.",
-    href: teamUrl("/manage#tags"),
-    disabled: true,
+    href: teamUrl("/clients"),
+    actionLabel: "Open",
   },
   {
     id: "business",
