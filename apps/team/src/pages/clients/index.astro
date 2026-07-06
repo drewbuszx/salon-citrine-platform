@@ -1,104 +1,287 @@
 ---
 import TeamLayout from "../../layouts/TeamLayout.astro";
-import TeamPage from "../../components/TeamPage.astro";
 import { teamUrl } from "../../lib/supabase-server";
 
-const { staff } = Astro.locals;
+const { staff, supabase } = Astro.locals;
 if (!staff) {
   return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
 }
 
 const initialQuery = Astro.url.searchParams.get("q") ?? "";
+
+const { count: totalCount, error: countError } = await supabase
+  .from("clients")
+  .select("*", { count: "exact", head: true });
+
+let initialClients: Array<{
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  email: string | null;
+}> = [];
+
+if (!countError) {
+  let listQuery = supabase
+    .from("clients")
+    .select("id, first_name, last_name, phone, email")
+    .order("last_name")
+    .order("first_name");
+
+  const term = initialQuery.replace(/,/g, " ").trim();
+  if (term.length >= 2) {
+    listQuery = listQuery.or(
+      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
+    );
+  }
+
+  const { data } = await listQuery.limit(term.length >= 2 ? 50 : 100);
+  initialClients = (data ?? []).map((row) => ({
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    phone: row.phone,
+    email: row.email,
+  }));
+}
+
+const filterCategories = [
+  "Saved Audiences",
+  "Locations",
+  "Primary Locations",
+  "Purchased",
+  "Provider",
+  "First Appointment",
+  "Last Appointment",
+  "Tags",
+  "Referral Source",
+  "Blocked",
+];
 ---
 
-<TeamLayout title="Clients" activeNav="clients" plain wide>
-  <div class="clients-page" data-clients-search>
-    <TeamPage
-      title="Clients"
-      lead="Search by name, email, or phone to open a client chart."
-      toolbar
-    >
-      <label slot="toolbar" class="team-toolbar-field team-toolbar-field--grow">
-        <span class="team-toolbar-label">Search clients</span>
-        <input
-          class="form-input"
-          type="search"
-          name="q"
-          value={initialQuery}
-          placeholder="Start typing…"
-          autocomplete="off"
-          data-search-input
-          autofocus
-        />
-      </label>
+<TeamLayout title="Clients" activeNav="clients" plain wide fullBleed>
+  <div class="clients-page" data-clients-root>
+    <header class="clients-page__subheader">
+      <h1 class="clients-page__title">Clients</h1>
+      <div class="clients-page__header-actions">
+        <button class="clients-page__btn-secondary" type="button" data-coming-soon>
+          Merge Clients
+        </button>
+        <button class="clients-page__btn-primary" type="button" data-add-open>
+          Add New Client
+        </button>
+      </div>
+    </header>
 
-      <p class="notice" data-status hidden aria-live="polite"></p>
-      <ul class="team-list" data-results role="listbox" aria-label="Search results"></ul>
-    </TeamPage>
+    <div class="clients-page__body">
+      <aside class="clients-page__sidebar" aria-label="Refine your search">
+        <h2 class="clients-page__sidebar-title">Refine Your Search</h2>
+        <div class="clients-page__filters">
+          {
+            filterCategories.map((label) => (
+              <details class="clients-filter">
+                <summary class="clients-filter__trigger">
+                  <span>{label}</span>
+                  <svg class="clients-filter__chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </summary>
+                <div class="clients-filter__body">
+                  <p class="clients-filter__placeholder">Filter options coming soon.</p>
+                </div>
+              </details>
+            ))
+          }
+        </div>
+        <button class="clients-page__export" type="button" data-coming-soon>
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <path d="M12 3v12M7 10l5 5 5-5M5 21h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          Export current list
+        </button>
+      </aside>
+
+      <main class="clients-page__main">
+        <h2 class="clients-page__main-title">Your Clients</h2>
+        <p class="clients-page__stats">
+          Total: <span data-total-count>{countError ? "—" : (totalCount ?? initialClients.length)}</span>
+          | <span data-filter-count>0</span> filters applied
+        </p>
+
+        <label class="clients-page__search">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+          </svg>
+          <input
+            class="clients-page__search-input"
+            type="search"
+            name="q"
+            value={initialQuery}
+            placeholder="Search by name, phone number, or email"
+            autocomplete="off"
+            data-search-input
+          />
+        </label>
+
+        <p class="clients-page__notice" data-status hidden aria-live="polite"></p>
+
+        <div class="clients-page__table-wrap">
+          <table class="clients-table">
+            <thead>
+              <tr>
+                <th scope="col">First Name</th>
+                <th scope="col">Last Name</th>
+                <th scope="col">Mobile</th>
+                <th scope="col">Email</th>
+              </tr>
+            </thead>
+            <tbody data-results></tbody>
+          </table>
+          <p class="clients-page__empty" data-empty hidden>No clients found.</p>
+        </div>
+      </main>
+    </div>
   </div>
+
+  <div class="clients-modal" data-add-modal hidden>
+    <div class="clients-modal__backdrop" data-modal-close></div>
+    <div class="clients-modal__panel" role="dialog" aria-modal="true" aria-labelledby="add-client-title">
+      <div class="clients-modal__head">
+        <h2 id="add-client-title">Add New Client</h2>
+        <button class="clients-modal__close" type="button" data-modal-close aria-label="Close">×</button>
+      </div>
+      <form class="clients-modal__form" data-add-form>
+        <label class="clients-modal__label">
+          First name
+          <input class="clients-modal__input" name="firstName" required autocomplete="given-name" />
+        </label>
+        <label class="clients-modal__label">
+          Last name
+          <input class="clients-modal__input" name="lastName" required autocomplete="family-name" />
+        </label>
+        <label class="clients-modal__label">
+          Mobile
+          <input class="clients-modal__input" name="phone" type="tel" autocomplete="tel" />
+        </label>
+        <label class="clients-modal__label">
+          Email
+          <input class="clients-modal__input" name="email" type="email" autocomplete="email" />
+        </label>
+        <p class="clients-page__notice clients-page__notice--error" data-add-error hidden></p>
+        <div class="clients-modal__actions">
+          <button class="clients-page__btn-secondary" type="button" data-modal-close>Cancel</button>
+          <button class="clients-page__btn-primary" type="submit">Create client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="clients-toast" data-toast hidden role="status"></div>
 </TeamLayout>
 
 <script
   define:vars={{
     searchApi: teamUrl("/api/clients/search"),
+    createApi: teamUrl("/api/clients"),
     clientsBase: teamUrl("/clients"),
     initialQuery,
+    initialClients,
+    initialTotal: countError ? null : (totalCount ?? initialClients.length),
   }}
 >
-  const root = document.querySelector("[data-clients-search]");
+  const root = document.querySelector("[data-clients-root]");
   const input = root?.querySelector("[data-search-input]");
-  const results = root?.querySelector("[data-results]");
+  const tbody = root?.querySelector("[data-results]");
   const status = root?.querySelector("[data-status]");
+  const emptyState = root?.querySelector("[data-empty]");
+  const totalEl = root?.querySelector("[data-total-count]");
+  const toast = document.querySelector("[data-toast]");
+  const addModal = document.querySelector("[data-add-modal]");
+  const addForm = document.querySelector("[data-add-form]");
+  const addError = document.querySelector("[data-add-error]");
   let debounce = null;
+  let toastTimer = null;
+
+  function formatPhone(value) {
+    return value?.trim() || "—";
+  }
+
+  function formatEmail(value) {
+    return value?.trim() || "—";
+  }
 
   function showStatus(message, isError = false) {
     if (!status) return;
     status.textContent = message;
     status.hidden = !message;
-    status.classList.toggle("notice--error", isError);
+    status.classList.toggle("clients-page__notice--error", isError);
+  }
+
+  function showToast(message) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.hidden = true;
+    }, 2800);
   }
 
   function renderResults(clients) {
-    if (!results) return;
-    results.innerHTML = "";
+    if (!tbody || !emptyState) return;
+    tbody.innerHTML = "";
 
     if (clients.length === 0) {
-      showStatus("No clients found.");
+      emptyState.hidden = false;
       return;
     }
 
-    showStatus("");
+    emptyState.hidden = true;
 
     for (const client of clients) {
-      const li = document.createElement("li");
-      const link = document.createElement("a");
-      link.className = "team-list__link";
-      link.href = `${clientsBase}/${client.id}`;
-      link.innerHTML = `
-        <span class="team-list__primary">${client.fullName}</span>
-        <span class="team-list__secondary">${[client.phone, client.email].filter(Boolean).join(" · ") || "No contact on file"}</span>
+      const tr = document.createElement("tr");
+      const linkBase = `${clientsBase}/${client.id}`;
+      tr.innerHTML = `
+        <td><a class="clients-table__link" href="${linkBase}">${client.firstName || "—"}</a></td>
+        <td><a class="clients-table__link" href="${linkBase}">${client.lastName || "—"}</a></td>
+        <td>${formatPhone(client.phone)}</td>
+        <td>${formatEmail(client.email)}</td>
       `;
-      li.appendChild(link);
-      results.appendChild(li);
+      tbody.appendChild(tr);
     }
   }
 
-  async function search(term) {
-    if (term.length < 2) {
+  async function loadClients(term) {
+    const query = term.trim();
+    if (query.length === 1) {
       renderResults([]);
-      showStatus(term.length === 0 ? "" : "Type at least 2 characters.");
+      showStatus("Type at least 2 characters to search.");
       return;
     }
 
-    showStatus("Searching…");
+    if (query.length >= 2) {
+      showStatus("Searching…");
+    } else {
+      showStatus("");
+    }
+
     try {
-      const res = await fetch(`${searchApi}?q=${encodeURIComponent(term)}`);
+      const url =
+        query.length >= 2
+          ? `${searchApi}?q=${encodeURIComponent(query)}`
+          : searchApi;
+      const res = await fetch(url);
       const body = await res.json();
-      if (!res.ok) throw new Error(body.error || "Search failed");
+      if (!res.ok) throw new Error(body.error || "Failed to load clients");
+
       renderResults(body.clients ?? []);
-      if ((body.clients ?? []).length > 0) showStatus("");
+      if (totalEl && typeof body.total === "number") {
+        totalEl.textContent = String(body.total);
+      }
+      showStatus("");
     } catch (err) {
-      showStatus(err instanceof Error ? err.message : "Search failed", true);
+      showStatus(err instanceof Error ? err.message : "Failed to load clients", true);
       renderResults([]);
     }
   }
@@ -106,10 +289,499 @@ const initialQuery = Astro.url.searchParams.get("q") ?? "";
   input?.addEventListener("input", () => {
     const term = input.value.trim();
     if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(() => search(term), 250);
+    debounce = setTimeout(() => loadClients(term), 250);
   });
 
-  if (initialQuery.length >= 2) {
-    search(initialQuery);
+  function openAddModal() {
+    addModal?.removeAttribute("hidden");
+    addForm?.reset();
+    if (addError) addError.hidden = true;
+    addForm?.querySelector("input")?.focus();
+  }
+
+  function closeAddModal() {
+    addModal?.setAttribute("hidden", "");
+  }
+
+  root?.querySelector("[data-add-open]")?.addEventListener("click", openAddModal);
+  document.querySelectorAll("[data-modal-close]").forEach((el) => {
+    el.addEventListener("click", closeAddModal);
+  });
+
+  document.querySelectorAll("[data-coming-soon]").forEach((el) => {
+    el.addEventListener("click", () => showToast("Coming soon"));
+  });
+
+  addForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!(addForm instanceof HTMLFormElement)) return;
+
+    const formData = new FormData(addForm);
+    const payload = {
+      firstName: String(formData.get("firstName") ?? "").trim(),
+      lastName: String(formData.get("lastName") ?? "").trim(),
+      phone: String(formData.get("phone") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+    };
+
+    if (addError) addError.hidden = true;
+
+    try {
+      const res = await fetch(createApi, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to create client");
+
+      const clientId = body.client?.id;
+      if (clientId) {
+        window.location.href = `${clientsBase}/${clientId}`;
+        return;
+      }
+      closeAddModal();
+      loadClients("");
+    } catch (err) {
+      if (addError) {
+        addError.textContent = err instanceof Error ? err.message : "Failed to create client";
+        addError.hidden = false;
+      }
+    }
+  });
+
+  renderResults(initialClients);
+  if (initialTotal !== null && totalEl) {
+    totalEl.textContent = String(initialTotal);
+  }
+  if (initialQuery.trim().length === 1) {
+    showStatus("Type at least 2 characters to search.");
   }
 </script>
+
+<style>
+  .clients-page {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    font-family: var(--font-sans);
+    background: #fff;
+    color: #111827;
+  }
+
+  .clients-page__subheader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+  }
+
+  .clients-page__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .clients-page__header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .clients-page__btn-primary,
+  .clients-page__btn-secondary {
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .clients-page__btn-primary {
+    border: none;
+    background: #0096ff;
+    color: #fff;
+  }
+
+  .clients-page__btn-primary:hover,
+  .clients-page__btn-primary:focus-visible {
+    background: #0084e0;
+    outline: none;
+  }
+
+  .clients-page__btn-secondary {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+  }
+
+  .clients-page__btn-secondary:hover,
+  .clients-page__btn-secondary:focus-visible {
+    background: #f9fafb;
+    outline: none;
+  }
+
+  .clients-page__body {
+    display: grid;
+    grid-template-columns: minmax(220px, 23%) 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .clients-page__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 0.85rem 1.25rem;
+    border-right: 1px solid #e5e7eb;
+    background: #f9fafb;
+  }
+
+  .clients-page__sidebar-title {
+    margin: 0 0 0.35rem;
+    padding: 0 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .clients-page__filters {
+    display: grid;
+    gap: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .clients-filter {
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .clients-filter__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .clients-filter__trigger::-webkit-details-marker {
+    display: none;
+  }
+
+  .clients-filter__chevron {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+    transition: transform 0.15s ease;
+  }
+
+  .clients-filter[open] .clients-filter__chevron {
+    transform: rotate(180deg);
+  }
+
+  .clients-filter__body {
+    padding: 0 0.35rem 0.75rem;
+  }
+
+  .clients-filter__placeholder {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+  }
+
+  .clients-page__export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    margin-top: auto;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .clients-page__export svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .clients-page__export:hover,
+  .clients-page__export:focus-visible {
+    background: #f3f4f6;
+    outline: none;
+  }
+
+  .clients-page__main {
+    padding: 1.25rem 1.5rem 2rem;
+    background: #fff;
+    min-width: 0;
+  }
+
+  .clients-page__main-title {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .clients-page__stats {
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: #6b7280;
+  }
+
+  .clients-page__search {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+  }
+
+  .clients-page__search svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+  }
+
+  .clients-page__search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #111827;
+    outline: none;
+  }
+
+  .clients-page__search-input::placeholder {
+    color: #9ca3af;
+  }
+
+  .clients-page__notice {
+    margin: 0 0 0.75rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+  }
+
+  .clients-page__notice--error {
+    color: #b91c1c;
+  }
+
+  .clients-page__table-wrap {
+    overflow-x: auto;
+  }
+
+  .clients-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+  }
+
+  .clients-table th {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    color: #6b7280;
+    background: #fff;
+  }
+
+  .clients-table td {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+    vertical-align: middle;
+  }
+
+  .clients-table tbody tr:hover td {
+    background: #f9fafb;
+  }
+
+  .clients-table__link {
+    color: #0096ff;
+    text-decoration: none;
+  }
+
+  .clients-table__link:hover,
+  .clients-table__link:focus-visible {
+    text-decoration: underline;
+    outline: none;
+  }
+
+  .clients-page__empty {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #9ca3af;
+  }
+
+  .clients-modal[hidden] {
+    display: none;
+  }
+
+  .clients-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .clients-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+  }
+
+  .clients-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 28rem);
+    padding: 1.25rem;
+    border-radius: 0.35rem;
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  .clients-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .clients-modal__head h2 {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .clients-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+  }
+
+  .clients-modal__form {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .clients-modal__label {
+    display: grid;
+    gap: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .clients-modal__input {
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #111827;
+  }
+
+  .clients-modal__input:focus-visible {
+    outline: none;
+    border-color: #0096ff;
+    box-shadow: 0 0 0 2px rgba(0, 150, 255, 0.2);
+  }
+
+  .clients-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .clients-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.5rem;
+    z-index: 400;
+    transform: translateX(-50%);
+    padding: 0.65rem 1rem;
+    border-radius: 0.35rem;
+    background: #111827;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  .clients-toast[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .clients-page__body {
+      grid-template-columns: 1fr;
+    }
+
+    .clients-page__sidebar {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      max-height: 16rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .clients-page__subheader {
+      padding-inline: 1rem;
+    }
+
+    .clients-page__main {
+      padding-inline: 1rem;
+    }
+
+    .clients-table th,
+    .clients-table td {
+      padding-inline: 0.65rem;
+    }
+  }
+</style>
