@@ -1,3 +1,4 @@
+import { formatCents } from "@saloncitrine/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSalonManager } from "./auth";
 import { salonDateString } from "./calendar";
@@ -9,6 +10,8 @@ export type TeamPulseMetrics = {
   lowStock: number;
   scope: "salon" | "personal";
   loaded: boolean;
+  todayRevenueCents: number | null;
+  todayCheckoutCount: number | null;
 };
 
 const EMPTY: TeamPulseMetrics = {
@@ -17,6 +20,8 @@ const EMPTY: TeamPulseMetrics = {
   lowStock: 0,
   scope: "personal",
   loaded: false,
+  todayRevenueCents: null,
+  todayCheckoutCount: null,
 };
 
 export async function loadTeamPulseMetrics(
@@ -38,17 +43,29 @@ export async function loadTeamPulseMetrics(
       apptQuery = apptQuery.eq("staff_id", staff.id);
     }
 
-    const [apptResult, waitlistResult, productsResult] = await Promise.all([
-      apptQuery,
-      supabase
-        .from("waitlist_entries")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "active"),
-      supabase
-        .from("products")
-        .select("reorder_threshold, inventory_stock(quantity)")
-        .eq("is_active", true),
-    ]);
+    const revenueQuery =
+      scope === "salon"
+        ? supabase
+            .from("checkout_orders")
+            .select("total_cents")
+            .eq("status", "completed")
+            .gte("completed_at", `${todaySalon}T00:00:00`)
+            .lt("completed_at", `${todaySalon}T23:59:59`)
+        : null;
+
+    const [apptResult, waitlistResult, productsResult, revenueResult] =
+      await Promise.all([
+        apptQuery,
+        supabase
+          .from("waitlist_entries")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "active"),
+        supabase
+          .from("products")
+          .select("reorder_threshold, inventory_stock(quantity)")
+          .eq("is_active", true),
+        revenueQuery ?? Promise.resolve({ data: null, error: null }),
+      ]);
 
     const lowStock = (productsResult.data ?? []).filter((p) => {
       const stock = Array.isArray(p.inventory_stock)
@@ -59,12 +76,25 @@ export async function loadTeamPulseMetrics(
       return threshold > 0 && qty <= threshold;
     }).length;
 
+    let todayRevenueCents: number | null = null;
+    let todayCheckoutCount: number | null = null;
+    if (scope === "salon" && revenueResult.data) {
+      const rows = revenueResult.data;
+      todayCheckoutCount = rows.length;
+      todayRevenueCents = rows.reduce(
+        (sum, row) => sum + (row.total_cents ?? 0),
+        0,
+      );
+    }
+
     return {
       todayAppointments: apptResult.count ?? 0,
       waitlistActive: waitlistResult.count ?? 0,
       lowStock,
       scope,
       loaded: true,
+      todayRevenueCents,
+      todayCheckoutCount,
     };
   } catch (error) {
     console.error("Failed to load team pulse metrics", error);
@@ -78,16 +108,36 @@ export function pulseHint(
   scope: TeamPulseMetrics["scope"],
 ): string {
   if (metric === "appointments") {
-    if (value === 0) return scope === "salon" ? "Clear day ahead" : "Your chair is open";
-    if (value === 1) return scope === "salon" ? "1 guest on the books" : "1 on your book";
-    return scope === "salon" ? `${value} guests today` : `${value} on your book`;
+    if (value === 0) {
+      return scope === "salon" ? "Open book · add a guest" : "Open book · your chair is free";
+    }
+    if (value === 1) {
+      return scope === "salon" ? "1 guest today · open book" : "1 on your book · open book";
+    }
+    return scope === "salon"
+      ? `${value} guests today · open book`
+      : `${value} on your book · open book`;
   }
   if (metric === "waitlist") {
-    if (value === 0) return "No one waiting";
-    if (value === 1) return "1 client wants in";
-    return `${value} clients want in`;
+    if (value === 0) return "Queue empty · view waitlist";
+    if (value === 1) return "1 waiting · book or reply";
+    return `${value} waiting · book or reply`;
   }
-  if (value === 0) return "Stock looks good";
-  if (value === 1) return "1 item needs reorder";
-  return `${value} items need reorder`;
+  if (value === 0) return "All stocked · view inventory";
+  if (value === 1) return "1 below threshold · reorder";
+  return `${value} below threshold · reorder`;
+}
+
+export function revenuePaceHint(metrics: TeamPulseMetrics): string | null {
+  if (metrics.scope !== "salon" || metrics.todayCheckoutCount === null) {
+    return null;
+  }
+  const total = formatCents(metrics.todayRevenueCents ?? 0);
+  if (metrics.todayCheckoutCount === 0) {
+    return "No checkouts yet today · open reports";
+  }
+  if (metrics.todayCheckoutCount === 1) {
+    return `1 checkout · ${total} today · open reports`;
+  }
+  return `${metrics.todayCheckoutCount} checkouts · ${total} today · open reports`;
 }

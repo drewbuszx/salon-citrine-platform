@@ -1,6 +1,6 @@
 ---
 import { teamUrl } from "../lib/supabase-server";
-import { pulseHint, type TeamPulseMetrics } from "../lib/team-pulse";
+import { pulseHint, revenuePaceHint, type TeamPulseMetrics } from "../lib/team-pulse";
 
 interface Props {
   metrics: TeamPulseMetrics;
@@ -11,6 +11,7 @@ const { metrics } = Astro.props;
 const apptHint = pulseHint("appointments", metrics.todayAppointments, metrics.scope);
 const waitlistHint = pulseHint("waitlist", metrics.waitlistActive);
 const stockHint = pulseHint("stock", metrics.lowStock);
+const revenueHint = revenuePaceHint(metrics);
 
 const waitlistHot = metrics.waitlistActive >= 3;
 const stockAlert = metrics.lowStock > 0;
@@ -31,8 +32,21 @@ const stockAlert = metrics.lowStock > 0;
     </p>
   </header>
 
+  {
+    revenueHint && (
+      <a class="team-pulse__revenue" href={teamUrl("/reports")}>
+        <span class="team-pulse__revenue-label">Revenue pace</span>
+        <span class="team-pulse__revenue-value">{revenueHint}</span>
+      </a>
+    )
+  }
+
   <div class="team-pulse__grid">
-    <a class="team-pulse__metric" href={teamUrl("/book")}>
+    <a
+      class="team-pulse__metric"
+      href={teamUrl("/book")}
+      aria-label={`${metrics.todayAppointments} appointments today. Open book.`}
+    >
       <span class="team-pulse__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
           <rect x="4" y="5" width="16" height="15" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
@@ -40,13 +54,15 @@ const stockAlert = metrics.lowStock > 0;
         </svg>
       </span>
       <span class="team-pulse__value">{metrics.todayAppointments}</span>
-      <span class="team-pulse__label">Appointments</span>
+      <span class="team-pulse__label">Today's book</span>
       <span class="team-pulse__hint">{apptHint}</span>
+      <span class="team-pulse__go" aria-hidden="true">Open book →</span>
     </a>
 
     <a
       class:list={["team-pulse__metric", waitlistHot && "team-pulse__metric--hot"]}
       href={teamUrl("/waitlist")}
+      aria-label={`${metrics.waitlistActive} on waitlist. View waitlist.`}
     >
       <span class="team-pulse__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
@@ -54,13 +70,15 @@ const stockAlert = metrics.lowStock > 0;
         </svg>
       </span>
       <span class="team-pulse__value">{metrics.waitlistActive}</span>
-      <span class="team-pulse__label">Waitlist</span>
+      <span class="team-pulse__label">Waitlist queue</span>
       <span class="team-pulse__hint">{waitlistHint}</span>
+      <span class="team-pulse__go" aria-hidden="true">View waitlist →</span>
     </a>
 
     <a
       class:list={["team-pulse__metric", stockAlert && "team-pulse__metric--alert"]}
       href={teamUrl("/inventory")}
+      aria-label={`${metrics.lowStock} low stock items. View inventory.`}
     >
       <span class="team-pulse__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
@@ -68,8 +86,9 @@ const stockAlert = metrics.lowStock > 0;
         </svg>
       </span>
       <span class="team-pulse__value">{metrics.lowStock}</span>
-      <span class="team-pulse__label">Low stock</span>
+      <span class="team-pulse__label">Stock alerts</span>
       <span class="team-pulse__hint">{stockHint}</span>
+      <span class="team-pulse__go" aria-hidden="true">View stock →</span>
     </a>
   </div>
 </section>
@@ -142,6 +161,47 @@ const stockAlert = metrics.lowStock > 0;
     color: var(--color-gray);
   }
 
+  .team-pulse__revenue {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(231, 172, 70, 0.28);
+    border-radius: 0.55rem;
+    background: rgba(255, 255, 255, 0.65);
+    color: inherit;
+    transition:
+      border-color var(--transition-fast),
+      background var(--transition-fast);
+  }
+
+  .team-pulse__revenue:hover,
+  .team-pulse__revenue:focus-visible {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.1);
+    outline: none;
+  }
+
+  .team-pulse__revenue-label {
+    flex: 0 0 auto;
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark);
+  }
+
+  .team-pulse__revenue-value {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--color-stone-700, var(--color-text));
+    text-align: right;
+  }
+
   .team-pulse__grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -150,7 +210,7 @@ const stockAlert = metrics.lowStock > 0;
 
   .team-pulse__metric {
     display: grid;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto;
     justify-items: center;
     gap: 0.15rem;
     padding: 0.75rem 0.4rem 0.65rem;
@@ -213,11 +273,11 @@ const stockAlert = metrics.lowStock > 0;
 
   .team-pulse__label {
     font-family: var(--font-sans);
-    font-size: 0.58rem;
+    font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-gray);
+    color: var(--color-stone-700, var(--color-text));
   }
 
   .team-pulse__hint {
@@ -226,7 +286,24 @@ const stockAlert = metrics.lowStock > 0;
     line-height: 1.25;
     color: var(--color-gray);
     opacity: 0.9;
-    max-width: 6.5rem;
+    max-width: 6.75rem;
+  }
+
+  .team-pulse__go {
+    margin-top: 0.1rem;
+    font-family: var(--font-sans);
+    font-size: 0.56rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .team-pulse__metric:hover .team-pulse__go,
+  .team-pulse__metric:focus-visible .team-pulse__go {
+    opacity: 1;
   }
 
   @media (max-width: 420px) {
