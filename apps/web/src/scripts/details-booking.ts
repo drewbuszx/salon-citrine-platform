@@ -54,6 +54,67 @@ function showError(message: string) {
   }
 }
 
+function clearFieldErrors() {
+  for (const el of form?.querySelectorAll<HTMLElement>("[data-field-error]") ?? []) {
+    el.textContent = "";
+    el.hidden = true;
+  }
+  for (const el of form?.querySelectorAll<HTMLElement>(".field--invalid, .form-section--invalid") ?? []) {
+    el.classList.remove("field--invalid", "form-section--invalid");
+  }
+}
+
+function fieldLabel(field: HTMLElement): string {
+  const labelSpan = field.querySelector("span:not([data-field-error])");
+  if (labelSpan?.textContent?.trim()) return labelSpan.textContent.trim();
+  const legend = field.querySelector("legend");
+  if (legend?.textContent?.trim()) return legend.textContent.trim();
+  return "This field";
+}
+
+function showFieldError(field: HTMLElement, message: string) {
+  field.classList.add("field--invalid");
+  const errorSpan =
+    field.querySelector<HTMLElement>("[data-field-error]") ??
+    field.parentElement?.querySelector<HTMLElement>("[data-field-error]");
+  if (errorSpan) {
+    errorSpan.textContent = message;
+    errorSpan.hidden = false;
+  }
+}
+
+function validationMessage(input: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
+  if (input.validity.valueMissing) return `${fieldLabel(input.closest(".field, fieldset") ?? input)} is required.`;
+  if (input.validity.typeMismatch && input.type === "email") {
+    return "Enter a valid email address.";
+  }
+  if (input.validity.patternMismatch) return `${fieldLabel(input.closest(".field, fieldset") ?? input)} is invalid.`;
+  return input.validationMessage || "Please check this field.";
+}
+
+function validateFormFields(): boolean {
+  clearFieldErrors();
+  showError("");
+
+  if (!form) return false;
+
+  const invalid = form.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+    "input:invalid, select:invalid, textarea:invalid",
+  );
+
+  if (invalid) {
+    const container = invalid.closest<HTMLElement>(".field, fieldset.field, fieldset.field--inline");
+    if (container) {
+      showFieldError(container, validationMessage(invalid));
+    }
+    invalid.focus();
+    showError(`${fieldLabel(container ?? invalid)} needs your attention.`);
+    return false;
+  }
+
+  return true;
+}
+
 function setPaymentBusy(busy: boolean) {
   paymentMount?.setAttribute("aria-busy", busy ? "true" : "false");
 }
@@ -119,6 +180,16 @@ function validateIntakeForNewClient(): boolean {
 
   const referralSources = checkedValues("referralSources");
   if (referralSources.length === 0) {
+    const referralField = form?.querySelector<HTMLElement>(
+      '[data-field-error-group="referralSources"]',
+    )?.closest(".field");
+    if (referralField) {
+      referralField.classList.add("field--invalid");
+      showFieldError(
+        referralField,
+        "Select at least one option for how you heard about us.",
+      );
+    }
     showError("Select at least one option for how you heard about us.");
     return false;
   }
@@ -404,7 +475,45 @@ form?.querySelector('input[name="email"]')?.addEventListener("input", () => {
     resetStripeElements();
     showPaymentStatus("Enter your email above to load the card form.");
   }
+  const field = form?.querySelector<HTMLElement>('input[name="email"]')?.closest(".field");
+  field?.classList.remove("field--invalid");
+  field?.querySelector<HTMLElement>("[data-field-error]")?.setAttribute("hidden", "");
 });
+
+for (const input of form?.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+  "input, textarea",
+) ?? []) {
+  input.addEventListener("input", () => {
+    const field = input.closest<HTMLElement>(".field, fieldset.field, fieldset.field--inline");
+    if (!field) return;
+    if (input.checkValidity()) {
+      field.classList.remove("field--invalid");
+      const err = field.querySelector<HTMLElement>("[data-field-error]");
+      if (err) {
+        err.textContent = "";
+        err.hidden = true;
+      }
+    }
+  });
+}
+
+for (const checkbox of form?.querySelectorAll<HTMLInputElement>(
+  'input[name="referralSources"]',
+) ?? []) {
+  checkbox.addEventListener("change", () => {
+    if (checkedValues("referralSources").length > 0) {
+      const field = form?.querySelector<HTMLElement>(
+        '[data-field-error-group="referralSources"]',
+      )?.closest(".field");
+      field?.classList.remove("field--invalid");
+      const err = field?.querySelector<HTMLElement>("[data-field-error]");
+      if (err) {
+        err.textContent = "";
+        err.hidden = true;
+      }
+    }
+  });
+}
 
 async function completeBooking() {
   if (submitting) return;
@@ -415,14 +524,7 @@ async function completeBooking() {
     return;
   }
 
-  if (!form?.reportValidity()) {
-    const firstInvalid = form?.querySelector<HTMLInputElement | HTMLSelectElement>(
-      "input:invalid, select:invalid, textarea:invalid",
-    );
-    firstInvalid?.focus();
-    const label = firstInvalid?.closest("label")?.querySelector("span, .form-label__text");
-    const fieldName = label?.textContent?.trim() || "A required field";
-    showError(`${fieldName} is required.`);
+  if (!validateFormFields()) {
     return;
   }
 

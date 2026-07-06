@@ -624,3 +624,35 @@ textarea {
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* ── Booking form validation ── */
+.field-error {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  line-height: var(--leading-normal);
+}
+
+.field--invalid > span,
+.field--invalid > legend {
+  color: var(--color-error);
+}
+
+.field--invalid input,
+.field--invalid textarea,
+.field--invalid .radio-group {
+  border-color: var(--color-error);
+}
+
+.field--invalid input,
+.field--invalid textarea {
+  box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.12);
+}
+
+.form-section--intake {
+  padding: var(--space-5);
+  border: 1px solid var(--color-stone-200);
+  border-radius: var(--radius-md);
+  background: var(--color-stone-50);
+}

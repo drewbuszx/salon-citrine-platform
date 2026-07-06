@@ -17,7 +17,7 @@ import {
   parseServiceIdsFromParams,
   staffFirstName,
 } from "../lib/booking-data";
-import { datetimeUrl } from "../lib/booking-flow";
+import { datetimeUrl, bookingFlagsFromUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -43,6 +43,7 @@ const resolvedServiceIds =
   serviceIds.length > 0 ? serviceIds : [primaryService.id];
 
 const flowFlags = {
+  ...bookingFlagsFromUrl(Astro.url),
   showStylistStep: true,
   returningAck,
   existingAck,
@@ -59,7 +60,7 @@ const bookBase = withBase();
 const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
 ---
 
-<BookingLayout title="Choose a stylist" step="stylist" showStylistStep>
+<BookingLayout title="Choose a stylist" step="stylist" showStylistStep embed={flowFlags.embed}>
   <header class="stylist-page__header">
     <p class="stylist-page__kicker">Almost there</p>
     <h1>Choose a professional</h1>

@@ -20,9 +20,11 @@ import {
   formatConfirmationWhen,
 } from "../lib/appointment-confirmation";
 import { withBase } from "../lib/paths";
+import { bookingFlagsFromUrl } from "../lib/booking-flow";
 
 const appointmentId = Astro.url.searchParams.get("appointment");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
+const flowFlags = bookingFlagsFromUrl(Astro.url);
 
 if (!appointmentId) {
   return Astro.redirect(withBase());
@@ -71,10 +73,29 @@ const depositLabel =
       : null;
 ---
 
-<BookingLayout title="Booking confirmed" step="confirm" showStylistStep={showStylistStep}>
+<BookingLayout
+  title="Booking confirmed"
+  step="confirm"
+  showStylistStep={showStylistStep}
+  embed={flowFlags.embed}
+>
   <div class="confirm">
+    <div class="confirm__hero" aria-hidden="true">
+      <span class="confirm__icon">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.5" />
+          <path
+            d="M7.5 12.25 10.5 15.25 16.5 8.75"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </span>
+    </div>
     <p class="confirm__kicker">You're booked!</p>
-    <h1>Confirmation #{shortId}</h1>
+    <h1 class="confirm__title">Confirmation #{shortId}</h1>
 
     <dl class="confirm__details">
       <div>
@@ -114,45 +135,106 @@ const depositLabel =
       {policySummary} A confirmation email and text reminder will be sent shortly.
     </p>
 
-    <Button href="https://saloncitrineindy.com/" variant="secondary">
-      Back to {BUSINESS.name}
-    </Button>
+    <div class="confirm__actions">
+      {
+        flowFlags.embed ? (
+          <Button href="https://saloncitrineindy.com/" variant="secondary">
+            Close
+          </Button>
+        ) : (
+          <Button href="https://saloncitrineindy.com/" variant="secondary">
+            Back to {BUSINESS.name}
+          </Button>
+        )
+      }
+    </div>
   </div>
 </BookingLayout>
 
 <style>
+  .confirm {
+    max-width: 34rem;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .confirm__hero {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--space-4);
+  }
+
+  .confirm__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    color: var(--color-sage);
+    background: rgba(141, 158, 136, 0.14);
+    border-radius: 50%;
+  }
+
+  .confirm__icon svg {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .confirm__title {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 500;
+    margin-bottom: var(--space-5);
+  }
+
   .confirm__kicker {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.75rem;
-    letter-spacing: 0.14em;
+    letter-spacing: var(--tracking-widest);
     text-transform: uppercase;
     color: var(--color-sage);
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-2);
   }
 
   .confirm__details {
-    margin: 1.5rem 0;
+    margin: 0 0 var(--space-5);
+    padding: var(--space-5);
     display: grid;
-    gap: 1rem;
+    gap: var(--space-4);
+    text-align: left;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
   }
 
   .confirm__details dt {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.68rem;
-    letter-spacing: 0.12em;
+    letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
-    color: var(--color-gray);
+    color: var(--color-dusty-rose);
   }
 
   .confirm__details dd {
     margin: 0.15rem 0 0;
+    font-family: var(--font-body);
     font-weight: 500;
+    line-height: var(--leading-normal);
   }
 
   .confirm__note {
-    padding: 1rem;
-    background: var(--color-light);
+    margin: 0 0 var(--space-5);
+    padding: var(--space-4);
+    background: var(--color-citrine-muted);
+    border-left: 3px solid var(--color-citrine);
     font-size: 0.9rem;
     color: var(--color-gray);
+    text-align: left;
+    line-height: var(--leading-relaxed);
+  }
+
+  .confirm__actions {
+    display: flex;
+    justify-content: center;
   }
 </style>

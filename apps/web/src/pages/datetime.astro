@@ -30,6 +30,7 @@ import {
   staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
+import { bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
 
 const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
@@ -38,6 +39,7 @@ const requestedDate = Astro.url.searchParams.get("date");
 const requestedMonth = Astro.url.searchParams.get("month");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
 const existingAck = hasExistingClientAck(Astro.url.searchParams);
+const flowFlags = bookingFlagsFromUrl(Astro.url);
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 
@@ -113,10 +115,25 @@ datetimeContinueParams.set("services", servicesParamValue);
 datetimeContinueParams.set("stylist", stylist.slug);
 if (showStylistStep) datetimeContinueParams.set("flow", "stylist");
 datetimeContinueParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+appendFlowFlags(datetimeContinueParams, flowFlags);
 const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString()}`;
+
+const backParams = new URLSearchParams({
+  services: servicesParamValue,
+  stylist: stylist.slug,
+});
+if (showStylistStep) backParams.set("flow", "stylist");
+if (existingAck) backParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+appendFlowFlags(backParams, flowFlags);
+const backHref = `${withBase("cart/")}?${backParams.toString()}`;
 ---
 
-<BookingLayout title="Choose date & time" step="datetime" showStylistStep={showStylistStep}>
+<BookingLayout
+  title="Choose date & time"
+  step="datetime"
+  showStylistStep={showStylistStep}
+  embed={flowFlags.embed}
+>
   {
     showNewClientsModal && (
       <NotAcceptingNewClientsModal
@@ -310,6 +327,9 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
                     {existingAck && (
                       <input type="hidden" name={EXISTING_CLIENT_ACK_PARAM} value="1" />
                     )}
+                    {flowFlags.embed && (
+                      <input type="hidden" name="embed" value="1" />
+                    )}
                     <input
                       type="hidden"
                       name="startsAt"
@@ -356,9 +376,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
   }
 
   <p class="back">
-    <a
-      href={`${withBase("cart/")}?services=${servicesParamValue}&stylist=${stylist.slug}${flowQuery}${existingQuery}`}
-    >
+    <a href={backHref}>
       ← Back to cart
     </a>
   </p>

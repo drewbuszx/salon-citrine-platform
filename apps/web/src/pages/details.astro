@@ -13,7 +13,7 @@ import {
 } from "../lib/booking-data";
 import { resolveBookingSlot } from "../lib/availability";
 import { fetchActiveBookingPolicy } from "../lib/booking-policy";
-import { bookingApi } from "../lib/booking-flow";
+import { bookingApi, bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 import { calculateRequiredDepositCents, formatCents } from "@saloncitrine/shared";
 import {
@@ -32,6 +32,7 @@ const time = Astro.url.searchParams.get("time");
 const startsAtParam = Astro.url.searchParams.get("startsAt");
 const cartId = Astro.url.searchParams.get("cartId");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
+const flowFlags = bookingFlagsFromUrl(Astro.url);
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const servicesParamValue = serviceIds.join(",");
@@ -87,9 +88,23 @@ const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const setupIntentUrl = withBase("api/booking/setup-intent");
 const appointmentsUrl = withBase("api/booking/appointments");
 const confirmUrl = withBase("confirm/");
+
+const backParams = new URLSearchParams({
+  services: servicesParamValue,
+  stylist: stylist.slug,
+  date,
+});
+if (showStylistStep) backParams.set("flow", "stylist");
+appendFlowFlags(backParams, flowFlags);
+const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
 ---
 
-<BookingLayout title="Your details" step="details" showStylistStep={showStylistStep}>
+<BookingLayout
+  title="Your details"
+  step="details"
+  showStylistStep={showStylistStep}
+  embed={flowFlags.embed}
+>
   <h1>Your details</h1>
   <p class="summary">
     {serviceSummary} · {stylist.name}
@@ -145,22 +160,26 @@ const confirmUrl = withBase("confirm/");
         <label class="field">
           <span>First name</span>
           <input type="text" name="firstName" required autocomplete="given-name" />
+          <span class="field-error" data-field-error hidden></span>
         </label>
 
         <label class="field">
           <span>Last name</span>
           <input type="text" name="lastName" required autocomplete="family-name" />
+          <span class="field-error" data-field-error hidden></span>
         </label>
       </div>
 
       <label class="field">
         <span>Email</span>
         <input type="email" name="email" required autocomplete="email" />
+        <span class="field-error" data-field-error hidden></span>
       </label>
 
       <label class="field">
         <span>Mobile phone</span>
         <input type="tel" name="phone" required autocomplete="tel" />
+        <span class="field-error" data-field-error hidden></span>
       </label>
 
       <fieldset class="field field--inline" data-intake-only>
@@ -181,6 +200,7 @@ const confirmUrl = withBase("confirm/");
             ))
           }
         </div>
+        <span class="field-error" data-field-error hidden></span>
       </fieldset>
 
       <label class="checkbox">
@@ -189,18 +209,24 @@ const confirmUrl = withBase("confirm/");
       </label>
     </fieldset>
 
-    <fieldset class="form-section" data-intake-section>
+    <fieldset class="form-section form-section--intake" data-intake-section>
       <legend>New client intake</legend>
+      <p class="form-section__intro">
+        A few details help us personalize your first visit. Returning guests can skip this section.
+      </p>
 
-      <label class="field">
-        <span>Birthday</span>
-        <input
-          type="date"
-          name="birthday"
-          autocomplete="bday"
-          data-intake-required
-        />
-      </label>
+      <div class="field-row field-row--intake">
+        <label class="field">
+          <span>Birthday</span>
+          <input
+            type="date"
+            name="birthday"
+            autocomplete="bday"
+            data-intake-required
+          />
+          <span class="field-error" data-field-error hidden></span>
+        </label>
+      </div>
 
       <label class="field">
         <span>Street address</span>
@@ -210,6 +236,7 @@ const confirmUrl = withBase("confirm/");
           autocomplete="address-line1"
           data-intake-required
         />
+        <span class="field-error" data-field-error hidden></span>
       </label>
 
       <label class="field">
@@ -226,6 +253,7 @@ const confirmUrl = withBase("confirm/");
             autocomplete="address-level2"
             data-intake-required
           />
+          <span class="field-error" data-field-error hidden></span>
         </label>
 
         <label class="field">
@@ -238,6 +266,7 @@ const confirmUrl = withBase("confirm/");
             placeholder="IN"
             data-intake-required
           />
+          <span class="field-error" data-field-error hidden></span>
         </label>
 
         <label class="field">
@@ -249,6 +278,7 @@ const confirmUrl = withBase("confirm/");
             autocomplete="postal-code"
             data-intake-required
           />
+          <span class="field-error" data-field-error hidden></span>
         </label>
       </div>
 
@@ -270,6 +300,7 @@ const confirmUrl = withBase("confirm/");
             ))
           }
         </div>
+        <span class="field-error" data-field-error data-field-error-group="referralSources" hidden></span>
       </fieldset>
     </fieldset>
 
@@ -334,9 +365,7 @@ const confirmUrl = withBase("confirm/");
   <PolicyModal policy={bookingPolicy} />
 
   <p class="back">
-    <a
-      href={`${withBase("datetime/")}?services=${servicesParamValue}&stylist=${stylist.slug}&date=${date}${showStylistStep ? "&flow=stylist" : ""}`}
-    >
+    <a href={backHref}>
       ← Back to date & time
     </a>
   </p>
@@ -385,8 +414,8 @@ const confirmUrl = withBase("confirm/");
 
   .details-form {
     display: grid;
-    gap: 1.25rem;
-    max-width: 32rem;
+    gap: 1.5rem;
+    max-width: 36rem;
     margin-top: 1.5rem;
   }
 
@@ -398,13 +427,25 @@ const confirmUrl = withBase("confirm/");
     border: 0;
   }
 
+  .form-section--intake {
+    gap: 1.1rem;
+  }
+
+  .form-section__intro {
+    margin: 0 0 0.25rem;
+    font-size: 0.9rem;
+    color: var(--color-gray);
+    line-height: 1.5;
+  }
+
   .form-section legend,
   .field--inline legend,
   .field legend {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.72rem;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
+    color: var(--color-dusty-rose);
     margin-bottom: 0.35rem;
     padding: 0;
   }
@@ -440,10 +481,15 @@ const confirmUrl = withBase("confirm/");
 
   .field span,
   .field > legend {
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.72rem;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .field-row--intake {
+    grid-template-columns: minmax(12rem, 16rem);
   }
 
   .field-hint {
@@ -555,7 +601,7 @@ const confirmUrl = withBase("confirm/");
   .form-error {
     margin: 0;
     font-size: 0.9rem;
-    color: #b42318;
+    color: var(--color-error);
   }
 
   .back {
