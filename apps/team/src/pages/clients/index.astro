@@ -344,6 +344,12 @@ if (!countError) {
 
     if (clients.length === 0) {
       emptyState.hidden = false;
+      const filters = getFilters();
+      const hasFilters =
+        filters.provider || filters.tag || filters.referral || filters.purchased;
+      emptyState.textContent = hasFilters
+        ? "No clients match the selected filters."
+        : "No clients found.";
       return;
     }
 
