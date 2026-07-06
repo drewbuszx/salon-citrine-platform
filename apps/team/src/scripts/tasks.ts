@@ -155,7 +155,11 @@ function renderTaskActions(task: Task) {
 
 function entryClasses(task: Task) {
   const classes = ["notebook-entry"];
-  if (task.status === "done") classes.push("is-done");
+  if (task.status === "done") {
+    classes.push("is-done");
+  } else if (task.status !== "cancelled") {
+    classes.push("is-active");
+  }
   if (task.priority === "high") classes.push("is-high");
   if (task.priority === "low") classes.push("is-low");
   return classes.join(" ");
@@ -169,6 +173,10 @@ function renderTaskCard(task: Task) {
     : "";
 
   const metaParts = [`<span>${escapeHtml(assigneeLabel(task))}</span>`];
+  const claimedBy = task.assignees.find((a) => a.claimedAt);
+  if (claimedBy && task.status !== "done") {
+    metaParts.push(`<span>Claimed by ${escapeHtml(claimedBy.staffName)}</span>`);
+  }
   if (due) metaParts.push(`<span>Due ${escapeHtml(due)}</span>`);
   if (completed && task.completedByName) {
     metaParts.push(
@@ -212,22 +220,49 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
-function emptyMessage(view: string) {
-  if (view === "available") return "No team-wide tasks right now.";
-  if (view === "attention") return "No tasks need attention.";
-  if (view === "completed") return "No completed tasks yet.";
-  if (view === "all") return "No active tasks.";
-  return "Nothing assigned to you.";
+function emptyStateContent(view: string) {
+  const states: Record<string, { title: string; hint: string }> = {
+    available: {
+      title: "No team-wide tasks",
+      hint: "Open tasks anyone can claim will show up here.",
+    },
+    attention: {
+      title: "All caught up",
+      hint: "Nothing is due or overdue in the next 24 hours.",
+    },
+    completed: {
+      title: "No completed tasks",
+      hint: "Finished to-dos appear here with who marked them done.",
+    },
+    all: {
+      title: "No active tasks",
+      hint: "Use New entry to assign salon checklists.",
+    },
+    my: {
+      title: "Nothing assigned to you",
+      hint: "Claim a task from For everyone or wait for an assignment.",
+    },
+  };
+
+  return states[view] ?? states.my;
+}
+
+function renderEmptyState(view: string) {
+  const { title, hint } = emptyStateContent(view);
+  return `<div class="notebook-empty notebook-empty--filter" role="status">
+    <p class="notebook-empty__title">${escapeHtml(title)}</p>
+    <p class="notebook-empty__hint">${escapeHtml(hint)}</p>
+  </div>`;
 }
 
 function updateAttentionBadge(count: number) {
   if (!attentionBadge) return;
-  if (count > 0) {
-    attentionBadge.textContent = String(count);
-    attentionBadge.hidden = false;
-  } else {
-    attentionBadge.hidden = true;
-  }
+  attentionBadge.textContent = String(count);
+  attentionBadge.hidden = count <= 0;
+  attentionBadge.setAttribute(
+    "aria-label",
+    count > 0 ? `${count} tasks need attention` : "Tasks needing attention",
+  );
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
@@ -253,7 +288,7 @@ async function loadTasks() {
     updateAttentionBadge(data.attentionCount ?? 0);
 
     if (tasks.length === 0) {
-      listEl.innerHTML = `<p class="notebook-empty">${emptyMessage(currentView)}</p>`;
+      listEl.innerHTML = renderEmptyState(currentView);
       return;
     }
 
