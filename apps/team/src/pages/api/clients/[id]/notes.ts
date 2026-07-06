@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
-import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
+import { jsonError, jsonOk, requireApiAuth } from "../../../../lib/api-calendar";
 
 const noteSchema = z.object({
   body: z.string().min(1).max(4000),
