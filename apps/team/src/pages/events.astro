@@ -31,34 +31,43 @@ const staffOptions = staffRows ?? [];
     <TeamPage
       title="Team calendar"
       lead="Birthdays, time off, closures, and salon announcements — not the appointment book."
+      toolbar
     >
       <button slot="actions" class="btn-primary" type="button" data-event-create>
         Add event
       </button>
 
-      <div class="events-page__nav">
-      <button class="btn-secondary" type="button" data-month-prev aria-label="Previous month">
-        ‹
-      </button>
-      <h2 class="events-page__month" data-month-label></h2>
-      <button class="btn-secondary" type="button" data-month-next aria-label="Next month">
-        ›
-      </button>
-      <button class="btn-secondary events-page__today" type="button" data-month-today>
-        Today
-      </button>
-    </div>
-
-    <p class="notice notice--error events-page__error" data-events-error hidden role="alert"></p>
-
-    <div class="events-calendar" data-events-calendar aria-label="Month calendar"></div>
-
-    <section class="events-upcoming">
-      <h3 class="events-upcoming__title">Upcoming</h3>
-      <div class="events-list" data-events-list aria-live="polite">
-        <p class="empty-state">Loading events…</p>
+      <div slot="toolbar" class="events-page__toolbar">
+        <button class="btn-secondary events-page__nav-btn" type="button" data-month-prev aria-label="Previous month">
+          ‹
+        </button>
+        <h2 class="events-page__month" data-month-label></h2>
+        <button class="btn-secondary events-page__nav-btn" type="button" data-month-next aria-label="Next month">
+          ›
+        </button>
+        <button class="btn-secondary events-page__today" type="button" data-month-today>
+          Today
+        </button>
       </div>
-    </section>
+
+      <p class="notice notice--error events-page__error" data-events-error hidden role="alert"></p>
+
+      <section class="events-calendar-panel" aria-label="Month calendar">
+        <div class="events-calendar" data-events-calendar></div>
+        <div class="events-calendar-legend" aria-hidden="true">
+          <span class="events-calendar-legend__item events-calendar-legend__item--closure">Holiday / closure</span>
+          <span class="events-calendar-legend__item events-calendar-legend__item--event">Community</span>
+          <span class="events-calendar-legend__item events-calendar-legend__item--announcement">Announcement</span>
+          <span class="events-calendar-legend__item events-calendar-legend__item--time_off">Time off (staff color)</span>
+        </div>
+      </section>
+
+      <section class="events-upcoming team-panel">
+        <h3 class="team-panel__title">Upcoming</h3>
+        <div class="events-list" data-events-list aria-live="polite">
+          <p class="empty-state">Loading events…</p>
+        </div>
+      </section>
     </TeamPage>
   </div>
 
@@ -88,9 +97,9 @@ const staffOptions = staffRows ?? [];
             {
               managerView ? (
                 <>
-                  <option value="event">Event</option>
-                  <option value="announcement">Announcement</option>
-                  <option value="closure">Closure</option>
+                  <option value="event">Community event</option>
+                  <option value="announcement">Salon announcement</option>
+                  <option value="closure">Holiday / closure</option>
                   <option value="time_off">Time off</option>
                 </>
               ) : (
@@ -153,12 +162,19 @@ const staffOptions = staffRows ?? [];
 <script src="../scripts/events.ts"></script>
 
 <style>
-  .events-page__nav {
+  .events-page__toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1rem;
+    width: 100%;
+  }
+
+  .events-page__nav-btn {
+    min-width: 2.25rem;
+    padding-inline: 0.65rem;
+    font-size: 1.1rem;
+    line-height: 1;
   }
 
   .events-page__month {
@@ -166,8 +182,10 @@ const staffOptions = staffRows ?? [];
     flex: 1;
     min-width: 10rem;
     text-align: center;
-    font-size: 1.05rem;
-    font-weight: 500;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
 
   .events-page__today {
@@ -176,107 +194,241 @@ const staffOptions = staffRows ?? [];
 
   .events-page__error {
     margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  .events-calendar-panel {
+    margin-bottom: 1.25rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    overflow: hidden;
   }
 
   .events-calendar {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 1px;
-    margin-bottom: 1.5rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-border);
+    background: var(--color-border-subtle);
   }
 
   .events-calendar__head,
   .events-calendar__cell {
     background: var(--color-booking-card-bg);
-    min-height: 2.5rem;
-    padding: 0.35rem;
     font-family: var(--font-sans);
-    font-size: 0.72rem;
   }
 
   .events-calendar__head {
+    padding: 0.55rem 0.35rem;
     text-align: center;
+    font-size: 0.62rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-gray);
-    min-height: auto;
+    background: var(--color-booking-panel-bg);
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .events-calendar__cell {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
-    min-height: 4.5rem;
+    gap: 0.25rem;
+    min-height: 5.25rem;
+    padding: 0.4rem 0.45rem 0.35rem;
     cursor: default;
+    transition: background 0.15s ease;
   }
 
-  .events-calendar__cell--muted {
-    color: var(--color-gray);
-    opacity: 0.65;
+  .events-calendar__cell--pad {
+    background: var(--color-booking-panel-bg);
+    opacity: 0.45;
   }
 
-  .events-calendar__cell--today {
-    outline: 2px solid var(--color-dusty-rose);
-    outline-offset: -2px;
+  .events-calendar__cell--today .events-calendar__day {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: var(--color-dusty-rose);
+    color: #fff;
+  }
+
+  .events-calendar__cell--closure {
+    background: rgba(200, 60, 60, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(200, 60, 60, 0.22);
+  }
+
+  .events-calendar__cell--event {
+    background: rgba(196, 168, 106, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(196, 168, 106, 0.28);
+  }
+
+  .events-calendar__cell--announcement {
+    background: rgba(138, 115, 85, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(138, 115, 85, 0.24);
   }
 
   .events-calendar__day {
     font-size: 0.78rem;
     font-weight: 600;
+    line-height: 1;
   }
 
-  .events-calendar__dots {
+  .events-calendar__markers {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.15rem;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-height: 0;
+    flex: 1;
   }
 
-  .events-calendar__dot {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: var(--color-dusty-rose);
+  .events-calendar__chip {
+    display: block;
+    padding: 0.12rem 0.3rem;
+    border-left: 3px solid var(--event-staff-color, var(--color-dusty-rose));
+    background: color-mix(in srgb, var(--event-staff-color, var(--color-dusty-rose)) 14%, transparent);
+    font-size: 0.58rem;
+    font-weight: 500;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .events-calendar__dot--time_off {
-    background: #7a8f6e;
+  .events-calendar__chip--closure {
+    border-left-color: #c83c3c;
+    background: rgba(200, 60, 60, 0.12);
   }
 
-  .events-calendar__dot--closure {
-    background: #922;
+  .events-calendar__chip--announcement {
+    border-left-color: #8a7355;
+    background: rgba(138, 115, 85, 0.12);
   }
 
-  .events-calendar__dot--announcement {
-    background: #8a7355;
+  .events-calendar__bar {
+    display: block;
+    height: 0.28rem;
+    border-radius: 999px;
+    background: var(--event-staff-color, var(--color-dusty-rose));
   }
 
-  .events-upcoming__title {
-    margin: 0 0 0.75rem;
-    font-size: 0.85rem;
-    letter-spacing: 0.06em;
+  .events-calendar__more {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--color-gray);
   }
 
+  .events-calendar-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    padding: 0.55rem 0.85rem;
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-booking-panel-bg);
+  }
+
+  .events-calendar-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .events-calendar-legend__item::before {
+    content: "";
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .events-calendar-legend__item--closure::before {
+    background: rgba(200, 60, 60, 0.35);
+    border: 1px solid rgba(200, 60, 60, 0.5);
+  }
+
+  .events-calendar-legend__item--event::before {
+    background: rgba(196, 168, 106, 0.35);
+    border: 1px solid rgba(196, 168, 106, 0.5);
+  }
+
+  .events-calendar-legend__item--announcement::before {
+    background: rgba(138, 115, 85, 0.3);
+    border: 1px solid rgba(138, 115, 85, 0.45);
+  }
+
+  .events-calendar-legend__item--time_off::before {
+    background: linear-gradient(
+      90deg,
+      var(--color-citrine) 0 33%,
+      var(--color-sage) 33% 66%,
+      #d4a5a5 66% 100%
+    );
+    border-radius: 999px;
+  }
+
+  .events-upcoming {
+    margin-top: 0;
+  }
+
   .events-list {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .event-card {
-    display: grid;
-    gap: 0.5rem;
-    padding: 0.9rem;
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    padding: 0;
     border: 1px solid var(--color-border);
     background: var(--color-booking-card-bg);
     cursor: pointer;
     text-align: left;
-    width: 100%;
     font: inherit;
     color: inherit;
+    overflow: hidden;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .event-card:hover,
+  .event-card:focus-visible {
+    border-color: var(--color-sage);
+    box-shadow: 0 2px 12px var(--color-card-shadow);
+    outline: none;
+  }
+
+  .event-card__accent {
+    width: 4px;
+    flex-shrink: 0;
+    background: var(--event-staff-color, var(--color-dusty-rose));
+  }
+
+  .event-card--closure .event-card__accent {
+    background: #c83c3c;
+  }
+
+  .event-card--announcement .event-card__accent {
+    background: #8a7355;
+  }
+
+  .event-card__body {
+    display: grid;
+    gap: 0.45rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.85rem 1rem;
   }
 
   .event-card__top {
@@ -289,48 +441,79 @@ const staffOptions = staffRows ?? [];
 
   .event-card__title {
     margin: 0;
-    font-size: 1.02rem;
-    font-weight: 500;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
   }
 
   .event-card__description {
     margin: 0;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
     color: var(--color-gray);
   }
 
   .event-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
     font-family: var(--font-sans);
     font-size: 0.72rem;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     color: var(--color-gray);
+  }
+
+  .event-card__staff {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .event-card__staff::before {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--event-staff-color, var(--color-dusty-rose));
   }
 
   .event-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.15rem 0.45rem;
+    padding: 0.18rem 0.5rem;
     border: 1px solid var(--color-border);
+    border-radius: 999px;
     font-family: var(--font-sans);
-    font-size: 0.62rem;
+    font-size: 0.58rem;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    white-space: nowrap;
   }
 
   .event-badge--time_off {
-    border-color: #7a8f6e;
-    color: #556648;
+    border-color: color-mix(in srgb, var(--event-staff-color, #7a8f6e) 55%, var(--color-border));
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--event-staff-color, #7a8f6e) 12%, transparent);
   }
 
   .event-badge--closure {
-    border-color: #922;
+    border-color: #c83c3c;
     color: #922;
-    background: rgba(200, 60, 60, 0.08);
+    background: rgba(200, 60, 60, 0.1);
   }
 
   .event-badge--announcement {
     border-color: #8a7355;
     color: #8a7355;
+    background: rgba(138, 115, 85, 0.1);
+  }
+
+  .event-badge--event {
+    border-color: var(--color-citrine);
+    color: var(--color-text);
+    background: rgba(196, 168, 106, 0.14);
   }
 
   .events-modal {
@@ -394,12 +577,26 @@ const staffOptions = staffRows ?? [];
 
   @media (max-width: 640px) {
     .events-calendar__cell {
-      min-height: 3rem;
-      padding: 0.2rem;
+      min-height: 3.75rem;
+      padding: 0.25rem;
+    }
+
+    .events-calendar__chip {
+      display: none;
     }
 
     .events-calendar__head {
-      font-size: 0.62rem;
+      font-size: 0.58rem;
+      padding: 0.4rem 0.15rem;
+    }
+
+    .events-calendar-legend {
+      gap: 0.45rem 0.65rem;
+      padding: 0.45rem 0.65rem;
+    }
+
+    .events-calendar-legend__item {
+      font-size: 0.55rem;
     }
   }
 </style>

@@ -1,3 +1,5 @@
+import { staffAccentColor } from "../lib/staff-colors";
+
 type TeamEvent = {
   id: string;
   title: string;
@@ -6,12 +8,20 @@ type TeamEvent = {
   startsAt: string;
   endsAt: string | null;
   allDay: boolean;
+  createdByStaffId: string;
   createdByName: string | null;
   staffId: string | null;
   staffName: string | null;
   canEdit: boolean;
   canDelete: boolean;
 };
+
+/** Full-day cell highlights — salon-wide items, not individual time off. */
+const HIGHLIGHT_EVENT_TYPES = new Set<TeamEvent["eventType"]>([
+  "event",
+  "closure",
+  "announcement",
+]);
 
 const root = document.querySelector<HTMLElement>("[data-events-app]");
 if (!root) {
@@ -108,7 +118,7 @@ function formatEventRange(event: TeamEvent) {
 
 function typeBadge(type: TeamEvent["eventType"]) {
   const labels: Record<TeamEvent["eventType"], string> = {
-    event: "Event",
+    event: "Community",
     time_off: "Time off",
     closure: "Closure",
     announcement: "Announcement",
@@ -140,6 +150,37 @@ function eventOnDate(event: TeamEvent, date: Date) {
   return start <= dayEnd && end >= dayStart;
 }
 
+/** Staff color: time off uses the subject; everything else uses who created it. */
+function eventStaffId(event: TeamEvent) {
+  if (event.eventType === "time_off" && event.staffId) {
+    return event.staffId;
+  }
+  return event.createdByStaffId;
+}
+
+function eventStaffColor(event: TeamEvent) {
+  return staffAccentColor(eventStaffId(event));
+}
+
+function dominantHighlightType(dayEvents: TeamEvent[]): TeamEvent["eventType"] | null {
+  const priority: TeamEvent["eventType"][] = ["closure", "announcement", "event"];
+  for (const type of priority) {
+    if (dayEvents.some((event) => event.eventType === type)) {
+      return type;
+    }
+  }
+  return null;
+}
+
+function renderEventMarker(event: TeamEvent) {
+  const color = eventStaffColor(event);
+  const title = escapeHtml(event.title);
+  if (HIGHLIGHT_EVENT_TYPES.has(event.eventType)) {
+    return `<span class="events-calendar__chip events-calendar__chip--${event.eventType}" style="--event-staff-color: ${color}" title="${title}">${title}</span>`;
+  }
+  return `<span class="events-calendar__bar" style="--event-staff-color: ${color}" title="${title}"></span>`;
+}
+
 function renderCalendar() {
   if (!calendarEl) return;
   if (monthLabel) {
@@ -156,24 +197,31 @@ function renderCalendar() {
     .join("");
 
   for (let i = 0; i < startOffset; i++) {
-    html += `<div class="events-calendar__cell events-calendar__cell--muted" aria-hidden="true"></div>`;
+    html += `<div class="events-calendar__cell events-calendar__cell--pad" aria-hidden="true"></div>`;
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(viewYear, viewMonth, day);
     const dayEvents = events.filter((event) => eventOnDate(event, date));
-    const dots = dayEvents
-      .slice(0, 4)
-      .map(
-        (event) =>
-          `<span class="events-calendar__dot events-calendar__dot--${event.eventType}" title="${escapeHtml(event.title)}"></span>`,
-      )
-      .join("");
+    const highlightType = dominantHighlightType(dayEvents);
+    const markers = dayEvents.slice(0, 5).map(renderEventMarker).join("");
+    const overflow =
+      dayEvents.length > 5
+        ? `<span class="events-calendar__more">+${dayEvents.length - 5}</span>`
+        : "";
     const isToday = sameDay(date, today);
+    const classes = [
+      "events-calendar__cell",
+      isToday ? "events-calendar__cell--today" : "",
+      highlightType ? `events-calendar__cell--${highlightType}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     html += `
-      <div class="events-calendar__cell${isToday ? " events-calendar__cell--today" : ""}">
+      <div class="${classes}">
         <span class="events-calendar__day">${day}</span>
-        <div class="events-calendar__dots">${dots}</div>
+        <div class="events-calendar__markers">${markers}${overflow}</div>
       </div>
     `;
   }
@@ -198,20 +246,31 @@ function renderList() {
 
   listEl.innerHTML = upcoming
     .map((event) => {
+      const color = eventStaffColor(event);
       const staffLine =
         event.eventType === "time_off" && event.staffName
-          ? `<span>${escapeHtml(event.staffName)}</span>`
-          : "";
+          ? `<span class="event-card__staff">${escapeHtml(event.staffName)}</span>`
+          : event.createdByName
+            ? `<span class="event-card__staff">${escapeHtml(event.createdByName)}</span>`
+            : "";
       return `
-        <button class="event-card" type="button" data-event-open="${event.id}">
-          <div class="event-card__top">
-            <h4 class="event-card__title">${escapeHtml(event.title)}</h4>
-            ${typeBadge(event.eventType)}
-          </div>
-          ${event.description ? `<p class="event-card__description">${escapeHtml(event.description)}</p>` : ""}
-          <div class="event-card__meta">
-            <span>${escapeHtml(formatEventRange(event))}</span>
-            ${staffLine}
+        <button
+          class="event-card event-card--${event.eventType}"
+          type="button"
+          data-event-open="${event.id}"
+          style="--event-staff-color: ${color}"
+        >
+          <div class="event-card__accent" aria-hidden="true"></div>
+          <div class="event-card__body">
+            <div class="event-card__top">
+              <h4 class="event-card__title">${escapeHtml(event.title)}</h4>
+              ${typeBadge(event.eventType)}
+            </div>
+            ${event.description ? `<p class="event-card__description">${escapeHtml(event.description)}</p>` : ""}
+            <div class="event-card__meta">
+              <span>${escapeHtml(formatEventRange(event))}</span>
+              ${staffLine}
+            </div>
           </div>
         </button>
       `;

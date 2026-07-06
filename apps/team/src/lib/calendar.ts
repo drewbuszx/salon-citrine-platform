@@ -77,24 +77,7 @@ export const CALENDAR_SLOT_MINUTES = 15;
 export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
 
-export const STAFF_ACCENT_COLORS = [
-  "var(--color-citrine)",
-  "var(--color-sage)",
-  "#d4a5a5",
-  "#9cb4d4",
-  "#c4b0d8",
-  "#e8b8a8",
-  "#8fbfb0",
-];
-
-/** Stable accent color per staff member (independent of column order). */
-export function staffAccentColor(staffId: string) {
-  let hash = 0;
-  for (let i = 0; i < staffId.length; i++) {
-    hash = (hash * 31 + staffId.charCodeAt(i)) >>> 0;
-  }
-  return STAFF_ACCENT_COLORS[hash % STAFF_ACCENT_COLORS.length]!;
-}
+export { STAFF_ACCENT_COLORS, staffAccentColor } from "./staff-colors";
 
 /** Logged-in staff first, then others alphabetically by name. */
 export function sortStaffWithCurrentFirst(
@@ -585,6 +568,68 @@ export async function loadStaffServicesByStaff(
   }
 
   return grouped;
+}
+
+export type UpcomingAppointment = {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  clientName: string;
+  serviceLabel: string | null;
+};
+
+export function formatAppointmentStatusLabel(status: string) {
+  return status.replace(/_/g, " ");
+}
+
+export async function loadUpcomingAppointments(
+  supabase: App.Locals["supabase"],
+  staffId: string,
+  limit = 12,
+): Promise<UpcomingAppointment[]> {
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .select(
+      "id, starts_at, ends_at, status, clients(first_name, last_name), appointment_services(services(name))",
+    )
+    .eq("staff_id", staffId)
+    .gte("starts_at", nowIso)
+    .neq("status", "cancelled")
+    .order("starts_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => {
+    const client = row.clients as
+      | { first_name: string; last_name: string }
+      | null
+      | undefined;
+    const services = row.appointment_services as
+      | Array<{ services: { name: string } | null }>
+      | null
+      | undefined;
+    const serviceNames =
+      services
+        ?.map((item) => item.services?.name)
+        .filter((name): name is string => Boolean(name)) ?? [];
+
+    return {
+      id: row.id,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      status: row.status,
+      clientName: client
+        ? `${client.first_name} ${client.last_name}`.trim()
+        : "Client",
+      serviceLabel: serviceNames[0] ?? null,
+    };
+  });
 }
 
 export function slotStartsAtIso(dayStart: Date, totalMinutes: number) {
