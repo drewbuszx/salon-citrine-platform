@@ -22,7 +22,7 @@ import {
   staffFirstName,
   sumServiceDuration,
 } from "../lib/booking-data";
-import { datetimeUrl, stylistUrl } from "../lib/booking-flow";
+import { datetimeUrl, stylistUrl, bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -32,6 +32,13 @@ const returningAck = Astro.url.searchParams.get("returning") === "1";
 const existingAck = hasExistingClientAck(Astro.url.searchParams);
 /** Show professional step in progress when stylist not chosen yet */
 const showStylistStep = !stylistSlug;
+
+const flowFlags = {
+  ...bookingFlagsFromUrl(Astro.url),
+  showStylistStep,
+  returningAck,
+  existingAck,
+};
 
 const serviceIds = parseServiceIdsFromParams(servicesParam, serviceParam);
 const primaryServiceId = serviceIds[0] ?? serviceParam;
@@ -61,17 +68,12 @@ if (!primaryService) {
 const showReturningModal = stylist && returningClientsOnly && !returningAck;
 const showNewClientsModal = stylist && !isAcceptingNewClients(stylist) && !existingAck;
 
-const flowFlags = {
-  showStylistStep,
-  returningAck,
-  existingAck,
-};
-
 const cartParams = new URLSearchParams();
 cartParams.set("services", serviceIds.length > 0 ? serviceIds.join(",") : primaryService.id);
 if (stylist) cartParams.set("stylist", stylist.slug);
 if (returningAck) cartParams.set("returning", "1");
 cartParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+appendFlowFlags(cartParams, flowFlags);
 const continueHref = `${withBase("cart/")}?${cartParams.toString()}`;
 
 const returningContinueParams = new URLSearchParams(cartParams);
@@ -163,6 +165,7 @@ const bookBase = withBase();
   title="Your appointment"
   step="cart"
   showStylistStep={showStylistStep}
+  embed={flowFlags.embed}
 >
   <LocationContext />
   {

@@ -11,13 +11,16 @@ interface Props {
   title: string;
   step: BookingStepId;
   showStylistStep?: boolean;
+  embed?: boolean;
 }
 
 const { title, step, showStylistStep = false } = Astro.props;
+const embed =
+  Astro.props.embed ?? Astro.url.searchParams.get("embed") === "1";
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-booking-embed={embed ? "1" : undefined}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,21 +42,25 @@ const { title, step, showStylistStep = false } = Astro.props;
     </script>
   </head>
   <body>
-    <div class="booking-shell">
-      <SiteHeader />
+    <div class:list={["booking-shell", embed && "booking-shell--embed"]}>
+      {embed ? null : <SiteHeader />}
 
       <main class="booking-main">
-        <BookingSteps current={step} showStylistStep={showStylistStep} />
+        <BookingSteps current={step} showStylistStep={showStylistStep} compact={embed} />
         <div class="booking-content">
           <slot />
         </div>
       </main>
 
-      <footer class="booking-footer">
-        <p>
-          Questions? Call <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phone}</a>
-        </p>
-      </footer>
+      {
+        embed ? null : (
+          <footer class="booking-footer">
+            <p>
+              Questions? Call <a href={`tel:${BUSINESS.phoneE164}`}>{BUSINESS.phone}</a>
+            </p>
+          </footer>
+        )
+      }
     </div>
   </body>
 </html>
@@ -66,6 +73,11 @@ const { title, step, showStylistStep = false } = Astro.props;
     padding-top: var(--header-height);
   }
 
+  .booking-shell--embed {
+    padding-top: 0;
+    background: var(--color-cream);
+  }
+
   .booking-main {
     flex: 1;
     width: min(var(--max-width), 100%);
@@ -74,12 +86,23 @@ const { title, step, showStylistStep = false } = Astro.props;
     padding-bottom: calc(var(--section-padding) + 1rem);
   }
 
+  .booking-shell--embed .booking-main {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-6);
+  }
+
   .booking-content {
     margin-top: 1.5rem;
     padding: clamp(1.5rem, 4vw, 2.5rem);
     background: var(--color-booking-panel-bg);
     border: 1px solid var(--color-border-subtle);
     box-shadow: 0 8px 40px var(--color-card-shadow);
+  }
+
+  .booking-shell--embed .booking-content {
+    margin-top: var(--space-3);
+    box-shadow: none;
+    border-color: var(--color-stone-200);
   }
 
   .booking-footer {

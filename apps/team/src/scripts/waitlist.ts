@@ -122,7 +122,7 @@ async function loadEntries(apiBase: string) {
 
   if (status) status.hidden = true;
   if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="6">Loading waitlist…</td></tr>`;
+    tbody.innerHTML = `<tr class="waitlist-table__loading"><td colspan="6">Loading waitlist…</td></tr>`;
   }
 
   try {

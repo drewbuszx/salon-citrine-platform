@@ -170,9 +170,10 @@ const services = serviceRows ?? [];
     justify-items: center;
     margin: 2.5rem auto 0;
     max-width: 18rem;
+    padding: 2rem 1rem;
     text-align: center;
-    font-size: 0.875rem;
-    color: #6b7280;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
   }
 
   .waitlist-page__empty[hidden] {
@@ -186,23 +187,45 @@ const services = serviceRows ?? [];
     width: 3rem;
     height: 3rem;
     border-radius: 50%;
-    background: #f3f4f6;
+    background: var(--color-stone-100);
     font-size: 1.35rem;
     line-height: 1;
     margin-bottom: 0.35rem;
   }
 
   .waitlist-page__empty strong {
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
     font-weight: 600;
-    color: #374151;
+    color: var(--color-stone-700);
   }
 
   .waitlist-page__empty-hint {
-    font-size: 0.8125rem;
-    line-height: 1.45;
-    color: #9ca3af;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-500);
+  }
+
+  .waitlist-page :global(.waitlist-table tbody tr[data-waitlist-row]) {
+    cursor: default;
+  }
+
+  .waitlist-page :global(.waitlist-table td) {
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .waitlist-page :global(.waitlist-table td:nth-child(4)),
+  .waitlist-page :global(.waitlist-table td:nth-child(5)) {
+    color: var(--color-stone-500);
+  }
+
+  .waitlist-page :global(.waitlist-table .waitlist-table__loading td) {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--color-stone-500);
+    font-size: var(--text-sm);
+    background: transparent;
   }
 
   .waitlist-modal[hidden] {
@@ -288,8 +311,8 @@ const services = serviceRows ?? [];
 
   .waitlist-modal__input:focus-visible {
     outline: none;
-    border-color: #7c3aed;
-    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+    border-color: var(--color-citrine);
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
   }
 
   .waitlist-modal__actions {

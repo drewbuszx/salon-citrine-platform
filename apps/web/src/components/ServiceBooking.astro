@@ -14,9 +14,10 @@ interface Props {
   catalog: BookingCatalog;
   initialStaffSlug: string;
   initialCategory: string;
+  embed?: boolean;
 }
 
-const { catalog, initialStaffSlug, initialCategory } = Astro.props;
+const { catalog, initialStaffSlug, initialCategory, embed = false } = Astro.props;
 
 const initialCategories = getCategoriesForStaff(catalog, initialStaffSlug);
 const catalogJson = JSON.stringify(catalog);
@@ -98,6 +99,7 @@ const stylistBase = withBase("stylist/");
     stylistBase,
     initialStaffSlug,
     initialCategory,
+    embedMode: embed,
   }}
 >
   /** @type {import('../lib/booking-data').BookingCatalog} */
@@ -170,6 +172,14 @@ const stylistBase = withBase("stylist/");
     const dollars = service.basePriceCents / 100;
     const base = `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}`;
     return service.priceVaries ? `${base}+` : base;
+  }
+
+  function buildCartHref(serviceIds, staffSlug) {
+    const params = new URLSearchParams();
+    params.set("services", serviceIds.join(","));
+    if (staffSlug) params.set("stylist", staffSlug);
+    if (embedMode) params.set("embed", "1");
+    return `${cartBase}?${params.toString()}`;
   }
 
   function optionsLabel(service) {
@@ -276,9 +286,7 @@ const stylistBase = withBase("stylist/");
       const link = document.createElement("a");
       link.className = "service-card__select sc-button sc-button--primary";
       link.textContent = "Select";
-      link.href = staffSlug
-        ? cartUrl([service.id], staffSlug)
-        : cartUrl([service.id]);
+      link.href = buildCartHref([service.id], staffSlug || undefined);
       actions.appendChild(link);
 
       li.appendChild(body);

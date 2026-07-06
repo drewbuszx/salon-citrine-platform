@@ -12,10 +12,12 @@ import {
   staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
+import { appendFlowFlags, bookingFlagsFromUrl } from "../lib/booking-flow";
 
 const stylistSlug = Astro.url.searchParams.get("stylist") ?? "";
 const category = Astro.url.searchParams.get("category") ?? "";
 const existingAck = hasExistingClientAck(Astro.url.searchParams);
+const flowFlags = bookingFlagsFromUrl(Astro.url);
 
 const [catalog, preselectedStylist] = await Promise.all([
   fetchBookingCatalog(),
@@ -36,10 +38,11 @@ const continueParams = new URLSearchParams();
 if (initialStaffSlug) continueParams.set("stylist", initialStaffSlug);
 if (category) continueParams.set("category", category);
 continueParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+appendFlowFlags(continueParams, flowFlags);
 const continueHref = `${withBase()}?${continueParams.toString()}`;
 ---
 
-<BookingLayout title="Choose a service" step="service">
+<BookingLayout title="Choose a service" step="service" embed={flowFlags.embed}>
   <LocationContext />
   {
     showNewClientsModal && preselectedStylist && (
@@ -65,6 +68,7 @@ const continueHref = `${withBase()}?${continueParams.toString()}`;
     catalog={catalog}
     initialStaffSlug={initialStaffSlug}
     initialCategory={category}
+    embed={flowFlags.embed}
   />
 </BookingLayout>
 

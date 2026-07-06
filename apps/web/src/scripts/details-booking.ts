@@ -1,4 +1,5 @@
 import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
+import { appendEmbedIfActive } from "../lib/booking-flow";
 import {
   fetchCartExpiry,
   formatReservationCountdown,
@@ -533,6 +534,7 @@ async function completeBooking() {
 
     const params = new URLSearchParams({ appointment: payload.id });
     if (formValue("flow") === "stylist") params.set("flow", "stylist");
+    appendEmbedIfActive(params);
     window.location.href = `${confirmUrl}?${params.toString()}`;
   } catch (error) {
     logBookingError("completeBooking", error);

@@ -2,6 +2,8 @@
 
 **Brand promise:** *Warm editorial luxury for people who touch hair for a living — every screen should feel like stepping into the salon, not logging into software.*
 
+**Related docs:** Product strategy lives in [`SALON_CITRINE_VISION.md`](./SALON_CITRINE_VISION.md). Competitive parity tracking lives in [`BOULEVARD_FEATURE_GAP.md`](./BOULEVARD_FEATURE_GAP.md) (reference only — not a build checklist). Embed instructions: [`EMBED_BOOK.md`](./EMBED_BOOK.md).
+
 ---
 
 ## Brand story

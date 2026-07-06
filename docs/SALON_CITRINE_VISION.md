@@ -2,6 +2,10 @@
 
 **From the builder who watched a generation of salon software get it wrong.**
 
+**Visual source of truth:** [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) — colors, typography, component patterns. This doc is *what* we build and *why*. Design system is *how* it looks.
+
+**Competitive reference:** [`BOULEVARD_FEATURE_GAP.md`](./BOULEVARD_FEATURE_GAP.md) — honest parity estimate, not a sprint backlog.
+
 ---
 
 ## The thesis

@@ -12,18 +12,41 @@ export const BOOKING_QUERY = {
   cartId: "cartId",
   returning: "returning",
   existingAck: "existing",
+  embed: "embed",
 } as const;
 
 export type BookingFlowFlags = {
   showStylistStep?: boolean;
   returningAck?: boolean;
   existingAck?: boolean;
+  embed?: boolean;
 };
+
+export function bookingFlagsFromUrl(url: URL): BookingFlowFlags {
+  const params = url.searchParams;
+  return {
+    showStylistStep: params.get(BOOKING_QUERY.flow) === "stylist",
+    returningAck: params.get(BOOKING_QUERY.returning) === "1",
+    existingAck: params.get(BOOKING_QUERY.existingAck) === "1",
+    embed: params.get(BOOKING_QUERY.embed) === "1",
+  };
+}
 
 export function appendFlowFlags(params: URLSearchParams, flags: BookingFlowFlags) {
   if (flags.showStylistStep) params.set(BOOKING_QUERY.flow, "stylist");
   if (flags.returningAck) params.set(BOOKING_QUERY.returning, "1");
   if (flags.existingAck) params.set(BOOKING_QUERY.existingAck, "1");
+  if (flags.embed) params.set(BOOKING_QUERY.embed, "1");
+}
+
+/** Preserve embed=1 in client-side navigations when layout sets data-booking-embed on <html>. */
+export function appendEmbedIfActive(params: URLSearchParams) {
+  if (
+    typeof document !== "undefined" &&
+    document.documentElement.dataset.bookingEmbed === "1"
+  ) {
+    params.set(BOOKING_QUERY.embed, "1");
+  }
 }
 
 export function servicesQueryValue(serviceIds: string[], fallbackSingle?: string | null) {

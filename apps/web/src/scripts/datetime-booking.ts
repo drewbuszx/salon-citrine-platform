@@ -2,7 +2,7 @@ import {
   ensureBookingCart,
   reserveBookingCartSlot,
 } from "./booking-cart-client";
-import { bookingApi } from "../lib/booking-flow";
+import { appendEmbedIfActive } from "../lib/booking-flow";
 
 function formValue(form: HTMLFormElement, name: string): string {
   const el = form.elements.namedItem(name);
@@ -54,6 +54,7 @@ function initDatetimePicker() {
       const params = new URLSearchParams(new FormData(form));
       params.set("cartId", cartId);
       params.delete("time");
+      appendEmbedIfActive(params);
       const detailsUrl = root.dataset.detailsUrl ?? "";
       window.location.href = `${detailsUrl}?${params.toString()}`;
     } catch (error) {

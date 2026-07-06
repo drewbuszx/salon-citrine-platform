@@ -13,9 +13,11 @@ interface Props {
   current: BookingStepId;
   /** Show professional step when user chose "Any Professional" */
   showStylistStep?: boolean;
+  /** Compact step indicator for embed mode */
+  compact?: boolean;
 }
 
-const { current, showStylistStep = false } = Astro.props;
+const { current, showStylistStep = false, compact = false } = Astro.props;
 
 /** Boulevard SelectServiceFirst: services → cart → staff → time → client → confirm */
 const BASE_STEPS: { id: BookingStepId; label: string; href: string }[] = [
@@ -34,7 +36,7 @@ const steps = showStylistStep
 const currentIndex = steps.findIndex((step) => step.id === current);
 ---
 
-<nav class="steps" aria-label="Booking progress">
+<nav class:list={["steps", compact && "steps--compact"]} aria-label="Booking progress">
   <ol class="steps__list">
     {
       steps.map((step, index) => (
@@ -130,5 +132,25 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     text-decoration: line-through;
     text-decoration-color: var(--color-stone-300);
     opacity: 0.75;
+  }
+
+  .steps--compact {
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+  }
+
+  .steps--compact .steps__list {
+    gap: var(--space-1) var(--space-2);
+  }
+
+  .steps--compact .steps__label {
+    display: none;
+  }
+
+  @media (min-width: 480px) {
+    .steps--compact .steps__label {
+      display: inline;
+      font-size: 0.58rem;
+    }
   }
 </style>
