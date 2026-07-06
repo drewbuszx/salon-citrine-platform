@@ -1,3 +1,5 @@
+import { showToast, friendlyError } from "../lib/toast";
+
 type TaskAssignee = {
   staffId: string;
   staffName: string;
@@ -98,6 +100,8 @@ function assigneeLabel(task: Task) {
   return task.assignees.map((a) => a.staffName).join(", ");
 }
 
+const ATTENTION_MS = 24 * 60 * 60 * 1000;
+
 function priorityBadge(priority: Task["priority"]) {
   if (priority === "high") {
     return '<span class="task-badge task-badge--high">High</span>';
@@ -109,48 +113,73 @@ function priorityBadge(priority: Task["priority"]) {
 }
 
 function statusBadge(task: Task) {
+  if (task.status === "done") {
+    return '<span class="task-badge task-badge--done">Done</span>';
+  }
+  if (task.status === "cancelled") {
+    return '<span class="task-badge task-badge--muted">Cancelled</span>';
+  }
   if (task.status === "open" && task.assignmentType === "open") {
     return '<span class="task-badge task-badge--open">Available</span>';
   }
   if (task.status === "claimed") {
-    return '<span class="task-badge">Claimed</span>';
-  }
-  if (task.status === "done") {
-    return '<span class="task-badge">Done</span>';
-  }
-  if (task.status === "cancelled") {
-    return '<span class="task-badge">Cancelled</span>';
+    return '<span class="task-badge task-badge--claimed">Claimed</span>';
   }
   return "";
 }
 
+function dueBadge(task: Task) {
+  if (!task.dueAt || task.status === "done" || task.status === "cancelled") {
+    return "";
+  }
+  const due = new Date(task.dueAt);
+  if (Number.isNaN(due.getTime())) return "";
+
+  const diff = due.getTime() - Date.now();
+  const label = formatDueDate(task.dueAt);
+  if (!label) return "";
+
+  let state = "task-due--normal";
+  let prefix = "Due";
+  if (diff < 0) {
+    state = "task-due--overdue";
+    prefix = "Overdue";
+  } else if (diff <= ATTENTION_MS) {
+    state = "task-due--soon";
+    prefix = "Due soon";
+  }
+
+  return `<span class="task-due ${state}">${prefix} ${escapeHtml(label)}</span>`;
+}
+
 function renderTaskActions(task: Task) {
-  const actions: string[] = [];
+  const primary: string[] = [];
+  const secondary: string[] = [];
 
   if (task.canClaim) {
-    actions.push(
-      `<button class="btn-primary" type="button" data-task-claim="${task.id}">Claim</button>`,
+    primary.push(
+      `<button class="task-action task-action--primary" type="button" data-task-claim="${task.id}">Claim</button>`,
     );
   }
 
   if (task.canComplete) {
-    actions.push(
-      `<button class="btn-primary" type="button" data-task-complete="${task.id}">Complete</button>`,
+    primary.push(
+      `<button class="task-action task-action--primary" type="button" data-task-complete="${task.id}">Complete</button>`,
     );
   }
 
   if (isManager && task.status !== "done" && task.status !== "cancelled") {
-    actions.push(
-      `<button class="btn-secondary" type="button" data-task-edit="${task.id}">Edit</button>`,
-      `<button class="btn-secondary" type="button" data-task-cancel="${task.id}">Cancel</button>`,
+    secondary.push(
+      `<button class="task-action task-action--ghost" type="button" data-task-edit="${task.id}">Edit</button>`,
+      `<button class="task-action task-action--danger" type="button" data-task-cancel="${task.id}">Cancel</button>`,
     );
   }
 
-  if (actions.length === 0) {
+  if (primary.length === 0 && secondary.length === 0) {
     return "";
   }
 
-  return `<div class="notebook-entry__actions">${actions.join("")}</div>`;
+  return `<div class="notebook-entry__actions">${primary.join("")}${secondary.join("")}</div>`;
 }
 
 function entryClasses(task: Task) {
@@ -166,7 +195,6 @@ function entryClasses(task: Task) {
 }
 
 function renderTaskCard(task: Task) {
-  const due = formatDueDate(task.dueAt);
   const completed = formatCompletedDate(task.completedAt);
   const description = task.description
     ? `<p class="notebook-entry__description">${escapeHtml(task.description)}</p>`
@@ -177,7 +205,6 @@ function renderTaskCard(task: Task) {
   if (claimedBy && task.status !== "done") {
     metaParts.push(`<span>Claimed by ${escapeHtml(claimedBy.staffName)}</span>`);
   }
-  if (due) metaParts.push(`<span>Due ${escapeHtml(due)}</span>`);
   if (completed && task.completedByName) {
     metaParts.push(
       `<span>Completed by ${escapeHtml(task.completedByName)} · ${escapeHtml(completed)}</span>`,
@@ -189,10 +216,10 @@ function renderTaskCard(task: Task) {
     metaParts.push(`<span>Note: ${escapeHtml(task.completionNotes)}</span>`);
   }
 
-  const badges = `${priorityBadge(task.priority)}${statusBadge(task)}`;
-  const tags = badges
-    ? `<div class="notebook-entry__tags">${badges}</div>`
-    : "";
+  // Priority and status read as labels; due date is pulled out as a
+  // prominent, colour-coded chip so overdue/soon work jumps out when scanning.
+  const tags = `${priorityBadge(task.priority)}${statusBadge(task)}${dueBadge(task)}`;
+  const tagRow = tags ? `<div class="notebook-entry__tags">${tags}</div>` : "";
 
   return `
     <article class="${entryClasses(task)}" data-task-id="${task.id}">
@@ -201,7 +228,7 @@ function renderTaskCard(task: Task) {
         <div class="notebook-entry__body">
           <div class="notebook-entry__main">
             <h3 class="notebook-entry__title">${escapeHtml(task.title)}</h3>
-            ${tags}
+            ${tagRow}
           </div>
           ${description}
           <div class="notebook-entry__meta">${metaParts.join("")}</div>
@@ -220,8 +247,14 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
-function emptyStateContent(view: string) {
-  const states: Record<string, { title: string; hint: string }> = {
+type EmptyState = {
+  title: string;
+  hint: string;
+  cta?: { label: string; view: string };
+};
+
+function emptyStateContent(view: string): EmptyState {
+  const states: Record<string, EmptyState> = {
     available: {
       title: "No team-wide tasks",
       hint: "Open tasks anyone can claim will show up here.",
@@ -240,7 +273,8 @@ function emptyStateContent(view: string) {
     },
     my: {
       title: "Nothing assigned to you",
-      hint: "Claim a task from For everyone or wait for an assignment.",
+      hint: "Pick up an open task the whole team can grab.",
+      cta: { label: "Browse open tasks", view: "available" },
     },
   };
 
@@ -248,10 +282,14 @@ function emptyStateContent(view: string) {
 }
 
 function renderEmptyState(view: string) {
-  const { title, hint } = emptyStateContent(view);
+  const { title, hint, cta } = emptyStateContent(view);
+  const action = cta
+    ? `<button class="task-action task-action--primary notebook-empty__cta" type="button" data-view-jump="${cta.view}">${escapeHtml(cta.label)}</button>`
+    : "";
   return `<div class="notebook-empty notebook-empty--filter" role="status">
     <p class="notebook-empty__title">${escapeHtml(title)}</p>
     <p class="notebook-empty__hint">${escapeHtml(hint)}</p>
+    ${action}
   </div>`;
 }
 
@@ -289,6 +327,7 @@ async function loadTasks() {
 
     if (tasks.length === 0) {
       listEl.innerHTML = renderEmptyState(currentView);
+      bindViewJump();
       return;
     }
 
@@ -505,6 +544,15 @@ function bindTaskActions() {
     button.addEventListener("click", () => {
       const taskId = button.dataset.taskCancel;
       if (taskId) void cancelTask(taskId);
+    });
+  });
+}
+
+function bindViewJump() {
+  listEl?.querySelectorAll<HTMLButtonElement>("[data-view-jump]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const view = button.dataset.viewJump;
+      if (view) setActiveTab(view);
     });
   });
 }
