@@ -931,6 +931,29 @@ textarea {
   background: rgba(231, 172, 70, 0.1);
 }
 
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 500;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.35rem;
+  background: var(--color-charcoal);
+  color: var(--color-on-brand-section);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--color-citrine);
+  outline-offset: 2px;
+}
+
 /* Boulevard-style team page chrome (shared across app screens) */
 .team-page {
   display: grid;

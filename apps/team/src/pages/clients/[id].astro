@@ -30,7 +30,13 @@ if (!clientId) {
     data-notes-api-url={teamUrl(`/api/clients/${clientId}/notes`)}
     data-book-url={import.meta.env.PUBLIC_BOOK_URL ?? "https://saloncitrineindy.com/book"}
   >
-    <p class="empty-state" data-loading>Loading client…</p>
+    <div class="client-profile__skeleton" data-loading>
+      <div class="skeleton skeleton--block" style="height:2rem;max-width:14rem;margin-bottom:1rem"></div>
+      <div class="skeleton skeleton--line" style="max-width:100%"></div>
+      <div class="skeleton skeleton--line" style="max-width:90%"></div>
+      <div class="skeleton skeleton--line" style="max-width:75%"></div>
+      <div class="skeleton skeleton--block" style="height:6rem;margin-top:1.5rem"></div>
+    </div>
     <p class="notice notice--error" data-error hidden></p>
 
     <div data-profile-content hidden>

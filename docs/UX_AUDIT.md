@@ -13,7 +13,7 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 | 1 | Build | Team `dist/` EPERM on Windows when folder locked | 📋 Use clean build dir; web builds clean |
 | 2 | Nav | Front Desk + Calendar both link to `/` — no distinct calendar route | ⬜ Week view route planned |
 | 3 | Nav | Messages → `/tasks` (rename mismatch) | 🔄 Label intentional; tasks = internal messages |
-| 4 | Clients | No loading skeleton during search | ✅ Skeleton + empty hints |
+| 4 | Clients | No loading skeleton during search | ✅ Skeleton rows + empty hints |
 | 5 | Clients | Empty search shows nothing — unclear what to do | ✅ "Type 2+ characters" hint |
 | 6 | Inventory | Low-stock banner not actionable | ✅ "View low stock" filter link |
 | 7 | Team | No global toast for async success/failure | ✅ `toast.ts` + layout region |
@@ -56,7 +56,7 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 26 | Reports | Low stock list not linked to inventory | ✅ Link to inventory with filter |
+| 26 | Reports | Low stock list not linked to inventory | ✅ Link to Stock ?lowStock=1 |
 | 27 | Reports | No comparison to prior period | ⬜ Future enhancement |
 | 28 | Inventory | Low stock workflow ends at banner | ✅ Filter shortcut + reorder threshold in detail |
 | 29 | Inventory | Scan error messages technical | ✅ User-friendly camera permission text |
@@ -75,7 +75,7 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 | 35 | A11y | Skip link missing | ⬜ Add skip-to-main |
 | 36 | Perf | Layout shift on client profile load | ✅ Skeleton prevents shift |
 | 37 | Perf | Reports stat cards pop in | ✅ Skeleton during fetch |
-| 38 | Docs | No ship checklist | ✅ `BOOKING_SHIP_CHECKLIST.md` |
+| 38 | Docs | No ship checklist | ✅ `docs/BOOKING_SHIP_CHECKLIST.md` |
 | 39 | Deploy | dist build artifacts untracked in repo | 📋 gitignore; not committed |
 
 ---

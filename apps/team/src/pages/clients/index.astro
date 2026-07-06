@@ -362,6 +362,19 @@ if (!countError) {
     }
   }
 
+  function renderSkeletonRows() {
+    if (!tbody) return;
+    emptyState.hidden = true;
+    tbody.innerHTML = Array.from({ length: 6 }, () =>
+      `<tr class="clients-table__skeleton-row">
+        <td><span class="skeleton skeleton--line"></span></td>
+        <td><span class="skeleton skeleton--line"></span></td>
+        <td><span class="skeleton skeleton--line"></span></td>
+        <td><span class="skeleton skeleton--line"></span></td>
+      </tr>`,
+    ).join("");
+  }
+
   async function loadClients(term) {
     const query = term.trim();
     if (query.length === 1) {
@@ -370,8 +383,9 @@ if (!countError) {
       return;
     }
 
+    renderSkeletonRows();
     if (query.length >= 2) {
-      showStatus("Searching…");
+      showStatus("");
     } else {
       showStatus("");
     }
@@ -515,6 +529,13 @@ if (!countError) {
 
   .clients-table tbody tr:hover td {
     background: #f9fafb;
+  }
+
+  .clients-table__skeleton-row .skeleton--line {
+    display: block;
+    width: 80%;
+    max-width: 10rem;
+    height: 0.75rem;
   }
 
   .clients-table__link {

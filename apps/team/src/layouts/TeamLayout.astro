@@ -62,6 +62,7 @@ const isAuthenticated = Boolean(user && staff);
     </script>
   </head>
   <body>
+    <a class="skip-link" href="#team-main-content">Skip to main content</a>
     <div
       class:list={[
         "team-shell",
@@ -76,6 +77,7 @@ const isAuthenticated = Boolean(user && staff);
       />
 
       <main
+        id="team-main-content"
         class:list={[
           "team-main",
           wide && "team-main--wide",

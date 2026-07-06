@@ -415,7 +415,13 @@ async function completeBooking() {
   }
 
   if (!form?.reportValidity()) {
-    showError("Please complete the required fields.");
+    const firstInvalid = form?.querySelector<HTMLInputElement | HTMLSelectElement>(
+      "input:invalid, select:invalid, textarea:invalid",
+    );
+    firstInvalid?.focus();
+    const label = firstInvalid?.closest("label")?.querySelector("span, .form-label__text");
+    const fieldName = label?.textContent?.trim() || "A required field";
+    showError(`${fieldName} is required.`);
     return;
   }
 

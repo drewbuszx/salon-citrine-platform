@@ -57,6 +57,7 @@ function escapeHtml(value: string) {
 
 function initReports(root: HTMLElement) {
   const apiBase = root.dataset.apiBase ?? "";
+  const inventoryUrl = root.dataset.inventoryUrl ?? "/inventory";
   const fromInput = root.querySelector<HTMLInputElement>("[data-range-from]");
   const toInput = root.querySelector<HTMLInputElement>("[data-range-to]");
   const applyBtn = root.querySelector<HTMLButtonElement>("[data-range-apply]");
@@ -67,6 +68,17 @@ function initReports(root: HTMLElement) {
   const staffTable = root.querySelector<HTMLElement>("[data-staff-table]");
   const cancelEl = root.querySelector<HTMLElement>("[data-cancel-stats]");
   const inventoryEl = root.querySelector<HTMLElement>("[data-inventory-stats]");
+
+  function showLoadingSkeleton() {
+    const skeleton = `
+      <div class="team-stat-grid">
+        ${Array.from({ length: 4 }, () => '<article class="team-stat-card skeleton skeleton--block"></article>').join("")}
+      </div>`;
+    if (revenueEl) revenueEl.innerHTML = skeleton;
+    if (staffTable) staffTable.innerHTML = skeleton;
+    if (cancelEl) cancelEl.innerHTML = skeleton;
+    if (inventoryEl) inventoryEl.innerHTML = skeleton;
+  }
 
   function showError(message: string) {
     if (!errorEl) return;
@@ -189,6 +201,7 @@ function initReports(root: HTMLElement) {
     inventoryEl.innerHTML = `
       <p class="label-meta" style="margin-bottom:0.75rem">
         ${inventory.lowStockCount} of ${inventory.totalProducts} products need attention
+        · <a href="${escapeHtml(inventoryUrl)}?lowStock=1">View in Stock</a>
       </p>
       <div class="team-data-table-wrap">
         <table class="team-data-table">
@@ -219,6 +232,7 @@ function initReports(root: HTMLElement) {
 
   async function loadReports() {
     showError("");
+    showLoadingSkeleton();
     try {
       const res = await fetch(buildUrl());
       const body = await res.json();

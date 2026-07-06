@@ -26,6 +26,7 @@ const fromValue = fromDefault.toISOString().slice(0, 10);
     class="reports-page"
     data-reports-app
     data-api-base={teamUrl("/api/reports")}
+    data-inventory-url={teamUrl("/inventory")}
     data-from={fromValue}
     data-to={toValue}
   >

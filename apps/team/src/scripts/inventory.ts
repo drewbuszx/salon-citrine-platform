@@ -787,6 +787,15 @@ function initInventory(root: HTMLElement) {
     }
   });
 
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("lowStock") === "1") {
+    const lowRadio = root.querySelector<HTMLInputElement>('[data-filter-stock][value="low"]');
+    if (lowRadio) {
+      lowRadio.checked = true;
+      updateFilterCount();
+    }
+  }
+
   void fetchProducts().catch((err) => {
     setStatus(err instanceof Error ? err.message : "Load failed", true);
   });
