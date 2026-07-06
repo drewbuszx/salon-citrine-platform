@@ -45,7 +45,13 @@ const staffOptions = staffRows ?? [];
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="available" aria-selected="false">
           <span>For everyone</span>
         </button>
-        <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="attention" aria-selected="false">
+        <button
+          class="team-list-layout__sidebar-nav-btn"
+          type="button"
+          data-view="attention"
+          aria-selected="false"
+          title="Active tasks already overdue or due within 24 hours"
+        >
           <span>Needs attention</span>
           <span
             class="team-list-layout__sidebar-badge team-list-layout__sidebar-badge--attention"
@@ -178,6 +184,9 @@ const staffOptions = staffRows ?? [];
 
       <div class="form-stack">
         <p class="tasks-modal__lead" data-complete-task-title></p>
+        <p class="tasks-modal__hint">
+          This records you as the one who finished it, with the time, under Completed.
+        </p>
 
         <label class="form-label">
           Completion notes (optional)
@@ -1032,6 +1041,7 @@ const staffOptions = staffRows ?? [];
   }
 
   .tasks-modal__hint {
+    margin: 0;
     font-family: var(--font-body);
     font-size: var(--text-xs);
     font-weight: 400;
