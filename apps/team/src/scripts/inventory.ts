@@ -34,7 +34,7 @@ type Transaction = {
 
 type TransactionType = "receive" | "use" | "adjust" | "count";
 
-const PLACEHOLDER_SVG = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M4 9h16M9 4v16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+const PLACEHOLDER_SVG = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 3h6l1 4v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V7l1-4Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M8 7h8M10 11h4" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>`;
 
 function apiUrl(path: string) {
   const base = document.body.dataset.apiBase ?? "";
@@ -170,9 +170,23 @@ function initInventory(root: HTMLElement) {
     return count;
   }
 
-  function updateFilterCount() {
+  function updateFilterCount(showToastOnChange = false) {
+    const count = countActiveFilters();
     if (filterCountEl) {
-      filterCountEl.textContent = String(countActiveFilters());
+      filterCountEl.textContent = String(count);
+      filterCountEl.closest("[data-filter-stats]")?.classList.toggle(
+        "stock-page__filter-stats--active",
+        count > 0,
+      );
+    }
+    if (showToastOnChange) {
+      showToast(
+        count === 0
+          ? "Filters cleared"
+          : count === 1
+            ? "1 filter applied"
+            : `${count} filters applied`,
+      );
     }
   }
 
@@ -765,7 +779,7 @@ function initInventory(root: HTMLElement) {
   });
 
   function scheduleFetch() {
-    updateFilterCount();
+    updateFilterCount(true);
     void fetchProducts(searchInput?.value ?? "").catch((err) => {
       setStatus(err instanceof Error ? err.message : "Load failed", true);
     });

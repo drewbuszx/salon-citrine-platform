@@ -125,9 +125,11 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
       <TeamListExportButton slot="sidebarFooter" />
 
       <Fragment slot="stats">
-        Total: <span data-total-count>—</span>
-        · Low stock: <span data-low-stock-count>—</span>
-        · <span data-filter-count>0</span> filters applied
+        <span class="stock-page__filter-stats" data-filter-stats>
+          Total: <span data-total-count>—</span>
+          · Low stock: <span data-low-stock-count>—</span>
+          · <span data-filter-count>0</span> filters applied
+        </span>
       </Fragment>
 
       <p class="team-list-layout__notice team-list-layout__notice--banner" data-low-stock-banner hidden></p>
@@ -154,8 +156,12 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     </TeamListLayout>
 
     <div class="stock-scan-bar">
-      <button class="team-list-layout__btn-primary stock-scan-bar__btn" type="button" data-scan-open>
-        Scan to check in
+      <button class="stock-scan-bar__btn" type="button" data-scan-open>
+        <svg class="stock-scan-bar__icon" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M4 7V5a2 2 0 0 1 2-2h2M20 7V5a2 2 0 0 0-2-2h-2M4 17v2a2 2 0 0 0 2 2h2M20 17v2a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          <path d="M7 12h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <span class="stock-scan-bar__label">Scan to check in</span>
       </button>
     </div>
   </div>
@@ -411,6 +417,20 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     gap: 0.65rem;
   }
 
+  .stock-page__filter-stats {
+    transition: color var(--transition-base);
+  }
+
+  .stock-page__filter-stats--active {
+    color: var(--color-stone-700);
+    font-weight: 500;
+  }
+
+  .stock-page__filter-stats--active [data-filter-count] {
+    color: var(--color-citrine-dark);
+    font-weight: 600;
+  }
+
   .stock-page__list {
     display: grid;
     gap: 1rem;
@@ -454,11 +474,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   .stock-card:not(.stock-card--expanded):hover {
     border-color: var(--color-citrine);
     box-shadow: var(--shadow-card-hover);
-    transform: translateY(-2px);
-  }
-
-  .stock-card:hover {
-    border-color: var(--color-stone-300);
+    transform: translateY(-3px);
   }
 
   .stock-card--expanded {
@@ -469,6 +485,12 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 
   .stock-card--low {
     border-color: var(--color-dusty-rose);
+    box-shadow: 0 0 0 1px rgba(174, 148, 143, 0.25);
+  }
+
+  .stock-card--low:not(.stock-card--expanded):hover {
+    border-color: #9a7a72;
+    box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(174, 148, 143, 0.35);
   }
 
   .stock-card--low.stock-card--expanded {
@@ -533,28 +555,32 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     justify-content: center;
     width: 100%;
     height: 100%;
-    color: #9ca3af;
+    color: var(--color-stone-300);
+    background: linear-gradient(145deg, var(--color-stone-50) 0%, var(--color-stone-100) 100%);
   }
 
   .stock-card__placeholder svg {
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 2rem;
+    height: 2rem;
+    opacity: 0.65;
   }
 
   .stock-card__badge {
     position: absolute;
-    top: 0.15rem;
-    right: 0.15rem;
-    font-family: var(--font-sans);
-    font-size: 0.5rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
+    top: 0.25rem;
+    right: 0.25rem;
+    font-family: var(--font-body);
+    font-size: 0.5625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 0.08rem 0.25rem;
-    border-radius: 0.12rem;
-    color: #991b1b;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    padding: 0.15rem 0.4rem;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    background: var(--color-error);
+    border: 1px solid rgba(180, 35, 24, 0.4);
+    box-shadow: 0 1px 4px rgba(180, 35, 24, 0.25);
+    z-index: 1;
   }
 
   .stock-card__summary {
@@ -627,15 +653,25 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   }
 
   .stock-card--expanded .stock-card__body-inner {
-    border-top-color: #f3f4f6;
-    padding-top: 0.75rem;
+    border-top-color: var(--color-stone-200);
+    padding-top: 0.85rem;
   }
 
   .stock-card__detail-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem 1rem;
-    margin-bottom: 0.85rem;
+    gap: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+    border: 1px solid var(--color-stone-200);
+  }
+
+  @media (min-width: 640px) {
+    .stock-card__detail-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   .stock-card__detail-item {
@@ -644,26 +680,27 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   }
 
   .stock-card__detail-label {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #9ca3af;
+    letter-spacing: 0.06em;
+    color: var(--color-stone-500);
   }
 
   .stock-card__detail-value {
     font-size: 0.8125rem;
-    color: #374151;
+    color: var(--color-stone-700);
   }
 
   .stock-card__detail-value--qty {
-    font-size: 1.05rem;
+    font-family: var(--font-display);
+    font-size: 1.125rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--color-stone-800);
   }
 
   .stock-card__detail-value--qty-low {
-    color: #991b1b;
+    color: var(--color-error);
   }
 
   .stock-card__notes {
@@ -767,31 +804,72 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     right: 0;
     bottom: 0;
     z-index: 200;
-    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    background: #fff;
-    border-top: 1px solid #e5e7eb;
-    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+    padding: 0.65rem 1rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, var(--color-bg) 85%, rgba(255, 255, 255, 0));
+    border-top: 1px solid var(--color-stone-200);
+    box-shadow: 0 -6px 32px rgba(47, 42, 40, 0.12);
   }
 
   .stock-scan-bar__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
     width: 100%;
-    min-height: 3rem;
+    min-height: 3.25rem;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: var(--radius-md);
+    background: var(--color-citrine);
+    color: #111;
+    font-family: var(--font-body);
     font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(231, 172, 70, 0.35);
+    transition:
+      background var(--transition-base),
+      transform var(--transition-base),
+      box-shadow var(--transition-base);
+  }
+
+  .stock-scan-bar__btn:hover,
+  .stock-scan-bar__btn:focus-visible {
+    background: var(--color-citrine-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(231, 172, 70, 0.45);
+    outline: none;
+  }
+
+  .stock-scan-bar__btn:active {
+    transform: translateY(0);
+  }
+
+  .stock-scan-bar__icon {
+    flex-shrink: 0;
+  }
+
+  .stock-scan-bar__label {
+    line-height: 1.2;
   }
 
   .stock-toast {
     position: fixed;
     left: 50%;
-    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     z-index: 400;
     transform: translateX(-50%);
-    padding: 0.65rem 1rem;
-    border-radius: 0.35rem;
-    background: #111827;
+    padding: 0.65rem 1.1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-stone-800);
     color: #fff;
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.8125rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    white-space: nowrap;
   }
 
   .stock-toast[hidden] {
