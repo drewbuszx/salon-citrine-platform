@@ -1,0 +1,19 @@
+---
+description: Before team or guest booking UI work, read the UX Intelligence Feed and apply the page brief.
+globs:
+  - apps/team/**
+  - apps/web/**
+alwaysApply: false
+---
+
+# UX Intelligence
+
+Before **team** (`apps/team`) or **guest booking** (`apps/web`) UI work:
+
+1. Read [docs/UX_INTELLIGENCE_FEED.md](../../docs/UX_INTELLIGENCE_FEED.md) first.
+2. Apply the relevant page brief (Clients, Book flow, Checkout, or Dashboard).
+3. Cross-check [docs/DESIGN_SYSTEM.md](../../docs/DESIGN_SYSTEM.md) for tokens — never use Boulevard purple or generic SaaS blue.
+4. Cross-check [docs/BOULEVARD_FEATURE_GAP.md](../../docs/BOULEVARD_FEATURE_GAP.md) so you do not build UI for missing schema/API.
+5. Link to the feed section in PR descriptions when UX guidance drove the change.
+
+For ongoing competitor research, follow [docs/AGENT_UX_INTELLIGENCE.md](../../docs/AGENT_UX_INTELLIGENCE.md).
