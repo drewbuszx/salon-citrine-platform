@@ -1,0 +1,243 @@
+---
+import { teamUrl } from "../lib/supabase-server";
+import { pulseHint, type TeamPulseMetrics } from "../lib/team-pulse";
+
+interface Props {
+  metrics: TeamPulseMetrics;
+}
+
+const { metrics } = Astro.props;
+
+const apptHint = pulseHint("appointments", metrics.todayAppointments, metrics.scope);
+const waitlistHint = pulseHint("waitlist", metrics.waitlistActive);
+const stockHint = pulseHint("stock", metrics.lowStock);
+
+const waitlistHot = metrics.waitlistActive >= 3;
+const stockAlert = metrics.lowStock > 0;
+---
+
+<section
+  class="team-pulse"
+  aria-label="Team pulse — today's salon snapshot"
+  data-loaded={metrics.loaded ? "true" : "false"}
+>
+  <header class="team-pulse__head">
+    <div class="team-pulse__title-row">
+      <span class="team-pulse__live" aria-hidden="true" />
+      <h2 class="team-pulse__title">Team Pulse</h2>
+    </div>
+    <p class="team-pulse__subtitle">
+      {metrics.scope === "salon" ? "Salon-wide · today" : "Your book · today"}
+    </p>
+  </header>
+
+  <div class="team-pulse__grid">
+    <a class="team-pulse__metric" href={teamUrl("/book")}>
+      <span class="team-pulse__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <rect x="4" y="5" width="16" height="15" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </span>
+      <span class="team-pulse__value">{metrics.todayAppointments}</span>
+      <span class="team-pulse__label">Appointments</span>
+      <span class="team-pulse__hint">{apptHint}</span>
+    </a>
+
+    <a
+      class:list={["team-pulse__metric", waitlistHot && "team-pulse__metric--hot"]}
+      href={teamUrl("/waitlist")}
+    >
+      <span class="team-pulse__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 6v6l3.5 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="team-pulse__value">{metrics.waitlistActive}</span>
+      <span class="team-pulse__label">Waitlist</span>
+      <span class="team-pulse__hint">{waitlistHint}</span>
+    </a>
+
+    <a
+      class:list={["team-pulse__metric", stockAlert && "team-pulse__metric--alert"]}
+      href={teamUrl("/inventory")}
+    >
+      <span class="team-pulse__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M6 6h12l1 4H5l1-4zM5 10v8a1 1 0 001 1h12a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="team-pulse__value">{metrics.lowStock}</span>
+      <span class="team-pulse__label">Low stock</span>
+      <span class="team-pulse__hint">{stockHint}</span>
+    </a>
+  </div>
+</section>
+
+<style>
+  .team-pulse {
+    margin-bottom: 1.75rem;
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid rgba(231, 172, 70, 0.35);
+    border-radius: 0.85rem;
+    background:
+      linear-gradient(
+        135deg,
+        rgba(231, 172, 70, 0.14) 0%,
+        rgba(141, 158, 136, 0.08) 55%,
+        rgba(255, 255, 255, 0.92) 100%
+      );
+    box-shadow: 0 6px 24px rgba(47, 42, 40, 0.06);
+  }
+
+  .team-pulse__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    padding: 0 0.15rem;
+  }
+
+  .team-pulse__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .team-pulse__live {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--color-sage);
+    box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.5);
+    animation: team-pulse-live 2.4s ease-in-out infinite;
+  }
+
+  @keyframes team-pulse-live {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(141, 158, 136, 0);
+    }
+  }
+
+  .team-pulse__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .team-pulse__subtitle {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .team-pulse__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .team-pulse__metric {
+    display: grid;
+    grid-template-rows: auto auto auto auto;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 0.75rem 0.4rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.78);
+    text-align: center;
+    color: inherit;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .team-pulse__metric:hover,
+  .team-pulse__metric:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 4px 16px rgba(47, 42, 40, 0.08);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .team-pulse__metric--hot {
+    border-color: rgba(231, 172, 70, 0.55);
+    background: rgba(231, 172, 70, 0.1);
+  }
+
+  .team-pulse__metric--alert {
+    border-color: rgba(174, 148, 143, 0.45);
+    background: rgba(174, 148, 143, 0.08);
+  }
+
+  .team-pulse__icon {
+    display: inline-flex;
+    width: 1.15rem;
+    height: 1.15rem;
+    color: var(--color-sage);
+  }
+
+  .team-pulse__icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .team-pulse__metric--hot .team-pulse__icon {
+    color: var(--color-citrine-dark);
+  }
+
+  .team-pulse__metric--alert .team-pulse__icon {
+    color: var(--color-dusty-rose);
+  }
+
+  .team-pulse__value {
+    font-family: var(--font-serif);
+    font-size: 1.85rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--color-text);
+  }
+
+  .team-pulse__label {
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .team-pulse__hint {
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    line-height: 1.25;
+    color: var(--color-gray);
+    opacity: 0.9;
+    max-width: 6.5rem;
+  }
+
+  @media (max-width: 420px) {
+    .team-pulse__head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+
+    .team-pulse__value {
+      font-size: 1.55rem;
+    }
+  }
+</style>
