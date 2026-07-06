@@ -66,38 +66,113 @@ function clearError() {
   errorEl.hidden = true;
 }
 
-function formatDueDate(iso: string | null) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
+/** Every task time is shown in salon time, not the viewer's device timezone. */
+const SALON_TZ = "America/Indiana/Indianapolis";
+
+function salonDayKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: SALON_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function salonClock(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: SALON_TZ,
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
 }
 
-function formatCompletedDate(iso: string | null) {
+/** "today 5:00 PM", "tomorrow 9:00 AM", or "Jul 12, 9:00 AM" in salon time. */
+function formatSalonDayTime(iso: string | null) {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, {
+
+  const now = new Date();
+  const key = salonDayKey(date);
+  if (key === salonDayKey(now)) {
+    return `today ${salonClock(date)}`;
+  }
+  if (key === salonDayKey(new Date(now.getTime() + 86_400_000))) {
+    return `tomorrow ${salonClock(date)}`;
+  }
+  if (key === salonDayKey(new Date(now.getTime() - 86_400_000))) {
+    return `yesterday ${salonClock(date)}`;
+  }
+  const sameYear = key.slice(0, 4) === salonDayKey(now).slice(0, 4);
+  const day = new Intl.DateTimeFormat("en-US", {
+    timeZone: SALON_TZ,
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    ...(sameYear ? {} : { year: "numeric" }),
   }).format(date);
+  return `${day}, ${salonClock(date)}`;
 }
 
-function assigneeLabel(task: Task) {
-  if (task.assignmentType === "open" && task.assignees.length === 0) {
-    return "Open to team";
+function salonOffsetMinutes(date: Date) {
+  const part = new Intl.DateTimeFormat("en-US", {
+    timeZone: SALON_TZ,
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(date)
+    .find((p) => p.type === "timeZoneName")?.value;
+  const match = /GMT([+-])(\d{2}):(\d{2})/.exec(part ?? "");
+  if (!match) return 0;
+  const sign = match[1] === "-" ? -1 : 1;
+  return sign * (Number(match[2]) * 60 + Number(match[3]));
+}
+
+/** Interpret a datetime-local value ("YYYY-MM-DDTHH:mm") as salon wall-clock time. */
+function salonInputToIso(local: string) {
+  const asUtc = new Date(`${local}:00Z`);
+  if (Number.isNaN(asUtc.getTime())) return null;
+  // Resolve the offset at the target instant (handles DST transitions).
+  const offset = salonOffsetMinutes(
+    new Date(asUtc.getTime() - salonOffsetMinutes(asUtc) * 60_000),
+  );
+  return new Date(asUtc.getTime() - offset * 60_000).toISOString();
+}
+
+/** Format a stored ISO timestamp as a datetime-local value in salon time. */
+function isoToSalonInput(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SALON_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+const formatDueDate = formatSalonDayTime;
+const formatCompletedDate = formatSalonDayTime;
+
+/** One coherent assignment line: who owns this task right now. */
+function assignmentLine(task: Task) {
+  const claimer = task.assignees.find((a) => a.claimedAt);
+  if (claimer) {
+    const when = formatSalonDayTime(claimer.claimedAt);
+    return when
+      ? `Claimed by ${claimer.staffName} · ${when}`
+      : `Claimed by ${claimer.staffName}`;
   }
-  if (task.assignees.length === 0) {
-    return "Unassigned";
+  if (task.assignees.length > 0) {
+    return `Assigned to ${task.assignees.map((a) => a.staffName).join(", ")}`;
   }
-  return task.assignees.map((a) => a.staffName).join(", ");
+  if (task.assignmentType === "open") {
+    return "Open to team — first to claim it owns it";
+  }
+  return "Unassigned";
 }
 
 const ATTENTION_MS = 24 * 60 * 60 * 1000;
@@ -143,10 +218,10 @@ function dueBadge(task: Task) {
   let prefix = "Due";
   if (diff < 0) {
     state = "task-due--overdue";
-    prefix = "Overdue";
+    prefix = "Overdue ·";
   } else if (diff <= ATTENTION_MS) {
     state = "task-due--soon";
-    prefix = "Due soon";
+    prefix = "Due";
   }
 
   return `<span class="task-due ${state}">${prefix} ${escapeHtml(label)}</span>`;
@@ -200,10 +275,18 @@ function renderTaskCard(task: Task) {
     ? `<p class="notebook-entry__description">${escapeHtml(task.description)}</p>`
     : "";
 
-  const metaParts = [`<span>${escapeHtml(assigneeLabel(task))}</span>`];
-  const claimedBy = task.assignees.find((a) => a.claimedAt);
-  if (claimedBy && task.status !== "done") {
-    metaParts.push(`<span>Claimed by ${escapeHtml(claimedBy.staffName)}</span>`);
+  const metaParts: string[] = [];
+  // On finished tasks, skip the assignment line when it would just repeat
+  // the "Completed by" attribution.
+  const soleOwner =
+    task.assignees.length === 1 ? task.assignees[0].staffName : null;
+  const redundantOwner =
+    task.status === "done" && soleOwner !== null && soleOwner === task.completedByName;
+  if (!redundantOwner) {
+    metaParts.push(`<span>${escapeHtml(assignmentLine(task))}</span>`);
+  }
+  if (task.createdByName && task.status !== "done" && task.status !== "cancelled") {
+    metaParts.push(`<span>Added by ${escapeHtml(task.createdByName)}</span>`);
   }
   if (completed && task.completedByName) {
     metaParts.push(
@@ -363,7 +446,7 @@ function resetTaskForm() {
   taskForm.reset();
   editingTaskId = null;
   if (taskModalTitle) {
-    taskModalTitle.textContent = "New task";
+    taskModalTitle.textContent = "New entry";
   }
   updateAssigneePickerVisibility();
 }
@@ -383,7 +466,7 @@ async function openEditModal(taskId: string) {
 
     editingTaskId = taskId;
     if (taskModalTitle) {
-      taskModalTitle.textContent = "Edit task";
+      taskModalTitle.textContent = "Edit entry";
     }
 
     const titleInput = taskForm.querySelector<HTMLInputElement>('input[name="title"]');
@@ -398,14 +481,8 @@ async function openEditModal(taskId: string) {
     if (titleInput) titleInput.value = task.title;
     if (descriptionInput) descriptionInput.value = task.description ?? "";
     if (prioritySelect) prioritySelect.value = task.priority;
-    if (dueInput && task.dueAt) {
-      const date = new Date(task.dueAt);
-      const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-        .toISOString()
-        .slice(0, 16);
-      dueInput.value = local;
-    } else if (dueInput) {
-      dueInput.value = "";
+    if (dueInput) {
+      dueInput.value = task.dueAt ? isoToSalonInput(task.dueAt) : "";
     }
 
     const assignmentValue = task.assignmentType;
@@ -437,15 +514,17 @@ async function submitTaskForm(event: Event) {
     .map(String)
     .filter(Boolean);
 
+  const dueLocal = String(formData.get("due_at") ?? "").trim();
   const payload = {
     title: String(formData.get("title") ?? "").trim(),
     description: String(formData.get("description") ?? "").trim() || null,
-    due_at: String(formData.get("due_at") ?? "").trim() || null,
+    due_at: dueLocal ? salonInputToIso(dueLocal) : null,
     priority: String(formData.get("priority") ?? "normal"),
     assignment_type: assignmentType,
     assignee_ids: assignmentType === "assigned" ? assigneeIds : [],
   };
 
+  const wasEditing = Boolean(editingTaskId);
   try {
     if (editingTaskId) {
       await apiFetch(`/${editingTaskId}`, {
@@ -461,9 +540,10 @@ async function submitTaskForm(event: Event) {
 
     taskModal?.close();
     resetTaskForm();
+    showToast(wasEditing ? "Task updated." : "Task added to the list.", "success");
     await loadTasks();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to save task");
+    showError(friendlyError(error, "Failed to save task"));
   }
 }
 
@@ -490,29 +570,37 @@ async function submitCompleteForm(event: Event) {
     });
     completeModal?.close();
     completingTaskId = null;
+    showToast("Nice work — marked done.", "success");
     await loadTasks();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to complete task");
+    showError(friendlyError(error, "Failed to complete task"));
   }
 }
 
 async function claimTask(taskId: string) {
   try {
     await apiFetch(`/${taskId}/claim`, { method: "POST", body: "{}" });
+    showToast("It's yours — moved to Assigned to me.", "success");
     setActiveTab("my");
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to claim task");
+    showError(friendlyError(error, "Failed to claim task"));
   }
 }
 
-async function cancelTask(taskId: string) {
-  if (!window.confirm("Cancel this task?")) return;
+async function cancelTask(taskId: string, title: string) {
+  const confirmed = window.confirm(
+    `Cancel "${title}"?\n\n` +
+      "Cancelling takes it off the list without marking it done. " +
+      "If the work got finished, use Complete instead so it's on the record.",
+  );
+  if (!confirmed) return;
 
   try {
     await apiFetch(`/${taskId}?cancel=1`, { method: "DELETE" });
+    showToast("Task cancelled — no completion recorded.", "info");
     await loadTasks();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to cancel task");
+    showError(friendlyError(error, "Failed to cancel task"));
   }
 }
 
@@ -543,7 +631,9 @@ function bindTaskActions() {
   listEl?.querySelectorAll<HTMLButtonElement>("[data-task-cancel]").forEach((button) => {
     button.addEventListener("click", () => {
       const taskId = button.dataset.taskCancel;
-      if (taskId) void cancelTask(taskId);
+      const card = button.closest<HTMLElement>("[data-task-id]");
+      const title = card?.querySelector(".notebook-entry__title")?.textContent ?? "this task";
+      if (taskId) void cancelTask(taskId, title);
     });
   });
 }
