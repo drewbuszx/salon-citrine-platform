@@ -153,8 +153,13 @@ export const POST: APIRoute = async (context) => {
       parsed.data.tipCents,
     );
 
-    if (synced.status === "completed") {
-      return jsonOk({ order: synced, alreadyCompleted: true });
+    const fresh = await loadCheckoutOrder(auth.supabase, synced.id);
+    if (fresh?.status === "completed") {
+      return jsonOk({ order: fresh, alreadyCompleted: true });
+    }
+
+    if (fresh?.status !== "open") {
+      return jsonError("Checkout order is not open", 409);
     }
 
     const totals = calculateCheckoutTotals({
@@ -197,6 +202,9 @@ export const POST: APIRoute = async (context) => {
     });
 
     const completed = await loadCheckoutOrder(auth.supabase, synced.id);
+    if (!completed) {
+      return jsonError("Checkout completed but could not reload order", 500);
+    }
     return jsonOk({ order: completed });
   } catch (error) {
     console.error("checkout POST", error);

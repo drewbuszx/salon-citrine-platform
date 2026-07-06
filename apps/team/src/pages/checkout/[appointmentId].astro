@@ -1,0 +1,387 @@
+---
+export const prerender = false;
+
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import { teamUrl } from "../../lib/supabase-server";
+
+const appointmentId = Astro.params.appointmentId;
+if (!appointmentId) {
+  return Astro.redirect(teamUrl("/"));
+}
+---
+
+<TeamLayout title="Checkout" activeNav="front-desk" plain wide>
+  <div
+    class="checkout-page"
+    data-checkout-app
+    data-appointment-id={appointmentId}
+    data-api-url={teamUrl(`/api/checkout/${appointmentId}`)}
+    data-calendar-url={teamUrl("/")}
+  >
+    <header class="checkout-page__header">
+      <div class="checkout-page__intro">
+        <p class="label-meta">Checkout</p>
+        <h1 class="checkout-page__title" data-checkout-title>Loading…</h1>
+        <p class="checkout-page__meta" data-checkout-meta></p>
+      </div>
+      <div class="checkout-page__actions">
+        <a class="btn-secondary" href={teamUrl("/")} data-back-link>← Calendar</a>
+      </div>
+    </header>
+
+    <p class="notice notice--error" data-checkout-error hidden role="alert"></p>
+    <p class="notice" data-checkout-status hidden role="status"></p>
+
+    <div class="checkout-page__loading" data-checkout-loading>
+      <p class="empty-state">Loading checkout…</p>
+    </div>
+
+    <div class="checkout-page__body" data-checkout-body hidden>
+      <div class="checkout-grid">
+        <section class="checkout-panel" aria-labelledby="checkout-lines-title">
+          <div class="checkout-panel__head">
+            <h2 id="checkout-lines-title" class="checkout-panel__title">Line items</h2>
+            <button class="btn-secondary checkout-panel__btn" type="button" data-add-product hidden>
+              Add retail
+            </button>
+          </div>
+          <div class="team-data-table-wrap">
+            <table class="team-data-table checkout-lines">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Price</th>
+                  <th class="num">Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody data-line-items></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="checkout-totals" aria-labelledby="checkout-totals-title">
+          <h2 id="checkout-totals-title" class="checkout-totals__title">Payment</h2>
+
+          <div class="checkout-client" data-client-card hidden>
+            <p class="checkout-client__name" data-client-name></p>
+            <p class="checkout-client__card" data-client-card-status></p>
+          </div>
+
+          <div class="checkout-tips" data-tip-section>
+            <p class="label-meta">Gratuity</p>
+            <div class="checkout-tips__presets" data-tip-presets>
+              <button type="button" class="team-filter-pill" data-tip-preset="0">None</button>
+              <button type="button" class="team-filter-pill" data-tip-preset="15">15%</button>
+              <button type="button" class="team-filter-pill" data-tip-preset="18">18%</button>
+              <button type="button" class="team-filter-pill" data-tip-preset="20">20%</button>
+            </div>
+            <label class="form-label checkout-tips__custom">
+              Custom tip
+              <input class="form-input" type="number" min="0" step="0.01" data-tip-custom placeholder="0.00" />
+            </label>
+          </div>
+
+          <dl class="checkout-summary" data-checkout-summary></dl>
+
+          <button class="btn-primary checkout-pay" type="button" data-complete-checkout>
+            Complete checkout
+          </button>
+        </aside>
+      </div>
+    </div>
+
+    <section class="checkout-receipt team-panel" data-checkout-receipt hidden aria-labelledby="receipt-title">
+      <h2 id="receipt-title" class="team-panel__title">Receipt</h2>
+      <p class="checkout-receipt__lead" data-receipt-lead></p>
+      <dl class="checkout-summary" data-receipt-summary></dl>
+      <div class="checkout-receipt__actions">
+        <a class="btn-primary" href={teamUrl("/")}>Back to calendar</a>
+        <button class="btn-secondary" type="button" data-print-receipt>Print</button>
+      </div>
+    </section>
+  </div>
+
+  <dialog class="checkout-modal" data-product-modal aria-labelledby="product-modal-title">
+    <form class="checkout-modal__form" method="dialog" data-product-form>
+      <header class="checkout-modal__head">
+        <h2 id="product-modal-title">Add retail product</h2>
+        <button class="checkout-modal__close" type="button" data-product-modal-close aria-label="Close">×</button>
+      </header>
+      <label class="form-label">
+        Product
+        <select class="form-input" name="productId" required data-product-select></select>
+      </label>
+      <label class="form-label">
+        Quantity
+        <input class="form-input" name="quantity" type="number" min="1" step="1" value="1" required />
+      </label>
+      <footer class="checkout-modal__footer">
+        <button class="btn-secondary" type="button" data-product-modal-close>Cancel</button>
+        <button class="btn-primary" type="submit">Add to order</button>
+      </footer>
+    </form>
+  </dialog>
+</TeamLayout>
+
+<script src="../../scripts/checkout.ts"></script>
+
+<style>
+  .checkout-page__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: clamp(1rem, 2.5vw, 1.35rem) clamp(1rem, 3vw, 2rem);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-bg);
+  }
+
+  .checkout-page__title {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-sans);
+    font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+    font-weight: 600;
+  }
+
+  .checkout-page__meta {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--color-gray);
+  }
+
+  .checkout-page__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .checkout-page__loading,
+  .checkout-page__body {
+    padding: clamp(1rem, 2.5vw, 1.35rem) clamp(1rem, 3vw, 2rem);
+  }
+
+  .checkout-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 900px) {
+    .checkout-grid {
+      grid-template-columns: 1fr minmax(18rem, 22rem);
+      align-items: start;
+    }
+  }
+
+  .checkout-panel {
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .checkout-panel__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-booking-panel-bg);
+  }
+
+  .checkout-panel__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .checkout-panel__btn {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.68rem;
+  }
+
+  .checkout-lines td:last-child,
+  .checkout-lines th:last-child {
+    width: 2.5rem;
+    text-align: center;
+  }
+
+  .checkout-line-remove {
+    border: none;
+    background: none;
+    color: var(--color-gray);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem;
+  }
+
+  .checkout-line-remove:hover {
+    color: #922;
+  }
+
+  .checkout-totals {
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-panel-bg);
+    display: grid;
+    gap: 1rem;
+  }
+
+  .checkout-totals__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .checkout-client__name {
+    margin: 0 0 0.2rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .checkout-client__card {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-gray);
+  }
+
+  .checkout-tips__presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.35rem 0 0.65rem;
+  }
+
+  .checkout-tips__custom {
+    margin: 0;
+  }
+
+  .checkout-summary {
+    margin: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .checkout-summary__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+  }
+
+  .checkout-summary__row--total {
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--color-border);
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .checkout-summary__row--due {
+    color: var(--color-dusty-rose-dark, var(--color-charcoal));
+    font-weight: 700;
+  }
+
+  .checkout-summary dt {
+    margin: 0;
+    color: var(--color-gray);
+  }
+
+  .checkout-summary dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .checkout-pay {
+    width: 100%;
+    min-height: 2.75rem;
+    background: var(--color-dusty-rose-dark, var(--color-charcoal));
+  }
+
+  .checkout-pay:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .checkout-receipt {
+    margin: 0 clamp(1rem, 3vw, 2rem) 2rem;
+  }
+
+  .checkout-receipt__lead {
+    margin: 0 0 1rem;
+    font-size: 0.95rem;
+  }
+
+  .checkout-receipt__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .checkout-modal {
+    width: min(24rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    box-shadow: 0 12px 48px var(--color-card-shadow);
+  }
+
+  .checkout-modal::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .checkout-modal__form {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1.15rem;
+    margin: 0;
+  }
+
+  .checkout-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .checkout-modal__head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .checkout-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--color-gray);
+  }
+
+  .checkout-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  @media print {
+    .team-bar,
+    .checkout-page__actions,
+    .checkout-receipt__actions {
+      display: none !important;
+    }
+  }
+</style>

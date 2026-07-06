@@ -288,7 +288,7 @@ export async function completeCheckoutOrder(
     productLineItems: CheckoutLineItem[];
   },
 ): Promise<void> {
-  const { error: orderError } = await supabase
+  const { data: locked, error: lockError } = await supabase
     .from("checkout_orders")
     .update({
       status: "completed",
@@ -296,14 +296,21 @@ export async function completeCheckoutOrder(
       stripe_payment_intent_id: input.stripePaymentIntentId,
       completed_at: new Date().toISOString(),
     })
-    .eq("id", input.orderId);
+    .eq("id", input.orderId)
+    .eq("status", "open")
+    .select("id")
+    .maybeSingle();
 
-  if (orderError) throw orderError;
+  if (lockError) throw lockError;
+  if (!locked) {
+    throw new Error("Checkout was already completed");
+  }
 
   const { error: apptError } = await supabase
     .from("appointments")
     .update({ status: "completed" })
-    .eq("id", input.appointmentId);
+    .eq("id", input.appointmentId)
+    .neq("status", "cancelled");
 
   if (apptError) throw apptError;
 
@@ -312,12 +319,21 @@ export async function completeCheckoutOrder(
     const qty = item.quantity;
     if (qty <= 0) continue;
 
+    const { data: stockRow } = await supabase
+      .from("inventory_stock")
+      .select("quantity")
+      .eq("product_id", item.productId)
+      .maybeSingle();
+
+    const currentQty = Number(stockRow?.quantity ?? 0);
+    const change = -qty;
+
     const { error: txError } = await supabase.from("inventory_transactions").insert({
       product_id: item.productId,
       staff_id: input.staffId,
       type: "use",
-      quantity_change: -qty,
-      quantity_after: 0,
+      quantity_change: change,
+      quantity_after: currentQty + change,
       notes: `Checkout order ${input.orderId}`,
     });
 
