@@ -1,6 +1,7 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamSidebarNav from "../components/TeamSidebarNav.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -29,13 +30,13 @@ const managerView = isSalonManager(staff);
         ) : null
       }
 
-      <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Document categories">
+      <TeamSidebarNav slot="sidebarFilters" label="Document categories">
         <button class="team-list-layout__sidebar-nav-btn is-active" type="button" data-doc-category="all">All categories</button>
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="policies">Policies</button>
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="training">Training</button>
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="forms">Forms</button>
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="other">Other</button>
-      </nav>
+      </TeamSidebarNav>
 
       <Fragment slot="mainLead">Employee handbook, procedures, and salon resources.</Fragment>
 
@@ -105,8 +106,8 @@ const managerView = isSalonManager(staff);
       </div>
 
       <footer class="docs-modal__footer">
-        <button class="btn-secondary" type="button" data-doc-modal-close>Cancel</button>
-        <button class="btn-primary" type="submit" data-doc-submit>Upload</button>
+        <button class="team-list-layout__btn-secondary" type="button" data-doc-modal-close>Cancel</button>
+        <button class="team-list-layout__btn-primary" type="submit" data-doc-submit>Upload</button>
       </footer>
     </form>
   </dialog>
@@ -129,15 +130,25 @@ const managerView = isSalonManager(staff);
 
   .docs-list {
     display: grid;
-    gap: 0.75rem;
+    gap: var(--space-3);
   }
 
   .doc-card {
     display: grid;
-    gap: 0.65rem;
-    padding: 0.9rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-booking-card-bg);
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .doc-card:hover {
+    border-color: var(--color-stone-300);
+    box-shadow: var(--shadow-card-hover, var(--shadow-sm));
   }
 
   .doc-card__top {
@@ -145,45 +156,54 @@ const managerView = isSalonManager(staff);
     flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: var(--space-2) var(--space-3);
   }
 
   .doc-card__title {
     margin: 0;
-    font-size: 1.05rem;
-    font-weight: 500;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    color: var(--color-stone-800);
   }
 
   .doc-card__description {
     margin: 0;
-    font-size: 0.92rem;
-    color: var(--color-gray);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-500);
   }
 
   .doc-card__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    font-family: var(--font-sans);
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    color: var(--color-gray);
+    gap: var(--space-2) var(--space-4);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
   }
 
   .doc-card__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
+    padding-top: var(--space-1);
   }
 
   .doc-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.15rem 0.45rem;
-    border: 1px solid var(--color-border);
-    font-family: var(--font-sans);
-    font-size: 0.62rem;
-    letter-spacing: 0.06em;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
   }
 
@@ -192,13 +212,24 @@ const managerView = isSalonManager(staff);
     color: var(--color-dusty-rose);
   }
 
+  .doc-badge--training {
+    border-color: var(--color-sage);
+    color: var(--color-sage);
+  }
+
+  .doc-badge--forms {
+    border-color: var(--color-citrine-dark);
+    color: var(--color-citrine-dark);
+  }
+
   .docs-modal {
     width: min(32rem, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);
     padding: 0;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
     background: var(--color-bg);
-    box-shadow: 0 12px 48px var(--color-card-shadow);
+    box-shadow: var(--shadow-lg);
   }
 
   .docs-modal::backdrop {

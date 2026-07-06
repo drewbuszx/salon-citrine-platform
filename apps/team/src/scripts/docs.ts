@@ -100,7 +100,7 @@ function renderList() {
       ].filter(Boolean);
 
       const managerActions = isManager
-        ? `<button class="btn-secondary" type="button" data-doc-delete="${doc.id}">Remove</button>`
+        ? `<button class="team-list-layout__btn-destructive" type="button" data-doc-delete="${doc.id}">Remove</button>`
         : "";
 
       return `
@@ -115,7 +115,7 @@ function renderList() {
             ${metaParts.map((part) => `<span>${escapeHtml(String(part))}</span>`).join("")}
           </div>
           <div class="doc-card__actions">
-            <button class="btn-primary" type="button" data-doc-download="${doc.id}">Download</button>
+            <button class="team-list-layout__btn-secondary" type="button" data-doc-download="${doc.id}">Download</button>
             ${managerActions}
           </div>
         </article>
