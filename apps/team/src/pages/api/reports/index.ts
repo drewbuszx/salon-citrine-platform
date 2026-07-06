@@ -4,6 +4,7 @@ import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import {
   loadAllReports,
   parseReportRange,
+  reportsCsvFilename,
   reportsToCsv,
 } from "../../../lib/reports";
 
@@ -27,7 +28,7 @@ export const GET: APIRoute = async (context) => {
         status: 200,
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="salon-citrine-reports.csv"`,
+          "Content-Disposition": `attachment; filename="${reportsCsvFilename(range)}"`,
         },
       });
     }

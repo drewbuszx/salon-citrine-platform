@@ -815,3 +815,23 @@
   width: 100%;
   justify-content: center;
 }
+
+/*
+ * Reports page: same sticky-sidebar treatment as Stock, plus a compact section
+ * nav. The nav must NOT stretch to match content-section heights (the reported
+ * "enormous gaps" bug) — it is intrinsically sized and pinned to the top.
+ */
+@media (min-width: 901px) {
+  .reports-page .team-list-layout__sidebar {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    align-self: start;
+    max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    overflow-y: auto;
+  }
+}
+
+.reports-page .team-list-layout__sidebar-nav {
+  flex: 0 0 auto;
+  overflow-y: visible;
+}

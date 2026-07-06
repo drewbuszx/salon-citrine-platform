@@ -1,3 +1,8 @@
+import {
+  formatCategoryLabel,
+  formatQty,
+  formatQuantity,
+} from "@saloncitrine/shared";
 import { startBarcodeScanner } from "./barcode-scanner";
 
 type Product = {
@@ -43,40 +48,6 @@ const SORT_KEY = "stock:sort";
 function apiUrl(path: string) {
   const base = document.body.dataset.apiBase ?? "";
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
-}
-
-function formatQty(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
-}
-
-/**
- * Pluralize a unit against a quantity: (1, "tube") -> "tube", (2, "tube") -> "tubes".
- * "each" is treated as invariant.
- */
-function pluralizeUnit(unit: string, qty: number) {
-  const u = (unit ?? "").trim();
-  if (!u) return "";
-  const lower = u.toLowerCase();
-  if (lower === "each" || Math.abs(qty) === 1) return u;
-  if (/(s|x|z|ch|sh)$/.test(lower)) return `${u}es`;
-  if (/[^aeiou]y$/.test(lower)) return `${u.slice(0, -1)}ies`;
-  return `${u}s`;
-}
-
-/** (2, "tube") -> "2 tubes"; (1, "tube") -> "1 tube". */
-function formatQuantity(qty: number, unit: string) {
-  return `${formatQty(qty)} ${pluralizeUnit(unit, qty)}`.trim();
-}
-
-/** "developer" -> "Developer"; "hair-color" / "hair_color" -> "Hair Color". */
-function formatCategoryLabel(value: string | null | undefined) {
-  const raw = (value ?? "").trim();
-  if (!raw) return "Uncategorized";
-  return raw
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function initials(name: string) {
