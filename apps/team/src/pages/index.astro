@@ -1,61 +1,394 @@
 ---
-import DayCalendar from "../components/DayCalendar.astro";
+import { BUSINESS } from "@saloncitrine/shared";
 import TeamLayout from "../layouts/TeamLayout.astro";
-import { isSalonManager } from "../lib/auth";
+import StaffAvatar from "../components/StaffAvatar.astro";
+import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
+import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import {
-  formatDayParam,
-  loadCalendarData,
-  loadStaffServicesByStaff,
-  parseDayParam,
-  sortStaffWithCurrentFirst,
+  formatAppointmentStatusLabel,
+  formatTimeInSalon,
+  loadUpcomingAppointments,
+  salonDateString,
 } from "../lib/calendar";
+import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
 
 if (!staff) {
-  return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
 }
 
-const selectedDay = parseDayParam(
-  Astro.url.searchParams.get("day") ?? Astro.url.searchParams.get("week"),
-);
-const dayParam = formatDayParam(selectedDay);
-const managerView = isSalonManager(staff);
+const bookOrigin =
+  import.meta.env.PUBLIC_BOOK_URL ?? "https://book.saloncitrineindy.com/book";
+const bookingLink = `${bookOrigin.replace(/\/$/, "")}?staff=${staff.slug}`;
 
-let calendar;
-let servicesByStaff: Record<
-  string,
-  Array<{ id: string; name: string; durationMinutes: number }>
-> = {};
+const photoSrc = staffPhotoSrc(staff.photo_url, staff.slug);
+const photoCrop = normalizePhotoCrop(parsePhotoCrop(staff.photo_crop));
+const initials = staffInitials(staff.name);
+
+let upcoming: Awaited<ReturnType<typeof loadUpcomingAppointments>> = [];
 
 try {
-  const loaded = await loadCalendarData(supabase, {
-    selectedDay,
-    staffFilterIds: managerView ? null : [staff.id],
-  });
-  calendar = {
-    ...loaded,
-    staff: sortStaffWithCurrentFirst(loaded.staff, staff.id),
-  };
-  servicesByStaff = await loadStaffServicesByStaff(
-    supabase,
-    calendar.staff.map((member) => member.id),
-  );
+  upcoming = await loadUpcomingAppointments(supabase, staff.id);
 } catch (error) {
-  console.error("Failed to load calendar", error);
-  calendar = { staff: [], appointments: [], blockedTimes: [] };
+  console.error("Failed to load upcoming appointments", error);
+}
+
+const todaySalon = salonDateString(new Date());
+
+function formatUpcomingWhen(startsAt: string) {
+  const dateLabel = salonDateString(new Date(startsAt));
+  const timeLabel = formatTimeInSalon(startsAt);
+  if (dateLabel === todaySalon) {
+    return `Today · ${timeLabel}`;
+  }
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateLabel === salonDateString(tomorrow)) {
+    return `Tomorrow · ${timeLabel}`;
+  }
+  const dayPart = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(startsAt));
+  return `${dayPart} · ${timeLabel}`;
 }
 ---
 
-<TeamLayout title="Book" activeNav="front-desk" fullBleed>
-  <DayCalendar
-    selectedDay={selectedDay}
-    dayParam={dayParam}
-    staff={calendar.staff}
-    appointments={calendar.appointments}
-    blockedTimes={calendar.blockedTimes}
-    servicesByStaff={servicesByStaff}
-    currentStaffId={staff.id}
-    managerView={managerView}
-  />
+<TeamLayout title="Dashboard" activeNav="dashboard" plain>
+  <section class="dashboard">
+    <header class="dashboard__hero">
+      <div class="dashboard__avatar-wrap">
+        {
+          photoSrc ? (
+            <StaffAvatar
+              src={photoSrc}
+              alt=""
+              crop={photoCrop}
+              size="hero"
+              class="dashboard__avatar"
+            />
+          ) : (
+            <span class="dashboard__avatar dashboard__avatar--initials" aria-hidden="true">
+              {initials}
+            </span>
+          )
+        }
+      </div>
+      <h1 class="dashboard__name">{staff.name}</h1>
+      <p class="dashboard__salon">{BUSINESS.name}</p>
+      <a class="dashboard__booking-link" href={bookingLink} target="_blank" rel="noopener noreferrer">
+        Your booking link
+      </a>
+    </header>
+
+    <nav class="dashboard__actions" aria-label="Quick actions">
+      <a class="dashboard__action dashboard__action--primary" href={teamUrl("/book")}>
+        <span class="dashboard__action-icon" aria-hidden="true">+</span>
+        Book appointment
+      </a>
+      <a class="dashboard__action" href={teamUrl("/book")}>
+        <span class="dashboard__action-icon" aria-hidden="true">$</span>
+        Sale / Checkout
+      </a>
+      <a class="dashboard__action" href={teamUrl("/inventory")}>
+        <span class="dashboard__action-icon" aria-hidden="true">⌁</span>
+        Scan
+      </a>
+    </nav>
+
+    <section class="dashboard__upcoming" aria-labelledby="dashboard-upcoming-title">
+      <div class="dashboard__upcoming-head">
+        <h2 id="dashboard-upcoming-title" class="dashboard__section-title">Upcoming</h2>
+        <a class="dashboard__upcoming-link" href={teamUrl("/book")}>View book</a>
+      </div>
+
+      {
+        upcoming.length === 0 ? (
+          <p class="dashboard__empty">No upcoming appointments on your schedule.</p>
+        ) : (
+          <ul class="dashboard__list">
+            {upcoming.map((appt) => (
+              <li>
+                <a class="dashboard__card" href={teamUrl(`/checkout/${appt.id}`)}>
+                  <div class="dashboard__card-main">
+                    <p class="dashboard__card-client">{appt.clientName}</p>
+                    <p class="dashboard__card-service">
+                      {appt.serviceLabel ?? "Appointment"}
+                    </p>
+                    <p class="dashboard__card-time">{formatUpcomingWhen(appt.startsAt)}</p>
+                  </div>
+                  <span
+                    class:list={[
+                      "dashboard__badge",
+                      `dashboard__badge--${appt.status.replace(/_/g, "-")}`,
+                    ]}
+                  >
+                    {formatAppointmentStatusLabel(appt.status)}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
+  </section>
 </TeamLayout>
+
+<style>
+  .dashboard {
+    max-width: 32rem;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .dashboard__hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0.5rem 0 1.75rem;
+  }
+
+  .dashboard__avatar-wrap {
+    margin-bottom: 1rem;
+  }
+
+  .dashboard__avatar {
+    width: 7.5rem;
+    height: 7.5rem;
+    border: 3px solid var(--color-citrine);
+    box-shadow: 0 8px 28px rgba(47, 42, 40, 0.12);
+  }
+
+  .dashboard__avatar--initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--color-dusty-rose);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .dashboard__name {
+    margin: 0 0 0.25rem;
+    font-size: 1.65rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .dashboard__salon {
+    margin: 0 0 0.65rem;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .dashboard__booking-link {
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    color: var(--color-sage-dark, var(--color-sage));
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .dashboard__actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 2rem;
+  }
+
+  .dashboard__action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 4.75rem;
+    padding: 0.65rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.25;
+    transition:
+      border-color 0.15s ease,
+      background 0.15s ease;
+  }
+
+  .dashboard__action:hover,
+  .dashboard__action:focus-visible {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.08);
+    outline: none;
+  }
+
+  .dashboard__action--primary {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.12);
+  }
+
+  .dashboard__action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background: var(--color-light);
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .dashboard__upcoming-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .dashboard__section-title {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .dashboard__upcoming-link {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .dashboard__empty {
+    margin: 0;
+    padding: 1.25rem 1rem;
+    border: 1px dashed var(--color-border);
+    border-radius: 0.65rem;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    color: var(--color-gray);
+    text-align: center;
+  }
+
+  .dashboard__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .dashboard__card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: var(--color-bg);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .dashboard__card:hover,
+  .dashboard__card:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 4px 16px rgba(47, 42, 40, 0.08);
+    outline: none;
+  }
+
+  .dashboard__card-main {
+    min-width: 0;
+  }
+
+  .dashboard__card-client {
+    margin: 0 0 0.15rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .dashboard__card-service {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    color: var(--color-gray);
+  }
+
+  .dashboard__card-time {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    color: var(--color-gray);
+  }
+
+  .dashboard__badge {
+    flex: 0 0 auto;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--color-light);
+    color: var(--color-text);
+  }
+
+  .dashboard__badge--confirmed,
+  .dashboard__badge--booked {
+    background: rgba(231, 172, 70, 0.18);
+    color: var(--color-text);
+  }
+
+  .dashboard__badge--arrived {
+    background: rgba(141, 158, 136, 0.22);
+  }
+
+  .dashboard__badge--completed {
+    background: var(--color-light);
+    opacity: 0.85;
+  }
+
+  .dashboard__badge--pending {
+    background: rgba(174, 148, 143, 0.2);
+  }
+
+  .dashboard__badge--no-show {
+    background: rgba(47, 42, 40, 0.08);
+    text-decoration: line-through;
+  }
+
+  @media (max-width: 420px) {
+    .dashboard__actions {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard__action {
+      flex-direction: row;
+      min-height: auto;
+      padding: 0.75rem 1rem;
+      text-align: left;
+    }
+  }
+</style>

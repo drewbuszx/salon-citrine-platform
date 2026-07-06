@@ -25,12 +25,12 @@ const saved = Astro.url.searchParams.get("saved") === "1";
 const error = Astro.url.searchParams.get("error");
 ---
 
-<TeamLayout title="Block time" activeNav="front-desk" plain>
+<TeamLayout title="Block time" activeNav="book" plain>
   <TeamPage
     title="Block time"
     lead={managerView ? "Block calendar time for any provider." : "Block time on your schedule."}
   >
-    <a slot="actions" class="btn-secondary" href={teamUrl("/")}>← Calendar</a>
+    <a slot="actions" class="btn-secondary" href={teamUrl("/book")}>← Book</a>
 
   {saved ? <p class="notice notice--success">Blocked time saved.</p> : null}
   {

@@ -88,6 +88,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  if (routePath === "/dashboard") {
+    return context.redirect(teamUrl("/"));
+  }
+
   if (routePath === "/" && user && context.locals.staff) {
     return next();
   }

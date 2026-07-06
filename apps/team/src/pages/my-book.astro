@@ -93,7 +93,7 @@ const services = ((serviceRows ?? []) as ServiceRow[])
   })
   .filter(Boolean);
 
-const calendarUrl = teamUrl("/");
+const calendarUrl = teamUrl("/book");
 const apiSchedules = teamUrl("/api/my-book/schedules");
 const apiServices = teamUrl("/api/my-book/services");
 const apiProfile = teamUrl("/api/my-book/profile");
@@ -104,7 +104,7 @@ const apiProfile = teamUrl("/api/my-book/profile");
     title="My Book"
     lead="Set your bookable hours and control which services clients can see online. You can still manually book any service on the team calendar."
   >
-    <a slot="actions" class="btn-secondary" href={calendarUrl}>← Calendar</a>
+    <a slot="actions" class="btn-secondary" href={calendarUrl}>← Book</a>
   <section class="page-section my-book__section" aria-labelledby="my-book-availability">
     <h2 id="my-book-availability">Client availability</h2>
     <p class="page-section__lead">

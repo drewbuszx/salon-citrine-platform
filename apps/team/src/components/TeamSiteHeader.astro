@@ -9,10 +9,10 @@ import { teamUrl } from "../lib/supabase-server";
 
 /** Boulevard-style top bar sections mapped to team routes */
 export type TeamActiveNav =
-  | "front-desk"
-  | "calendar"
+  | "dashboard"
+  | "book"
   | "messages"
-  | "sales"
+  | "stock"
   | "clients"
   | "docs"
   | "events"
@@ -40,10 +40,10 @@ const navTabs: {
   href: string;
   disabled?: boolean;
 }[] = [
-  { id: "front-desk", label: "Front Desk", href: teamUrl("/") },
-  { id: "calendar", label: "Calendar", href: teamUrl("/") },
+  { id: "dashboard", label: "Dashboard", href: teamUrl("/") },
+  { id: "book", label: "Book", href: teamUrl("/book") },
   { id: "messages", label: "Messages", href: teamUrl("/tasks") },
-  { id: "sales", label: "Sales", href: teamUrl("/inventory") },
+  { id: "stock", label: "Stock", href: teamUrl("/inventory") },
   { id: "clients", label: "Clients", href: teamUrl("/clients") },
   { id: "docs", label: "Docs", href: teamUrl("/docs") },
   { id: "events", label: "Events", href: teamUrl("/events") },

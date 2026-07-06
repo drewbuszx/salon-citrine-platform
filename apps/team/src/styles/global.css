@@ -486,6 +486,11 @@ textarea {
   height: 10rem;
 }
 
+.staff-avatar-frame--hero {
+  width: 7.5rem;
+  height: 7.5rem;
+}
+
 .staff-avatar-frame--initials {
   display: inline-flex;
   align-items: center;

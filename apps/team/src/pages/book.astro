@@ -1,6 +1,62 @@
 ---
+import DayCalendar from "../components/DayCalendar.astro";
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import {
+  formatDayParam,
+  loadCalendarData,
+  loadStaffServicesByStaff,
+  parseDayParam,
+  sortStaffWithCurrentFirst,
+} from "../lib/calendar";
 import { teamUrl } from "../lib/supabase-server";
 
-return Astro.redirect(teamUrl("/"));
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const selectedDay = parseDayParam(
+  Astro.url.searchParams.get("day") ?? Astro.url.searchParams.get("week"),
+);
+const dayParam = formatDayParam(selectedDay);
+const managerView = isSalonManager(staff);
+
+let calendar;
+let servicesByStaff: Record<
+  string,
+  Array<{ id: string; name: string; durationMinutes: number }>
+> = {};
+
+try {
+  const loaded = await loadCalendarData(supabase, {
+    selectedDay,
+    staffFilterIds: managerView ? null : [staff.id],
+  });
+  calendar = {
+    ...loaded,
+    staff: sortStaffWithCurrentFirst(loaded.staff, staff.id),
+  };
+  servicesByStaff = await loadStaffServicesByStaff(
+    supabase,
+    calendar.staff.map((member) => member.id),
+  );
+} catch (error) {
+  console.error("Failed to load calendar", error);
+  calendar = { staff: [], appointments: [], blockedTimes: [] };
+}
 ---
+
+<TeamLayout title="Book" activeNav="book" fullBleed>
+  <DayCalendar
+    selectedDay={selectedDay}
+    dayParam={dayParam}
+    staff={calendar.staff}
+    appointments={calendar.appointments}
+    blockedTimes={calendar.blockedTimes}
+    servicesByStaff={servicesByStaff}
+    currentStaffId={staff.id}
+    managerView={managerView}
+  />
+</TeamLayout>

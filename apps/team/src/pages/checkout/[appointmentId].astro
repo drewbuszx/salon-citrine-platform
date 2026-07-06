@@ -10,13 +10,13 @@ if (!appointmentId) {
 }
 ---
 
-<TeamLayout title="Checkout" activeNav="front-desk" plain wide>
+<TeamLayout title="Checkout" activeNav="book" plain wide>
   <div
     class="checkout-page"
     data-checkout-app
     data-appointment-id={appointmentId}
     data-api-url={teamUrl(`/api/checkout/${appointmentId}`)}
-    data-calendar-url={teamUrl("/")}
+    data-calendar-url={teamUrl("/book")}
   >
     <header class="checkout-page__header">
       <div class="checkout-page__intro">
@@ -25,7 +25,7 @@ if (!appointmentId) {
         <p class="checkout-page__meta" data-checkout-meta></p>
       </div>
       <div class="checkout-page__actions">
-        <a class="btn-secondary" href={teamUrl("/")} data-back-link>← Calendar</a>
+        <a class="btn-secondary" href={teamUrl("/book")} data-back-link>← Book</a>
       </div>
     </header>
 
@@ -97,7 +97,7 @@ if (!appointmentId) {
       <p class="checkout-receipt__lead" data-receipt-lead></p>
       <dl class="checkout-summary" data-receipt-summary></dl>
       <div class="checkout-receipt__actions">
-        <a class="btn-primary" href={teamUrl("/")}>Back to calendar</a>
+        <a class="btn-primary" href={teamUrl("/book")}>Back to book</a>
         <button class="btn-secondary" type="button" data-print-receipt>Print</button>
       </div>
     </section>

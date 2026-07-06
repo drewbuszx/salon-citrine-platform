@@ -107,7 +107,7 @@ const calendarConfig = {
     clientsPage: teamUrl("/clients"),
     checkout: teamUrl("/checkout"),
   },
-  reloadUrl: `${teamUrl("/")}?day=${dayParam}`,
+  reloadUrl: `${teamUrl("/book")}?day=${dayParam}`,
   weekUrl: teamUrl("/week"),
 };
 ---
@@ -122,7 +122,7 @@ const calendarConfig = {
       <nav class="day-cal__date-nav" aria-label="Day navigation">
         <a
           class="day-cal__subbar-btn day-cal__subbar-btn--icon"
-          href={`${teamUrl("/")}?day=${prevDay}`}
+          href={`${teamUrl("/book")}?day=${prevDay}`}
           aria-label="Previous day"
         >
           ‹
@@ -138,12 +138,12 @@ const calendarConfig = {
         </label>
         <a
           class="day-cal__subbar-btn day-cal__subbar-btn--icon"
-          href={`${teamUrl("/")}?day=${nextDay}`}
+          href={`${teamUrl("/book")}?day=${nextDay}`}
           aria-label="Next day"
         >
           ›
         </a>
-        <a class="day-cal__subbar-btn" href={`${teamUrl("/")}?day=${todayParam}`}>Today</a>
+        <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${todayParam}`}>Today</a>
       </nav>
 
       {
@@ -177,7 +177,7 @@ const calendarConfig = {
 
       <div class="day-cal__subbar-actions">
         <span class="day-cal__view-pill" aria-current="true">Day</span>
-        <a class="day-cal__subbar-btn" href={`${teamUrl("/")}?day=${dayParam}`}>Week</a>
+        <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${dayParam}`}>Week</a>
         <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--ghost" data-waitlist-btn disabled title="Coming soon">
           Waitlist
         </button>
@@ -196,7 +196,7 @@ const calendarConfig = {
               day.isSelected && "day-cal__week-day--selected",
               day.isToday && "day-cal__week-day--today",
             ]}
-            href={`${teamUrl("/")}?day=${day.param}`}
+            href={`${teamUrl("/book")}?day=${day.param}`}
             aria-current={day.isSelected ? "date" : undefined}
           >
             <span class="day-cal__week-day-label">{day.label}</span>

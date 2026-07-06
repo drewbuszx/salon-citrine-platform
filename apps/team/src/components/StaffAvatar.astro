@@ -6,7 +6,7 @@ interface Props {
   src: string;
   alt?: string;
   crop?: PhotoCrop | null;
-  size?: "header" | "preview" | "editor";
+  size?: "header" | "preview" | "editor" | "hero";
   class?: string;
 }
 
@@ -23,7 +23,9 @@ const sizeClass =
     ? "staff-avatar-frame--preview"
     : size === "editor"
       ? "staff-avatar-frame--editor"
-      : "staff-avatar-frame--header";
+      : size === "hero"
+        ? "staff-avatar-frame--hero"
+        : "staff-avatar-frame--header";
 ---
 
 <div class:list={["staff-avatar-frame", sizeClass, className]}>
