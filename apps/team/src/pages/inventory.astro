@@ -29,7 +29,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     data-inventory-root
     data-is-manager={isManager ? "1" : "0"}
   >
-    <TeamListLayout title="Stock" mainTitle="Your Products" sidebarTitle="Refine Your Search">
+    <TeamListLayout title="Stock" mainTitle="Your Products" sidebarTitle="Filter Products">
       <button slot="headerActions" class="team-list-layout__btn-secondary stock-page__scan-desktop" type="button" data-scan-open>
         Scan to check in
       </button>
@@ -64,6 +64,27 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         }
       </TeamListFilter>
 
+      <TeamListFilter slot="sidebarFilters" label="Stock level" open>
+        <div class="team-list-layout__filter-options">
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="" data-filter-stock checked />
+            <span>All products</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="low" data-filter-stock />
+            <span>Low stock</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="out" data-filter-stock />
+            <span>Out of stock</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="in" data-filter-stock />
+            <span>In stock</span>
+          </label>
+        </div>
+      </TeamListFilter>
+
       <TeamListFilter slot="sidebarFilters" label="Brand" count={brands.length} open={brands.length > 0}>
         {
           brands.length > 0 ? (
@@ -87,27 +108,6 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         }
       </TeamListFilter>
 
-      <TeamListFilter slot="sidebarFilters" label="Stock level" open>
-        <div class="team-list-layout__filter-options">
-          <label class="team-list-layout__filter-option">
-            <input type="radio" name="stock-level" value="" data-filter-stock checked />
-            <span>All products</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="radio" name="stock-level" value="in" data-filter-stock />
-            <span>In stock</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="radio" name="stock-level" value="low" data-filter-stock />
-            <span>Low stock</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="radio" name="stock-level" value="out" data-filter-stock />
-            <span>Out of stock</span>
-          </label>
-        </div>
-      </TeamListFilter>
-
       <TeamListFilter slot="sidebarFilters" label="Price range">
         <div class="team-list-layout__filter-options">
           <label class="team-list-layout__filter-option">
@@ -123,8 +123,8 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 
       <Fragment slot="stats">
         <span class="stock-page__filter-stats" data-filter-stats>
-          Total: <span data-total-count>—</span>
-          · Low stock: <span data-low-stock-count>—</span>
+          <span data-total-count>—</span> products
+          · <span data-low-stock-count>—</span> low-stock
           · <span data-filter-count>0</span> filters applied
         </span>
       </Fragment>
@@ -390,8 +390,15 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   <script src="../scripts/inventory.ts"></script>
 </TeamLayout>
 
-<style>
+<!--
+  is:global — inventory.ts injects product cards via innerHTML; scoped
+  selectors would not match that DOM (the "one giant card" bug). Class names
+  are page-unique (stock-*/inventory-*). Sidebar chrome: team-list-sidebar.css.
+-->
+<style is:global>
   .stock-page {
+    min-width: 0;
+    overflow-x: clip;
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
@@ -399,7 +406,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     display: none;
   }
 
-  :global(.team-list-layout__notice--banner) {
+  .team-list-layout__notice--banner {
     padding: 0.65rem 0.85rem;
     border: 1px solid #fcd34d;
     border-radius: 0.25rem;
@@ -407,7 +414,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     color: #92400e;
   }
 
-  :global(.team-list-layout__notice--banner.team-list-layout__notice--actionable) {
+  .team-list-layout__notice--banner.team-list-layout__notice--actionable {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -431,8 +438,19 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   .stock-page__list {
     display: grid;
     gap: 1rem;
+    min-width: 0;
   }
 
+  .stock-category {
+    min-width: 0;
+  }
+
+  /*
+   * Everything below targets markup that inventory.ts injects via
+   * listEl.innerHTML — those nodes never receive Astro's scoped
+   * data-astro-cid attribute, so these rules MUST be :global() or they
+   * are silently dropped (same bug class as the team-list-sidebar fix).
+   */
   .stock-category__title {
     display: flex;
     flex-wrap: wrap;
@@ -451,13 +469,25 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     color: #9ca3af;
   }
 
+  .stock-category__low {
+    font-weight: 600;
+    color: var(--color-error);
+  }
+
+  .stock-category {
+    min-width: 0;
+  }
+
   .stock-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    min-width: 0;
   }
 
   .stock-card {
+    min-width: 0;
+    max-width: 100%;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-md);
     background: var(--color-bg);
@@ -543,6 +573,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   .stock-card__img {
     width: 100%;
     height: 100%;
+    max-width: 100%;
     object-fit: cover;
   }
 
@@ -557,9 +588,22 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   }
 
   .stock-card__placeholder svg {
-    width: 2rem;
-    height: 2rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
     opacity: 0.65;
+  }
+
+  .stock-card svg {
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+
+  .stock-card--expanded .stock-card__placeholder svg {
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .stock-card__badge {
@@ -578,6 +622,12 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     border: 1px solid rgba(180, 35, 24, 0.4);
     box-shadow: 0 1px 4px rgba(180, 35, 24, 0.25);
     z-index: 1;
+  }
+
+  .stock-card__badge--out {
+    background: var(--color-stone-700);
+    border-color: rgba(47, 42, 40, 0.4);
+    box-shadow: 0 1px 4px rgba(47, 42, 40, 0.25);
   }
 
   .stock-card__summary {
@@ -613,6 +663,28 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 
   .stock-card--expanded .stock-card__meta {
     font-size: 0.75rem;
+  }
+
+  .stock-card__qty {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--color-stone-600);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stock-card--expanded .stock-card__qty {
+    display: none;
+  }
+
+  .stock-card__qty--low {
+    color: var(--color-error);
+  }
+
+  .stock-card__qty--out {
+    color: var(--color-stone-500);
+    font-weight: 500;
   }
 
   .stock-card__chevron {
@@ -652,6 +724,12 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   .stock-card--expanded .stock-card__body-inner {
     border-top-color: var(--color-stone-200);
     padding-top: 0.85rem;
+  }
+
+  @media (min-width: 640px) {
+    .stock-card--expanded .stock-card__body-inner {
+      max-width: 42rem;
+    }
   }
 
   .stock-card__detail-grid {
@@ -709,11 +787,19 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 
   .stock-card__hero-img {
     width: 100%;
+    max-width: 14rem;
     max-height: 10rem;
     object-fit: contain;
     border-radius: 0.25rem;
     background: #f9fafb;
     margin-bottom: 0.85rem;
+  }
+
+  @media (min-width: 640px) {
+    .stock-card--expanded .stock-card__hero-img {
+      max-width: 10rem;
+      max-height: 8rem;
+    }
   }
 
   .stock-card__actions {
@@ -858,6 +944,8 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
     z-index: 400;
     transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 2rem);
     padding: 0.65rem 1.1rem;
     border-radius: var(--radius-md);
     background: var(--color-stone-800);
@@ -866,7 +954,8 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     font-size: 0.8125rem;
     font-weight: 500;
     box-shadow: var(--shadow-lg);
-    white-space: nowrap;
+    text-align: center;
+    white-space: normal;
   }
 
   .stock-toast[hidden] {
@@ -1012,14 +1101,30 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     gap: 0.85rem;
   }
 
-  :global(body.inventory-modal-open) {
+  body.inventory-modal-open {
     overflow: hidden;
+  }
+
+  /* Mobile: touch-friendly filters when sidebar stacks above grid */
+  @media (max-width: 899px) {
+    .stock-page .team-list-layout__filter-option {
+      min-height: 2.75rem;
+    }
+
+    .stock-page .team-list-layout__filter-trigger {
+      min-height: 2.75rem;
+    }
+
+    .stock-page__filter-stats {
+      display: block;
+      font-size: 0.8125rem;
+      line-height: 1.45;
+    }
   }
 
   @media (min-width: 640px) {
     .stock-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 0.5rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .stock-card__actions {
@@ -1071,12 +1176,6 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   @media (min-width: 1500px) {
     .stock-grid {
       grid-template-columns: repeat(6, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 640px) {
-    .stock-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 </style>
