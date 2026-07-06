@@ -1,4 +1,5 @@
 import { formatCents } from "@saloncitrine/shared";
+import { showToast, friendlyError } from "../lib/toast";
 
 const root = document.querySelector<HTMLElement>("[data-client-profile]");
 const loading = root?.querySelector<HTMLElement>("[data-loading]");
@@ -109,7 +110,9 @@ async function loadProfile() {
     renderNotes(body.notes ?? []);
   } catch (err) {
     if (loading) loading.hidden = true;
-    showError(err instanceof Error ? err.message : "Failed to load client");
+    const msg = friendlyError(err, "Failed to load client");
+    showError(msg);
+    showToast(msg, "error");
   }
 }
 
@@ -202,9 +205,12 @@ contactForm?.addEventListener("submit", async (event) => {
       emailOptIn: readCheckbox(contactForm, "emailOptIn"),
     });
     showError("");
+    showToast("Contact saved.", "success");
     await loadProfile();
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Save failed");
+    const msg = friendlyError(err, "Save failed");
+    showError(msg);
+    showToast(msg, "error");
   }
 });
 
@@ -222,9 +228,12 @@ intakeForm?.addEventListener("submit", async (event) => {
       referralSources: readCheckboxGroup(intakeForm, "referralSources"),
     });
     showError("");
+    showToast("Intake details saved.", "success");
     await loadProfile();
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Save failed");
+    const msg = friendlyError(err, "Save failed");
+    showError(msg);
+    showToast(msg, "error");
   }
 });
 
@@ -243,9 +252,12 @@ notesForm?.addEventListener("submit", async (event) => {
       tags,
     });
     showError("");
+    showToast("Notes saved.", "success");
     await loadProfile();
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Save failed");
+    const msg = friendlyError(err, "Save failed");
+    showError(msg);
+    showToast(msg, "error");
   }
 });
 
@@ -263,9 +275,12 @@ addNoteForm?.addEventListener("submit", async (event) => {
     const body = await res.json();
     if (!res.ok) throw new Error(body.error || "Could not add note");
     addNoteForm.reset();
+    showToast("Note added.", "success");
     await loadProfile();
   } catch (err) {
-    showError(err instanceof Error ? err.message : "Could not add note");
+    const msg = friendlyError(err, "Could not add note");
+    showError(msg);
+    showToast(msg, "error");
   }
 });
 

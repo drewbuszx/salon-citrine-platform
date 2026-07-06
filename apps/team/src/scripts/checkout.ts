@@ -1,4 +1,5 @@
 import { calculateCheckoutTotals, formatCents, type CheckoutLineItem } from "@saloncitrine/shared";
+import { showToast, friendlyError } from "../lib/toast";
 
 type RetailProduct = {
   id: string;
@@ -263,6 +264,8 @@ function initCheckout(root: HTMLElement) {
       titleEl.textContent = `${payload.client?.firstName ?? ""} ${payload.client?.lastName ?? ""}`.trim();
     }
     showStatus("Payment captured successfully.", true);
+    showToast("Payment captured successfully.", "success");
+    receiptEl?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function showCompletedReadOnly(order: CheckoutPayload["order"]) {
@@ -320,7 +323,9 @@ function initCheckout(root: HTMLElement) {
       payload.order = body.order;
       showCompletedReadOnly(body.order);
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Checkout failed");
+      const msg = friendlyError(err, "Checkout failed");
+      showError(msg);
+      showToast(msg, "error");
       if (completeBtn) {
         completeBtn.disabled = false;
         completeBtn.textContent = "Complete checkout";

@@ -12,9 +12,38 @@ if (!staff) {
 
 const initialQuery = Astro.url.searchParams.get("q") ?? "";
 
-const { count: totalCount, error: countError } = await supabase
-  .from("clients")
-  .select("*", { count: "exact", head: true });
+const [
+  { count: totalCount, error: countError },
+  { data: tagRows },
+  { data: referralRows },
+  { data: staffRows },
+  { data: locationRows },
+] = await Promise.all([
+  supabase.from("clients").select("*", { count: "exact", head: true }),
+  supabase.from("clients").select("tags"),
+  supabase.from("clients").select("referral_sources"),
+  supabase.from("staff").select("id, name").in("role", ["owner", "stylist", "esthetician"]).order("name"),
+  supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
+]);
+
+const tagSet = new Set<string>();
+for (const row of tagRows ?? []) {
+  for (const tag of row.tags ?? []) {
+    if (tag?.trim()) tagSet.add(tag.trim());
+  }
+}
+const tags = [...tagSet].sort((a, b) => a.localeCompare(b));
+
+const referralSet = new Set<string>();
+for (const row of referralRows ?? []) {
+  for (const source of row.referral_sources ?? []) {
+    if (source?.trim()) referralSet.add(source.trim());
+  }
+}
+const referralSources = [...referralSet].sort((a, b) => a.localeCompare(b));
+
+const providers = staffRows ?? [];
+const locations = locationRows ?? [];
 
 let initialClients: Array<{
   id: string;
@@ -47,24 +76,11 @@ if (!countError) {
     email: row.email,
   }));
 }
-
-const filterCategories = [
-  "Saved Audiences",
-  "Locations",
-  "Primary Locations",
-  "Purchased",
-  "Provider",
-  "First Appointment",
-  "Last Appointment",
-  "Tags",
-  "Referral Source",
-  "Blocked",
-];
 ---
 
 <TeamLayout title="Clients" activeNav="clients" plain wide fullBleed>
   <div class="clients-page" data-clients-root>
-  <TeamListLayout title="Clients" mainTitle="Your Clients">
+  <TeamListLayout title="Clients" mainTitle="Your Clients" sidebarTitle="Filters">
     <button slot="headerActions" class="team-list-layout__btn-secondary" type="button" data-coming-soon>
       Merge Clients
     </button>
@@ -72,11 +88,118 @@ const filterCategories = [
       Add New Client
     </button>
 
-    {
-      filterCategories.map((label) => (
-        <TeamListFilter slot="sidebarFilters" label={label} />
-      ))
-    }
+    <TeamListFilter slot="sidebarFilters" label="Saved Audiences" count={0} placeholder="No saved audiences yet." />
+
+    <TeamListFilter slot="sidebarFilters" label="Locations" count={locations.length} open={locations.length > 0}>
+      {
+        locations.length > 0 ? (
+          <div class="team-list-layout__filter-options">
+            {
+              locations.map((loc) => (
+                <label class="team-list-layout__filter-option">
+                  <input type="radio" name="client-location" value={loc.id} data-filter-location disabled />
+                  <span>{loc.name}</span>
+                </label>
+              ))
+            }
+          </div>
+        ) : (
+          <p class="team-list-layout__filter-placeholder">Single-location salon — all clients.</p>
+        )
+      }
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Primary Locations" count={locations.length}>
+      <p class="team-list-layout__filter-placeholder">Primary location tracking coming soon.</p>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Provider" count={providers.length} open={providers.length > 0}>
+      {
+        providers.length > 0 ? (
+          <div class="team-list-layout__filter-options">
+            <label class="team-list-layout__filter-option">
+              <input type="radio" name="client-provider" value="" data-filter-provider checked />
+              <span>All providers</span>
+            </label>
+            {
+              providers.map((member) => (
+                <label class="team-list-layout__filter-option">
+                  <input type="radio" name="client-provider" value={member.id} data-filter-provider />
+                  <span>{member.name}</span>
+                </label>
+              ))
+            }
+          </div>
+        ) : (
+          <p class="team-list-layout__filter-placeholder">No providers found.</p>
+        )
+      }
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="First Appointment">
+      <p class="team-list-layout__filter-placeholder">Date range filter coming soon.</p>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Last Appointment">
+      <p class="team-list-layout__filter-placeholder">Date range filter coming soon.</p>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Tags" count={tags.length} open={tags.length > 0}>
+      {
+        tags.length > 0 ? (
+          <div class="team-list-layout__filter-options">
+            <label class="team-list-layout__filter-option">
+              <input type="radio" name="client-tag" value="" data-filter-tag checked />
+              <span>All tags</span>
+            </label>
+            {
+              tags.map((tag) => (
+                <label class="team-list-layout__filter-option">
+                  <input type="radio" name="client-tag" value={tag} data-filter-tag />
+                  <span>{tag}</span>
+                </label>
+              ))
+            }
+          </div>
+        ) : (
+          <p class="team-list-layout__filter-placeholder">No client tags yet.</p>
+        )
+      }
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Referral Source" count={referralSources.length} open={referralSources.length > 0}>
+      {
+        referralSources.length > 0 ? (
+          <div class="team-list-layout__filter-options">
+            <label class="team-list-layout__filter-option">
+              <input type="radio" name="client-referral" value="" data-filter-referral checked />
+              <span>All sources</span>
+            </label>
+            {
+              referralSources.map((source) => (
+                <label class="team-list-layout__filter-option">
+                  <input type="radio" name="client-referral" value={source} data-filter-referral />
+                  <span>{source}</span>
+                </label>
+              ))
+            }
+          </div>
+        ) : (
+          <p class="team-list-layout__filter-placeholder">No referral sources recorded.</p>
+        )
+      }
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Blocked">
+      <p class="team-list-layout__filter-placeholder">No blocked clients.</p>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Purchased">
+      <label class="team-list-layout__filter-option">
+        <input type="checkbox" data-filter-purchased />
+        <span>Has purchase history</span>
+      </label>
+    </TeamListFilter>
 
     <TeamListExportButton slot="sidebarFooter" />
 
@@ -172,12 +295,23 @@ const filterCategories = [
   const status = root?.querySelector("[data-status]");
   const emptyState = root?.querySelector("[data-empty]");
   const totalEl = root?.querySelector("[data-total-count]");
+  const filterCountEl = root?.querySelector("[data-filter-count]");
   const toast = document.querySelector("[data-toast]");
   const addModal = document.querySelector("[data-add-modal]");
   const addForm = document.querySelector("[data-add-form]");
   const addError = document.querySelector("[data-add-error]");
   let debounce = null;
   let toastTimer = null;
+
+  function getFilters() {
+    const provider =
+      root?.querySelector("[data-filter-provider]:checked")?.value?.trim() ?? "";
+    const tag = root?.querySelector("[data-filter-tag]:checked")?.value?.trim() ?? "";
+    const referral =
+      root?.querySelector("[data-filter-referral]:checked")?.value?.trim() ?? "";
+    const purchased = Boolean(root?.querySelector("[data-filter-purchased]")?.checked);
+    return { provider, tag, referral, purchased };
+  }
 
   function formatPhone(value) {
     return value?.trim() || "—";
@@ -242,11 +376,16 @@ const filterCategories = [
       showStatus("");
     }
 
+    const filters = getFilters();
+    const params = new URLSearchParams();
+    if (query.length >= 2) params.set("q", query);
+    if (filters.provider) params.set("provider", filters.provider);
+    if (filters.tag) params.set("tag", filters.tag);
+    if (filters.referral) params.set("referral", filters.referral);
+    if (filters.purchased) params.set("purchased", "1");
+
     try {
-      const url =
-        query.length >= 2
-          ? `${searchApi}?q=${encodeURIComponent(query)}`
-          : searchApi;
+      const url = `${searchApi}?${params.toString()}`;
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "Failed to load clients");
@@ -255,6 +394,9 @@ const filterCategories = [
       if (totalEl && typeof body.total === "number") {
         totalEl.textContent = String(body.total);
       }
+      if (filterCountEl && typeof body.filtersApplied === "number") {
+        filterCountEl.textContent = String(body.filtersApplied);
+      }
       showStatus("");
     } catch (err) {
       showStatus(err instanceof Error ? err.message : "Failed to load clients", true);
@@ -262,11 +404,18 @@ const filterCategories = [
     }
   }
 
-  input?.addEventListener("input", () => {
-    const term = input.value.trim();
+  function scheduleLoad() {
+    const term = input?.value.trim() ?? "";
     if (debounce) clearTimeout(debounce);
     debounce = setTimeout(() => loadClients(term), 250);
+  }
+
+  input?.addEventListener("input", scheduleLoad);
+
+  root?.querySelectorAll("[data-filter-provider], [data-filter-tag], [data-filter-referral]").forEach((el) => {
+    el.addEventListener("change", scheduleLoad);
   });
+  root?.querySelector("[data-filter-purchased]")?.addEventListener("change", scheduleLoad);
 
   function openAddModal() {
     addModal?.removeAttribute("hidden");

@@ -25,6 +25,7 @@ type TasksResponse = {
   ok: boolean;
   error?: string;
   tasks?: Task[];
+  attentionCount?: number;
 };
 
 const root = document.querySelector<HTMLElement>("[data-tasks-app]");
@@ -37,6 +38,7 @@ const isManager = root.dataset.manager === "1";
 const listEl = root.querySelector<HTMLElement>("[data-tasks-list]");
 const errorEl = root.querySelector<HTMLElement>("[data-tasks-error]");
 const tabButtons = root.querySelectorAll<HTMLButtonElement>("[data-view]");
+const attentionBadge = root.querySelector<HTMLElement>("[data-attention-badge]");
 const createBtn = root.querySelector<HTMLButtonElement>("[data-task-create]");
 const taskModal = document.querySelector<HTMLDialogElement>("[data-task-modal]");
 const taskForm = document.querySelector<HTMLFormElement>("[data-task-form]");
@@ -211,10 +213,21 @@ function escapeHtml(value: string) {
 }
 
 function emptyMessage(view: string) {
-  if (view === "available") return "No open tasks right now.";
+  if (view === "available") return "No team-wide tasks right now.";
+  if (view === "attention") return "No tasks need attention.";
   if (view === "completed") return "No completed tasks yet.";
   if (view === "all") return "No active tasks.";
   return "Nothing assigned to you.";
+}
+
+function updateAttentionBadge(count: number) {
+  if (!attentionBadge) return;
+  if (count > 0) {
+    attentionBadge.textContent = String(count);
+    attentionBadge.hidden = false;
+  } else {
+    attentionBadge.hidden = true;
+  }
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
@@ -237,6 +250,7 @@ async function loadTasks() {
   try {
     const data = await apiFetch(`?view=${encodeURIComponent(currentView)}`);
     const tasks = data.tasks ?? [];
+    updateAttentionBadge(data.attentionCount ?? 0);
 
     if (tasks.length === 0) {
       listEl.innerHTML = `<p class="notebook-empty">${emptyMessage(currentView)}</p>`;

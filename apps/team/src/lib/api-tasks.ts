@@ -154,3 +154,19 @@ export function isStaffAssignee(
 ) {
   return (task?.task_assignees ?? []).some((row) => row.staff_id === staffId);
 }
+
+/** Tasks due within this window (or already overdue) need attention. */
+export const TASK_ATTENTION_HOURS = 24;
+
+export function isTaskNeedsAttention(
+  dueAt: string | null,
+  status: TaskStatus,
+): boolean {
+  if (status === "done" || status === "cancelled" || !dueAt) {
+    return false;
+  }
+  const due = new Date(dueAt);
+  if (Number.isNaN(due.getTime())) return false;
+  const threshold = Date.now() + TASK_ATTENTION_HOURS * 60 * 60 * 1000;
+  return due.getTime() <= threshold;
+}

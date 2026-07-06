@@ -11,7 +11,7 @@ interface Props {
 const {
   title,
   mainTitle,
-  sidebarTitle = "Refine Your Search",
+  sidebarTitle = "",
   showSidebar = true,
   rootClass = "",
   rootId,
@@ -42,8 +42,8 @@ const hasToolbar = Astro.slots.has("toolbar");
   <div class="team-list-layout__body">
     {
       showSidebar ? (
-        <aside class="team-list-layout__sidebar" aria-label="Refine your search">
-          <h2 class="team-list-layout__sidebar-title">{sidebarTitle}</h2>
+        <aside class="team-list-layout__sidebar" aria-label="Page options">
+          {sidebarTitle ? <h2 class="team-list-layout__sidebar-title">{sidebarTitle}</h2> : null}
           {
             hasSidebarFilters ? (
               <div class="team-list-layout__filters">
@@ -335,6 +335,114 @@ const hasToolbar = Astro.slots.has("toolbar");
     color: #0096ff;
     background: rgba(0, 150, 255, 0.04);
     outline: none;
+  }
+
+  .team-list-layout__sidebar-link.is-active,
+  .team-list-layout__sidebar-nav-btn.is-active {
+    color: #0096ff;
+    background: rgba(0, 150, 255, 0.06);
+    font-weight: 600;
+  }
+
+  .team-list-layout__sidebar-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.65rem 0.35rem;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .team-list-layout__sidebar-nav-btn:hover,
+  .team-list-layout__sidebar-nav-btn:focus-visible {
+    color: #0096ff;
+    background: rgba(0, 150, 255, 0.04);
+    outline: none;
+  }
+
+  .team-list-layout__sidebar-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .team-list-layout__sidebar-badge[hidden] {
+    display: none;
+  }
+
+  .team-list-layout__filter-count {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #9ca3af;
+  }
+
+  .team-list-layout__sidebar-shortcuts {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0 0.35rem 0.75rem;
+  }
+
+  .team-list-layout__sidebar-shortcut {
+    padding: 0.4rem 0.55rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .team-list-layout__sidebar-shortcut:hover,
+  .team-list-layout__sidebar-shortcut:focus-visible {
+    background: #f3f4f6;
+    outline: none;
+  }
+
+  .team-list-layout__filter-options {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .team-list-layout__filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .team-list-layout__filter-option input {
+    width: 0.9rem;
+    height: 0.9rem;
+    accent-color: #0096ff;
+    flex-shrink: 0;
   }
 
   :global(.team-list-layout__btn-primary),

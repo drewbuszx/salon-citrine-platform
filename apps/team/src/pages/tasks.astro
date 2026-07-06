@@ -1,7 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
-import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -19,8 +18,6 @@ const { data: staffRows } = await supabase
   .order("name");
 
 const staffOptions = staffRows ?? [];
-
-const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
 ---
 
 <TeamLayout title="Tasks" activeNav="tasks" plain wide fullBleed>
@@ -31,7 +28,7 @@ const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamListLayout title="Tasks" mainTitle="Your tasks">
+    <TeamListLayout title="Tasks" sidebarTitle="Views">
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-task-create>
@@ -40,11 +37,28 @@ const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
         ) : null
       }
 
-      {
-        filterCategories.map((label) => (
-          <TeamListFilter slot="sidebarFilters" label={label} />
-        ))
-      }
+      <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Task views">
+        <button class="team-list-layout__sidebar-nav-btn is-active" type="button" data-view="my" aria-selected="true">
+          <span>Assigned to me</span>
+        </button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="available" aria-selected="false">
+          <span>For everyone</span>
+        </button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="attention" aria-selected="false">
+          <span>Needs attention</span>
+          <span class="team-list-layout__sidebar-badge" data-attention-badge hidden aria-label="Tasks needing attention">0</span>
+        </button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="completed" aria-selected="false">
+          <span>Completed</span>
+        </button>
+        {
+          managerView ? (
+            <button class="team-list-layout__sidebar-nav-btn" type="button" data-view="all" aria-selected="false">
+              <span>All active</span>
+            </button>
+          ) : null
+        }
+      </nav>
 
       <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
 
@@ -56,25 +70,6 @@ const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
         </div>
 
         <div class="notebook__paper">
-          <div class="tasks-tabs" role="tablist" aria-label="Task views">
-            <button class="tasks-tabs__btn is-active" type="button" role="tab" data-view="my" aria-selected="true">
-              My tasks
-            </button>
-            <button class="tasks-tabs__btn" type="button" role="tab" data-view="available" aria-selected="false">
-              Available
-            </button>
-            <button class="tasks-tabs__btn" type="button" role="tab" data-view="completed" aria-selected="false">
-              Completed
-            </button>
-            {
-              managerView ? (
-                <button class="tasks-tabs__btn" type="button" role="tab" data-view="all" aria-selected="false">
-                  All
-                </button>
-              ) : null
-            }
-          </div>
-
           <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
 
           <div class="tasks-list" data-tasks-list aria-live="polite">
@@ -284,13 +279,7 @@ const filterCategories = ["Status", "Priority", "Assignee", "Due date", "Tags"];
   }
 
   .tasks-tabs {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: calc(var(--notebook-line) * 0.5);
-    padding-bottom: 0.5rem;
+    display: none;
   }
 
   .tasks-tabs__btn {

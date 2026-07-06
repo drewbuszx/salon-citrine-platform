@@ -6,17 +6,22 @@ import TeamListExportButton from "../components/TeamListExportButton.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
-const { staff } = Astro.locals;
+const { staff, supabase } = Astro.locals;
 const isManager = isSalonManager(staff);
 
-const filterCategories = [
-  "Category",
-  "Brand",
-  "Stock Level",
-  "Low Stock",
-  "Location",
-  "Tags",
-];
+const { data: productMeta } = await supabase
+  .from("products")
+  .select("category, brand")
+  .eq("is_active", true);
+
+const categorySet = new Set<string>();
+const brandSet = new Set<string>();
+for (const row of productMeta ?? []) {
+  if (row.category?.trim()) categorySet.add(row.category.trim());
+  if (row.brand?.trim()) brandSet.add(row.brand.trim());
+}
+const categories = [...categorySet].sort((a, b) => a.localeCompare(b));
+const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 ---
 
 <TeamLayout title="Stock" activeNav="stock" plain wide fullBleed>
@@ -25,7 +30,7 @@ const filterCategories = [
     data-inventory-root
     data-is-manager={isManager ? "1" : "0"}
   >
-    <TeamListLayout title="Stock" mainTitle="Your Products">
+    <TeamListLayout title="Stock" mainTitle="Your Products" sidebarTitle="Filters">
       <button slot="headerActions" class="team-list-layout__btn-secondary stock-page__scan-desktop" type="button" data-scan-open>
         Scan to check in
       </button>
@@ -37,16 +42,85 @@ const filterCategories = [
         ) : null
       }
 
-      {
-        filterCategories.map((label) => (
-          <TeamListFilter slot="sidebarFilters" label={label} />
-        ))
-      }
+      <TeamListFilter slot="sidebarFilters" label="Category" count={categories.length} open={categories.length > 0}>
+        {
+          categories.length > 0 ? (
+            <div class="team-list-layout__filter-options">
+              <label class="team-list-layout__filter-option">
+                <input type="radio" name="stock-category" value="" data-filter-category checked />
+                <span>All categories</span>
+              </label>
+              {
+                categories.map((category) => (
+                  <label class="team-list-layout__filter-option">
+                    <input type="radio" name="stock-category" value={category} data-filter-category />
+                    <span>{category}</span>
+                  </label>
+                ))
+              }
+            </div>
+          ) : (
+            <p class="team-list-layout__filter-placeholder">No categories yet.</p>
+          )
+        }
+      </TeamListFilter>
 
-      <label slot="sidebarExtra" class="team-list-layout__sidebar-option">
-        <input type="checkbox" data-low-stock-filter />
-        Low stock only
-      </label>
+      <TeamListFilter slot="sidebarFilters" label="Brand" count={brands.length} open={brands.length > 0}>
+        {
+          brands.length > 0 ? (
+            <div class="team-list-layout__filter-options">
+              <label class="team-list-layout__filter-option">
+                <input type="radio" name="stock-brand" value="" data-filter-brand checked />
+                <span>All brands</span>
+              </label>
+              {
+                brands.map((brand) => (
+                  <label class="team-list-layout__filter-option">
+                    <input type="radio" name="stock-brand" value={brand} data-filter-brand />
+                    <span>{brand}</span>
+                  </label>
+                ))
+              }
+            </div>
+          ) : (
+            <p class="team-list-layout__filter-placeholder">No brands yet.</p>
+          )
+        }
+      </TeamListFilter>
+
+      <TeamListFilter slot="sidebarFilters" label="Stock level" open>
+        <div class="team-list-layout__filter-options">
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="" data-filter-stock checked />
+            <span>All products</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="in" data-filter-stock />
+            <span>In stock</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="low" data-filter-stock />
+            <span>Low stock</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="radio" name="stock-level" value="out" data-filter-stock />
+            <span>Out of stock</span>
+          </label>
+        </div>
+      </TeamListFilter>
+
+      <TeamListFilter slot="sidebarFilters" label="Price range">
+        <div class="team-list-layout__filter-options">
+          <label class="team-list-layout__filter-option">
+            <span>Min ($)</span>
+            <input class="inventory-form-input" type="number" min="0" step="0.01" data-filter-min-price placeholder="0" />
+          </label>
+          <label class="team-list-layout__filter-option">
+            <span>Max ($)</span>
+            <input class="inventory-form-input" type="number" min="0" step="0.01" data-filter-max-price placeholder="Any" />
+          </label>
+        </div>
+      </TeamListFilter>
 
       <TeamListExportButton slot="sidebarFooter" />
 

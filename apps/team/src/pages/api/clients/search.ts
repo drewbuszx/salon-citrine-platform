@@ -26,8 +26,13 @@ export const GET: APIRoute = async (context) => {
   if (!auth.ok) return auth.response;
 
   const { supabase } = auth;
-  const q = String(context.url.searchParams.get("q") ?? "").trim();
+  const params = context.url.searchParams;
+  const q = String(params.get("q") ?? "").trim();
   const term = q.replace(/,/g, " ").trim();
+  const tag = String(params.get("tag") ?? "").trim();
+  const referral = String(params.get("referral") ?? "").trim();
+  const providerId = String(params.get("provider") ?? "").trim();
+  const purchased = params.get("purchased") === "1";
 
   const { count: totalCount, error: countError } = await supabase
     .from("clients")
@@ -39,12 +44,31 @@ export const GET: APIRoute = async (context) => {
   }
 
   if (term.length > 0 && term.length < 2) {
-    return jsonOk({ clients: [], total: totalCount ?? 0, query: term });
+    return jsonOk({ clients: [], total: totalCount ?? 0, query: term, filtersApplied: 0 });
+  }
+
+  let clientIds: string[] | null = null;
+
+  if (providerId) {
+    const { data: apptRows, error: apptError } = await supabase
+      .from("appointments")
+      .select("client_id")
+      .eq("staff_id", providerId);
+
+    if (apptError) {
+      console.error("client provider filter failed", apptError);
+      return jsonError("Failed to filter by provider", 500);
+    }
+
+    clientIds = [...new Set((apptRows ?? []).map((row) => row.client_id as string))];
+    if (clientIds.length === 0) {
+      return jsonOk({ clients: [], total: totalCount ?? 0, query: term, filtersApplied: 1 });
+    }
   }
 
   let query = supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email")
+    .select("id, first_name, last_name, phone, email, tags, referral_sources, lifetime_value_cents")
     .order("last_name")
     .order("first_name");
 
@@ -52,6 +76,22 @@ export const GET: APIRoute = async (context) => {
     query = query.or(
       `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`,
     );
+  }
+
+  if (clientIds) {
+    query = query.in("id", clientIds);
+  }
+
+  if (tag) {
+    query = query.contains("tags", [tag]);
+  }
+
+  if (referral) {
+    query = query.contains("referral_sources", [referral]);
+  }
+
+  if (purchased) {
+    query = query.gt("lifetime_value_cents", 0);
   }
 
   const { data, error } = await query.limit(term.length >= 2 ? SEARCH_LIMIT : LIST_LIMIT);
@@ -62,10 +102,16 @@ export const GET: APIRoute = async (context) => {
   }
 
   const clients = (data ?? []).map(mapClientRow);
+  let filtersApplied = 0;
+  if (tag) filtersApplied += 1;
+  if (referral) filtersApplied += 1;
+  if (providerId) filtersApplied += 1;
+  if (purchased) filtersApplied += 1;
 
   return jsonOk({
     clients,
     total: totalCount ?? clients.length,
     query: term,
+    filtersApplied,
   });
 };

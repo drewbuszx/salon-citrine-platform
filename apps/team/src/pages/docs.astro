@@ -1,7 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
-import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -12,8 +11,6 @@ if (!staff) {
 }
 
 const managerView = isSalonManager(staff);
-
-const filterCategories = ["Category", "File type", "Updated", "Tags"];
 ---
 
 <TeamLayout title="Docs" activeNav="docs" plain wide fullBleed>
@@ -23,7 +20,7 @@ const filterCategories = ["Category", "File type", "Updated", "Tags"];
     data-api-base={teamUrl("/api/documents")}
     data-manager={managerView ? "1" : "0"}
   >
-    <TeamListLayout title="Docs" mainTitle="Your documents">
+    <TeamListLayout title="Docs" mainTitle="Your documents" sidebarTitle="Categories">
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-doc-upload-open>
@@ -32,37 +29,29 @@ const filterCategories = ["Category", "File type", "Updated", "Tags"];
         ) : null
       }
 
-      {
-        filterCategories.map((label) => (
-          <TeamListFilter slot="sidebarFilters" label={label} />
-        ))
-      }
+      <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Document categories">
+        <button class="team-list-layout__sidebar-nav-btn is-active" type="button" data-doc-category="all">All categories</button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="policies">Policies</button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="training">Training</button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="forms">Forms</button>
+        <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="other">Other</button>
+      </nav>
 
       <Fragment slot="mainLead">Employee handbook, procedures, and salon resources.</Fragment>
 
-      <div slot="toolbar" class="docs-page__filters">
-        <label class="team-toolbar-field team-toolbar-field--grow">
-          <span class="team-toolbar-label">Search</span>
-          <input
-            class="form-input"
-            type="search"
-            placeholder="Title or description…"
-            autocomplete="off"
-            data-doc-search
-          />
-        </label>
-
-        <label class="team-toolbar-field team-toolbar-field--compact">
-          <span class="team-toolbar-label">Category</span>
-          <select class="form-input" data-doc-category>
-            <option value="all">All categories</option>
-            <option value="policies">Policies</option>
-            <option value="training">Training</option>
-            <option value="forms">Forms</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-      </div>
+      <label slot="searchBar" class="team-list-layout__search">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+        </svg>
+        <input
+          class="team-list-layout__search-input"
+          type="search"
+          placeholder="Title or description…"
+          autocomplete="off"
+          data-doc-search
+        />
+      </label>
 
       <p class="notice notice--error docs-page__error" data-docs-error hidden role="alert"></p>
 

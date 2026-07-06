@@ -19,8 +19,6 @@ const { data: staffRows } = await supabase
   .order("name");
 
 const staffOptions = staffRows ?? [];
-
-const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 ---
 
 <TeamLayout title="Events" activeNav="events" plain wide fullBleed>
@@ -31,37 +29,73 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamListLayout title="Events" mainTitle="Team calendar">
+    <TeamListLayout title="Events" mainTitle="Team calendar" sidebarTitle="Filters">
       <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-event-create>
         Add event
       </button>
 
+      <TeamListFilter slot="sidebarFilters" label="Event type" open>
+        <div class="team-list-layout__filter-options">
+          <label class="team-list-layout__filter-option">
+            <input type="checkbox" data-filter-type="closure" checked />
+            <span>Holiday / closure</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="checkbox" data-filter-type="event" checked />
+            <span>Community event</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="checkbox" data-filter-type="announcement" checked />
+            <span>Announcement</span>
+          </label>
+          <label class="team-list-layout__filter-option">
+            <input type="checkbox" data-filter-type="time_off" checked />
+            <span>Time off</span>
+          </label>
+        </div>
+      </TeamListFilter>
+
       {
-        filterCategories.map((label) => (
-          <TeamListFilter slot="sidebarFilters" label={label} />
-        ))
+        managerView ? (
+          <TeamListFilter slot="sidebarFilters" label="Staff" count={staffOptions.length} open>
+            <div class="team-list-layout__filter-options">
+              <label class="team-list-layout__filter-option">
+                <input type="radio" name="events-staff" value="" data-filter-staff checked />
+                <span>All staff</span>
+              </label>
+              {
+                staffOptions.map((member) => (
+                  <label class="team-list-layout__filter-option">
+                    <input type="radio" name="events-staff" value={member.id} data-filter-staff />
+                    <span>{member.name}</span>
+                  </label>
+                ))
+              }
+            </div>
+          </TeamListFilter>
+        ) : null
       }
+
+      <div slot="sidebarExtra">
+        <h3 class="team-list-layout__sidebar-title">Month</h3>
+        <div class="team-list-layout__sidebar-shortcuts">
+          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-today>Today</button>
+          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-prev>Previous month</button>
+          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-next>Next month</button>
+        </div>
+        <p class="team-list-layout__filter-placeholder" data-month-label style="padding: 0 0.35rem;"></p>
+      </div>
 
       <Fragment slot="mainLead">
         Birthdays, time off, closures, and salon announcements — not the appointment book.
       </Fragment>
 
-      <div slot="toolbar" class="events-page__toolbar">
-        <button class="team-list-layout__btn-secondary events-page__nav-btn" type="button" data-month-prev aria-label="Previous month">
-          ‹
-        </button>
-        <h2 class="events-page__month" data-month-label></h2>
-        <button class="team-list-layout__btn-secondary events-page__nav-btn" type="button" data-month-next aria-label="Next month">
-          ›
-        </button>
-        <button class="team-list-layout__btn-secondary events-page__today" type="button" data-month-today>
-          Today
-        </button>
-      </div>
-
       <p class="notice notice--error events-page__error" data-events-error hidden role="alert"></p>
 
       <section class="events-calendar-panel" aria-label="Month calendar">
+        <header class="events-calendar-panel__header">
+          <h3 class="events-calendar-panel__title" data-month-header></h3>
+        </header>
         <div class="events-calendar" data-events-calendar></div>
         <div class="events-calendar-legend" aria-hidden="true">
           <span class="events-calendar-legend__item events-calendar-legend__item--closure">Holiday / closure</span>
@@ -72,7 +106,7 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
       </section>
 
       <section class="events-upcoming team-panel">
-        <h3 class="team-panel__title">Upcoming</h3>
+        <h3 class="team-panel__title" data-events-list-title>Upcoming</h3>
         <div class="events-list" data-events-list aria-live="polite">
           <p class="empty-state">Loading events…</p>
         </div>
@@ -172,11 +206,7 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 
 <style>
   .events-page__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-    width: 100%;
+    display: none;
   }
 
   .events-page__nav-btn {
@@ -215,12 +245,27 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     overflow: hidden;
   }
 
+  .events-calendar-panel__header {
+    padding: 0.75rem 1rem 0.5rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: color-mix(in srgb, var(--color-cream) 45%, var(--color-bg));
+  }
+
+  .events-calendar-panel__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-align: center;
+    color: var(--color-text);
+  }
+
   .events-calendar {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 0;
     background: var(--color-border-subtle);
-    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .events-calendar__head,
@@ -230,7 +275,7 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
   }
 
   .events-calendar__head {
-    padding: 0.5rem 0.25rem;
+    padding: 0.55rem 0.25rem;
     text-align: center;
     font-size: 0.625rem;
     font-weight: 600;
@@ -244,13 +289,18 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
   .events-calendar__cell {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.2rem;
-    min-height: 4.75rem;
-    padding: 0.35rem 0.4rem 0.3rem;
-    cursor: default;
+    align-items: stretch;
+    gap: 0.25rem;
+    min-height: 5rem;
+    padding: 0.4rem 0.45rem 0.35rem;
+    margin: 0;
+    border: none;
     border-right: 1px solid var(--color-border-subtle);
     border-bottom: 1px solid var(--color-border-subtle);
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
     transition:
       background 0.15s ease,
       box-shadow 0.15s ease;
@@ -266,13 +316,20 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     z-index: 1;
   }
 
+  .events-calendar__cell:focus-visible {
+    outline: 2px solid var(--color-sage);
+    outline-offset: -2px;
+    z-index: 2;
+  }
+
   .events-calendar__cell--pad {
     background: color-mix(in srgb, var(--color-cream) 50%, var(--color-bg));
     opacity: 0.55;
+    cursor: default;
   }
 
   .events-calendar__cell--weekend:not(.events-calendar__cell--pad) {
-    background: color-mix(in srgb, var(--color-cream) 35%, var(--color-bg));
+    background: color-mix(in srgb, var(--color-cream) 28%, var(--color-bg));
   }
 
   .events-calendar__cell--today {
@@ -282,6 +339,16 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 
   .events-calendar__cell--today:hover {
     background: color-mix(in srgb, var(--color-dusty-rose) 10%, var(--color-bg));
+  }
+
+  .events-calendar__cell--selected {
+    background: color-mix(in srgb, var(--color-sage) 14%, var(--color-bg));
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-sage) 55%, transparent);
+  }
+
+  .events-calendar__cell--selected.events-calendar__cell--today {
+    background: color-mix(in srgb, var(--color-sage) 10%, color-mix(in srgb, var(--color-dusty-rose) 6%, var(--color-bg)));
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-sage) 60%, transparent);
   }
 
   .events-calendar__cell--today .events-calendar__day {
@@ -297,24 +364,8 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     font-weight: 700;
   }
 
-  .events-calendar__cell--closure {
-    background: color-mix(in srgb, #c83c3c 9%, var(--color-bg));
-  }
-
-  .events-calendar__cell--closure.events-calendar__cell--weekend {
-    background: color-mix(in srgb, #c83c3c 11%, color-mix(in srgb, var(--color-cream) 35%, var(--color-bg)));
-  }
-
-  .events-calendar__cell--event {
-    background: color-mix(in srgb, var(--color-citrine) 12%, var(--color-bg));
-  }
-
-  .events-calendar__cell--announcement {
-    background: color-mix(in srgb, #8a7355 10%, var(--color-bg));
-  }
-
   .events-calendar__day {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 600;
     line-height: 1;
     color: var(--color-text);
@@ -326,63 +377,41 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 
   .events-calendar__markers {
     display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    width: 100%;
-    min-height: 0;
-    flex: 1;
-  }
-
-  .events-calendar__pill {
-    display: block;
-    width: 100%;
-    padding: 0.1rem 0.35rem;
-    border-radius: 3px;
-    border-left: 2px solid var(--event-staff-color, var(--color-dusty-rose));
-    background: color-mix(in srgb, var(--event-staff-color, var(--color-dusty-rose)) 12%, transparent);
-    font-size: 0.5625rem;
-    font-weight: 600;
-    line-height: 1.3;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .events-calendar__pill--closure {
-    border-left-color: #c83c3c;
-    background: color-mix(in srgb, #c83c3c 14%, transparent);
-    color: #7a2020;
-  }
-
-  .events-calendar__pill--announcement {
-    border-left-color: #8a7355;
-    background: color-mix(in srgb, #8a7355 14%, transparent);
-    color: #5c4a32;
-  }
-
-  .events-calendar__pill--event {
-    border-left-color: var(--color-citrine);
-    background: color-mix(in srgb, var(--color-citrine) 16%, transparent);
-    color: var(--color-text);
-  }
-
-  .events-calendar__dots {
-    display: flex;
     flex-wrap: wrap;
-    gap: 0.2rem;
+    gap: 0.22rem;
     align-items: center;
+    align-content: flex-start;
     margin-top: auto;
+    min-height: 0.75rem;
+    padding-top: 0.1rem;
   }
 
-  .events-calendar__dot {
+  .events-calendar__marker {
     display: block;
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: var(--event-staff-color, var(--color-dusty-rose));
+    width: 0.5rem;
+    height: 0.5rem;
     flex-shrink: 0;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg) 70%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-bg) 75%, transparent);
+  }
+
+  .events-calendar__marker--closure {
+    border-radius: 2px;
+    background: #c83c3c;
+  }
+
+  .events-calendar__marker--event {
+    border-radius: 2px;
+    background: var(--color-citrine);
+  }
+
+  .events-calendar__marker--announcement {
+    border-radius: 2px;
+    background: #8a7355;
+  }
+
+  .events-calendar__marker--time_off {
+    border-radius: 999px;
+    background: var(--event-staff-color, var(--color-dusty-rose));
   }
 
   .events-calendar__more {
@@ -423,28 +452,23 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
   }
 
   .events-calendar-legend__item--closure::before {
-    background: color-mix(in srgb, #c83c3c 35%, transparent);
-    border: 1px solid color-mix(in srgb, #c83c3c 55%, transparent);
+    border-radius: 2px;
+    background: #c83c3c;
   }
 
   .events-calendar-legend__item--event::before {
-    background: color-mix(in srgb, var(--color-citrine) 40%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-citrine) 60%, transparent);
+    border-radius: 2px;
+    background: var(--color-citrine);
   }
 
   .events-calendar-legend__item--announcement::before {
-    background: color-mix(in srgb, #8a7355 30%, transparent);
-    border: 1px solid color-mix(in srgb, #8a7355 50%, transparent);
+    border-radius: 2px;
+    background: #8a7355;
   }
 
   .events-calendar-legend__item--time_off::before {
-    background: linear-gradient(
-      90deg,
-      var(--color-citrine) 0 33%,
-      var(--color-sage) 33% 66%,
-      #d4a5a5 66% 100%
-    );
     border-radius: 999px;
+    background: var(--color-dusty-rose);
   }
 
   .events-upcoming {
@@ -470,15 +494,16 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
   .event-row {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     grid-template-areas:
       "dot title badge"
-      "dot when staff";
+      "dot when badge"
+      "dot description staff";
     align-items: center;
     column-gap: 0.55rem;
-    row-gap: 0.1rem;
+    row-gap: 0.12rem;
     width: 100%;
-    padding: 0.45rem 0.65rem;
+    padding: 0.55rem 0.65rem;
     border: none;
     border-bottom: 1px solid var(--color-border-subtle);
     background: var(--color-bg);
@@ -539,9 +564,22 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     text-overflow: ellipsis;
   }
 
+  .event-row__description {
+    grid-area: description;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    color: var(--color-gray);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   .event-row__staff {
     grid-area: staff;
     justify-self: end;
+    align-self: end;
     font-family: var(--font-sans);
     font-size: 0.625rem;
     color: var(--color-gray);
@@ -659,12 +697,12 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
 
   @media (max-width: 640px) {
     .events-calendar__cell {
-      min-height: 3.5rem;
-      padding: 0.25rem 0.2rem 0.2rem;
+      min-height: 3.75rem;
+      padding: 0.28rem 0.22rem 0.22rem;
     }
 
     .events-calendar__day {
-      font-size: 0.65rem;
+      font-size: 0.68rem;
     }
 
     .events-calendar__cell--today .events-calendar__day {
@@ -672,18 +710,22 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
       height: 1.25rem;
     }
 
-    .events-calendar__pill {
-      display: none;
-    }
-
-    .events-calendar__dot {
-      width: 0.35rem;
-      height: 0.35rem;
+    .events-calendar__marker {
+      width: 0.42rem;
+      height: 0.42rem;
     }
 
     .events-calendar__head {
       font-size: 0.5625rem;
       padding: 0.35rem 0.1rem;
+    }
+
+    .events-calendar-panel__header {
+      padding: 0.55rem 0.75rem 0.4rem;
+    }
+
+    .events-calendar-panel__title {
+      font-size: 0.85rem;
     }
 
     .events-calendar-legend {
@@ -696,7 +738,7 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
     }
 
     .event-row {
-      padding: 0.4rem 0.5rem;
+      padding: 0.45rem 0.5rem;
       column-gap: 0.45rem;
     }
 
@@ -704,7 +746,8 @@ const filterCategories = ["Event type", "Staff", "Date range", "All day"];
       font-size: 0.75rem;
     }
 
-    .event-row__when {
+    .event-row__when,
+    .event-row__description {
       font-size: 0.625rem;
     }
 

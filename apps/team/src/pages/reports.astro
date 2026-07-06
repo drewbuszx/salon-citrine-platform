@@ -1,7 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
-import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -20,8 +19,6 @@ const fromDefault = new Date(today);
 fromDefault.setDate(fromDefault.getDate() - 30);
 const toValue = today.toISOString().slice(0, 10);
 const fromValue = fromDefault.toISOString().slice(0, 10);
-
-const filterCategories = ["Date range", "Staff", "Report type", "Metrics"];
 ---
 
 <TeamLayout title="Reports" activeNav="reports" plain wide fullBleed>
@@ -32,36 +29,38 @@ const filterCategories = ["Date range", "Staff", "Report type", "Metrics"];
     data-from={fromValue}
     data-to={toValue}
   >
-    <TeamListLayout title="Reports" mainTitle="Business summaries">
+    <TeamListLayout title="Reports" mainTitle="Business summaries" sidebarTitle="Report options">
       <button slot="headerActions" class="team-list-layout__btn-secondary" type="button" data-export-csv>
         Export CSV
       </button>
 
-      {
-        filterCategories.map((label) => (
-          <TeamListFilter slot="sidebarFilters" label={label} />
-        ))
-      }
+      <div slot="sidebarFilters" class="reports-sidebar">
+        <label class="reports-sidebar__field">
+          <span class="reports-sidebar__label">From</span>
+          <input class="inventory-form-input" type="date" data-range-from value={fromValue} />
+        </label>
+        <label class="reports-sidebar__field">
+          <span class="reports-sidebar__label">To</span>
+          <input class="inventory-form-input" type="date" data-range-to value={toValue} />
+        </label>
+        <button class="team-list-layout__btn-primary reports-sidebar__apply" type="button" data-range-apply>
+          Apply range
+        </button>
+        <p class="team-list-layout__filter-placeholder" data-range-label aria-live="polite"></p>
+      </div>
+
+      <nav slot="sidebarExtra" class="team-list-layout__sidebar-nav" aria-label="Report sections">
+        <a class="team-list-layout__sidebar-link" href="#reports-revenue">Revenue summary</a>
+        <a class="team-list-layout__sidebar-link" href="#reports-staff-title">Appointments by staff</a>
+        <a class="team-list-layout__sidebar-link" href="#reports-cancel-title">Cancellations</a>
+        <a class="team-list-layout__sidebar-link" href="#reports-inventory-title">Low stock</a>
+      </nav>
 
       <Fragment slot="mainLead">Business summaries from live salon data.</Fragment>
 
-      <div slot="toolbar" class="reports-toolbar">
-        <label class="team-toolbar-field team-toolbar-field--compact">
-          <span class="team-toolbar-label">From</span>
-          <input class="form-input" type="date" data-range-from value={fromValue} />
-        </label>
-        <label class="team-toolbar-field team-toolbar-field--compact">
-          <span class="team-toolbar-label">To</span>
-          <input class="form-input" type="date" data-range-to value={toValue} />
-        </label>
-        <button class="team-list-layout__btn-primary" type="button" data-range-apply>Apply</button>
-        <span class="team-toolbar-spacer"></span>
-        <span class="label-meta" data-range-label aria-live="polite"></span>
-      </div>
-
       <p class="notice notice--error" data-reports-error hidden role="alert"></p>
 
-      <div class="team-stat-grid" data-revenue-stats>
+      <div class="team-stat-grid" id="reports-revenue" data-revenue-stats>
         <p class="empty-state">Loading reports…</p>
       </div>
 
@@ -92,12 +91,34 @@ const filterCategories = ["Date range", "Staff", "Report type", "Metrics"];
 <script src="../scripts/reports.ts"></script>
 
 <style>
-  .reports-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 0.65rem 1rem;
-    width: 100%;
+  .reports-sidebar {
+    display: grid;
+    gap: 0.65rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .reports-sidebar__field {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .reports-sidebar__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+  }
+
+  .reports-sidebar__apply {
+    margin: 0 0.35rem;
+    width: calc(100% - 0.7rem);
   }
 
   .reports-section {

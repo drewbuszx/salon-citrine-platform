@@ -46,18 +46,56 @@ for (const row of staffServices ?? []) {
   staffServiceIds.set(row.staff_id, set);
 }
 
-const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
+const categories = [...new Set((services ?? []).map((s) => s.category).filter(Boolean))].sort();
 ---
 
 <TeamLayout title="Services" activeNav="manage" plain wide fullBleed>
-  <TeamListLayout title="Services" mainTitle="Manage services" sidebarTitle="Refine Your Search">
+  <TeamListLayout title="Services" mainTitle="Manage services" sidebarTitle="Filters">
     <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>Booking policy</a>
 
-    {
-      filterCategories.map((label) => (
-        <TeamListFilter slot="sidebarFilters" label={label} />
-      ))
-    }
+    <TeamListFilter slot="sidebarFilters" label="Category" count={categories.length} open={categories.length > 0}>
+      {
+        categories.length > 0 ? (
+          <div class="team-list-layout__filter-options">
+            <label class="team-list-layout__filter-option">
+              <input type="radio" name="svc-category" value="" data-svc-filter-category checked />
+              <span>All categories</span>
+            </label>
+            {
+              categories.map((category) => (
+                <label class="team-list-layout__filter-option">
+                  <input type="radio" name="svc-category" value={category} data-svc-filter-category />
+                  <span>{category}</span>
+                </label>
+              ))
+            }
+          </div>
+        ) : (
+          <p class="team-list-layout__filter-placeholder">No services loaded.</p>
+        )
+      }
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Staff" count={(staff ?? []).length} open>
+      <div class="team-list-layout__filter-options">
+        <label class="team-list-layout__filter-option">
+          <input type="radio" name="svc-staff" value="" data-svc-filter-staff checked />
+          <span>All stylists</span>
+        </label>
+        {
+          (staff ?? []).map((member) => (
+            <label class="team-list-layout__filter-option">
+              <input type="radio" name="svc-staff" value={member.id} data-svc-filter-staff />
+              <span>{member.name}</span>
+            </label>
+          ))
+        }
+      </div>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Status">
+      <p class="team-list-layout__filter-placeholder">All listed services are active.</p>
+    </TeamListFilter>
 
     <Fragment slot="mainLead">
       Update service durations and returning-clients-only settings per stylist.
@@ -79,7 +117,7 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
       </p>
     ) : (
       <>
-        <section class="page-section">
+        <section class="page-section" data-svc-section="durations">
           <h2>Service durations</h2>
           <div class="card-grid">
             {
@@ -88,6 +126,7 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
                   class="card-row card-row--3"
                   method="post"
                   action={teamUrl(`/api/services/${service.id}`)}
+                  data-svc-category={service.category}
                 >
                   <div class="services__info">
                     <span class="label-meta">{service.category}</span>
@@ -114,7 +153,7 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
           </div>
         </section>
 
-        <section class="page-section">
+        <section class="page-section" data-svc-section="returning">
           <h2>Returning clients only</h2>
           <p class="page-section__lead">
             Per stylist and service. When enabled, online booking shows a
@@ -131,7 +170,7 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
                 if (memberServices.length === 0) return null;
 
                 return (
-                  <div class="matrix__group">
+                  <div class="matrix__group" data-svc-staff={member.id}>
                     <h3 class="matrix__staff">{member.name}</h3>
                     <div class="card-grid">
                       {
@@ -145,6 +184,7 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
                               class="card-row card-row--2"
                               method="post"
                               action={teamUrl("/api/staff-services")}
+                              data-svc-category={service.category}
                             >
                               <input
                                 type="hidden"
@@ -194,6 +234,29 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
   </TeamListLayout>
 </TeamLayout>
 
+<script>
+  function applyServiceFilters() {
+    const category =
+      document.querySelector<HTMLInputElement>("[data-svc-filter-category]:checked")?.value ?? "";
+    const staffId =
+      document.querySelector<HTMLInputElement>("[data-svc-filter-staff]:checked")?.value ?? "";
+
+    document.querySelectorAll<HTMLElement>("[data-svc-category]").forEach((el) => {
+      const matchCategory = !category || el.dataset.svcCategory === category;
+      el.hidden = !matchCategory;
+    });
+
+    document.querySelectorAll<HTMLElement>("[data-svc-staff]").forEach((el) => {
+      const matchStaff = !staffId || el.dataset.svcStaff === staffId;
+      el.hidden = !matchStaff;
+    });
+  }
+
+  document.querySelectorAll("[data-svc-filter-category], [data-svc-filter-staff]").forEach((el) => {
+    el.addEventListener("change", applyServiceFilters);
+  });
+</script>
+
 <style>
   .services__info {
     display: grid;
@@ -227,6 +290,14 @@ const filterCategories = ["Category", "Staff", "Duration", "Returning only"];
     border: 1px solid var(--color-border);
     padding: 1rem;
     background: var(--color-booking-card-bg);
+  }
+
+  .matrix__group[hidden] {
+    display: none;
+  }
+
+  [data-svc-category][hidden] {
+    display: none;
   }
 
   .matrix__staff {

@@ -20,7 +20,7 @@ const isManager = root.dataset.manager === "1";
 const listEl = root.querySelector<HTMLElement>("[data-docs-list]");
 const errorEl = root.querySelector<HTMLElement>("[data-docs-error]");
 const searchInput = root.querySelector<HTMLInputElement>("[data-doc-search]");
-const categorySelect = root.querySelector<HTMLSelectElement>("[data-doc-category]");
+const categoryButtons = root.querySelectorAll<HTMLButtonElement>("[data-doc-category]");
 const uploadOpenBtn = root.querySelector<HTMLButtonElement>("[data-doc-upload-open]");
 const modal = document.querySelector<HTMLDialogElement>("[data-doc-modal]");
 const form = document.querySelector<HTMLFormElement>("[data-doc-form]");
@@ -200,9 +200,14 @@ searchInput?.addEventListener("input", () => {
   renderList();
 });
 
-categorySelect?.addEventListener("change", () => {
-  categoryFilter = categorySelect.value;
-  void loadDocuments();
+categoryButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    categoryFilter = button.dataset.docCategory ?? "all";
+    categoryButtons.forEach((btn) => {
+      btn.classList.toggle("is-active", btn === button);
+    });
+    void loadDocuments();
+  });
 });
 
 uploadOpenBtn?.addEventListener("click", openModal);

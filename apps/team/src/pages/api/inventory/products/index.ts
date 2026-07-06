@@ -15,6 +15,11 @@ export const GET: APIRoute = async (context) => {
   const { supabase } = auth;
   const q = String(context.url.searchParams.get("q") ?? "").trim();
   const lowStockOnly = context.url.searchParams.get("lowStockOnly") === "1";
+  const category = String(context.url.searchParams.get("category") ?? "").trim();
+  const brand = String(context.url.searchParams.get("brand") ?? "").trim();
+  const stockLevel = String(context.url.searchParams.get("stockLevel") ?? "").trim();
+  const minPrice = context.url.searchParams.get("minPrice");
+  const maxPrice = context.url.searchParams.get("maxPrice");
   const includeInactive =
     context.url.searchParams.get("includeInactive") === "1" &&
     requireManager(auth.staff);
@@ -35,6 +40,14 @@ export const GET: APIRoute = async (context) => {
     );
   }
 
+  if (category) {
+    query = query.ilike("category", category);
+  }
+
+  if (brand) {
+    query = query.ilike("brand", brand);
+  }
+
   const { data, error } = await query;
 
   if (error) {
@@ -45,8 +58,25 @@ export const GET: APIRoute = async (context) => {
   let products = (data ?? []).map((row) => mapProduct(row as ProductRow));
   const lowStockCount = products.filter((p) => p.isLowStock).length;
 
-  if (lowStockOnly) {
+  if (lowStockOnly || stockLevel === "low") {
     products = products.filter((p) => p.isLowStock);
+  } else if (stockLevel === "in") {
+    products = products.filter((p) => p.quantity > 0 && !p.isLowStock);
+  } else if (stockLevel === "out") {
+    products = products.filter((p) => p.quantity <= 0);
+  }
+
+  const minPriceCents = minPrice != null && minPrice !== "" ? Number(minPrice) : null;
+  const maxPriceCents = maxPrice != null && maxPrice !== "" ? Number(maxPrice) : null;
+  if (minPriceCents != null && Number.isFinite(minPriceCents)) {
+    products = products.filter(
+      (p) => p.retailPriceCents != null && p.retailPriceCents >= minPriceCents,
+    );
+  }
+  if (maxPriceCents != null && Number.isFinite(maxPriceCents)) {
+    products = products.filter(
+      (p) => p.retailPriceCents != null && p.retailPriceCents <= maxPriceCents,
+    );
   }
 
   const categories = groupProductsByCategory(products);

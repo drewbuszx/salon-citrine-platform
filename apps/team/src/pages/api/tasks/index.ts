@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import {
+  isTaskNeedsAttention,
   mapTask,
   parseAssignmentType,
   parseDueAt,
@@ -35,6 +36,33 @@ async function loadAssigneeTaskIds(
   return (data ?? []).map((row) => row.task_id as string);
 }
 
+async function countAttentionTasks(
+  supabase: App.Locals["supabase"],
+  staffId: string,
+  manager: boolean,
+) {
+  let query = supabase
+    .from("tasks")
+    .select("id, due_at, status, assignment_type, task_assignees(staff_id)")
+    .in("status", ["open", "claimed"])
+    .not("due_at", "is", null);
+
+  const { data, error } = await query;
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).filter((row) => {
+    if (!isTaskNeedsAttention(row.due_at, row.status as TaskRow["status"])) {
+      return false;
+    }
+    if (manager) return true;
+    if (row.assignment_type === "open") return true;
+    const assignees = (row.task_assignees ?? []) as Array<{ staff_id: string }>;
+    return assignees.some((a) => a.staff_id === staffId);
+  }).length;
+}
+
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
   if (!auth.ok) return auth.response;
@@ -42,6 +70,13 @@ export const GET: APIRoute = async (context) => {
   const { supabase, staff } = auth;
   const view = String(context.url.searchParams.get("view") ?? "my").trim();
   const manager = requireManager(staff);
+
+  let attentionCount = 0;
+  try {
+    attentionCount = await countAttentionTasks(supabase, staff.id, manager);
+  } catch (error) {
+    console.error("task attention count failed", error);
+  }
 
   let query = supabase.from("tasks").select(TASK_SELECT);
 
@@ -56,6 +91,11 @@ export const GET: APIRoute = async (context) => {
     query = query
       .eq("assignment_type", "open")
       .eq("status", "open")
+      .order("due_at", { ascending: true, nullsFirst: false });
+  } else if (view === "attention") {
+    query = query
+      .in("status", ["open", "claimed"])
+      .not("due_at", "is", null)
       .order("due_at", { ascending: true, nullsFirst: false });
   } else if (view === "completed") {
     query = query.eq("status", "done").order("completed_at", {
@@ -89,7 +129,7 @@ export const GET: APIRoute = async (context) => {
     }
 
     if (assigneeTaskIds.length === 0) {
-      return jsonOk({ tasks: [], view });
+      return jsonOk({ tasks: [], view, attentionCount });
     }
 
     query = query
@@ -105,9 +145,20 @@ export const GET: APIRoute = async (context) => {
     return jsonError("Failed to load tasks", 500);
   }
 
-  const tasks = (data ?? []).map((row) => mapTask(row as TaskRow, staff.id));
+  let tasks = (data ?? []).map((row) => mapTask(row as TaskRow, staff.id));
 
-  return jsonOk({ tasks, view });
+  if (view === "attention") {
+    tasks = tasks.filter((task) => isTaskNeedsAttention(task.dueAt, task.status as TaskRow["status"]));
+    if (!manager) {
+      tasks = tasks.filter(
+        (task) =>
+          task.assignmentType === "open" ||
+          task.assignees.some((a) => a.staffId === staff.id),
+      );
+    }
+  }
+
+  return jsonOk({ tasks, view, attentionCount });
 };
 
 export const POST: APIRoute = async (context) => {

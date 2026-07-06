@@ -16,13 +16,6 @@ type TeamEvent = {
   canDelete: boolean;
 };
 
-/** Full-day cell highlights — salon-wide items, not individual time off. */
-const HIGHLIGHT_EVENT_TYPES = new Set<TeamEvent["eventType"]>([
-  "event",
-  "closure",
-  "announcement",
-]);
-
 const root = document.querySelector<HTMLElement>("[data-events-app]");
 if (!root) {
   throw new Error("Events app root not found");
@@ -33,8 +26,10 @@ const isManager = root.dataset.manager === "1";
 const currentStaffId = root.dataset.currentStaffId ?? "";
 const calendarEl = root.querySelector<HTMLElement>("[data-events-calendar]");
 const listEl = root.querySelector<HTMLElement>("[data-events-list]");
+const listTitleEl = root.querySelector<HTMLElement>("[data-events-list-title]");
 const errorEl = root.querySelector<HTMLElement>("[data-events-error]");
 const monthLabel = root.querySelector<HTMLElement>("[data-month-label]");
+const monthHeader = root.querySelector<HTMLElement>("[data-month-header]");
 const prevBtn = root.querySelector<HTMLButtonElement>("[data-month-prev]");
 const nextBtn = root.querySelector<HTMLButtonElement>("[data-month-next]");
 const todayBtn = root.querySelector<HTMLButtonElement>("[data-month-today]");
@@ -57,6 +52,34 @@ let events: TeamEvent[] = [];
 let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();
 let editingEventId: string | null = null;
+let selectedDay: { year: number; month: number; day: number } | null = null;
+
+function getActiveTypeFilters(): Set<TeamEvent["eventType"]> {
+  const active = new Set<TeamEvent["eventType"]>();
+  root.querySelectorAll<HTMLInputElement>("[data-filter-type]").forEach((input) => {
+    const type = input.dataset.filterType as TeamEvent["eventType"];
+    if (input.checked && type) active.add(type);
+  });
+  if (active.size === 0) {
+    return new Set(["closure", "event", "announcement", "time_off"]);
+  }
+  return active;
+}
+
+function getStaffFilter(): string {
+  return root.querySelector<HTMLInputElement>("[data-filter-staff]:checked")?.value?.trim() ?? "";
+}
+
+function filteredEvents() {
+  const types = getActiveTypeFilters();
+  const staffId = getStaffFilter();
+  return events.filter((event) => {
+    if (!types.has(event.eventType)) return false;
+    if (!staffId) return true;
+    if (event.eventType === "time_off") return event.staffId === staffId;
+    return event.createdByStaffId === staffId;
+  });
+}
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -162,48 +185,53 @@ function eventStaffColor(event: TeamEvent) {
   return staffAccentColor(eventStaffId(event));
 }
 
-function dominantHighlightType(dayEvents: TeamEvent[]): TeamEvent["eventType"] | null {
-  const priority: TeamEvent["eventType"][] = ["closure", "announcement", "event"];
-  for (const type of priority) {
-    if (dayEvents.some((event) => event.eventType === type)) {
-      return type;
-    }
-  }
-  return null;
+function dayKey(year: number, month: number, day: number) {
+  return `${year}-${month}-${day}`;
+}
+
+function isSelectedDay(date: Date) {
+  if (!selectedDay) return false;
+  return (
+    date.getFullYear() === selectedDay.year &&
+    date.getMonth() === selectedDay.month &&
+    date.getDate() === selectedDay.day
+  );
+}
+
+function formatSelectedDayLabel(year: number, month: number, day: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(year, month, day));
 }
 
 function renderEventMarker(event: TeamEvent) {
   const color = eventStaffColor(event);
   const title = escapeHtml(event.title);
-  if (HIGHLIGHT_EVENT_TYPES.has(event.eventType)) {
-    return `<span class="events-calendar__pill events-calendar__pill--${event.eventType}" style="--event-staff-color: ${color}" title="${title}">${title}</span>`;
-  }
-  return `<span class="events-calendar__dot" style="--event-staff-color: ${color}" title="${title}"></span>`;
+  return `<span class="events-calendar__marker events-calendar__marker--${event.eventType}" style="--event-staff-color: ${color}" title="${title}" aria-hidden="true"></span>`;
 }
 
 function renderDayMarkers(dayEvents: TeamEvent[]) {
-  const highlights = dayEvents.filter((event) => HIGHLIGHT_EVENT_TYPES.has(event.eventType));
-  const timeOff = dayEvents.filter((event) => event.eventType === "time_off");
-  const shownHighlights = highlights.slice(0, 2);
-  const shownTimeOff = timeOff.slice(0, 4);
-  const shownCount = shownHighlights.length + shownTimeOff.length;
-  const pills = shownHighlights.map(renderEventMarker).join("");
-  const dots = shownTimeOff.map(renderEventMarker).join("");
-  const totalHidden = dayEvents.length - shownCount;
+  const maxMarkers = 6;
+  const shown = dayEvents.slice(0, maxMarkers);
+  const markers = shown.map(renderEventMarker).join("");
+  const totalHidden = dayEvents.length - shown.length;
   const overflow =
     totalHidden > 0
-      ? `<span class="events-calendar__more">+${totalHidden}</span>`
+      ? `<span class="events-calendar__more" aria-hidden="true">+${totalHidden}</span>`
       : "";
-  const dotsHtml =
-    dots.length > 0 ? `<div class="events-calendar__dots">${dots}</div>` : "";
-
-  return `${pills}${dotsHtml}${overflow}`;
+  return `${markers}${overflow}`;
 }
 
 function renderCalendar() {
   if (!calendarEl) return;
   if (monthLabel) {
     monthLabel.textContent = formatMonthLabel(viewYear, viewMonth);
+  }
+  if (monthHeader) {
+    monthHeader.textContent = formatMonthLabel(viewYear, viewMonth);
   }
 
   const first = new Date(viewYear, viewMonth, 1);
@@ -221,47 +249,78 @@ function renderCalendar() {
 
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(viewYear, viewMonth, day);
-    const dayEvents = events.filter((event) => eventOnDate(event, date));
-    const highlightType = dominantHighlightType(dayEvents);
+    const dayEvents = filteredEvents().filter((event) => eventOnDate(event, date));
     const markers = renderDayMarkers(dayEvents);
     const isToday = sameDay(date, today);
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+    const isSelected = isSelectedDay(date);
     const classes = [
       "events-calendar__cell",
+      dayEvents.length > 0 ? "events-calendar__cell--has-events" : "",
       isToday ? "events-calendar__cell--today" : "",
       isWeekend ? "events-calendar__cell--weekend" : "",
-      highlightType ? `events-calendar__cell--${highlightType}` : "",
+      isSelected ? "events-calendar__cell--selected" : "",
     ]
       .filter(Boolean)
       .join(" ");
+    const ariaLabel =
+      dayEvents.length > 0
+        ? `${day}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}`
+        : String(day);
 
     html += `
-      <div class="${classes}">
+      <button
+        class="${classes}"
+        type="button"
+        data-calendar-day="${dayKey(viewYear, viewMonth, day)}"
+        aria-label="${escapeHtml(ariaLabel)}"
+        aria-pressed="${isSelected ? "true" : "false"}"
+      >
         <span class="events-calendar__day">${day}</span>
         <div class="events-calendar__markers">${markers}</div>
-      </div>
+      </button>
     `;
   }
 
   calendarEl.innerHTML = html;
 }
 
+function eventsForList() {
+  const base = [...filteredEvents()].sort(
+    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+  );
+
+  if (selectedDay) {
+    const date = new Date(selectedDay.year, selectedDay.month, selectedDay.day);
+    return base.filter((event) => eventOnDate(event, date));
+  }
+
+  const now = new Date();
+  return base.filter((event) => {
+    const end = event.endsAt ? new Date(event.endsAt) : new Date(event.startsAt);
+    return end >= now;
+  });
+}
+
 function renderList() {
   if (!listEl) return;
-  const now = new Date();
-  const upcoming = [...events]
-    .filter((event) => {
-      const end = event.endsAt ? new Date(event.endsAt) : new Date(event.startsAt);
-      return end >= now;
-    })
-    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
 
-  if (upcoming.length === 0) {
-    listEl.innerHTML = `<p class="empty-state">No upcoming events this month.</p>`;
+  if (listTitleEl) {
+    listTitleEl.textContent = selectedDay
+      ? formatSelectedDayLabel(selectedDay.year, selectedDay.month, selectedDay.day)
+      : "Upcoming";
+  }
+
+  const listed = eventsForList();
+
+  if (listed.length === 0) {
+    listEl.innerHTML = selectedDay
+      ? `<p class="empty-state">No events on this day.</p>`
+      : `<p class="empty-state">No upcoming events this month.</p>`;
     return;
   }
 
-  listEl.innerHTML = upcoming
+  listEl.innerHTML = listed
     .map((event) => {
       const color = eventStaffColor(event);
       const staffName =
@@ -271,22 +330,46 @@ function renderList() {
       const staffLine = staffName
         ? `<span class="event-row__staff">${escapeHtml(staffName)}</span>`
         : "";
+      const descriptionLine = event.description?.trim()
+        ? `<span class="event-row__description">${escapeHtml(event.description.trim())}</span>`
+        : "";
+      const startDate = new Date(event.startsAt);
+      const eventDayKey = dayKey(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+      );
       return `
         <button
           class="event-row event-row--${event.eventType}"
           type="button"
           data-event-open="${event.id}"
+          data-event-day="${eventDayKey}"
           style="--event-staff-color: ${color}"
         >
           <span class="event-row__dot" aria-hidden="true"></span>
           <span class="event-row__title">${escapeHtml(event.title)}</span>
           <span class="event-row__when">${escapeHtml(formatEventRange(event))}</span>
+          ${descriptionLine}
           ${staffLine}
           ${typeBadge(event.eventType)}
         </button>
       `;
     })
     .join("");
+}
+
+function toggleSelectedDay(year: number, month: number, day: number) {
+  if (selectedDay?.year === year && selectedDay.month === month && selectedDay.day === day) {
+    selectedDay = null;
+  } else {
+    selectedDay = { year, month, day };
+  }
+  renderCalendar();
+  renderList();
+  if (!selectedDay || !listEl) return;
+  const firstMatch = listEl.querySelector<HTMLElement>("[data-event-day]");
+  firstMatch?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function toDateInputValue(iso: string) {
@@ -436,12 +519,25 @@ function closeModal() {
   resetForm();
 }
 
+function refreshViews() {
+  renderCalendar();
+  renderList();
+}
+
+root.querySelectorAll("[data-filter-type]").forEach((el) => {
+  el.addEventListener("change", refreshViews);
+});
+root.querySelectorAll("[data-filter-staff]").forEach((el) => {
+  el.addEventListener("change", refreshViews);
+});
+
 prevBtn?.addEventListener("click", () => {
   viewMonth -= 1;
   if (viewMonth < 0) {
     viewMonth = 11;
     viewYear -= 1;
   }
+  selectedDay = null;
   void loadEvents();
 });
 
@@ -451,6 +547,7 @@ nextBtn?.addEventListener("click", () => {
     viewMonth = 0;
     viewYear += 1;
   }
+  selectedDay = null;
   void loadEvents();
 });
 
@@ -458,7 +555,15 @@ todayBtn?.addEventListener("click", () => {
   const now = new Date();
   viewYear = now.getFullYear();
   viewMonth = now.getMonth();
+  selectedDay = null;
   void loadEvents();
+});
+
+calendarEl?.addEventListener("click", (event) => {
+  const cell = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-calendar-day]");
+  if (!cell?.dataset.calendarDay) return;
+  const [year, month, day] = cell.dataset.calendarDay.split("-").map(Number);
+  toggleSelectedDay(year, month, day);
 });
 
 createBtn?.addEventListener("click", openCreateModal);

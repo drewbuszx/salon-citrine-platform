@@ -2,21 +2,29 @@
 interface Props {
   label: string;
   placeholder?: string;
+  count?: number | string | null;
+  open?: boolean;
 }
 
-const { label, placeholder = "Filter options coming soon." } = Astro.props;
+const { label, placeholder = "No options yet.", count = null, open = false } = Astro.props;
+const hasCustomBody = Astro.slots.has("default");
 ---
 
-<details class="team-list-layout__filter">
+<details class="team-list-layout__filter" open={open}>
   <summary class="team-list-layout__filter-trigger">
     <span>{label}</span>
+    {count != null && count !== "" ? <span class="team-list-layout__filter-count">{count}</span> : null}
     <svg class="team-list-layout__filter-chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none">
       <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
     </svg>
   </summary>
   <div class="team-list-layout__filter-body">
-    <slot>
-      <p class="team-list-layout__filter-placeholder">{placeholder}</p>
-    </slot>
+    {
+      hasCustomBody ? (
+        <slot />
+      ) : (
+        <p class="team-list-layout__filter-placeholder">{placeholder}</p>
+      )
+    }
   </div>
 </details>

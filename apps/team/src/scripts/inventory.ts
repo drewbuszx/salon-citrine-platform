@@ -90,7 +90,11 @@ function initInventory(root: HTMLElement) {
   const isManager = root.dataset.isManager === "1";
   const listEl = root.querySelector<HTMLElement>("[data-product-list]");
   const searchInput = root.querySelector<HTMLInputElement>("[data-search]");
-  const lowStockFilter = root.querySelector<HTMLInputElement>("[data-low-stock-filter]");
+  const categoryFilters = root.querySelectorAll<HTMLInputElement>("[data-filter-category]");
+  const brandFilters = root.querySelectorAll<HTMLInputElement>("[data-filter-brand]");
+  const stockFilters = root.querySelectorAll<HTMLInputElement>("[data-filter-stock]");
+  const minPriceInput = root.querySelector<HTMLInputElement>("[data-filter-min-price]");
+  const maxPriceInput = root.querySelector<HTMLInputElement>("[data-filter-max-price]");
   const lowStockEl = root.querySelector<HTMLElement>("[data-low-stock-banner]");
   const statusEl = root.querySelector<HTMLElement>("[data-status]");
   const totalEl = root.querySelector<HTMLElement>("[data-total-count]");
@@ -143,9 +147,32 @@ function initInventory(root: HTMLElement) {
     }, 2800);
   }
 
+  function getSidebarFilters() {
+    const category =
+      root.querySelector<HTMLInputElement>("[data-filter-category]:checked")?.value?.trim() ?? "";
+    const brand =
+      root.querySelector<HTMLInputElement>("[data-filter-brand]:checked")?.value?.trim() ?? "";
+    const stockLevel =
+      root.querySelector<HTMLInputElement>("[data-filter-stock]:checked")?.value?.trim() ?? "";
+    const minPrice = minPriceInput?.value.trim() ?? "";
+    const maxPrice = maxPriceInput?.value.trim() ?? "";
+    return { category, brand, stockLevel, minPrice, maxPrice };
+  }
+
+  function countActiveFilters() {
+    const { category, brand, stockLevel, minPrice, maxPrice } = getSidebarFilters();
+    let count = 0;
+    if (category) count += 1;
+    if (brand) count += 1;
+    if (stockLevel) count += 1;
+    if (minPrice) count += 1;
+    if (maxPrice) count += 1;
+    return count;
+  }
+
   function updateFilterCount() {
     if (filterCountEl) {
-      filterCountEl.textContent = lowStockFilter?.checked ? "1" : "0";
+      filterCountEl.textContent = String(countActiveFilters());
     }
   }
 
@@ -183,7 +210,14 @@ function initInventory(root: HTMLElement) {
   async function fetchProducts(query = "") {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
-    if (lowStockFilter?.checked) params.set("lowStockOnly", "1");
+    const { category, brand, stockLevel, minPrice, maxPrice } = getSidebarFilters();
+    if (category) params.set("category", category);
+    if (brand) params.set("brand", brand);
+    if (stockLevel === "low") params.set("stockLevel", "low");
+    else if (stockLevel === "in") params.set("stockLevel", "in");
+    else if (stockLevel === "out") params.set("stockLevel", "out");
+    if (minPrice) params.set("minPrice", String(Math.round(Number(minPrice) * 100)));
+    if (maxPrice) params.set("maxPrice", String(Math.round(Number(maxPrice) * 100)));
     const res = await fetch(apiUrl(`/api/inventory/products?${params}`));
     const data = await res.json();
     if (!res.ok || !data.ok) {
@@ -205,8 +239,9 @@ function initInventory(root: HTMLElement) {
     renderProducts();
 
     if (lowStockEl) {
-      lowStockEl.hidden = lowStockCount === 0 || Boolean(lowStockFilter?.checked);
-      if (lowStockCount > 0 && !lowStockFilter?.checked) {
+      const showingLowStock = stockLevel === "low";
+      lowStockEl.hidden = lowStockCount === 0 || showingLowStock;
+      if (lowStockCount > 0 && !showingLowStock) {
         lowStockEl.classList.add("team-list-layout__notice--actionable");
         lowStockEl.innerHTML = `
           <span>${lowStockCount === 1 ? "1 product is" : `${lowStockCount} products are`} at or below reorder threshold.</span>
@@ -214,8 +249,9 @@ function initInventory(root: HTMLElement) {
         lowStockEl.querySelector<HTMLButtonElement>("[data-low-stock-view]")?.addEventListener(
           "click",
           () => {
-            if (lowStockFilter) {
-              lowStockFilter.checked = true;
+            const lowRadio = root.querySelector<HTMLInputElement>('[data-filter-stock][value="low"]');
+            if (lowRadio) {
+              lowRadio.checked = true;
               updateFilterCount();
               void fetchProducts(searchInput?.value ?? "");
             }
@@ -728,12 +764,18 @@ function initInventory(root: HTMLElement) {
     }, 250);
   });
 
-  lowStockFilter?.addEventListener("change", () => {
+  function scheduleFetch() {
     updateFilterCount();
     void fetchProducts(searchInput?.value ?? "").catch((err) => {
       setStatus(err instanceof Error ? err.message : "Load failed", true);
     });
-  });
+  }
+
+  categoryFilters.forEach((el) => el.addEventListener("change", scheduleFetch));
+  brandFilters.forEach((el) => el.addEventListener("change", scheduleFetch));
+  stockFilters.forEach((el) => el.addEventListener("change", scheduleFetch));
+  minPriceInput?.addEventListener("change", scheduleFetch);
+  maxPriceInput?.addEventListener("change", scheduleFetch);
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
