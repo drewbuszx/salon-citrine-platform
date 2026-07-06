@@ -287,12 +287,37 @@ function initInventory(root: HTMLElement) {
 
   function renderCollapsedMeta(product: Product) {
     const parts = [
-      product.sku ? `SKU ${product.sku}` : null,
       product.brand,
-      `${formatQty(product.quantity)} ${product.unit}`,
+      product.sku ? `SKU ${product.sku}` : null,
       product.retailPriceCents != null ? formatPrice(product.retailPriceCents) : null,
     ].filter(Boolean);
     return escapeHtml(parts.join(" · "));
+  }
+
+  function renderQtyLine(product: Product) {
+    const isOut = product.quantity <= 0;
+    const modifier = isOut
+      ? " stock-card__qty--out"
+      : product.isLowStock
+        ? " stock-card__qty--low"
+        : "";
+    let label = isOut
+      ? "Out of stock"
+      : `${formatQty(product.quantity)} ${product.unit}`;
+    if (product.isLowStock && !isOut && product.reorderThreshold > 0) {
+      label += ` · reorder at ${formatQty(product.reorderThreshold)}`;
+    }
+    return `<span class="stock-card__qty${modifier}">${escapeHtml(label)}</span>`;
+  }
+
+  function renderStockBadge(product: Product) {
+    if (product.quantity <= 0) {
+      return '<span class="stock-card__badge stock-card__badge--out">Out</span>';
+    }
+    if (product.isLowStock) {
+      return '<span class="stock-card__badge">Low</span>';
+    }
+    return "";
   }
 
   function renderExpandedBody(product: Product) {
@@ -304,7 +329,10 @@ function initInventory(root: HTMLElement) {
       { label: "Retail price", value: formatPrice(product.retailPriceCents) },
       {
         label: "Reorder at",
-        value: product.reorderThreshold > 0 ? formatQty(product.reorderThreshold) : "—",
+        value:
+          product.reorderThreshold > 0
+            ? `${formatQty(product.reorderThreshold)} ${product.unit}`
+            : "No alert set",
       },
     ];
 
@@ -338,9 +366,9 @@ function initInventory(root: HTMLElement) {
           .join("")}
         <div class="stock-card__detail-item">
           <span class="stock-card__detail-label">On hand</span>
-          <span class="stock-card__detail-value stock-card__detail-value--qty${product.isLowStock ? " stock-card__detail-value--qty-low" : ""}">
+          <span class="stock-card__detail-value stock-card__detail-value--qty${product.quantity <= 0 || product.isLowStock ? " stock-card__detail-value--qty-low" : ""}">
             ${formatQty(product.quantity)} ${escapeHtml(product.unit)}
-            ${product.isLowStock ? " · Low stock" : ""}
+            ${product.quantity <= 0 ? " · Out of stock" : product.isLowStock ? " · Low stock" : ""}
           </span>
         </div>
       </div>
@@ -370,11 +398,12 @@ function initInventory(root: HTMLElement) {
         >
           <span class="stock-card__thumb">
             ${renderProductThumb(product)}
-            ${product.isLowStock ? '<span class="stock-card__badge">Low</span>' : ""}
+            ${renderStockBadge(product)}
           </span>
           <span class="stock-card__summary">
             <span class="stock-card__name">${escapeHtml(product.name)}</span>
             <span class="stock-card__meta">${renderCollapsedMeta(product)}</span>
+            ${renderQtyLine(product)}
           </span>
           <svg class="stock-card__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -390,18 +419,45 @@ function initInventory(root: HTMLElement) {
       </article>`;
   }
 
+  function resetFilters() {
+    if (searchInput) searchInput.value = "";
+    root.querySelectorAll<HTMLInputElement>(
+      "[data-filter-category], [data-filter-brand], [data-filter-stock]",
+    ).forEach((input) => {
+      input.checked = input.value === "";
+    });
+    if (minPriceInput) minPriceInput.value = "";
+    if (maxPriceInput) maxPriceInput.value = "";
+    updateFilterCount();
+    void fetchProducts().catch((err) => {
+      setStatus(err instanceof Error ? err.message : "Load failed", true);
+    });
+  }
+
   function renderProducts() {
     if (!listEl) return;
     if (categories.length === 0) {
-      listEl.innerHTML =
-        '<p class="stock-page__empty">No products found. Try a different search or add a product.</p>';
+      const hasQuery = Boolean(searchInput?.value.trim()) || countActiveFilters() > 0;
+      listEl.innerHTML = hasQuery
+        ? `<div class="stock-page__empty">
+            <p>No products match your search or filters.</p>
+            <button type="button" class="team-list-layout__btn-secondary" data-clear-filters>Clear search &amp; filters</button>
+          </div>`
+        : `<div class="stock-page__empty">
+            <p>No products yet.${isManager ? " Add your first product or scan a barcode to get started." : " Ask a manager to add products, or scan a barcode to check items in."}</p>
+          </div>`;
+      listEl
+        .querySelector<HTMLButtonElement>("[data-clear-filters]")
+        ?.addEventListener("click", resetFilters);
       return;
     }
 
     listEl.innerHTML = categories
       .map((category) => {
         const lowLabel =
-          category.lowStockCount > 0 ? ` · ${category.lowStockCount} low` : "";
+          category.lowStockCount > 0
+            ? ` · <span class="stock-category__low">${category.lowStockCount} low</span>`
+            : "";
         return `
         <section class="stock-category">
           <h3 class="stock-category__title">
