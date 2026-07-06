@@ -54,8 +54,15 @@
 .team-list-layout__filters {
   display: grid;
   gap: 0;
-  flex: 1;
-  overflow-y: auto;
+  /*
+   * align-content:start is load-bearing: the sidebar is a grid item that
+   * stretches to the full (tall) body row, so a flex:1 grid here would let
+   * align-content:stretch distribute the leftover height across the filter
+   * rows — inserting large blank gaps between Category / Stock level / Brand.
+   * Keep the filters intrinsically sized and top-aligned instead.
+   */
+  align-content: start;
+  min-height: 0;
 }
 
 /* Collapsible filter sections (Clients, Stock, Events, etc.) */
@@ -743,11 +750,17 @@
     grid-template-columns: 1fr;
   }
 
-  .team-list-layout__sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--color-stone-200);
-    max-height: 16rem;
-    padding-bottom: 0.75rem;
+  /* Filter sheet layout — sidebar chrome lives in TeamListLayout.astro */
+  .team-list-layout[data-list-filters] .team-list-layout__filter-options--scroll {
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+  }
+
+  .team-list-layout__filter-search {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    min-height: var(--touch-target-min, 2.75rem);
   }
 
   .team-list-layout__sidebar-link,
@@ -759,7 +772,8 @@
   .team-list-layout__sidebar-link.is-active,
   .team-list-layout__sidebar-nav-btn.is-active {
     border-left: none;
-    box-shadow: inset 0 0 0 2px var(--color-citrine);
+    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
+    background: var(--color-selection-bg, var(--color-sage-muted));
   }
 }
 
@@ -771,4 +785,53 @@
   .team-list-layout__main {
     padding-inline: var(--space-4);
   }
+}
+
+/*
+ * Stock page: sticky filter panel beneath the team nav so product results
+ * scroll independently. Scoped to .stock-page so other list pages keep the
+ * existing full-height sidebar chrome.
+ */
+@media (min-width: 901px) {
+  .stock-page .team-list-layout__sidebar {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    align-self: start;
+    max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    overflow-y: auto;
+  }
+}
+
+.stock-page .team-list-layout__filters {
+  flex: 0 0 auto;
+}
+
+.stock-page .team-list-layout__sidebar-footer {
+  margin-top: auto;
+  padding: 0.75rem var(--team-sidebar-inset-x) 0;
+}
+
+.stock-page .team-list-layout__clear-filters {
+  width: 100%;
+  justify-content: center;
+}
+
+/*
+ * Reports page: same sticky-sidebar treatment as Stock, plus a compact section
+ * nav. The nav must NOT stretch to match content-section heights (the reported
+ * "enormous gaps" bug) — it is intrinsically sized and pinned to the top.
+ */
+@media (min-width: 901px) {
+  .reports-page .team-list-layout__sidebar {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    align-self: start;
+    max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    overflow-y: auto;
+  }
+}
+
+.reports-page .team-list-layout__sidebar-nav {
+  flex: 0 0 auto;
+  overflow-y: visible;
 }

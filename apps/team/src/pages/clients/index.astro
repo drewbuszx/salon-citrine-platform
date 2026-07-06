@@ -45,11 +45,38 @@ let initialClients: Array<{
   id: string;
   firstName: string;
   lastName: string;
+  fullName: string;
+  preferredName: string | null;
   phone: string | null;
   email: string | null;
+  tags: string[];
+  tagLabels: string[];
   visitCount: number;
   ltvLabel: string;
+  lastVisitLabel: string | null;
+  providerName: string | null;
+  upcomingLabel: string | null;
 }> = [];
+
+function preferredNameFromPreferences(firstName: string, bookingPreferences: string | null | undefined) {
+  const raw = bookingPreferences?.trim();
+  if (!raw) return null;
+  const goesBy = raw.match(/^goes by\s+(.+)$/i);
+  if (goesBy?.[1]) return goesBy[1].trim();
+  if (raw.includes("\n") || raw.length > 24) return null;
+  if (raw.toLowerCase() === firstName.toLowerCase()) return null;
+  return raw;
+}
+
+function formatVisitDate(iso: string | null | undefined) {
+  if (!iso) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Indiana/Indianapolis",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}
 
 function formatLtv(cents: number | null | undefined) {
   const value = (cents ?? 0) / 100;
@@ -64,7 +91,9 @@ function formatLtv(cents: number | null | undefined) {
 if (!countError) {
   let listQuery = supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email, visit_count, lifetime_value_cents")
+    .select(
+      "id, first_name, last_name, phone, email, tags, visit_count, lifetime_value_cents, last_visit_at, booking_preferences",
+    )
     .order("last_name")
     .order("first_name");
 
@@ -76,15 +105,25 @@ if (!countError) {
   }
 
   const { data } = await listQuery.limit(term.length >= 2 ? 50 : 100);
-  initialClients = (data ?? []).map((row) => ({
-    id: row.id,
-    firstName: row.first_name,
-    lastName: row.last_name,
-    phone: row.phone,
-    email: row.email,
-    visitCount: row.visit_count ?? 0,
-    ltvLabel: formatLtv(row.lifetime_value_cents),
-  }));
+  initialClients = (data ?? []).map((row) => {
+    const tags = (row.tags ?? []).filter(Boolean);
+    return {
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      fullName: `${row.first_name} ${row.last_name}`.trim(),
+      preferredName: preferredNameFromPreferences(row.first_name, row.booking_preferences),
+      phone: row.phone,
+      email: row.email,
+      tags,
+      tagLabels: tags.slice(0, 3),
+      visitCount: row.visit_count ?? 0,
+      ltvLabel: formatLtv(row.lifetime_value_cents),
+      lastVisitLabel: formatVisitDate(row.last_visit_at),
+      providerName: null,
+      upcomingLabel: null,
+    };
+  });
 }
 ---
 
@@ -192,27 +231,30 @@ if (!countError) {
       <span class="team-list-layout__stats-item"><strong data-filter-count>0</strong> filters applied</span>
     </Fragment>
 
-    <label slot="searchBar" class="team-list-layout__search clients-page__search" data-search-wrap>
-      <svg class="team-list-layout__search-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" data-search-icon>
-        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
-        <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
-      </svg>
-      <span class="clients-page__search-spinner" data-search-spinner hidden aria-hidden="true"></span>
-      <input
-        class="team-list-layout__search-input"
-        type="search"
-        name="q"
-        value={initialQuery}
-        placeholder="Search by name, phone number, or email"
-        autocomplete="off"
-        data-search-input
-      />
-    </label>
+    <div slot="searchBar" class="clients-page__search-block">
+      <label class="team-list-layout__search clients-page__search" data-search-wrap>
+        <svg class="team-list-layout__search-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" data-search-icon>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+        </svg>
+        <span class="clients-page__search-spinner" data-search-spinner hidden aria-hidden="true"></span>
+        <input
+          class="team-list-layout__search-input"
+          type="search"
+          name="q"
+          value={initialQuery}
+          placeholder="Search clients"
+          autocomplete="off"
+          data-search-input
+        />
+      </label>
+      <p class="clients-page__search-hint">Search by name, phone, or email</p>
+    </div>
 
     <p class="team-list-layout__notice" data-status hidden aria-live="polite"></p>
 
-    <div class="team-list-layout__table-wrap clients-page__table-wrap" data-table-wrap>
-      <table class="team-list-layout__data-table clients-table">
+    <div class="team-list-layout__table-wrap clients-page__results" data-results-wrap>
+      <table class="team-list-layout__data-table clients-table clients-page__table" aria-label="Clients">
         <thead>
           <tr>
             <th scope="col">First Name</th>
@@ -225,6 +267,9 @@ if (!countError) {
         </thead>
         <tbody data-results></tbody>
       </table>
+
+      <ul class="clients-page__cards" data-card-results aria-label="Clients"></ul>
+
       <p class="clients-page__empty" data-empty hidden>
         <span class="clients-page__empty-icon" aria-hidden="true">👤</span>
         <strong data-empty-title>No clients found</strong>
@@ -288,6 +333,7 @@ if (!countError) {
   const root = document.querySelector("[data-clients-root]");
   const input = root?.querySelector("[data-search-input]");
   const tbody = root?.querySelector("[data-results]");
+  const cardsEl = root?.querySelector("[data-card-results]");
   const status = root?.querySelector("[data-status]");
   const emptyState = root?.querySelector("[data-empty]");
   const totalEl = root?.querySelector("[data-total-count]");
@@ -302,10 +348,19 @@ if (!countError) {
   const searchIcon = root?.querySelector("[data-search-icon]");
   const emptyTitle = root?.querySelector("[data-empty-title]");
   const emptyHint = root?.querySelector("[data-empty-hint]");
-  const tableWrap = root?.querySelector("[data-table-wrap]");
+  const resultsWrap = root?.querySelector("[data-results-wrap]");
+  const CARD_MQ = window.matchMedia("(max-width: 640px)");
   let debounce = null;
   let toastTimer = null;
   let loadingCount = 0;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   function getFilters() {
     const provider =
@@ -318,12 +373,97 @@ if (!countError) {
     return { provider, tag, referral, purchased, hasVisits };
   }
 
-  function formatPhone(value) {
+  function formatPhoneDisplay(value) {
     return value?.trim() || "—";
   }
 
-  function formatEmail(value) {
+  function formatEmailDisplay(value) {
     return value?.trim() || "—";
+  }
+
+  function phoneHref(value) {
+    const digits = value?.replace(/\D/g, "") ?? "";
+    return digits ? `tel:${digits}` : null;
+  }
+
+  function emailHref(value) {
+    const email = value?.trim();
+    return email ? `mailto:${email}` : null;
+  }
+
+  function renderClientCard(client) {
+    const linkBase = `${clientsBase}/${client.id}`;
+    const fullName = client.fullName || `${client.firstName || ""} ${client.lastName || ""}`.trim() || "Client";
+    const preferred = client.preferredName
+      ? `<p class="clients-card__preferred">Goes by ${escapeHtml(client.preferredName)}</p>`
+      : "";
+    const phone = formatPhoneDisplay(client.phone);
+    const email = formatEmailDisplay(client.email);
+    const tel = phoneHref(client.phone);
+    const mail = emailHref(client.email);
+    const phoneMarkup = tel
+      ? `<a class="clients-card__link" href="${tel}">${escapeHtml(phone)}</a>`
+      : escapeHtml(phone);
+    const emailMarkup = mail
+      ? `<a class="clients-card__link" href="${mail}">${escapeHtml(email)}</a>`
+      : escapeHtml(email);
+    const provider = client.providerName
+      ? `<div class="clients-card__row"><span class="clients-card__label">Provider</span><span>${escapeHtml(client.providerName)}</span></div>`
+      : "";
+    const tags = (client.tagLabels ?? client.tags ?? []).slice(0, 3);
+    const tagsMarkup =
+      tags.length > 0
+        ? `<div class="clients-card__tags">${tags
+            .map((tag) => `<span class="clients-card__tag">${escapeHtml(tag)}</span>`)
+            .join("")}</div>`
+        : "";
+    const lastVisit = client.lastVisitLabel
+      ? `<div class="clients-card__row"><span class="clients-card__label">Last visit</span><span>${escapeHtml(client.lastVisitLabel)}</span></div>`
+      : client.visitCount > 0
+        ? `<div class="clients-card__row"><span class="clients-card__label">Visits</span><span>${client.visitCount}</span></div>`
+        : "";
+    const upcoming = client.upcomingLabel
+      ? `<div class="clients-card__row clients-card__row--upcoming"><span class="clients-card__label">Next appt</span><span>${escapeHtml(client.upcomingLabel)}</span></div>`
+      : "";
+    const stats =
+      lastVisit || upcoming
+        ? `<div class="clients-card__stats">${lastVisit}${upcoming}</div>`
+        : `<div class="clients-card__stats clients-card__stats--compact"><span>${client.visitCount ?? 0} visits</span><span>${escapeHtml(client.ltvLabel ?? "—")} LTV</span></div>`;
+
+    return `
+      <li class="clients-card">
+        <div class="clients-card__head">
+          <h3 class="clients-card__name">${escapeHtml(fullName)}</h3>
+          ${preferred}
+        </div>
+        <div class="clients-card__contact">
+          <div class="clients-card__row"><span class="clients-card__label">Phone</span>${phoneMarkup}</div>
+          <div class="clients-card__row"><span class="clients-card__label">Email</span>${emailMarkup}</div>
+          ${provider}
+        </div>
+        ${tagsMarkup}
+        ${stats}
+        <a class="clients-card__action team-list-layout__btn-secondary" href="${linkBase}">View client</a>
+      </li>
+    `;
+  }
+
+  function renderClientCards(clients) {
+    if (!cardsEl) return;
+    cardsEl.innerHTML = clients.map((client) => renderClientCard(client)).join("");
+  }
+
+  function renderSkeletonCards() {
+    if (!cardsEl) return;
+    cardsEl.innerHTML = Array.from({ length: 4 }, () =>
+      `<li class="clients-card clients-card--skeleton" aria-hidden="true">
+        <span class="skeleton skeleton--line" style="width:55%;height:1rem"></span>
+        <span class="skeleton skeleton--line" style="width:40%"></span>
+        <span class="skeleton skeleton--line" style="width:70%"></span>
+        <span class="skeleton skeleton--line" style="width:50%"></span>
+        <span class="skeleton skeleton--block" style="height:2.25rem;margin-top:0.35rem"></span>
+      </li>`,
+    ).join("");
   }
 
   function showStatus(message, isError = false) {
@@ -379,8 +519,9 @@ if (!countError) {
     tbody.innerHTML = "";
 
     if (clients.length === 0) {
+      if (cardsEl) cardsEl.innerHTML = "";
       emptyState.hidden = false;
-      tableWrap?.classList.add("clients-page__table-wrap--empty");
+      resultsWrap?.classList.add("clients-page__results--empty");
       const filters = getFilters();
       const hasFilters =
         filters.provider ||
@@ -398,7 +539,7 @@ if (!countError) {
       }
       if (emptyHint) {
         emptyHint.textContent = hasFilters
-          ? "Try clearing a sidebar filter or broadening your search."
+          ? "Try clearing a filter or broadening your search."
           : term.length >= 2
             ? "Check spelling or search by phone or email."
             : "Add your first client with the button above.";
@@ -407,19 +548,20 @@ if (!countError) {
     }
 
     emptyState.hidden = true;
-    tableWrap?.classList.remove("clients-page__table-wrap--empty");
+    resultsWrap?.classList.remove("clients-page__results--empty");
+    renderClientCards(clients);
 
     for (const client of clients) {
       const tr = document.createElement("tr");
       const linkBase = `${clientsBase}/${client.id}`;
       tr.dataset.clientHref = linkBase;
       tr.innerHTML = `
-        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${client.firstName || "—"}</a></td>
-        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${client.lastName || "—"}</a></td>
-        <td>${formatPhone(client.phone)}</td>
-        <td>${formatEmail(client.email)}</td>
+        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${escapeHtml(client.firstName || "—")}</a></td>
+        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${escapeHtml(client.lastName || "—")}</a></td>
+        <td>${escapeHtml(formatPhoneDisplay(client.phone))}</td>
+        <td>${escapeHtml(formatEmailDisplay(client.email))}</td>
         <td class="clients-table__num">${client.visitCount ?? 0}</td>
-        <td class="clients-table__num clients-table__ltv">${client.ltvLabel ?? "—"}</td>
+        <td class="clients-table__num clients-table__ltv">${escapeHtml(client.ltvLabel ?? "—")}</td>
       `;
       bindClientRow(tr, linkBase);
       tbody.appendChild(tr);
@@ -429,7 +571,8 @@ if (!countError) {
   function renderSkeletonRows() {
     if (!tbody) return;
     emptyState.hidden = true;
-    tableWrap?.classList.remove("clients-page__table-wrap--empty");
+    resultsWrap?.classList.remove("clients-page__results--empty");
+    renderSkeletonCards();
     tbody.innerHTML = Array.from({ length: 6 }, () =>
       `<tr class="clients-table__skeleton-row">
         <td><span class="skeleton skeleton--line"></span></td>
@@ -506,6 +649,10 @@ if (!countError) {
   });
   root?.querySelector("[data-filter-has-visits]")?.addEventListener("change", () => {
     showToast("Filters updated");
+    scheduleLoad();
+  });
+
+  root?.closest(".team-list-layout")?.addEventListener("team-filters-restored", () => {
     scheduleLoad();
   });
 
@@ -591,6 +738,10 @@ if (!countError) {
   if (initialQuery.trim().length === 1) {
     showStatus("Type at least 2 characters to search.");
   }
+
+  if (CARD_MQ.matches) {
+    queueMicrotask(() => loadClients(input?.value.trim() ?? ""));
+  }
 </script>
 
 <style>
@@ -617,6 +768,19 @@ if (!countError) {
     border-radius: 50%;
     background: var(--color-stone-100);
     font-size: 0.75rem;
+    color: var(--color-stone-500);
+  }
+
+  .clients-page__search-block {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .clients-page__search-hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
     color: var(--color-stone-500);
   }
 
@@ -660,6 +824,132 @@ if (!countError) {
     height: 0.75rem;
   }
 
+  .clients-page__results {
+    min-width: 0;
+  }
+
+  .clients-page__cards {
+    display: none;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: var(--mobile-space-sm, 0.75rem);
+  }
+
+  .clients-card {
+    display: grid;
+    gap: 0.65rem;
+    padding: var(--mobile-space-md, 1rem);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+  }
+
+  .clients-card--skeleton {
+    pointer-events: none;
+  }
+
+  .clients-card__head {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .clients-card__name {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: var(--leading-tight);
+    color: var(--color-stone-800);
+  }
+
+  .clients-card__preferred {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .clients-card__contact,
+  .clients-card__stats {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .clients-card__row {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 0.5rem;
+    align-items: baseline;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-700);
+    min-width: 0;
+  }
+
+  .clients-card__row--upcoming span:last-child {
+    color: var(--color-stone-800);
+    font-weight: 500;
+  }
+
+  .clients-card__label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .clients-card__link {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-word;
+  }
+
+  .clients-card__link:hover,
+  .clients-card__link:focus-visible {
+    color: var(--color-stone-900);
+  }
+
+  .clients-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .clients-card__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(141, 158, 136, 0.12);
+    border: 1px solid rgba(141, 158, 136, 0.35);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-stone-700);
+  }
+
+  .clients-card__stats--compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: var(--text-sm);
+    color: var(--color-stone-600);
+  }
+
+  .clients-card__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: var(--touch-target-min, 2.75rem);
+    margin-top: 0.15rem;
+    text-decoration: none;
+    text-align: center;
+  }
+
   .clients-page__empty {
     display: grid;
     gap: 0.35rem;
@@ -675,11 +965,16 @@ if (!countError) {
     color: var(--color-stone-500);
   }
 
-  .clients-page__table-wrap--empty .team-list-layout__data-table {
+  .clients-page__results--empty .clients-page__table,
+  .clients-page__results--empty .clients-page__cards {
+    display: none;
+  }
+
+  .clients-page__results--empty .team-list-layout__data-table {
     border-bottom: none;
   }
 
-  .clients-page__table-wrap--empty .team-list-layout__data-table tbody:empty {
+  .clients-page__results--empty .team-list-layout__data-table tbody:empty {
     display: none;
   }
 
@@ -887,6 +1182,33 @@ if (!countError) {
 
   .clients-toast[hidden] {
     display: none;
+  }
+
+  @media (max-width: 640px) {
+    .clients-page__table {
+      display: none;
+    }
+
+    .clients-page__cards {
+      display: grid;
+    }
+
+    .clients-page__stats-sep {
+      display: none;
+    }
+
+    .team-list-layout__stats {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.15rem;
+    }
+  }
+
+  @media (min-width: 641px) {
+    .clients-page__cards {
+      display: none !important;
+    }
   }
 
   @media (max-width: 640px) {

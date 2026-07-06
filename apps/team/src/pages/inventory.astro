@@ -30,9 +30,6 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     data-is-manager={isManager ? "1" : "0"}
   >
     <TeamListLayout title="Stock" mainTitle="Your Products" sidebarTitle="Filter Products">
-      <button slot="headerActions" class="team-list-layout__btn-secondary stock-page__scan-desktop" type="button" data-scan-open>
-        Scan to check in
-      </button>
       {
         isManager ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-add-open>
@@ -41,7 +38,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         ) : null
       }
 
-      <TeamListFilter slot="sidebarFilters" label="Category" count={categories.length} open={categories.length > 0}>
+      <TeamListFilter slot="sidebarFilters" label={`Category · ${categories.length}`} open={categories.length > 0}>
         {
           categories.length > 0 ? (
             <div class="team-list-layout__filter-options">
@@ -53,7 +50,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
                 categories.map((category) => (
                   <label class="team-list-layout__filter-option">
                     <input type="radio" name="stock-category" value={category} data-filter-category />
-                    <span>{category}</span>
+                    <span class="stock-filter-cat">{category}</span>
                   </label>
                 ))
               }
@@ -85,7 +82,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         </div>
       </TeamListFilter>
 
-      <TeamListFilter slot="sidebarFilters" label="Brand" count={brands.length} open={brands.length > 0}>
+      <TeamListFilter slot="sidebarFilters" label={`Brand · ${brands.length}`} open={brands.length > 0}>
         {
           brands.length > 0 ? (
             <div class="team-list-layout__filter-options">
@@ -121,34 +118,83 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         </div>
       </TeamListFilter>
 
+      <div slot="sidebarFooter" class="team-list-layout__sidebar-footer">
+        <button
+          type="button"
+          class="team-list-layout__btn-secondary team-list-layout__clear-filters"
+          data-clear-filters-btn
+          disabled
+        >
+          Clear filters
+        </button>
+      </div>
+
       <Fragment slot="stats">
         <span class="stock-page__filter-stats" data-filter-stats>
           <span data-total-count>—</span> products
-          · <span data-low-stock-count>—</span> low-stock
+          · <span data-low-stock-count>—</span> low stock
           · <span data-filter-count>0</span> filters applied
         </span>
       </Fragment>
 
-      <p class="team-list-layout__notice team-list-layout__notice--banner" data-low-stock-banner hidden></p>
+      <div slot="toolbar" class="stock-toolbar">
+        <label class="team-list-layout__search stock-toolbar__search">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+          </svg>
+          <input
+            class="team-list-layout__search-input"
+            type="search"
+            placeholder="Search products"
+            aria-label="Search products by name, brand, barcode, SKU, or category"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="search"
+            data-search
+          />
+        </label>
 
-      <label slot="searchBar" class="team-list-layout__search">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none">
-          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
-          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
-        </svg>
-        <input
-          class="team-list-layout__search-input"
-          type="search"
-          placeholder="Search or scan: name, brand, barcode, SKU, category"
-          aria-label="Search products by name, brand, barcode, SKU, or category"
-          autocomplete="off"
-          autocapitalize="off"
-          autocorrect="off"
-          spellcheck="false"
-          enterkeyhint="search"
-          data-search
-        />
-      </label>
+        <div class="stock-toolbar__controls">
+          <label class="stock-toolbar__sort">
+            <span class="stock-visually-hidden">Sort products</span>
+            <select class="stock-toolbar__select" data-sort aria-label="Sort products">
+              <option value="name">Name (A–Z)</option>
+              <option value="name-desc">Name (Z–A)</option>
+              <option value="stock-asc">Stock (low → high)</option>
+              <option value="stock-desc">Stock (high → low)</option>
+              <option value="low">Low stock first</option>
+              <option value="category">Category</option>
+            </select>
+          </label>
+
+          <button
+            type="button"
+            class="stock-toolbar__toggle"
+            data-group-toggle
+            aria-pressed="false"
+          >
+            Group by category
+          </button>
+
+          <div class="stock-toolbar__view" role="group" aria-label="View mode">
+            <button type="button" class="stock-toolbar__view-btn" data-view="grid" aria-pressed="true" aria-label="Grid view">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/></svg>
+            </button>
+            <button type="button" class="stock-toolbar__view-btn" data-view="table" aria-pressed="false" aria-label="List view">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <button type="button" class="team-list-layout__btn-secondary stock-toolbar__scan" data-scan-open>
+            Scan
+          </button>
+        </div>
+      </div>
+
+      <p class="stock-alert" data-low-stock-banner hidden></p>
 
       <p class="team-list-layout__notice" data-status hidden aria-live="polite"></p>
 
@@ -156,7 +202,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         class="stock-page__list"
         data-product-list
         role="region"
-        aria-label="Product inventory, grouped by category"
+        aria-label="Product inventory"
       >
         <p class="stock-page__empty">Loading products…</p>
       </div>
@@ -392,6 +438,18 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     ) : null
   }
 
+  <!-- Product detail modal -->
+  <div class="inventory-modal" data-detail-modal hidden>
+    <div class="inventory-modal__backdrop" data-modal-close="detail"></div>
+    <div class="inventory-modal__panel inventory-modal__panel--detail" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+      <div class="inventory-modal__head">
+        <h2 id="detail-title" data-detail-title>Product</h2>
+        <button class="inventory-modal__close" type="button" data-modal-close="detail" aria-label="Close">×</button>
+      </div>
+      <div class="stock-detail" data-detail-body></div>
+    </div>
+  </div>
+
   <div class="stock-toast" data-toast hidden role="status"></div>
 
   <script define:vars={{ apiBase: teamUrl("") }}>
@@ -412,23 +470,16 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .stock-page__scan-desktop {
-    display: none;
-  }
-
-  .team-list-layout__notice--banner {
-    padding: 0.65rem 0.85rem;
-    border: 1px solid #fcd34d;
-    border-radius: 0.25rem;
-    background: #fffbeb;
-    color: #92400e;
-  }
-
-  .team-list-layout__notice--banner.team-list-layout__notice--actionable {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.65rem;
+  .stock-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .stock-page__filter-stats {
@@ -445,53 +496,184 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     font-weight: 600;
   }
 
-  .stock-page__list {
-    display: grid;
-    gap: 1rem;
-    min-width: 0;
+  /* Toolbar: search + sort + view + group-by + scan */
+  .stock-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
   }
 
-  .stock-category {
+  .stock-toolbar__search {
+    flex: 1 1 16rem;
+    max-width: 24rem;
+    margin-bottom: 0;
+  }
+
+  .stock-toolbar__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .stock-toolbar__select {
+    height: 2.35rem;
+    padding: 0 2rem 0 0.7rem;
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 0.6rem center;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-stone-700);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+
+  .stock-toolbar__select:focus-visible {
+    outline: none;
+    border-color: var(--color-citrine);
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+
+  .stock-toolbar__toggle {
+    height: 2.35rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-stone-700);
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .stock-toolbar__toggle:hover,
+  .stock-toolbar__toggle:focus-visible {
+    background: var(--color-stone-50);
+    border-color: var(--color-stone-400);
+    outline: none;
+  }
+
+  .stock-toolbar__toggle.is-active {
+    background: var(--color-citrine-muted);
+    border-color: var(--color-citrine);
+    color: var(--color-citrine-dark);
+    font-weight: 600;
+  }
+
+  .stock-toolbar__view {
+    display: inline-flex;
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .stock-toolbar__view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    border: none;
+    background: var(--color-bg);
+    color: var(--color-stone-500);
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .stock-toolbar__view-btn + .stock-toolbar__view-btn {
+    border-left: 1px solid var(--color-stone-300);
+  }
+
+  .stock-toolbar__view-btn:hover {
+    background: var(--color-stone-50);
+    color: var(--color-stone-700);
+  }
+
+  .stock-toolbar__view-btn.is-active {
+    background: var(--color-citrine-muted);
+    color: var(--color-citrine-dark);
+  }
+
+  .stock-toolbar__scan {
+    height: 2.35rem;
+  }
+
+  /* Compact low-stock alert */
+  .stock-alert {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 1rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #f4d78a;
+    border-left: 3px solid var(--color-citrine);
+    border-radius: var(--radius-sm);
+    background: #fffbeb;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: #8a5a1a;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .stock-alert:not([hidden]) {
+    display: inline-flex;
+  }
+
+  .stock-alert__text {
+    font-weight: 500;
+  }
+
+  .stock-alert__view {
+    padding: 0.2rem 0.55rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .stock-alert__view:hover,
+  .stock-alert__view:focus-visible {
+    background: var(--color-citrine-hover);
+    outline: none;
+  }
+
+  .stock-page__list {
     min-width: 0;
   }
 
   /*
    * Everything below targets markup that inventory.ts injects via
    * listEl.innerHTML — those nodes never receive Astro's scoped
-   * data-astro-cid attribute, so these rules MUST be :global() or they
+   * data-astro-cid attribute, so these rules MUST live in is:global or they
    * are silently dropped (same bug class as the team-list-sidebar fix).
    */
-  .stock-category__title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem;
-    margin: 0 0 0.75rem;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #374151;
-    text-transform: capitalize;
-  }
 
-  .stock-category__count {
-    font-weight: 400;
-    color: #9ca3af;
-  }
-
-  .stock-category__low {
-    font-weight: 600;
-    color: var(--color-error);
-  }
-
-  .stock-category {
-    min-width: 0;
-  }
-
+  /* Continuous responsive grid (default view) */
   .stock-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
     min-width: 0;
   }
 
@@ -499,276 +681,437 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     min-width: 0;
   }
 
+  /* Grouped view sections */
+  .stock-group + .stock-group {
+    margin-top: 1.75rem;
+  }
+
+  .stock-group__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+  }
+
+  .stock-group__title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .stock-group__count {
+    font-size: var(--text-sm);
+    color: var(--color-stone-400);
+  }
+
+  .stock-group__low {
+    font-weight: 600;
+    color: var(--color-error);
+  }
+
+  /* Info-first product card */
   .stock-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.7rem;
     min-width: 0;
     max-width: 100%;
+    padding: 0.7rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-md);
     background: var(--color-bg);
-    overflow: hidden;
+    cursor: pointer;
     transition:
       border-color var(--transition-base),
       box-shadow var(--transition-base),
       transform var(--transition-base);
   }
 
-  .stock-card:not(.stock-card--expanded):hover {
+  .stock-card:hover {
     border-color: var(--color-citrine);
     box-shadow: var(--shadow-card-hover);
-    transform: translateY(-3px);
+    transform: translateY(-2px);
   }
 
-  .stock-card--expanded {
-    grid-column: 1 / -1;
-    border-color: var(--color-citrine);
-    box-shadow: 0 2px 12px rgba(231, 172, 70, 0.15);
+  .stock-card:focus-visible {
+    outline: 2px solid var(--color-citrine);
+    outline-offset: 2px;
   }
 
   .stock-card--low {
     border-color: var(--color-dusty-rose);
-    box-shadow: 0 0 0 1px rgba(174, 148, 143, 0.25);
+    background: linear-gradient(0deg, rgba(174, 148, 143, 0.06), rgba(174, 148, 143, 0.06)), var(--color-bg);
   }
 
-  .stock-card--low:not(.stock-card--expanded):hover {
+  .stock-card--low:hover {
     border-color: #9a7a72;
-    box-shadow: var(--shadow-card-hover), 0 0 0 1px rgba(174, 148, 143, 0.35);
   }
 
-  .stock-card--low.stock-card--expanded {
-    border-color: #c4847a;
+  .stock-card--out {
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-50);
   }
 
-  .stock-card__header {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.3rem;
-    width: 100%;
-    padding: 0.35rem;
-    border: none;
-    background: transparent;
-    text-align: left;
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  .stock-card--expanded .stock-card__header {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.65rem 0.75rem;
-  }
-
-  .stock-card__header:focus-visible {
-    outline: 2px solid var(--color-citrine);
-    outline-offset: -2px;
-  }
-
-  .stock-card__thumb {
+  /* Thumbnail with intentional fallback + load/error states */
+  .stock-thumb {
     position: relative;
-    width: 100%;
-    aspect-ratio: 1;
     flex-shrink: 0;
     border-radius: var(--radius-sm);
-    background: var(--color-stone-100);
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: var(--color-stone-100);
   }
 
-  .stock-card--expanded .stock-card__thumb {
+  .stock-thumb--sm {
     width: 3rem;
     height: 3rem;
-    aspect-ratio: auto;
   }
 
-  .stock-card__img {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    object-fit: cover;
+  .stock-thumb--lg {
+    width: 5rem;
+    height: 5rem;
   }
 
-  .stock-card__placeholder {
+  .stock-thumb__fallback {
+    position: absolute;
+    inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 0.1rem;
+    padding: 0.15rem;
+    text-align: center;
+    background: linear-gradient(145deg, var(--color-stone-50) 0%, var(--color-stone-100) 100%);
+    color: var(--color-stone-500);
+  }
+
+  .stock-thumb__initials {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--color-stone-600);
+  }
+
+  .stock-thumb__cat {
+    font-family: var(--font-body);
+    font-size: 0.5rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-stone-400);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .stock-thumb--lg .stock-thumb__initials {
+    font-size: 1.4rem;
+  }
+
+  .stock-thumb__img {
+    position: relative;
+    z-index: 1;
     width: 100%;
     height: 100%;
-    color: var(--color-stone-300);
-    background: linear-gradient(145deg, var(--color-stone-50) 0%, var(--color-stone-100) 100%);
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity var(--transition-base);
   }
 
-  .stock-card__placeholder svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    max-width: 100%;
-    max-height: 100%;
-    display: block;
-    opacity: 0.65;
+  .stock-thumb.is-loaded .stock-thumb__img {
+    opacity: 1;
   }
 
-  .stock-card svg {
-    max-width: 100%;
-    flex-shrink: 0;
+  .stock-thumb.is-broken .stock-thumb__img {
+    display: none;
   }
 
-  .stock-card--expanded .stock-card__placeholder svg {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-
-  .stock-card__badge {
-    position: absolute;
-    top: 0.25rem;
-    right: 0.25rem;
-    font-family: var(--font-body);
-    font-size: 0.5625rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 0.15rem 0.4rem;
-    border-radius: var(--radius-sm);
-    color: #fff;
-    background: var(--color-error);
-    border: 1px solid rgba(180, 35, 24, 0.4);
-    box-shadow: 0 1px 4px rgba(180, 35, 24, 0.25);
-    z-index: 1;
-  }
-
-  .stock-card__badge--out {
-    background: var(--color-stone-700);
-    border-color: rgba(47, 42, 40, 0.4);
-    box-shadow: 0 1px 4px rgba(47, 42, 40, 0.25);
-  }
-
-  .stock-card__summary {
+  .stock-card__info {
     display: grid;
-    gap: 0.1rem;
+    gap: 0.15rem;
     min-width: 0;
+    align-content: start;
   }
 
   .stock-card__name {
-    font-size: 0.6875rem;
+    margin: 0;
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: #111827;
+    color: var(--color-stone-800);
     line-height: 1.25;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    /* leave room for the kebab menu */
+    padding-right: 1.5rem;
   }
 
-  .stock-card--expanded .stock-card__name {
-    font-size: 0.875rem;
-    -webkit-line-clamp: unset;
-    display: block;
-  }
-
-  .stock-card__meta {
-    font-size: 0.625rem;
-    color: #6b7280;
+  .stock-card__sub,
+  .stock-card__sku,
+  .stock-card__reorder {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .stock-card--expanded .stock-card__meta {
-    font-size: 0.75rem;
+  .stock-card__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.15rem;
   }
 
-  .stock-card__qty {
-    font-size: 0.625rem;
+  /* Quantity + status shared across grid, table, detail */
+  .stock-qty {
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-stone-600);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--color-stone-700);
   }
 
-  .stock-card--expanded .stock-card__qty {
-    display: none;
+  .stock-qty--lg {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
   }
 
-  .stock-card__qty--low {
+  .stock-qty--low {
     color: var(--color-error);
   }
 
-  .stock-card__qty--out {
+  .stock-qty--out {
     color: var(--color-stone-500);
-    font-weight: 500;
   }
 
-  .stock-card__chevron {
+  .stock-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-body);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .stock-status--in {
+    background: var(--color-sage-muted, #e7ede4);
+    color: #4a5c43;
+  }
+
+  .stock-status--low {
+    background: rgba(174, 148, 143, 0.2);
+    color: #8a5148;
+  }
+
+  .stock-status--out {
+    background: var(--color-stone-200);
+    color: var(--color-stone-600);
+  }
+
+  /* Kebab menu */
+  .stock-menu {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    z-index: 3;
+  }
+
+  .stock-row .stock-menu {
+    position: static;
+  }
+
+  .stock-menu__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-stone-500);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .stock-menu__btn::-webkit-details-marker {
     display: none;
-    width: 1.1rem;
-    height: 1.1rem;
-    flex-shrink: 0;
-    color: #9ca3af;
-    transition: transform 0.25s ease;
   }
 
-  .stock-card--expanded .stock-card__chevron {
-    display: block;
-    transform: rotate(180deg);
+  .stock-menu__btn svg {
+    width: 1rem;
+    height: 1rem;
   }
 
-  .stock-card__expand {
+  .stock-menu__btn:hover,
+  .stock-menu[open] .stock-menu__btn {
+    background: var(--color-stone-100);
+    color: var(--color-stone-700);
+  }
+
+  .stock-menu__list {
+    position: absolute;
+    top: calc(100% + 0.2rem);
+    right: 0;
+    z-index: 20;
     display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.3s ease;
+    min-width: 9rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-lg);
   }
 
-  .stock-card--expanded .stock-card__expand {
-    grid-template-rows: 1fr;
+  .stock-menu__item {
+    padding: 0.45rem 0.6rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-stone-700);
+    text-align: left;
+    cursor: pointer;
   }
 
-  .stock-card__body {
-    overflow: hidden;
+  .stock-menu__item:hover,
+  .stock-menu__item:focus-visible {
+    background: var(--color-citrine-muted);
+    color: var(--color-citrine-dark);
+    outline: none;
   }
 
-  .stock-card__body-inner {
-    padding: 0 0.75rem 0.75rem;
-    border-top: 1px solid transparent;
-    transition: border-color 0.2s ease;
+  /* Table / list view */
+  .stock-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
   }
 
-  .stock-card--expanded .stock-card__body-inner {
-    border-top-color: var(--color-stone-200);
-    padding-top: 0.85rem;
+  .stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
   }
 
-  @media (min-width: 640px) {
-    .stock-card--expanded .stock-card__body-inner {
-      max-width: 42rem;
-    }
+  .stock-table th {
+    padding: 0.6rem 0.85rem;
+    border-bottom: 1px solid var(--color-stone-200);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--color-stone-500);
+    background: var(--color-stone-50);
+    white-space: nowrap;
   }
 
-  .stock-card__detail-grid {
+  .stock-table td {
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--color-stone-200);
+    color: var(--color-stone-700);
+    vertical-align: middle;
+  }
+
+  .stock-table tbody tr {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+
+  .stock-table tbody tr:hover td {
+    background: var(--color-stone-50);
+  }
+
+  .stock-row--low td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-dusty-rose);
+  }
+
+  .stock-row--out td:first-child {
+    box-shadow: inset 3px 0 0 var(--color-stone-400);
+  }
+
+  .stock-row__product {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .stock-row__product .stock-thumb--sm {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .stock-row__name {
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .stock-row__qty {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .stock-row__actions {
+    text-align: right;
+  }
+
+  /* Detail modal body */
+  .stock-detail__top {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .stock-detail__headline {
+    display: grid;
+    gap: 0.3rem;
+  }
+
+  .stock-detail__qty-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .stock-detail__reorder {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .stock-detail__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem 1.25rem;
-    margin-bottom: 1rem;
+    margin: 0 0 1rem;
     padding: 0.85rem;
     border-radius: var(--radius-sm);
     background: var(--color-stone-50);
     border: 1px solid var(--color-stone-200);
   }
 
-  @media (min-width: 640px) {
-    .stock-card__detail-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .stock-card__detail-item {
+  .stock-detail__item {
     display: grid;
     gap: 0.1rem;
+    min-width: 0;
   }
 
-  .stock-card__detail-label {
+  .stock-detail__item dt {
     font-size: 0.625rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -776,123 +1119,85 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     color: var(--color-stone-500);
   }
 
-  .stock-card__detail-value {
+  .stock-detail__item dd {
+    margin: 0;
     font-size: 0.8125rem;
     color: var(--color-stone-700);
+    overflow-wrap: anywhere;
   }
 
-  .stock-card__detail-value--qty {
-    font-family: var(--font-display);
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--color-stone-800);
-  }
-
-  .stock-card__detail-value--qty-low {
-    color: var(--color-error);
-  }
-
-  .stock-card__notes {
-    margin: 0 0 0.85rem;
+  .stock-detail__notes {
+    margin: 0 0 1rem;
     font-size: 0.8125rem;
-    color: #6b7280;
+    color: var(--color-stone-500);
     line-height: 1.45;
   }
 
-  .stock-card__hero-img {
-    width: 100%;
-    max-width: 14rem;
-    max-height: 10rem;
-    object-fit: contain;
-    border-radius: 0.25rem;
-    background: #f9fafb;
-    margin-bottom: 0.85rem;
-  }
-
-  @media (min-width: 640px) {
-    .stock-card--expanded .stock-card__hero-img {
-      max-width: 10rem;
-      max-height: 8rem;
-    }
-  }
-
-  .stock-card__actions {
+  .stock-detail__actions {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.45rem;
-    margin-bottom: 0.85rem;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
   }
 
-  .stock-card__actions .team-list-layout__btn-secondary,
-  .stock-card__actions .team-list-layout__btn-primary {
-    padding: 0.45rem 0.65rem;
+  .stock-detail__actions .team-list-layout__btn-primary,
+  .stock-detail__actions .team-list-layout__btn-secondary {
+    padding: 0.5rem 0.65rem;
     font-size: 0.75rem;
     text-align: center;
   }
 
-  .stock-card__actions .stock-card__edit-btn {
-    grid-column: 1 / -1;
-  }
-
-  .stock-card__close {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin-bottom: 0.65rem;
-    padding: 0;
-    border: none;
-    background: none;
-    font-family: var(--font-sans);
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #6b7280;
-    cursor: pointer;
-  }
-
-  .stock-card__close:hover,
-  .stock-card__close:focus-visible {
-    color: #374151;
-    outline: none;
-  }
-
-  .stock-card__history-title {
+  .stock-detail__history-title {
     margin: 0 0 0.35rem;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #9ca3af;
+    color: var(--color-stone-400);
   }
 
-  .stock-card__history {
+  .stock-detail__history {
     display: grid;
     gap: 0.35rem;
   }
 
-  .stock-card__history-row {
+  .stock-detail__history-row {
     display: grid;
     gap: 0.05rem;
     padding: 0.35rem 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--color-stone-100);
     font-size: 0.8125rem;
   }
 
-  .stock-card__history-meta {
+  .stock-detail__history-meta {
     font-size: 0.6875rem;
-    color: #9ca3af;
+    color: var(--color-stone-400);
   }
 
-  .stock-card__history-loading {
+  .stock-detail__history-loading {
     margin: 0;
     font-size: 0.8125rem;
-    color: #9ca3af;
+    color: var(--color-stone-400);
+  }
+
+  @media (min-width: 480px) {
+    .stock-detail__actions {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
 
   .stock-page__empty {
-    margin: 1.5rem 0 0;
+    display: grid;
+    justify-items: center;
+    gap: 0.85rem;
+    margin: 2.5rem 0 0;
     text-align: center;
     font-size: 0.875rem;
-    color: #9ca3af;
+    color: var(--color-stone-400);
+  }
+
+  .stock-page__empty p {
+    margin: 0;
   }
 
   .stock-scan-bar {
@@ -1017,6 +1322,10 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     width: min(100%, 28rem);
   }
 
+  .inventory-modal__panel--detail {
+    width: min(100%, 34rem);
+  }
+
   .inventory-modal__head {
     display: flex;
     align-items: center;
@@ -1134,19 +1443,18 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
       font-size: 0.8125rem;
       line-height: 1.45;
     }
-  }
 
-  @media (min-width: 640px) {
-    .stock-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .stock-toolbar__controls {
+      width: 100%;
+      margin-left: 0;
     }
 
-    .stock-card__actions {
-      grid-template-columns: repeat(4, 1fr);
+    .stock-toolbar__search {
+      max-width: none;
     }
 
-    .stock-card__actions .stock-card__edit-btn {
-      grid-column: auto;
+    .stock-toolbar__scan {
+      display: none;
     }
   }
 
@@ -1155,20 +1463,12 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
       padding-bottom: 0;
     }
 
-    .stock-page__scan-desktop {
-      display: inline-flex;
-    }
-
     .stock-scan-bar {
       display: none;
     }
 
     .stock-toast {
       bottom: 1.5rem;
-    }
-
-    .stock-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .inventory-modal {
@@ -1181,15 +1481,10 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     }
   }
 
-  @media (min-width: 1200px) {
+  /* Denser grid on very wide desktops */
+  @media (min-width: 1440px) {
     .stock-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 1500px) {
-    .stock-grid {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
     }
   }
 </style>

@@ -529,6 +529,8 @@ root.querySelectorAll("[data-filter-staff]").forEach((el) => {
   el.addEventListener("change", refreshViews);
 });
 
+root.closest(".team-list-layout")?.addEventListener("team-filters-restored", refreshViews);
+
 prevBtn?.addEventListener("click", () => {
   viewMonth -= 1;
   if (viewMonth < 0) {

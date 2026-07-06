@@ -1,3 +1,8 @@
+import {
+  formatCategoryLabel,
+  formatQty,
+  formatQuantity,
+} from "@saloncitrine/shared";
 import { startBarcodeScanner } from "./barcode-scanner";
 
 type Product = {
@@ -33,16 +38,22 @@ type Transaction = {
 };
 
 type TransactionType = "receive" | "use" | "adjust" | "count";
+type ViewMode = "grid" | "table";
+type SortMode = "name" | "name-desc" | "stock-asc" | "stock-desc" | "low" | "category";
 
-const PLACEHOLDER_SVG = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 3h6l1 4v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V7l1-4Z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M8 7h8M10 11h4" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>`;
+const VIEW_KEY = "stock:view";
+const GROUP_KEY = "stock:group";
+const SORT_KEY = "stock:sort";
 
 function apiUrl(path: string) {
   const base = document.body.dataset.apiBase ?? "";
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function formatQty(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((word) => word.charAt(0).toUpperCase());
+  return letters.join("") || "?";
 }
 
 function formatPrice(cents: number | null) {
@@ -70,6 +81,12 @@ function transactionLabel(type: string, change: number) {
   return `${change >= 0 ? "+" : "−"}${formatQty(abs)} adjusted`;
 }
 
+function statusMeta(product: Product) {
+  if (product.quantity <= 0) return { label: "Out of stock", short: "Out", cls: "out" };
+  if (product.isLowStock) return { label: "Low stock", short: "Low", cls: "low" };
+  return { label: "In stock", short: "In stock", cls: "in" };
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -86,6 +103,8 @@ function escapeAttr(value: string) {
     .replaceAll("<", "&lt;");
 }
 
+const MENU_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>`;
+
 function initInventory(root: HTMLElement) {
   const isManager = root.dataset.isManager === "1";
   const listEl = root.querySelector<HTMLElement>("[data-product-list]");
@@ -95,11 +114,15 @@ function initInventory(root: HTMLElement) {
   const stockFilters = root.querySelectorAll<HTMLInputElement>("[data-filter-stock]");
   const minPriceInput = root.querySelector<HTMLInputElement>("[data-filter-min-price]");
   const maxPriceInput = root.querySelector<HTMLInputElement>("[data-filter-max-price]");
+  const clearFiltersBtn = root.querySelector<HTMLButtonElement>("[data-clear-filters-btn]");
   const lowStockEl = root.querySelector<HTMLElement>("[data-low-stock-banner]");
   const statusEl = root.querySelector<HTMLElement>("[data-status]");
   const totalEl = root.querySelector<HTMLElement>("[data-total-count]");
   const lowStockCountEl = root.querySelector<HTMLElement>("[data-low-stock-count]");
   const filterCountEl = root.querySelector<HTMLElement>("[data-filter-count]");
+  const sortSelect = root.querySelector<HTMLSelectElement>("[data-sort]");
+  const viewButtons = root.querySelectorAll<HTMLButtonElement>("[data-view]");
+  const groupToggle = root.querySelector<HTMLButtonElement>("[data-group-toggle]");
   const toast = document.querySelector<HTMLElement>("[data-toast]");
 
   const scanModal = root.querySelector<HTMLElement>("[data-scan-modal]");
@@ -117,10 +140,14 @@ function initInventory(root: HTMLElement) {
   const editModal = root.querySelector<HTMLElement>("[data-edit-modal]");
   const editForm = root.querySelector<HTMLFormElement>("[data-edit-form]");
 
+  const detailModal = root.querySelector<HTMLElement>("[data-detail-modal]");
+  const detailBody = root.querySelector<HTMLElement>("[data-detail-body]");
+  const detailTitle = root.querySelector<HTMLElement>("[data-detail-title]");
+
   let products: Product[] = [];
   let categories: ProductCategoryGroup[] = [];
   let selectedProduct: Product | null = null;
-  let expandedProductId: string | null = null;
+  let detailProductId: string | null = null;
   let pendingTxType: TransactionType | null = null;
   let scanner: { stop: () => void } | null = null;
   let searchTimer: number | undefined;
@@ -129,6 +156,30 @@ function initInventory(root: HTMLElement) {
   let txFromScan = false;
   let totalCount = 0;
   let lowStockCount = 0;
+
+  const readStored = (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+  const writeStored = (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+  };
+
+  let viewMode: ViewMode = readStored(VIEW_KEY) === "table" ? "table" : "grid";
+  let groupByCategory = readStored(GROUP_KEY) === "1";
+  const storedSort = readStored(SORT_KEY) as SortMode | null;
+  let sortMode: SortMode =
+    storedSort &&
+    ["name", "name-desc", "stock-asc", "stock-desc", "low", "category"].includes(storedSort)
+      ? storedSort
+      : "name";
 
   function setStatus(message: string, isError = false) {
     if (!statusEl) return;
@@ -179,6 +230,10 @@ function initInventory(root: HTMLElement) {
         count > 0,
       );
     }
+    if (clearFiltersBtn) {
+      const hasSearch = Boolean(searchInput?.value.trim());
+      clearFiltersBtn.disabled = count === 0 && !hasSearch;
+    }
     if (showToastOnChange) {
       showToast(
         count === 0
@@ -211,6 +266,8 @@ function initInventory(root: HTMLElement) {
     closeModal(txModal);
     closeModal(addModal);
     closeModal(editModal);
+    closeModal(detailModal);
+    detailProductId = null;
     scanCheckInMode = false;
     stopScanner();
   }
@@ -246,197 +303,187 @@ function initInventory(root: HTMLElement) {
     if (lowStockCountEl) lowStockCountEl.textContent = String(lowStockCount);
     updateFilterCount();
 
-    if (expandedProductId && !products.some((p) => p.id === expandedProductId)) {
-      expandedProductId = null;
-    }
-
     renderProducts();
+    renderLowStockAlert(stockLevel === "low");
 
-    if (lowStockEl) {
-      const showingLowStock = stockLevel === "low";
-      lowStockEl.hidden = lowStockCount === 0 || showingLowStock;
-      if (lowStockCount > 0 && !showingLowStock) {
-        lowStockEl.classList.add("team-list-layout__notice--actionable");
-        lowStockEl.innerHTML = `
-          <span>${lowStockCount === 1 ? "1 product is" : `${lowStockCount} products are`} at or below reorder threshold.</span>
-          <button type="button" class="team-list-layout__btn-secondary" data-low-stock-view>View low stock</button>`;
-        lowStockEl.querySelector<HTMLButtonElement>("[data-low-stock-view]")?.addEventListener(
-          "click",
-          () => {
-            const lowRadio = root.querySelector<HTMLInputElement>('[data-filter-stock][value="low"]');
-            if (lowRadio) {
-              lowRadio.checked = true;
-              updateFilterCount();
-              void fetchProducts(searchInput?.value ?? "");
-            }
-          },
-        );
-      } else {
-        lowStockEl.classList.remove("team-list-layout__notice--actionable");
-        lowStockEl.textContent = "";
+    if (detailProductId) {
+      const updated = products.find((p) => p.id === detailProductId);
+      if (updated) renderDetail(updated);
+      else closeModal(detailModal);
+    }
+  }
+
+  function renderLowStockAlert(showingLowStock: boolean) {
+    if (!lowStockEl) return;
+    lowStockEl.hidden = lowStockCount === 0 || showingLowStock;
+    if (lowStockCount > 0 && !showingLowStock) {
+      lowStockEl.classList.add("team-list-layout__notice--actionable");
+      lowStockEl.innerHTML = `
+        <span class="stock-alert__text">${lowStockCount} product${lowStockCount === 1 ? "" : "s"} need${lowStockCount === 1 ? "s" : ""} restocking</span>
+        <button type="button" class="stock-alert__view" data-low-stock-view>View</button>`;
+      lowStockEl
+        .querySelector<HTMLButtonElement>("[data-low-stock-view]")
+        ?.addEventListener("click", () => {
+          const lowRadio = root.querySelector<HTMLInputElement>(
+            '[data-filter-stock][value="low"]',
+          );
+          if (lowRadio) {
+            lowRadio.checked = true;
+            updateFilterCount();
+            void fetchProducts(searchInput?.value ?? "");
+          }
+        });
+    } else {
+      lowStockEl.classList.remove("team-list-layout__notice--actionable");
+      lowStockEl.textContent = "";
+    }
+  }
+
+  function sortProducts(list: Product[]) {
+    const copy = [...list];
+    switch (sortMode) {
+      case "name-desc":
+        return copy.sort((a, b) => b.name.localeCompare(a.name));
+      case "stock-asc":
+        return copy.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name));
+      case "stock-desc":
+        return copy.sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name));
+      case "low": {
+        const rank = (p: Product) => (p.quantity <= 0 ? 0 : p.isLowStock ? 1 : 2);
+        return copy.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
       }
+      case "category":
+        return copy.sort(
+          (a, b) =>
+            formatCategoryLabel(a.category).localeCompare(formatCategoryLabel(b.category)) ||
+            a.name.localeCompare(b.name),
+        );
+      default:
+        return copy.sort((a, b) => a.name.localeCompare(b.name));
     }
   }
 
-  function renderProductThumb(product: Product) {
-    if (product.imageUrl) {
-      return `<img class="stock-card__img" src="${escapeAttr(product.imageUrl)}" alt="" loading="lazy" />`;
-    }
-    return `<span class="stock-card__placeholder">${PLACEHOLDER_SVG}</span>`;
-  }
-
-  function renderCollapsedMeta(product: Product) {
-    const parts = [
-      product.brand,
-      product.sku ? `SKU ${product.sku}` : null,
-      product.retailPriceCents != null ? formatPrice(product.retailPriceCents) : null,
-    ].filter(Boolean);
-    return escapeHtml(parts.join(" · "));
-  }
-
-  function renderQtyLine(product: Product) {
-    const isOut = product.quantity <= 0;
-    const modifier = isOut
-      ? " stock-card__qty--out"
-      : product.isLowStock
-        ? " stock-card__qty--low"
-        : "";
-    let label = isOut
-      ? "Out of stock"
-      : `${formatQty(product.quantity)} ${product.unit}`;
-    if (product.isLowStock && !isOut && product.reorderThreshold > 0) {
-      label += ` · reorder at ${formatQty(product.reorderThreshold)}`;
-    }
-    return `<span class="stock-card__qty${modifier}">${escapeHtml(label)}</span>`;
-  }
-
-  function renderStockBadge(product: Product) {
-    if (product.quantity <= 0) {
-      return '<span class="stock-card__badge stock-card__badge--out">Out</span>';
-    }
-    if (product.isLowStock) {
-      return '<span class="stock-card__badge">Low</span>';
-    }
-    return "";
-  }
-
-  function renderExpandedBody(product: Product) {
-    const detailItems = [
-      { label: "Category", value: product.category ?? "—" },
-      { label: "Brand", value: product.brand ?? "—" },
-      { label: "SKU", value: product.sku ?? "—" },
-      { label: "Barcode", value: product.barcode ?? "—" },
-      { label: "Retail price", value: formatPrice(product.retailPriceCents) },
-      {
-        label: "Reorder at",
-        value:
-          product.reorderThreshold > 0
-            ? `${formatQty(product.reorderThreshold)} ${product.unit}`
-            : "No alert set",
-      },
-    ];
-
-    const heroImage = product.imageUrl
-      ? `<img class="stock-card__hero-img" src="${escapeAttr(product.imageUrl)}" alt="${escapeAttr(product.name)}" />`
+  function renderThumb(product: Product, variant: "sm" | "lg") {
+    const fallback = `
+      <span class="stock-thumb__fallback">
+        <span class="stock-thumb__initials">${escapeHtml(initials(product.name))}</span>
+        <span class="stock-thumb__cat">${escapeHtml(formatCategoryLabel(product.category))}</span>
+      </span>`;
+    const img = product.imageUrl
+      ? `<img class="stock-thumb__img" src="${escapeAttr(product.imageUrl)}" alt="" loading="lazy" data-thumb-img />`
       : "";
+    return `<span class="stock-thumb stock-thumb--${variant}${product.imageUrl ? "" : " is-empty"}">${fallback}${img}</span>`;
+  }
 
-    const notesBlock = product.notes
-      ? `<p class="stock-card__notes">${escapeHtml(product.notes)}</p>`
+  function renderStatusPill(product: Product) {
+    const meta = statusMeta(product);
+    return `<span class="stock-status stock-status--${meta.cls}">${meta.short}</span>`;
+  }
+
+  function renderReorder(product: Product) {
+    if (product.reorderThreshold > 0) {
+      return `Reorder at ${formatQty(product.reorderThreshold)}`;
+    }
+    return "No reorder alert";
+  }
+
+  function renderMenu(product: Product) {
+    const editItem = isManager
+      ? `<button type="button" class="stock-menu__item" data-menu-action="edit" data-product-id="${product.id}">Edit product</button>`
       : "";
-
-    const editBtn = isManager
-      ? `<button type="button" class="team-list-layout__btn-secondary stock-card__edit-btn" data-edit-product="${product.id}">Edit product</button>`
-      : "";
-
     return `
-      <button type="button" class="stock-card__close" data-collapse-card="${product.id}" aria-label="Collapse">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        Close
-      </button>
-      ${heroImage}
-      <div class="stock-card__detail-grid">
-        ${detailItems
-          .map(
-            (item) => `
-          <div class="stock-card__detail-item">
-            <span class="stock-card__detail-label">${item.label}</span>
-            <span class="stock-card__detail-value">${escapeHtml(item.value)}</span>
-          </div>`,
-          )
-          .join("")}
-        <div class="stock-card__detail-item">
-          <span class="stock-card__detail-label">On hand</span>
-          <span class="stock-card__detail-value stock-card__detail-value--qty${product.quantity <= 0 || product.isLowStock ? " stock-card__detail-value--qty-low" : ""}">
-            ${formatQty(product.quantity)} ${escapeHtml(product.unit)}
-            ${product.quantity <= 0 ? " · Out of stock" : product.isLowStock ? " · Low stock" : ""}
-          </span>
+      <details class="stock-menu">
+        <summary class="stock-menu__btn" aria-label="Product actions">${MENU_ICON}</summary>
+        <div class="stock-menu__list">
+          <button type="button" class="stock-menu__item" data-menu-action="receive" data-product-id="${product.id}">Restock</button>
+          <button type="button" class="stock-menu__item" data-menu-action="use" data-product-id="${product.id}">Use</button>
+          <button type="button" class="stock-menu__item" data-menu-action="adjust" data-product-id="${product.id}">Adjust</button>
+          <button type="button" class="stock-menu__item" data-menu-action="count" data-product-id="${product.id}">Set count</button>
+          ${editItem}
         </div>
-      </div>
-      ${notesBlock}
-      <div class="stock-card__actions">
-        <button type="button" class="team-list-layout__btn-primary" data-tx-action="receive" data-product-id="${product.id}">Check in</button>
-        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="use" data-product-id="${product.id}">Use</button>
-        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="adjust" data-product-id="${product.id}">Adjust</button>
-        <button type="button" class="team-list-layout__btn-secondary" data-tx-action="count" data-product-id="${product.id}">Set count</button>
-        ${editBtn}
-      </div>
-      <h4 class="stock-card__history-title">Recent activity</h4>
-      <div class="stock-card__history" data-history="${product.id}">
-        <p class="stock-card__history-loading">Loading…</p>
-      </div>`;
+      </details>`;
   }
 
-  function renderProductCard(product: Product) {
-    const isExpanded = expandedProductId === product.id;
+  function renderGridCard(product: Product) {
+    const meta = statusMeta(product);
+    const sub = [product.brand, formatCategoryLabel(product.category)].filter(Boolean).join(" · ");
+    const qtyLabel =
+      product.quantity <= 0 ? "Out of stock" : formatQuantity(product.quantity, product.unit);
     return `
-      <article class="stock-card${product.isLowStock ? " stock-card--low" : ""}${isExpanded ? " stock-card--expanded" : ""}" data-product-card="${product.id}">
-        <button
-          type="button"
-          class="stock-card__header"
-          aria-expanded="${isExpanded}"
-          data-toggle-card="${product.id}"
-        >
-          <span class="stock-card__thumb">
-            ${renderProductThumb(product)}
-            ${renderStockBadge(product)}
-          </span>
-          <span class="stock-card__summary">
-            <span class="stock-card__name">${escapeHtml(product.name)}</span>
-            <span class="stock-card__meta">${renderCollapsedMeta(product)}</span>
-            ${renderQtyLine(product)}
-          </span>
-          <svg class="stock-card__chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </button>
-        <div class="stock-card__expand">
-          <div class="stock-card__body">
-            <div class="stock-card__body-inner">
-              ${isExpanded ? renderExpandedBody(product) : ""}
-            </div>
+      <article class="stock-card stock-card--${meta.cls}" data-product-card="${product.id}" tabindex="0" role="button" aria-label="${escapeAttr(product.name)}">
+        ${renderThumb(product, "sm")}
+        <div class="stock-card__info">
+          <p class="stock-card__name">${escapeHtml(product.name)}</p>
+          <p class="stock-card__sub">${escapeHtml(sub || "—")}</p>
+          <p class="stock-card__sku">${product.sku ? `SKU ${escapeHtml(product.sku)}` : "No SKU"}</p>
+          <div class="stock-card__foot">
+            <span class="stock-qty stock-qty--${meta.cls}">${escapeHtml(qtyLabel)}</span>
+            ${renderStatusPill(product)}
           </div>
+          <p class="stock-card__reorder">${escapeHtml(renderReorder(product))}</p>
         </div>
+        ${renderMenu(product)}
       </article>`;
   }
 
-  function resetFilters() {
-    if (searchInput) searchInput.value = "";
-    root.querySelectorAll<HTMLInputElement>(
-      "[data-filter-category], [data-filter-brand], [data-filter-stock]",
-    ).forEach((input) => {
-      input.checked = input.value === "";
-    });
-    if (minPriceInput) minPriceInput.value = "";
-    if (maxPriceInput) maxPriceInput.value = "";
-    updateFilterCount();
-    void fetchProducts().catch((err) => {
-      setStatus(err instanceof Error ? err.message : "Load failed", true);
-    });
+  function renderGrid(list: Product[]) {
+    return `<div class="stock-grid">${list.map(renderGridCard).join("")}</div>`;
+  }
+
+  function renderTableRow(product: Product) {
+    const meta = statusMeta(product);
+    const qtyLabel =
+      product.quantity <= 0 ? "Out of stock" : formatQuantity(product.quantity, product.unit);
+    return `
+      <tr class="stock-row stock-row--${meta.cls}" data-product-card="${product.id}">
+        <td class="stock-row__product">
+          ${renderThumb(product, "sm")}
+          <span class="stock-row__name">${escapeHtml(product.name)}</span>
+        </td>
+        <td>${escapeHtml(formatCategoryLabel(product.category))}</td>
+        <td>${escapeHtml(product.brand ?? "—")}</td>
+        <td>${product.sku ? escapeHtml(product.sku) : "—"}</td>
+        <td class="stock-row__qty">${escapeHtml(qtyLabel)}</td>
+        <td>${product.reorderThreshold > 0 ? formatQty(product.reorderThreshold) : "—"}</td>
+        <td>${renderStatusPill(product)}</td>
+        <td class="stock-row__actions">${renderMenu(product)}</td>
+      </tr>`;
+  }
+
+  function renderTable(list: Product[]) {
+    return `
+      <div class="stock-table-wrap">
+        <table class="stock-table">
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Category</th>
+              <th scope="col">Brand</th>
+              <th scope="col">SKU</th>
+              <th scope="col">Stock</th>
+              <th scope="col">Reorder</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="stock-visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>${list.map(renderTableRow).join("")}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderGroupHeading(name: string, count: number, low: number) {
+    const lowLabel = low > 0 ? ` · <span class="stock-group__low">${low} low stock</span>` : "";
+    return `
+      <div class="stock-group__head">
+        <h3 class="stock-group__title">${escapeHtml(formatCategoryLabel(name))}</h3>
+        <span class="stock-group__count">${count} product${count === 1 ? "" : "s"}${lowLabel}</span>
+      </div>`;
   }
 
   function renderProducts() {
     if (!listEl) return;
-    if (categories.length === 0) {
+
+    if (products.length === 0) {
       const hasQuery = Boolean(searchInput?.value.trim()) || countActiveFilters() > 0;
       listEl.innerHTML = hasQuery
         ? `<div class="stock-page__empty">
@@ -452,84 +499,155 @@ function initInventory(root: HTMLElement) {
       return;
     }
 
-    listEl.innerHTML = categories
-      .map((category) => {
-        const lowLabel =
-          category.lowStockCount > 0
-            ? ` · <span class="stock-category__low">${category.lowStockCount} low</span>`
-            : "";
-        return `
-        <section class="stock-category">
-          <h3 class="stock-category__title">
-            ${escapeHtml(category.name)}
-            <span class="stock-category__count">${category.products.length} item${category.products.length === 1 ? "" : "s"}${lowLabel}</span>
-          </h3>
-          <div class="stock-grid">
-            ${category.products.map((product) => renderProductCard(product)).join("")}
-          </div>
-        </section>`;
-      })
-      .join("");
-
-    bindCardEvents();
-  }
-
-  function toggleCard(productId: string) {
-    if (expandedProductId === productId) {
-      expandedProductId = null;
+    if (groupByCategory) {
+      listEl.innerHTML = categories
+        .map((group) => {
+          const sorted = sortProducts(group.products);
+          const inner = viewMode === "table" ? renderTable(sorted) : renderGrid(sorted);
+          return `<section class="stock-group">${renderGroupHeading(group.name, group.products.length, group.lowStockCount)}${inner}</section>`;
+        })
+        .join("");
     } else {
-      expandedProductId = productId;
-      const product = products.find((p) => p.id === productId);
-      if (product) {
-        selectedProduct = product;
-        window.requestAnimationFrame(() => void loadHistory(productId));
-      }
+      const sorted = sortProducts(products);
+      listEl.innerHTML = viewMode === "table" ? renderTable(sorted) : renderGrid(sorted);
     }
-    renderProducts();
+
+    bindThumbFallbacks();
   }
 
-  function collapseCard() {
-    expandedProductId = null;
-    renderProducts();
+  function bindThumbFallbacks() {
+    listEl?.querySelectorAll<HTMLImageElement>("[data-thumb-img]").forEach((img) => {
+      const thumb = img.closest(".stock-thumb");
+      img.addEventListener("load", () => thumb?.classList.add("is-loaded"));
+      img.addEventListener("error", () => thumb?.classList.add("is-broken"));
+      if (img.complete && img.naturalWidth === 0) {
+        thumb?.classList.add("is-broken");
+      } else if (img.complete) {
+        thumb?.classList.add("is-loaded");
+      }
+    });
   }
 
-  function bindCardEvents() {
-    listEl?.querySelectorAll<HTMLButtonElement>("[data-toggle-card]").forEach((btn) => {
+  function closeMenus(except?: Element | null) {
+    listEl?.querySelectorAll<HTMLDetailsElement>("details.stock-menu[open]").forEach((menu) => {
+      if (menu !== except) menu.open = false;
+    });
+  }
+
+  function handleMenuAction(action: string, productId: string | undefined) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    if (action === "edit") {
+      openEditModal(product);
+    } else {
+      openTransactionModal(action as TransactionType, product);
+    }
+  }
+
+  function openDetail(productId: string | undefined) {
+    const product = products.find((p) => p.id === productId);
+    if (!product) return;
+    selectedProduct = product;
+    detailProductId = product.id;
+    renderDetail(product);
+    openModal(detailModal);
+    window.requestAnimationFrame(() => void loadHistory(product.id));
+  }
+
+  function renderDetail(product: Product) {
+    if (!detailBody) return;
+    if (detailTitle) detailTitle.textContent = product.name;
+    const meta = statusMeta(product);
+    const qtyLabel =
+      product.quantity <= 0 ? "Out of stock" : formatQuantity(product.quantity, product.unit);
+
+    const detailItems = [
+      { label: "Brand", value: product.brand ?? "—" },
+      { label: "Category", value: formatCategoryLabel(product.category) },
+      { label: "SKU", value: product.sku ?? "—" },
+      { label: "Barcode", value: product.barcode ?? "—" },
+      { label: "Retail price", value: formatPrice(product.retailPriceCents) },
+      {
+        label: "Reorder at",
+        value:
+          product.reorderThreshold > 0
+            ? formatQuantity(product.reorderThreshold, product.unit)
+            : "No alert set",
+      },
+    ];
+
+    const notesBlock = product.notes
+      ? `<p class="stock-detail__notes">${escapeHtml(product.notes)}</p>`
+      : "";
+    const editBtn = isManager
+      ? `<button type="button" class="team-list-layout__btn-secondary" data-menu-action="edit" data-product-id="${product.id}">Edit product</button>`
+      : "";
+
+    detailBody.innerHTML = `
+      <div class="stock-detail__top">
+        ${renderThumb(product, "lg")}
+        <div class="stock-detail__headline">
+          <div class="stock-detail__qty-row">
+            <span class="stock-qty stock-qty--${meta.cls} stock-qty--lg">${escapeHtml(qtyLabel)}</span>
+            ${renderStatusPill(product)}
+          </div>
+          <p class="stock-detail__reorder">${escapeHtml(renderReorder(product))}</p>
+        </div>
+      </div>
+      <dl class="stock-detail__grid">
+        ${detailItems
+          .map(
+            (item) => `
+          <div class="stock-detail__item">
+            <dt>${item.label}</dt>
+            <dd>${escapeHtml(item.value)}</dd>
+          </div>`,
+          )
+          .join("")}
+      </dl>
+      ${notesBlock}
+      <div class="stock-detail__actions">
+        <button type="button" class="team-list-layout__btn-primary" data-menu-action="receive" data-product-id="${product.id}">Restock</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-menu-action="use" data-product-id="${product.id}">Use</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-menu-action="adjust" data-product-id="${product.id}">Adjust</button>
+        <button type="button" class="team-list-layout__btn-secondary" data-menu-action="count" data-product-id="${product.id}">Set count</button>
+        ${editBtn}
+      </div>
+      <h4 class="stock-detail__history-title">Recent activity</h4>
+      <div class="stock-detail__history" data-history="${product.id}">
+        <p class="stock-detail__history-loading">Loading…</p>
+      </div>`;
+
+    detailBody.querySelectorAll<HTMLButtonElement>("[data-menu-action]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const id = btn.dataset.toggleCard;
-        if (id) toggleCard(id);
-      });
-    });
-
-    listEl?.querySelectorAll<HTMLButtonElement>("[data-collapse-card]").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        collapseCard();
-      });
-    });
-
-    listEl?.querySelectorAll<HTMLButtonElement>("[data-tx-action]").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        event.stopPropagation();
+        const action = btn.dataset.menuAction;
         const id = btn.dataset.productId;
-        const type = btn.dataset.txAction as TransactionType;
-        const product = products.find((p) => p.id === id);
-        if (product) openTransactionModal(type, product);
+        if (action) handleMenuAction(action, id);
       });
     });
 
-    listEl?.querySelectorAll<HTMLButtonElement>("[data-edit-product]").forEach((btn) => {
-      btn.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const id = btn.dataset.editProduct;
-        const product = products.find((p) => p.id === id);
-        if (product) openEditModal(product);
+    bindThumbFallbacks();
+  }
+
+  function resetFilters() {
+    if (searchInput) searchInput.value = "";
+    root
+      .querySelectorAll<HTMLInputElement>(
+        "[data-filter-category], [data-filter-brand], [data-filter-stock]",
+      )
+      .forEach((input) => {
+        input.checked = input.value === "";
       });
+    if (minPriceInput) minPriceInput.value = "";
+    if (maxPriceInput) maxPriceInput.value = "";
+    updateFilterCount();
+    void fetchProducts().catch((err) => {
+      setStatus(err instanceof Error ? err.message : "Load failed", true);
     });
   }
 
   async function loadHistory(productId: string) {
-    const historyEl = listEl?.querySelector<HTMLElement>(`[data-history="${productId}"]`);
+    const historyEl = detailBody?.querySelector<HTMLElement>(`[data-history="${productId}"]`);
     if (!historyEl) return;
 
     const res = await fetch(
@@ -537,20 +655,20 @@ function initInventory(root: HTMLElement) {
     );
     const data = await res.json();
     if (!res.ok || !data.ok) {
-      historyEl.innerHTML = '<p class="stock-card__history-loading">Could not load history.</p>';
+      historyEl.innerHTML = '<p class="stock-detail__history-loading">Could not load history.</p>';
       return;
     }
     const rows = data.transactions as Transaction[];
     if (rows.length === 0) {
-      historyEl.innerHTML = '<p class="stock-card__history-loading">No transactions yet.</p>';
+      historyEl.innerHTML = '<p class="stock-detail__history-loading">No transactions yet.</p>';
       return;
     }
     historyEl.innerHTML = rows
       .map(
         (row) => `
-        <div class="stock-card__history-row">
+        <div class="stock-detail__history-row">
           <span>${escapeHtml(transactionLabel(row.type, row.quantityChange))}</span>
-          <span class="stock-card__history-meta">${escapeHtml(row.staffName ?? "Staff")} · ${formatDate(row.createdAt)}</span>
+          <span class="stock-detail__history-meta">${escapeHtml(row.staffName ?? "Staff")} · ${formatDate(row.createdAt)}</span>
         </div>`,
       )
       .join("");
@@ -582,7 +700,7 @@ function initInventory(root: HTMLElement) {
 
     if (txTitle) {
       const labels: Record<TransactionType, string> = {
-        receive: txFromScan ? "Check in" : "Receive stock",
+        receive: txFromScan ? "Check in" : "Restock",
         use: "Log use",
         adjust: "Adjust quantity",
         count: "Set count",
@@ -642,7 +760,6 @@ function initInventory(root: HTMLElement) {
     const txType = pendingTxType;
     const qtyCheckedIn = qty;
     const keepScanning = txFromScan && txType === "receive";
-    const expandedId = expandedProductId;
 
     closeModal(txModal);
     pendingTxType = null;
@@ -650,21 +767,15 @@ function initInventory(root: HTMLElement) {
 
     await fetchProducts(searchInput?.value ?? "");
 
-    if (expandedId) {
-      expandedProductId = expandedId;
-      renderProducts();
-      void loadHistory(expandedId);
-    }
-
     if (keepScanning && product) {
       setStatus(
-        `Checked in ${formatQty(qtyCheckedIn)} ${product.unit} of ${product.name}. Scan the next item.`,
+        `Checked in ${formatQuantity(qtyCheckedIn, product.unit)} of ${product.name}. Scan the next item.`,
       );
       void openScanner();
       return;
     }
 
-    setStatus(txType === "receive" ? "Stock checked in." : "Stock updated.");
+    showToast(txType === "receive" ? "Stock checked in." : "Stock updated.");
   }
 
   async function lookupBarcode(code: string) {
@@ -695,9 +806,7 @@ function initInventory(root: HTMLElement) {
     );
     searchInput?.focus();
     if (isManager && addModal && addForm) {
-      const barcodeField = addForm.querySelector<HTMLInputElement>(
-        'input[name="barcode"]',
-      );
+      const barcodeField = addForm.querySelector<HTMLInputElement>('input[name="barcode"]');
       if (barcodeField) barcodeField.value = trimmed;
       openModal(addModal);
     }
@@ -719,6 +828,79 @@ function initInventory(root: HTMLElement) {
     );
   }
 
+  function setView(next: ViewMode) {
+    viewMode = next;
+    writeStored(VIEW_KEY, next);
+    viewButtons.forEach((btn) => {
+      const active = btn.dataset.view === next;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    renderProducts();
+  }
+
+  function setGroup(next: boolean) {
+    groupByCategory = next;
+    writeStored(GROUP_KEY, next ? "1" : "0");
+    if (groupToggle) {
+      groupToggle.classList.toggle("is-active", next);
+      groupToggle.setAttribute("aria-pressed", next ? "true" : "false");
+    }
+    renderProducts();
+  }
+
+  // ---- Event wiring ----------------------------------------------------------
+
+  listEl?.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const actionEl = target.closest<HTMLElement>("[data-menu-action]");
+    if (actionEl) {
+      event.preventDefault();
+      handleMenuAction(actionEl.dataset.menuAction ?? "", actionEl.dataset.productId);
+      closeMenus();
+      return;
+    }
+    if (target.closest("details.stock-menu")) {
+      closeMenus(target.closest("details.stock-menu"));
+      return;
+    }
+    const clearBtn = target.closest("[data-clear-filters]");
+    if (clearBtn) return;
+    const card = target.closest<HTMLElement>("[data-product-card]");
+    if (card) openDetail(card.dataset.productCard);
+  });
+
+  listEl?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const target = event.target as HTMLElement;
+    if (target.closest("details.stock-menu") || target.closest("[data-menu-action]")) return;
+    const card = target.closest<HTMLElement>('.stock-card[data-product-card]');
+    if (card && target === card) {
+      event.preventDefault();
+      openDetail(card.dataset.productCard);
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target as HTMLElement).closest("details.stock-menu")) {
+      closeMenus();
+    }
+  });
+
+  sortSelect?.addEventListener("change", () => {
+    sortMode = sortSelect.value as SortMode;
+    writeStored(SORT_KEY, sortMode);
+    renderProducts();
+  });
+
+  viewButtons.forEach((btn) => {
+    btn.addEventListener("click", () => setView(btn.dataset.view === "table" ? "table" : "grid"));
+  });
+
+  groupToggle?.addEventListener("click", () => setGroup(!groupByCategory));
+
+  clearFiltersBtn?.addEventListener("click", resetFilters);
+
   root.querySelectorAll("[data-scan-open]").forEach((el) => {
     el.addEventListener("click", () => void openScanner());
   });
@@ -738,7 +920,10 @@ function initInventory(root: HTMLElement) {
       } else if (target === "tx") closeModal(txModal);
       else if (target === "add") closeModal(addModal);
       else if (target === "edit") closeModal(editModal);
-      else closeAllModals();
+      else if (target === "detail") {
+        closeModal(detailModal);
+        detailProductId = null;
+      } else closeAllModals();
     });
   });
 
@@ -746,12 +931,9 @@ function initInventory(root: HTMLElement) {
     void submitTransaction();
   });
 
-  root.querySelector("[data-manual-barcode-submit]")?.addEventListener(
-    "click",
-    () => {
-      void lookupBarcode(manualBarcodeInput?.value ?? "");
-    },
-  );
+  root.querySelector("[data-manual-barcode-submit]")?.addEventListener("click", () => {
+    void lookupBarcode(manualBarcodeInput?.value ?? "");
+  });
 
   addForm?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -781,7 +963,7 @@ function initInventory(root: HTMLElement) {
       }
 
       closeModal(addModal);
-      setStatus("Product added.");
+      showToast("Product added.");
       await fetchProducts(searchInput?.value ?? "");
     })();
   });
@@ -799,30 +981,26 @@ function initInventory(root: HTMLElement) {
         image_url: String(formData.get("image_url") ?? "").trim() || null,
       };
 
-      const res = await fetch(
-        apiUrl(`/api/inventory/products/${selectedProduct.id}`),
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
+      const res = await fetch(apiUrl(`/api/inventory/products/${selectedProduct.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setStatus(data.error ?? "Could not update product", true);
         return;
       }
 
-      const updated = data.product as Product;
       closeModal(editModal);
-      setStatus("Product updated.");
-      expandedProductId = updated.id;
+      showToast("Product updated.");
       await fetchProducts(searchInput?.value ?? "");
     })();
   });
 
   searchInput?.addEventListener("input", () => {
     window.clearTimeout(searchTimer);
+    updateFilterCount();
     searchTimer = window.setTimeout(() => {
       void fetchProducts(searchInput.value).catch((err) => {
         setStatus(err instanceof Error ? err.message : "Load failed", true);
@@ -843,15 +1021,19 @@ function initInventory(root: HTMLElement) {
   minPriceInput?.addEventListener("change", scheduleFetch);
   maxPriceInput?.addEventListener("change", scheduleFetch);
 
+  root.closest(".team-list-layout")?.addEventListener("team-filters-restored", scheduleFetch);
+
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      if (document.querySelector(".inventory-modal.is-open")) {
-        closeAllModals();
-      } else if (expandedProductId) {
-        collapseCard();
-      }
+    if (event.key === "Escape" && document.querySelector(".inventory-modal.is-open")) {
+      closeAllModals();
     }
   });
+
+  // ---- Initial state ---------------------------------------------------------
+
+  if (sortSelect) sortSelect.value = sortMode;
+  setView(viewMode);
+  setGroup(groupByCategory);
 
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("lowStock") === "1") {

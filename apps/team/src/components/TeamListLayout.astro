@@ -6,6 +6,7 @@ interface Props {
   showSidebar?: boolean;
   rootClass?: string;
   rootId?: string;
+  filterKey?: string;
 }
 
 const {
@@ -15,6 +16,7 @@ const {
   showSidebar = true,
   rootClass = "",
   rootId,
+  filterKey,
 } = Astro.props;
 
 const hasHeaderActions = Astro.slots.has("headerActions");
@@ -25,9 +27,17 @@ const hasStats = Astro.slots.has("stats");
 const hasSearchBar = Astro.slots.has("searchBar");
 const hasMainLead = Astro.slots.has("mainLead");
 const hasToolbar = Astro.slots.has("toolbar");
+
+const resolvedFilterKey = filterKey ?? rootId ?? title.toLowerCase().replace(/\s+/g, "-");
+const mobileFilters = showSidebar && (hasSidebarFilters || hasSidebarExtra || hasSidebarFooter);
 ---
 
-<div class:list={["team-list-layout", rootClass]} id={rootId}>
+<div
+  class:list={["team-list-layout", rootClass]}
+  id={rootId}
+  data-list-filters={mobileFilters ? "" : undefined}
+  data-filter-key={mobileFilters ? resolvedFilterKey : undefined}
+>
   <header class="team-list-layout__subheader">
     <h1 class="team-list-layout__title">{title}</h1>
     {
@@ -39,11 +49,69 @@ const hasToolbar = Astro.slots.has("toolbar");
     }
   </header>
 
+  {
+    mobileFilters ? (
+      <div class="team-list-layout__filter-backdrop" data-filter-backdrop hidden />
+    ) : null
+  }
+
   <div class="team-list-layout__body">
+    <main class="team-list-layout__main">
+      {
+        mobileFilters ? (
+          <div class="team-list-layout__mobile-filter-bar">
+            <div class="team-list-layout__filter-chips ui-filter-chips" data-filter-chips />
+            <button
+              type="button"
+              class="ui-filter-trigger team-list-layout__filter-open"
+              data-filter-open
+              aria-expanded="false"
+              aria-controls="team-filter-panel"
+            >
+              Filters
+              <span class="ui-filter-trigger__count" data-filter-badge hidden>
+                0
+              </span>
+            </button>
+          </div>
+        ) : null
+      }
+
+      {mainTitle ? <h2 class="team-list-layout__main-title">{mainTitle}</h2> : null}
+      {hasMainLead ? <p class="team-list-layout__main-lead"><slot name="mainLead" /></p> : null}
+      {hasStats ? <p class="team-list-layout__stats"><slot name="stats" /></p> : null}
+      {hasToolbar ? <div class="team-list-layout__toolbar"><slot name="toolbar" /></div> : null}
+      {hasSearchBar ? <slot name="searchBar" /> : null}
+      <slot />
+    </main>
+
     {
       showSidebar ? (
-        <aside class="team-list-layout__sidebar" aria-label="Page options">
-          {sidebarTitle ? <h2 class="team-list-layout__sidebar-title">{sidebarTitle}</h2> : null}
+        <aside
+          id="team-filter-panel"
+          class="team-list-layout__sidebar"
+          data-filter-panel
+          aria-label="Filters and options"
+        >
+          {
+            mobileFilters ? (
+              <div class="team-list-layout__sheet-head">
+                <h2 class="team-list-layout__sheet-title">
+                  {sidebarTitle || "Filters"}
+                </h2>
+                <button
+                  type="button"
+                  class="team-list-layout__sheet-done ui-btn ui-btn--secondary ui-btn--compact"
+                  data-filter-close
+                >
+                  Done
+                </button>
+              </div>
+            ) : null
+          }
+          {sidebarTitle && !mobileFilters ? (
+            <h2 class="team-list-layout__sidebar-title">{sidebarTitle}</h2>
+          ) : null}
           {
             hasSidebarFilters ? (
               <div class="team-list-layout__filters">
@@ -56,17 +124,12 @@ const hasToolbar = Astro.slots.has("toolbar");
         </aside>
       ) : null
     }
-
-    <main class="team-list-layout__main">
-      {mainTitle ? <h2 class="team-list-layout__main-title">{mainTitle}</h2> : null}
-      {hasMainLead ? <p class="team-list-layout__main-lead"><slot name="mainLead" /></p> : null}
-      {hasStats ? <p class="team-list-layout__stats"><slot name="stats" /></p> : null}
-      {hasToolbar ? <div class="team-list-layout__toolbar"><slot name="toolbar" /></div> : null}
-      {hasSearchBar ? <slot name="searchBar" /> : null}
-      <slot />
-    </main>
   </div>
 </div>
+
+<script>
+  import "../scripts/list-filters.ts";
+</script>
 
 <style>
   .team-list-layout {
@@ -76,6 +139,7 @@ const hasToolbar = Astro.slots.has("toolbar");
     font-family: var(--font-body);
     background: var(--color-bg);
     color: var(--color-text);
+    position: relative;
   }
 
   .team-list-layout__subheader {
@@ -114,6 +178,16 @@ const hasToolbar = Astro.slots.has("toolbar");
     min-height: 0;
   }
 
+  @media (min-width: 901px) {
+    .team-list-layout__sidebar {
+      order: 1;
+    }
+
+    .team-list-layout__main {
+      order: 2;
+    }
+  }
+
   .team-list-layout:not(:has(.team-list-layout__sidebar)) .team-list-layout__body {
     grid-template-columns: 1fr;
   }
@@ -125,12 +199,52 @@ const hasToolbar = Astro.slots.has("toolbar");
     padding: 0.75rem 0 1rem;
     border-right: 1px solid var(--color-stone-200);
     background: var(--team-sidebar-bg);
+    min-width: 0;
   }
 
   .team-list-layout__main {
     padding: var(--space-5) var(--space-6) var(--space-8);
     background: var(--color-bg);
     min-width: 0;
+  }
+
+  .team-list-layout__mobile-filter-bar {
+    display: none;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--mobile-space-sm, 0.75rem);
+    margin-bottom: var(--mobile-space-md, 1rem);
+    min-width: 0;
+  }
+
+  .team-list-layout__filter-chips {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .team-list-layout__filter-open {
+    flex: 0 0 auto;
+  }
+
+  .team-list-layout__sheet-head {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mobile-space-sm, 0.75rem);
+    padding: 0 var(--team-sidebar-inset-x) 0.65rem;
+    border-bottom: 1px solid var(--color-stone-200);
+    margin-bottom: 0.35rem;
+  }
+
+  .team-list-layout__sheet-title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+  }
+
+  .team-list-layout__filter-backdrop {
+    display: none;
   }
 
   .team-list-layout__main-title {
@@ -201,11 +315,92 @@ const hasToolbar = Astro.slots.has("toolbar");
       grid-template-columns: 1fr;
     }
 
-    .team-list-layout__sidebar {
+    .team-list-layout[data-list-filters] .team-list-layout__mobile-filter-bar {
+      display: flex;
+    }
+
+    .team-list-layout[data-list-filters] .team-list-layout__sheet-head {
+      display: flex;
+    }
+
+    .team-list-layout[data-list-filters] .team-list-layout__sidebar-title {
+      display: none;
+    }
+
+    .team-list-layout[data-list-filters] .team-list-layout__sidebar {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 200;
+      max-height: min(85vh, 32rem);
+      padding-top: 0.75rem;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
       border-right: none;
-      border-bottom: 1px solid var(--color-stone-200);
-      max-height: 16rem;
-      padding-bottom: 0.75rem;
+      border-top: 1px solid var(--color-stone-200);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(110%);
+      visibility: hidden;
+      transition:
+        transform var(--transition-base),
+        visibility var(--transition-base);
+      overflow: hidden;
+    }
+
+    .team-list-layout[data-list-filters] .team-list-layout__sidebar.is-sheet-open {
+      transform: translateY(0);
+      visibility: visible;
+    }
+
+    .team-list-layout[data-list-filters] .team-list-layout__filters,
+    .team-list-layout[data-list-filters] .team-list-layout__sidebar-nav,
+    .team-list-layout[data-list-filters] .events-sidebar-nav,
+    .team-list-layout[data-list-filters] .reports-sidebar {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .team-list-layout__filter-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 199;
+      background: rgba(10, 10, 10, 0.45);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity var(--transition-base),
+        visibility var(--transition-base);
+    }
+
+    .team-list-layout.is-filter-open .team-list-layout__filter-backdrop {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .team-list-layout__sidebar-link,
+    .team-list-layout__sidebar-nav-btn {
+      border-left: none;
+      border-radius: var(--radius-sm);
+    }
+
+    .team-list-layout__sidebar-link.is-active,
+    .team-list-layout__sidebar-nav-btn.is-active {
+      border-left: none;
+      box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
+      background: var(--color-selection-bg, var(--color-sage-muted));
+    }
+  }
+
+  @media (min-width: 901px) {
+    .team-list-layout__mobile-filter-bar,
+    .team-list-layout__filter-backdrop,
+    .team-list-layout__sheet-head {
+      display: none !important;
     }
   }
 
@@ -216,6 +411,7 @@ const hasToolbar = Astro.slots.has("toolbar");
 
     .team-list-layout__main {
       padding-inline: var(--space-4);
+      padding-top: var(--space-4);
     }
   }
 </style>
