@@ -232,6 +232,15 @@ const staffOptions = staffRows ?? [];
     --notebook-sketch-crystal: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M40 6l10 24-10 44-10-44z' stroke='%238a7f72' stroke-width='1.05' stroke-linejoin='round'/%3E%3Cpath d='M24 34l8-12 8 16 8-12 8 8' stroke='%23c9a227' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round' opacity='0.67'/%3E%3Cpath d='M18 54l10-10 12 14 10-10 12 10' stroke='%23c9a227' stroke-width='0.85' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'/%3E%3Cpath d='M34 22l6 8-6 8-6-8z' stroke='%23c4a5a5' stroke-width='0.75' opacity='0.89'/%3E%3C/svg%3E");
     --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23c4a5a5' stroke-width='0.55' stroke-linejoin='round' opacity='0.89'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23c4a5a5' stroke-width='0.5' stroke-linejoin='round' opacity='0.6'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%238a7f72' opacity='1'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23c9a227' stroke-width='0.45' opacity='0.67'/%3E%3C/svg%3E");
     --notebook-sketch-herb: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 100' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 94c-1-20 2-38-1-58-1.3-8 .5-16 3-24' stroke='%238a7f72' stroke-width='1' stroke-linecap='round'/%3E%3Cpath d='M29 70c-6-2-11 1-14 6 5-1 10-3 14-6z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M30 68c6-3 11 0 14 5-5-1-10-2-14-5z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M27 46c-6-2-10 1-13 6 5-1 9-3 13-6z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M28 44c5-3 10 0 13 5-5-1-9-2-13-5z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M26 24c-5-2-9 1-11 5 4-1 8-2 11-5z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Cpath d='M27 22c4-3 8 0 11 4-4-1-8-1-11-4z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Ccircle cx='31' cy='6' r='1.4' fill='%238a7f72' opacity='0.9'/%3E%3Ccircle cx='27' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3Ccircle cx='34' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3C/svg%3E");
+    /*
+      Higgsfield-generated raster assets (apps/team/public/images). Layered
+      alongside the procedural CSS lines/icons above rather than replacing
+      them: each is one comma-separated background layer, so a missing or
+      404'd image just drops that one layer while every CSS-drawn rule
+      line, margin line, and sketch icon keeps rendering untouched.
+    */
+    --notebook-paper-image: url("/team/images/tasks-notebook-paper.png");
+    --notebook-sketch-photo: url("/team/images/tasks-witchy-sketches.png");
   }
 
   /*
@@ -286,9 +295,9 @@ const staffOptions = staffRows ?? [];
     min-height: 18rem;
     padding: 1.25rem 1.5rem 2rem calc(var(--notebook-margin) + 1.25rem);
     background-color: var(--notebook-paper);
-    background-repeat: repeat-y, no-repeat;
-    background-size: 100% var(--notebook-line), 1.5px 100%;
-    background-position: 0 0, var(--notebook-margin) 0;
+    background-repeat: repeat-y, no-repeat, repeat-y;
+    background-size: 100% var(--notebook-line), 1.5px 100%, 100% auto;
+    background-position: 0 0, var(--notebook-margin) 0, 0 0;
     background-image:
       linear-gradient(
         to bottom,
@@ -296,7 +305,8 @@ const staffOptions = staffRows ?? [];
         var(--notebook-rule) calc(var(--notebook-line) - 1px),
         var(--notebook-rule) var(--notebook-line)
       ),
-      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line));
+      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line)),
+      var(--notebook-paper-image);
     isolation: isolate;
   }
 
@@ -315,25 +325,28 @@ const staffOptions = staffRows ?? [];
     z-index: 0;
     pointer-events: none;
     opacity: var(--notebook-sketch-opacity);
-    background-repeat: no-repeat, repeat-y, no-repeat, repeat-y, no-repeat;
+    background-repeat: no-repeat, repeat-y, no-repeat, repeat-y, no-repeat, repeat-y;
     background-size:
       3.25rem 3.25rem,
       1.6rem calc(var(--notebook-line) * 2.75),
       5.5rem 5.5rem,
       1.75rem calc(var(--notebook-line) * 2.5),
-      3.75rem 6.25rem;
+      3.75rem 6.25rem,
+      100% auto;
     background-position:
       calc(var(--notebook-margin) * 0.55) 1.25rem,
       right 0.35rem top 2rem,
       right 0.65rem bottom 1.25rem,
       calc(var(--notebook-margin) * 0.22) 0,
-      left 0.15rem bottom 0.5rem;
+      left 0.15rem bottom 0.5rem,
+      0 0;
     background-image:
       var(--notebook-sketch-moon),
       var(--notebook-sketch-moon-sm),
       var(--notebook-sketch-crystal),
       var(--notebook-sketch-stars),
-      var(--notebook-sketch-herb);
+      var(--notebook-sketch-herb),
+      var(--notebook-sketch-photo);
   }
 
   [data-theme="dark"] .notebook__paper {
@@ -341,6 +354,9 @@ const staffOptions = staffRows ?? [];
     --notebook-rule: rgba(174, 148, 143, 0.18);
     --notebook-margin-line: rgba(196, 90, 78, 0.35);
     --notebook-sketch-opacity: 0.07;
+    /* Cream paper photo would clash against the dark surface; the CSS-drawn
+       rule lines and margin line above keep working on their own. */
+    --notebook-paper-image: none;
   }
 
   [data-theme="dark"] .notebook__paper::before {
