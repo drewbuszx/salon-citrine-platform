@@ -3,6 +3,11 @@ import { z } from "zod";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import { isSalonManager } from "../../../lib/auth";
 
+const timeSchema = z
+  .string()
+  .regex(/^\d{2}:\d{2}(:\d{2})?$/)
+  .optional();
+
 const createSchema = z.object({
   staffId: z.string().uuid().optional(),
   serviceIds: z.array(z.string().uuid()).min(1),
@@ -10,6 +15,8 @@ const createSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
+  preferredTimeStart: timeSchema,
+  preferredTimeEnd: timeSchema,
   client: z.object({
     firstName: z.string().min(1),
     lastName: z.string().min(1),
@@ -143,6 +150,8 @@ export const POST: APIRoute = async (context) => {
         staff_id: parsed.data.staffId ?? null,
         service_ids: parsed.data.serviceIds,
         preferred_date: parsed.data.preferredDate ?? null,
+        preferred_time_start: parsed.data.preferredTimeStart ?? null,
+        preferred_time_end: parsed.data.preferredTimeEnd ?? null,
         client_email: parsed.data.client.email.trim().toLowerCase(),
         client_phone: parsed.data.client.phone?.trim() || null,
         client_first_name: parsed.data.client.firstName.trim(),

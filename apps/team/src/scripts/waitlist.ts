@@ -16,6 +16,14 @@ type WaitlistEntry = {
   insertedAt: string;
 };
 
+type TimeSlot = "morning" | "afternoon" | "evening";
+
+const TIME_SLOTS: Record<TimeSlot, { label: string; start: string; end: string }> = {
+  morning: { label: "Morning", start: "08:00", end: "12:00" },
+  afternoon: { label: "Afternoon", start: "12:00", end: "17:00" },
+  evening: { label: "Evening", start: "17:00", end: "20:00" },
+};
+
 let allEntries: WaitlistEntry[] = [];
 
 function escapeHtml(value: string) {
@@ -30,12 +38,26 @@ function formatPhone(value: string | null) {
   return value?.trim() || "—";
 }
 
+function timeSlotFromRange(start: string | null, end: string | null): TimeSlot | null {
+  if (!start || !end) return null;
+  const startKey = start.slice(0, 5);
+  const endKey = end.slice(0, 5);
+  for (const [slot, range] of Object.entries(TIME_SLOTS) as Array<[TimeSlot, (typeof TIME_SLOTS)[TimeSlot]]>) {
+    if (range.start === startKey && range.end === endKey) return slot;
+  }
+  return null;
+}
+
 function formatPreferredTime(entry: WaitlistEntry) {
+  const slot = timeSlotFromRange(entry.preferredTimeStart, entry.preferredTimeEnd);
+  if (slot) return TIME_SLOTS[slot].label;
+
   if (entry.preferredTimeStart && entry.preferredTimeEnd) {
     const start = entry.preferredTimeStart.slice(0, 5);
     const end = entry.preferredTimeEnd.slice(0, 5);
     return `${start} – ${end}`;
   }
+
   if (entry.preferredDate) {
     return new Date(`${entry.preferredDate}T12:00:00`).toLocaleDateString(undefined, {
       month: "short",
@@ -43,7 +65,8 @@ function formatPreferredTime(entry: WaitlistEntry) {
       year: "numeric",
     });
   }
-  return "—";
+
+  return "Any time";
 }
 
 function formatDateAdded(iso: string) {
@@ -59,13 +82,64 @@ function clientName(entry: WaitlistEntry) {
   return name || entry.clientEmail;
 }
 
-function renderTable(entries: WaitlistEntry[]) {
+function updateStats(visible: number, total: number, query: string) {
+  const countEl = document.querySelector<HTMLElement>("[data-waitlist-count]");
+  const filterHint = document.querySelector<HTMLElement>("[data-waitlist-filter-hint]");
+
+  if (countEl) {
+    countEl.textContent = String(total);
+  }
+
+  if (filterHint) {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      filterHint.hidden = true;
+      filterHint.textContent = "";
+      return;
+    }
+
+    filterHint.hidden = false;
+    filterHint.textContent =
+      visible === 0
+        ? `No matches for “${trimmed}”. Try name, phone, email, staff, or service.`
+        : `Showing ${visible} of ${total} ${total === 1 ? "entry" : "entries"}`;
+  }
+}
+
+function updateEmptyState(entries: WaitlistEntry[], query: string) {
+  const emptyEl = document.querySelector<HTMLElement>("[data-waitlist-empty]");
+  const titleEl = document.querySelector<HTMLElement>("[data-waitlist-empty-title]");
+  const hintEl = document.querySelector<HTMLElement>("[data-waitlist-empty-hint]");
+  if (!emptyEl) return;
+
+  const trimmed = query.trim();
+  if (allEntries.length === 0) {
+    if (titleEl) titleEl.textContent = "No one on the waitlist";
+    if (hintEl) {
+      hintEl.textContent =
+        "When clients request a spot, they'll appear here so you can fit them in.";
+    }
+    return;
+  }
+
+  if (entries.length === 0 && trimmed) {
+    if (titleEl) titleEl.textContent = "No matches";
+    if (hintEl) {
+      hintEl.textContent = `Nothing matched “${trimmed}”. Try a different name, phone, or service.`;
+    }
+  }
+}
+
+function renderTable(entries: WaitlistEntry[], query = "") {
   const root = document.querySelector<HTMLElement>("[data-waitlist-root]");
   const tbody = root?.querySelector<HTMLElement>("[data-waitlist-results]");
   const emptyEl = root?.querySelector<HTMLElement>("[data-waitlist-empty]");
   const clientsBase = root?.dataset.clientsBase ?? "";
 
   if (!tbody || !emptyEl) return;
+
+  updateStats(entries.length, allEntries.length, query);
+  updateEmptyState(entries, query);
 
   if (entries.length === 0) {
     tbody.innerHTML = "";
@@ -79,14 +153,15 @@ function renderTable(entries: WaitlistEntry[]) {
       const name = clientName(entry);
       const services =
         entry.serviceNames.length > 0 ? entry.serviceNames.join(", ") : "—";
+      const preferred = formatPreferredTime(entry);
       return `
         <tr data-waitlist-row="${entry.id}">
           <td><a class="team-list-layout__data-table__link" href="${clientsBase}?q=${encodeURIComponent(entry.clientEmail)}">${escapeHtml(name)}</a></td>
-          <td>${escapeHtml(formatPhone(entry.clientPhone))}</td>
+          <td class="waitlist-table__phone">${escapeHtml(formatPhone(entry.clientPhone))}</td>
           <td>${escapeHtml(entry.staffName)}</td>
-          <td>${escapeHtml(services)}</td>
-          <td>${escapeHtml(formatPreferredTime(entry))}</td>
-          <td>${escapeHtml(formatDateAdded(entry.insertedAt))}</td>
+          <td class="waitlist-table__services">${escapeHtml(services)}</td>
+          <td class="waitlist-table__preferred">${escapeHtml(preferred)}</td>
+          <td class="waitlist-table__date">${escapeHtml(formatDateAdded(entry.insertedAt))}</td>
         </tr>`;
     })
     .join("");
@@ -95,7 +170,7 @@ function renderTable(entries: WaitlistEntry[]) {
 function applyFilter(term: string) {
   const query = term.trim().toLowerCase();
   if (!query) {
-    renderTable(allEntries);
+    renderTable(allEntries, term);
     return;
   }
 
@@ -105,6 +180,7 @@ function applyFilter(term: string) {
       entry.clientEmail,
       entry.clientPhone,
       entry.staffName,
+      formatPreferredTime(entry),
       ...entry.serviceNames,
     ]
       .filter(Boolean)
@@ -112,7 +188,7 @@ function applyFilter(term: string) {
       .toLowerCase();
     return haystack.includes(query);
   });
-  renderTable(filtered);
+  renderTable(filtered, term);
 }
 
 async function loadEntries(apiBase: string) {
@@ -144,6 +220,31 @@ async function loadEntries(apiBase: string) {
   }
 }
 
+function initTimeChips(form: HTMLFormElement) {
+  const hiddenInput = form.querySelector<HTMLInputElement>("[data-waitlist-time-slot]");
+  const chips = form.querySelectorAll<HTMLButtonElement>("[data-time-chip]");
+
+  function setSlot(slot: TimeSlot | "") {
+    if (hiddenInput) hiddenInput.value = slot;
+    chips.forEach((chip) => {
+      const active = chip.dataset.timeChip === slot;
+      chip.classList.toggle("waitlist-modal__chip--active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const slot = chip.dataset.timeChip as TimeSlot | undefined;
+      if (!slot) return;
+      const current = hiddenInput?.value ?? "";
+      setSlot(current === slot ? "" : slot);
+    });
+  });
+
+  form.addEventListener("reset", () => setSlot(""));
+}
+
 function initAddModal(apiBase: string) {
   const root = document.querySelector<HTMLElement>("[data-waitlist-root]");
   if (root?.dataset.manager !== "1") return;
@@ -155,9 +256,12 @@ function initAddModal(apiBase: string) {
 
   if (!modal || !form || !openBtn) return;
 
+  initTimeChips(form);
+
   function openModal() {
     modal.hidden = false;
     form.reset();
+    form.dispatchEvent(new Event("reset"));
     if (errorEl) errorEl.hidden = true;
     form.querySelector<HTMLElement>("input, select")?.focus();
   }
@@ -176,6 +280,9 @@ function initAddModal(apiBase: string) {
     if (errorEl) errorEl.hidden = true;
 
     const formData = new FormData(form);
+    const timeSlot = String(formData.get("preferredTimeSlot") ?? "").trim() as TimeSlot | "";
+    const slotRange = timeSlot ? TIME_SLOTS[timeSlot] : null;
+
     const payload = {
       client: {
         firstName: String(formData.get("firstName") ?? "").trim(),
@@ -186,6 +293,8 @@ function initAddModal(apiBase: string) {
       staffId: String(formData.get("staffId") ?? "").trim() || undefined,
       serviceIds: [String(formData.get("serviceId") ?? "").trim()],
       preferredDate: String(formData.get("preferredDate") ?? "").trim() || undefined,
+      preferredTimeStart: slotRange?.start,
+      preferredTimeEnd: slotRange?.end,
       clientMessage: String(formData.get("clientMessage") ?? "").trim() || undefined,
     };
 
@@ -210,14 +319,40 @@ function initAddModal(apiBase: string) {
   });
 }
 
+function initSearch() {
+  const root = document.querySelector<HTMLElement>("[data-waitlist-root]");
+  const filterInput = root?.querySelector<HTMLInputElement>("[data-waitlist-filter]");
+  const clearBtn = root?.querySelector<HTMLButtonElement>("[data-waitlist-filter-clear]");
+
+  if (!filterInput) return;
+
+  function syncClear() {
+    if (!clearBtn) return;
+    const hasValue = filterInput.value.trim().length > 0;
+    clearBtn.hidden = !hasValue;
+  }
+
+  filterInput.addEventListener("input", () => {
+    applyFilter(filterInput.value);
+    syncClear();
+  });
+
+  clearBtn?.addEventListener("click", () => {
+    filterInput.value = "";
+    applyFilter("");
+    syncClear();
+    filterInput.focus();
+  });
+
+  syncClear();
+}
+
 function init() {
   const root = document.querySelector<HTMLElement>("[data-waitlist-root]");
   const apiBase = root?.dataset.apiBase ?? "";
   if (!apiBase) return;
 
-  const filterInput = root?.querySelector<HTMLInputElement>("[data-waitlist-filter]");
-  filterInput?.addEventListener("input", () => applyFilter(filterInput.value));
-
+  initSearch();
   initAddModal(apiBase);
   void loadEntries(apiBase);
 }
