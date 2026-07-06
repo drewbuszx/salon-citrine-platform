@@ -1050,6 +1050,8 @@ function initInventory(root: HTMLElement) {
   minPriceInput?.addEventListener("change", scheduleFetch);
   maxPriceInput?.addEventListener("change", scheduleFetch);
 
+  root.closest(".team-list-layout")?.addEventListener("team-filters-restored", scheduleFetch);
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && document.querySelector(".inventory-modal.is-open")) {
       closeAllModals();
