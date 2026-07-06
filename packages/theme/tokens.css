@@ -133,6 +133,8 @@
   --team-sidebar-bg: var(--color-stone-50);
   --team-sidebar-active-bg: var(--color-citrine-muted);
   --team-sidebar-active-border: var(--color-citrine);
+  --team-sidebar-inset-x: 1rem;
+  --team-sidebar-icon-size: 1rem;
 
   /* ── Layout ── */
   --header-logo-height: clamp(4.7rem, 12vw, 6.4rem);
