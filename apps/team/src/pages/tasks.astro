@@ -219,17 +219,27 @@ const staffOptions = staffRows ?? [];
     --notebook-margin-line: rgba(196, 90, 78, 0.42);
     --notebook-glow-1: rgba(231, 172, 70, 0.06);
     --notebook-glow-2: rgba(141, 158, 136, 0.05);
+    /*
+      Sketch palette (final rendered alpha = this shared opacity × each
+      path's own opacity attribute, since background layers can't be
+      dimmed individually): warm grey-brown #8a7f72 pencil linework reads
+      at ~0.09, dusty-rose #c4a5a5 stardust at ~0.08, citrine #c9a227
+      facet hints at ~0.06 — all inside the 0.05–0.12 discipline.
+    */
     --notebook-sketch-opacity: 0.09;
-    --notebook-sketch-moon: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 7c-10 1-17 10-17 19 0 9 7 16 16 17-7-4-10-10-10-17 0-8 5-15 11-19z' stroke='%23ae948f' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='11' r='0.9' fill='%23c45a4e' opacity='0.45'/%3E%3C/svg%3E");
-    --notebook-sketch-moon-sm: url("data:image/svg+xml,%3Csvg viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M26 6c-8 1-13 8-13 15 0 7 5 13 12 14-6-3-8-8-8-14 0-6 4-11 9-15z' stroke='%23ae948f' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
-    --notebook-sketch-crystal: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M40 6l10 24-10 44-10-44z' stroke='%238d9e88' stroke-width='1.05' stroke-linejoin='round'/%3E%3Cpath d='M24 34l8-12 8 16 8-12 8 8' stroke='%23c45a4e' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round' opacity='0.75'/%3E%3Cpath d='M18 54l10-10 12 14 10-10 12 10' stroke='%23e7ac46' stroke-width='0.85' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'/%3E%3Cpath d='M34 22l6 8-6 8-6-8z' stroke='%23ae948f' stroke-width='0.7' opacity='0.6'/%3E%3C/svg%3E");
-    --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23ae948f' stroke-width='0.55' stroke-linejoin='round'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23ae948f' stroke-width='0.5' stroke-linejoin='round' opacity='0.8'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%23c45a4e' opacity='0.35'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23e7ac46' stroke-width='0.45' opacity='0.55'/%3E%3C/svg%3E");
+    --notebook-sketch-moon: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 7c-10 1-17 10-17 19 0 9 7 16 16 17-7-4-10-10-10-17 0-8 5-15 11-19z' stroke='%238a7f72' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='11' r='0.9' fill='%23c9a227' opacity='0.67'/%3E%3C/svg%3E");
+    --notebook-sketch-moon-sm: url("data:image/svg+xml,%3Csvg viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M26 6c-8 1-13 8-13 15 0 7 5 13 12 14-6-3-8-8-8-14 0-6 4-11 9-15z' stroke='%238a7f72' stroke-width='1' stroke-linecap='round'/%3E%3Ccircle cx='31' cy='9' r='0.7' fill='%23c9a227' opacity='0.6'/%3E%3C/svg%3E");
+    --notebook-sketch-crystal: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M40 6l10 24-10 44-10-44z' stroke='%238a7f72' stroke-width='1.05' stroke-linejoin='round'/%3E%3Cpath d='M24 34l8-12 8 16 8-12 8 8' stroke='%23c9a227' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round' opacity='0.67'/%3E%3Cpath d='M18 54l10-10 12 14 10-10 12 10' stroke='%23c9a227' stroke-width='0.85' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'/%3E%3Cpath d='M34 22l6 8-6 8-6-8z' stroke='%23c4a5a5' stroke-width='0.75' opacity='0.89'/%3E%3C/svg%3E");
+    --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23c4a5a5' stroke-width='0.55' stroke-linejoin='round' opacity='0.89'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23c4a5a5' stroke-width='0.5' stroke-linejoin='round' opacity='0.6'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%238a7f72' opacity='1'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23c9a227' stroke-width='0.45' opacity='0.67'/%3E%3C/svg%3E");
+    --notebook-sketch-herb: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 100' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 94c-1-20 2-38-1-58-1.3-8 .5-16 3-24' stroke='%238a7f72' stroke-width='1' stroke-linecap='round'/%3E%3Cpath d='M29 70c-6-2-11 1-14 6 5-1 10-3 14-6z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M30 68c6-3 11 0 14 5-5-1-10-2-14-5z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M27 46c-6-2-10 1-13 6 5-1 9-3 13-6z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M28 44c5-3 10 0 13 5-5-1-9-2-13-5z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M26 24c-5-2-9 1-11 5 4-1 8-2 11-5z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Cpath d='M27 22c4-3 8 0 11 4-4-1-8-1-11-4z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Ccircle cx='31' cy='6' r='1.4' fill='%238a7f72' opacity='0.9'/%3E%3Ccircle cx='27' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3Ccircle cx='34' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3C/svg%3E");
   }
 
   /*
-    Flex column shell: paper grows with task list height. Rule lines repeat-y;
-    margin line + sketch motifs live on ::before (absolute inset 0) so they
-    always stretch to the full painted paper area as content scrolls.
+    Flex column shell: paper grows with task list height. Rule lines and the
+    margin line live on the element's own background (full alpha, never
+    dimmed); sketch motifs live on ::before (absolute inset 0) at their own
+    reduced opacity, so both stretch to the full painted paper area as
+    content scrolls.
   */
   .notebook {
     position: relative;
@@ -276,18 +286,28 @@ const staffOptions = staffRows ?? [];
     min-height: 18rem;
     padding: 1.25rem 1.5rem 2rem calc(var(--notebook-margin) + 1.25rem);
     background-color: var(--notebook-paper);
-    background-repeat: repeat-y;
-    background-size: 100% var(--notebook-line);
-    background-position: 0 0;
-    background-image: linear-gradient(
-      to bottom,
-      transparent calc(var(--notebook-line) - 1px),
-      var(--notebook-rule) calc(var(--notebook-line) - 1px),
-      var(--notebook-rule) var(--notebook-line)
-    );
+    background-repeat: repeat-y, no-repeat;
+    background-size: 100% var(--notebook-line), 1.5px 100%;
+    background-position: 0 0, var(--notebook-margin) 0;
+    background-image:
+      linear-gradient(
+        to bottom,
+        transparent calc(var(--notebook-line) - 1px),
+        var(--notebook-rule) calc(var(--notebook-line) - 1px),
+        var(--notebook-rule) var(--notebook-line)
+      ),
+      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line));
     isolation: isolate;
   }
 
+  /*
+    Sketch motifs sit on their own layer so the margin line above keeps
+    its full rgba alpha — it must NOT be diluted by --notebook-sketch-opacity.
+    Moons anchor the top-left margin, a second moon tiles repeat-y down
+    the right margin, stars tile repeat-y down the left margin, and the
+    crystal cluster + herb sprig bookend the bottom corners — so motifs
+    keep appearing no matter how far the task list scrolls.
+  */
   .notebook__paper::before {
     content: "";
     position: absolute;
@@ -295,25 +315,25 @@ const staffOptions = staffRows ?? [];
     z-index: 0;
     pointer-events: none;
     opacity: var(--notebook-sketch-opacity);
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-y;
+    background-repeat: no-repeat, repeat-y, no-repeat, repeat-y, no-repeat;
     background-size:
-      1.5px 100%,
       3.25rem 3.25rem,
-      2.75rem 2.75rem,
+      1.6rem calc(var(--notebook-line) * 2.75),
       5.5rem 5.5rem,
-      1.75rem calc(var(--notebook-line) * 2.5);
+      1.75rem calc(var(--notebook-line) * 2.5),
+      3.75rem 6.25rem;
     background-position:
-      var(--notebook-margin) 0,
       calc(var(--notebook-margin) * 0.55) 1.25rem,
-      right 1.35rem top 0.85rem,
+      right 0.35rem top 2rem,
       right 0.65rem bottom 1.25rem,
-      calc(var(--notebook-margin) * 0.22) 0;
+      calc(var(--notebook-margin) * 0.22) 0,
+      left 0.15rem bottom 0.5rem;
     background-image:
-      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line)),
       var(--notebook-sketch-moon),
       var(--notebook-sketch-moon-sm),
       var(--notebook-sketch-crystal),
-      var(--notebook-sketch-stars);
+      var(--notebook-sketch-stars),
+      var(--notebook-sketch-herb);
   }
 
   [data-theme="dark"] .notebook__paper {
