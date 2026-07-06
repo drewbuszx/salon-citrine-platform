@@ -63,6 +63,7 @@ const initials = staff ? staffInitials(staff.name) : "";
         <img
           class="team-bar__logo-img"
           src={logoCompactSrc}
+          data-fallback-src={logoFallbackSrc}
           alt=""
           width="120"
           height="32"
@@ -123,10 +124,10 @@ const initials = staff ? staffInitials(staff.name) : "";
                 class="team-bar__profile-btn"
                 type="button"
                 aria-expanded="false"
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 aria-controls={profileMenuId}
                 data-profile-trigger
-                title={staff?.name ?? "Account"}
+                aria-label={`Open account menu${staff?.name ? ` for ${staff.name}` : ""}`}
               >
                 {
                   photoSrc ? (
@@ -141,13 +142,22 @@ const initials = staff ? staffInitials(staff.name) : "";
                       {initials}
                     </span>
                   )}
+                <svg class="team-bar__profile-chevron" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"></path>
+                </svg>
               </button>
               <ul
                 id={profileMenuId}
                 class="team-bar__profile-menu"
                 role="menu"
-                aria-label="Account"
+                aria-label="Account menu"
                 data-profile-menu
+                hidden
               >
                 <li role="none">
                   <span class="team-bar__profile-label" role="presentation">{staff?.name}</span>
@@ -162,10 +172,15 @@ const initials = staff ? staffInitials(staff.name) : "";
                     My book
                   </a>
                 </li>
+                <li class="team-bar__profile-divider" role="separator" aria-hidden="true"></li>
                 <li role="none">
                   <form method="post" action={teamUrl("/api/auth/logout")} role="none">
-                    <button class="team-bar__profile-item team-bar__profile-item--button" type="submit" role="menuitem">
-                      Sign out
+                    <button
+                      class="team-bar__profile-item team-bar__profile-item--button team-bar__profile-item--logout"
+                      type="submit"
+                      role="menuitem"
+                    >
+                      Log out
                     </button>
                   </form>
                 </li>
@@ -204,8 +219,23 @@ const initials = staff ? staffInitials(staff.name) : "";
               aria-label="Switch theme"
               data-theme-toggle
             >
-              Theme
+              <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              </svg>
             </button>
+            <form
+              class="team-bar__mobile-logout"
+              method="post"
+              action={teamUrl("/api/auth/logout")}
+            >
+              <button class="team-bar__mobile-logout-btn" type="submit">
+                Log out
+              </button>
+            </form>
             <button class="team-bar__menu-close" type="button" aria-label="Close menu" data-menu-close>
               ×
             </button>
@@ -369,11 +399,36 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__profile-btn {
     display: inline-flex;
-    padding: 0;
-    border: none;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.12rem 0.2rem 0.12rem 0.12rem;
+    border: 1px solid transparent;
     background: none;
     cursor: pointer;
-    border-radius: 50%;
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.88);
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
+  }
+
+  .team-bar__profile-btn:hover,
+  .team-bar__profile-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+    outline: none;
+  }
+
+  .team-bar__profile-chevron {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex-shrink: 0;
+    opacity: 0.72;
+    transition: transform var(--transition-fast);
+  }
+
+  .team-bar__profile.is-open .team-bar__profile-chevron {
+    transform: rotate(180deg);
   }
 
   .team-bar__avatar,
@@ -401,7 +456,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     top: calc(100% + 0.35rem);
     right: 0;
     z-index: 130;
-    min-width: 11rem;
+    min-width: 11.5rem;
     margin: 0;
     padding: 0.35rem 0;
     list-style: none;
@@ -419,10 +474,18 @@ const initials = staff ? staffInitials(staff.name) : "";
       visibility 0.15s;
   }
 
+  .team-bar__profile-menu[hidden] {
+    display: block;
+  }
+
   .team-bar__profile.is-open .team-bar__profile-menu {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+  }
+
+  .team-bar__profile.is-open .team-bar__profile-menu[hidden] {
+    display: block;
   }
 
   .team-bar__profile-label {
@@ -452,6 +515,50 @@ const initials = staff ? staffInitials(staff.name) : "";
   .team-bar__profile-item:hover,
   .team-bar__profile-item:focus-visible {
     background: var(--color-light);
+    outline: none;
+  }
+
+  .team-bar__profile-divider {
+    height: 1px;
+    margin: 0.25rem 0;
+    background: var(--color-border);
+  }
+
+  .team-bar__profile-item--logout {
+    color: var(--color-stone-600);
+  }
+
+  .team-bar__profile-item--logout:hover,
+  .team-bar__profile-item--logout:focus-visible {
+    color: var(--color-error);
+    background: rgba(180, 35, 24, 0.06);
+  }
+
+  .team-bar__mobile-logout {
+    margin-top: 0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .team-bar__mobile-logout-btn {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 0.35rem;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+
+  .team-bar__mobile-logout-btn:hover,
+  .team-bar__mobile-logout-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
     outline: none;
   }
 
@@ -517,6 +624,10 @@ const initials = staff ? staffInitials(staff.name) : "";
     .team-bar__theme-toggle,
     .team-bar__menu-close {
       margin-top: 0.35rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
       padding: 0.65rem 0.85rem;
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 0.35rem;
@@ -525,6 +636,23 @@ const initials = staff ? staffInitials(staff.name) : "";
       font-family: var(--font-sans);
       font-size: 0.8rem;
       cursor: pointer;
+    }
+
+    .team-bar__theme-toggle .theme-toggle__icon {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .team-bar__theme-toggle .theme-toggle__icon--sun {
+      display: none;
+    }
+
+    :global([data-theme="dark"]) .team-bar__theme-toggle .theme-toggle__icon--moon {
+      display: none;
+    }
+
+    :global([data-theme="dark"]) .team-bar__theme-toggle .theme-toggle__icon--sun {
+      display: block;
     }
   }
 </style>

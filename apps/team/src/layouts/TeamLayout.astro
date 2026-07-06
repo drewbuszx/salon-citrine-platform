@@ -11,6 +11,7 @@ interface Props {
   wide?: boolean;
   fullBleed?: boolean;
   plain?: boolean;
+  cream?: boolean;
   loginPage?: boolean;
 }
 
@@ -20,6 +21,7 @@ const {
   wide = false,
   fullBleed = false,
   plain = false,
+  cream = false,
   loginPage = false,
 } = Astro.props;
 const { staff, user } = Astro.locals;
@@ -36,28 +38,16 @@ const isAuthenticated = Boolean(user && staff);
     <script is:inline>
       (function () {
         var storageKey = "theme";
-        var mobileQuery = window.matchMedia("(max-width: 1100px)");
 
         function resolveTheme() {
-          var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          if (mobileQuery.matches) {
-            var stored = localStorage.getItem(storageKey);
-            if (stored === "dark" || stored === "light") {
-              return stored;
-            }
+          var stored = localStorage.getItem(storageKey);
+          if (stored === "dark" || stored === "light") {
+            return stored;
           }
-          return prefersDark ? "dark" : "light";
+          return "light";
         }
 
-        function applyTheme() {
-          document.documentElement.setAttribute("data-theme", resolveTheme());
-        }
-
-        applyTheme();
-        mobileQuery.addEventListener("change", applyTheme);
-        window
-          .matchMedia("(prefers-color-scheme: dark)")
-          .addEventListener("change", applyTheme);
+        document.documentElement.setAttribute("data-theme", resolveTheme());
       })();
     </script>
   </head>
@@ -68,6 +58,7 @@ const isAuthenticated = Boolean(user && staff);
         "team-shell",
         loginPage && "team-shell--login",
         (fullBleed || plain) && "team-shell--book",
+        cream && "team-shell--editorial",
       ]}
     >
       <TeamSiteHeader
@@ -98,7 +89,6 @@ const isAuthenticated = Boolean(user && staff);
 
     <script>
       const storageKey = "theme";
-      const mobileQuery = window.matchMedia("(max-width: 1100px)");
       const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
 
       function getTheme() {
@@ -114,57 +104,90 @@ const isAuthenticated = Boolean(user && staff);
       }
 
       function applyThemeFromRules() {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        let theme: "light" | "dark";
-
-        if (mobileQuery.matches) {
-          const stored = localStorage.getItem(storageKey);
-          theme =
-            stored === "dark" || stored === "light"
-              ? (stored as "light" | "dark")
-              : prefersDark
-                ? "dark"
-                : "light";
-        } else {
-          theme = prefersDark ? "dark" : "light";
-        }
+        const stored = localStorage.getItem(storageKey);
+        const theme: "light" | "dark" =
+          stored === "dark" || stored === "light"
+            ? (stored as "light" | "dark")
+            : "light";
 
         document.documentElement.setAttribute("data-theme", theme);
         updateToggleLabels(theme);
       }
 
-      function setMobileTheme(theme: "light" | "dark") {
-        if (!mobileQuery.matches) return;
+      function setTheme(theme: "light" | "dark") {
         document.documentElement.setAttribute("data-theme", theme);
         localStorage.setItem(storageKey, theme);
         updateToggleLabels(theme);
       }
 
       applyThemeFromRules();
-      mobileQuery.addEventListener("change", applyThemeFromRules);
-      window
-        .matchMedia("(prefers-color-scheme: dark)")
-        .addEventListener("change", applyThemeFromRules);
 
       themeToggles.forEach((toggle) => {
         toggle.addEventListener("click", () => {
-          setMobileTheme(getTheme() === "dark" ? "light" : "dark");
+          setTheme(getTheme() === "dark" ? "light" : "dark");
         });
+      });
+
+      document.querySelectorAll<HTMLImageElement>(".team-bar__logo-img[data-fallback-src]").forEach((img) => {
+        img.addEventListener(
+          "error",
+          () => {
+            const fallback = img.getAttribute("data-fallback-src");
+            if (fallback && !img.src.endsWith(fallback)) {
+              img.src = fallback;
+              img.classList.add("team-bar__logo-img--fallback");
+            }
+          },
+          { once: true },
+        );
       });
 
       const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
       const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
       const profileDropdown = document.querySelector<HTMLElement>("[data-profile-dropdown]");
       const profileTrigger = document.querySelector<HTMLButtonElement>("[data-profile-trigger]");
+      const profileMenu = document.querySelector<HTMLElement>("[data-profile-menu]");
 
-      function closeProfileMenu() {
-        profileDropdown?.classList.remove("is-open");
-        profileTrigger?.setAttribute("aria-expanded", "false");
+      function getProfileMenuItems() {
+        return profileMenu
+          ? Array.from(
+              profileMenu.querySelectorAll<HTMLElement>(
+                '[role="menuitem"]:not([disabled])',
+              ),
+            )
+          : [];
       }
 
-      function openProfileMenu() {
+      function closeProfileMenu(returnFocus = false) {
+        profileDropdown?.classList.remove("is-open");
+        profileTrigger?.setAttribute("aria-expanded", "false");
+        profileMenu?.setAttribute("hidden", "");
+        if (returnFocus) {
+          profileTrigger?.focus();
+        }
+      }
+
+      function openProfileMenu(focusFirst = true) {
         profileDropdown?.classList.add("is-open");
         profileTrigger?.setAttribute("aria-expanded", "true");
+        profileMenu?.removeAttribute("hidden");
+        if (focusFirst) {
+          getProfileMenuItems()[0]?.focus();
+        }
+      }
+
+      function focusProfileMenuItem(direction: 1 | -1) {
+        const items = getProfileMenuItems();
+        if (!items.length) return;
+        const active = document.activeElement;
+        const index = items.findIndex((item) => item === active);
+        const nextIndex =
+          index === -1
+            ? direction === 1
+              ? 0
+              : items.length - 1
+            : (index + direction + items.length) % items.length;
+        items[nextIndex]?.focus();
       }
 
       profileTrigger?.addEventListener("click", (event) => {
@@ -188,6 +211,34 @@ const isAuthenticated = Boolean(user && staff);
 
       profileTrigger?.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
+          closeProfileMenu(true);
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          if (!profileDropdown?.classList.contains("is-open")) {
+            openProfileMenu(event.key === "ArrowUp");
+          } else {
+            focusProfileMenuItem(event.key === "ArrowDown" ? 1 : -1);
+          }
+        }
+      });
+
+      profileMenu?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeProfileMenu(true);
+          return;
+        }
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          focusProfileMenuItem(1);
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          focusProfileMenuItem(-1);
+        }
+        if (event.key === "Tab") {
           closeProfileMenu();
         }
       });

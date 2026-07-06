@@ -82,7 +82,8 @@ const stockAlert = metrics.lowStock > 0;
     >
       <span class="team-pulse__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
-          <path d="M6 6h12l1 4H5l1-4zM5 10v8a1 1 0 001 1h12a1 1 0 001-1v-8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
         </svg>
       </span>
       <span class="team-pulse__value">{metrics.lowStock}</span>
@@ -97,16 +98,10 @@ const stockAlert = metrics.lowStock > 0;
   .team-pulse {
     margin-bottom: 1.75rem;
     padding: 1rem 1rem 1.1rem;
-    border: 1px solid rgba(231, 172, 70, 0.35);
-    border-radius: 0.85rem;
-    background:
-      linear-gradient(
-        135deg,
-        rgba(231, 172, 70, 0.14) 0%,
-        rgba(141, 158, 136, 0.08) 55%,
-        rgba(255, 255, 255, 0.92) 100%
-      );
-    box-shadow: 0 6px 24px rgba(47, 42, 40, 0.06);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-lg);
+    background: var(--color-stone-50);
+    box-shadow: var(--shadow-sm);
   }
 
   .team-pulse__head {
@@ -128,18 +123,18 @@ const stockAlert = metrics.lowStock > 0;
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 50%;
-    background: var(--color-sage);
-    box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.5);
+    background: var(--color-citrine);
+    box-shadow: 0 0 0 0 rgba(231, 172, 70, 0.45);
     animation: team-pulse-live 2.4s ease-in-out infinite;
   }
 
   @keyframes team-pulse-live {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.45);
+      box-shadow: 0 0 0 0 rgba(231, 172, 70, 0.45);
     }
     50% {
-      box-shadow: 0 0 0 5px rgba(141, 158, 136, 0);
+      box-shadow: 0 0 0 5px rgba(231, 172, 70, 0);
     }
   }
 
@@ -150,6 +145,7 @@ const stockAlert = metrics.lowStock > 0;
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    color: var(--color-stone-700);
   }
 
   .team-pulse__subtitle {
@@ -158,7 +154,7 @@ const stockAlert = metrics.lowStock > 0;
     font-size: 0.62rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-gray);
+    color: var(--color-stone-500);
   }
 
   .team-pulse__revenue {
@@ -168,9 +164,9 @@ const stockAlert = metrics.lowStock > 0;
     gap: 0.75rem;
     margin-bottom: 0.75rem;
     padding: 0.55rem 0.75rem;
-    border: 1px solid rgba(231, 172, 70, 0.28);
-    border-radius: 0.55rem;
-    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
     color: inherit;
     transition:
       border-color var(--transition-fast),
@@ -180,7 +176,7 @@ const stockAlert = metrics.lowStock > 0;
   .team-pulse__revenue:hover,
   .team-pulse__revenue:focus-visible {
     border-color: var(--color-citrine);
-    background: rgba(231, 172, 70, 0.1);
+    background: var(--color-citrine-muted);
     outline: none;
   }
 
@@ -198,7 +194,7 @@ const stockAlert = metrics.lowStock > 0;
     font-family: var(--font-sans);
     font-size: 0.72rem;
     line-height: 1.35;
-    color: var(--color-stone-700, var(--color-text));
+    color: var(--color-stone-700);
     text-align: right;
   }
 
@@ -214,40 +210,47 @@ const stockAlert = metrics.lowStock > 0;
     justify-items: center;
     gap: 0.15rem;
     padding: 0.75rem 0.4rem 0.65rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.65rem;
-    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
     text-align: center;
     color: inherit;
     transition:
-      border-color 0.15s ease,
-      box-shadow 0.15s ease,
-      transform 0.15s ease;
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast),
+      background var(--transition-fast);
   }
 
   .team-pulse__metric:hover,
   .team-pulse__metric:focus-visible {
     border-color: var(--color-citrine);
-    box-shadow: 0 4px 16px rgba(47, 42, 40, 0.08);
+    background: var(--color-citrine-muted);
+    box-shadow: var(--shadow-sm);
     transform: translateY(-1px);
     outline: none;
   }
 
-  .team-pulse__metric--hot {
-    border-color: rgba(231, 172, 70, 0.55);
-    background: rgba(231, 172, 70, 0.1);
+  .team-pulse__metric--hot,
+  .team-pulse__metric--alert {
+    border-color: var(--color-stone-200);
+    background: var(--color-bg);
   }
 
-  .team-pulse__metric--alert {
-    border-color: rgba(174, 148, 143, 0.45);
-    background: rgba(174, 148, 143, 0.08);
+  .team-pulse__metric--hot:hover,
+  .team-pulse__metric--hot:focus-visible,
+  .team-pulse__metric--alert:hover,
+  .team-pulse__metric--alert:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
   }
 
   .team-pulse__icon {
     display: inline-flex;
     width: 1.15rem;
     height: 1.15rem;
-    color: var(--color-sage);
+    color: var(--color-stone-500);
+    transition: color var(--transition-fast);
   }
 
   .team-pulse__icon svg {
@@ -255,12 +258,9 @@ const stockAlert = metrics.lowStock > 0;
     height: 100%;
   }
 
-  .team-pulse__metric--hot .team-pulse__icon {
+  .team-pulse__metric:hover .team-pulse__icon,
+  .team-pulse__metric:focus-visible .team-pulse__icon {
     color: var(--color-citrine-dark);
-  }
-
-  .team-pulse__metric--alert .team-pulse__icon {
-    color: var(--color-dusty-rose);
   }
 
   .team-pulse__value {
@@ -268,7 +268,7 @@ const stockAlert = metrics.lowStock > 0;
     font-size: 1.85rem;
     font-weight: 500;
     line-height: 1;
-    color: var(--color-text);
+    color: var(--color-stone-800);
   }
 
   .team-pulse__label {
@@ -277,15 +277,14 @@ const stockAlert = metrics.lowStock > 0;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-stone-700, var(--color-text));
+    color: var(--color-stone-700);
   }
 
   .team-pulse__hint {
     font-family: var(--font-sans);
     font-size: 0.58rem;
     line-height: 1.25;
-    color: var(--color-gray);
-    opacity: 0.9;
+    color: var(--color-stone-500);
     max-width: 6.75rem;
   }
 
@@ -304,6 +303,20 @@ const stockAlert = metrics.lowStock > 0;
   .team-pulse__metric:hover .team-pulse__go,
   .team-pulse__metric:focus-visible .team-pulse__go {
     opacity: 1;
+  }
+
+  :global([data-theme="dark"]) .team-pulse {
+    background: var(--color-stone-100);
+    border-color: var(--color-stone-200);
+  }
+
+  :global([data-theme="dark"]) .team-pulse__metric {
+    background: var(--color-stone-50);
+    border-color: var(--color-stone-200);
+  }
+
+  :global([data-theme="dark"]) .team-pulse__value {
+    color: var(--color-text);
   }
 
   @media (max-width: 420px) {
