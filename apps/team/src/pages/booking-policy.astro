@@ -1,6 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamListLayout from "../components/TeamListLayout.astro";
+import TeamManageLayout from "../components/TeamManageLayout.astro";
 import { formatBookingPolicySummary } from "@saloncitrine/shared";
 import {
   defaultPolicyResponse,
@@ -29,17 +29,12 @@ const depositValueDollars =
 ---
 
 <TeamLayout title="Booking policy" activeNav="manage" plain wide fullBleed>
-  <TeamListLayout title="Booking policy" mainTitle="Active policy" sidebarTitle="Sections">
-    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/services")}>← Services</a>
+  <TeamManageLayout title="Booking policy" activeSection="booking-policy">
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/manage")}>← Manage</a>
 
-    <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Policy sections">
-      <a class="team-list-layout__sidebar-link" href="#policy-settings">Policy settings</a>
-      <a class="team-list-layout__sidebar-link" href="#policy-summary">Guest summary</a>
-    </nav>
-
-    <Fragment slot="mainLead">
+    <p class="booking-policy__lead">
       Online booking uses the active policy below. Existing appointments keep the policy snapshot stored at booking time.
-    </Fragment>
+    </p>
 
   <section
     class="form-stack form-stack--medium"
@@ -196,12 +191,19 @@ const depositValueDollars =
       <p class="page-section__lead" data-policy-summary>{summary}</p>
     </section>
   </section>
-  </TeamListLayout>
+  </TeamManageLayout>
 
   <script src="../scripts/booking-policy.ts"></script>
 </TeamLayout>
 
 <style>
+  .booking-policy__lead {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: #6b7280;
+  }
+
   .form-label--checkbox {
     display: flex;
     align-items: center;

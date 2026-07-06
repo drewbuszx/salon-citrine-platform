@@ -1,7 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
-import TeamListLayout from "../components/TeamListLayout.astro";
-import TeamListFilter from "../components/TeamListFilter.astro";
+import TeamManageLayout from "../components/TeamManageLayout.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase } = Astro.locals;
@@ -45,61 +44,15 @@ for (const row of staffServices ?? []) {
   set.add(row.service_id);
   staffServiceIds.set(row.staff_id, set);
 }
-
-const categories = [...new Set((services ?? []).map((s) => s.category).filter(Boolean))].sort();
 ---
 
 <TeamLayout title="Services" activeNav="manage" plain wide fullBleed>
-  <TeamListLayout title="Services" mainTitle="Manage services" sidebarTitle="Filters">
+  <TeamManageLayout title="Services" activeSection="services">
     <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>Booking policy</a>
 
-    <TeamListFilter slot="sidebarFilters" label="Category" count={categories.length} open={categories.length > 0}>
-      {
-        categories.length > 0 ? (
-          <div class="team-list-layout__filter-options">
-            <label class="team-list-layout__filter-option">
-              <input type="radio" name="svc-category" value="" data-svc-filter-category checked />
-              <span>All categories</span>
-            </label>
-            {
-              categories.map((category) => (
-                <label class="team-list-layout__filter-option">
-                  <input type="radio" name="svc-category" value={category} data-svc-filter-category />
-                  <span>{category}</span>
-                </label>
-              ))
-            }
-          </div>
-        ) : (
-          <p class="team-list-layout__filter-placeholder">No services loaded.</p>
-        )
-      }
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="Staff" count={(staff ?? []).length} open>
-      <div class="team-list-layout__filter-options">
-        <label class="team-list-layout__filter-option">
-          <input type="radio" name="svc-staff" value="" data-svc-filter-staff checked />
-          <span>All stylists</span>
-        </label>
-        {
-          (staff ?? []).map((member) => (
-            <label class="team-list-layout__filter-option">
-              <input type="radio" name="svc-staff" value={member.id} data-svc-filter-staff />
-              <span>{member.name}</span>
-            </label>
-          ))
-        }
-      </div>
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="Status">
-      <p class="team-list-layout__filter-placeholder">All listed services are active.</p>
-    </TeamListFilter>
-
-    <Fragment slot="mainLead">
+    <p class="services-page__lead">
       Update service durations and returning-clients-only settings per stylist.
-    </Fragment>
+    </p>
 
     {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
@@ -231,33 +184,17 @@ const categories = [...new Set((services ?? []).map((s) => s.category).filter(Bo
       </>
     )
   }
-  </TeamListLayout>
+  </TeamManageLayout>
 </TeamLayout>
 
-<script>
-  function applyServiceFilters() {
-    const category =
-      document.querySelector<HTMLInputElement>("[data-svc-filter-category]:checked")?.value ?? "";
-    const staffId =
-      document.querySelector<HTMLInputElement>("[data-svc-filter-staff]:checked")?.value ?? "";
-
-    document.querySelectorAll<HTMLElement>("[data-svc-category]").forEach((el) => {
-      const matchCategory = !category || el.dataset.svcCategory === category;
-      el.hidden = !matchCategory;
-    });
-
-    document.querySelectorAll<HTMLElement>("[data-svc-staff]").forEach((el) => {
-      const matchStaff = !staffId || el.dataset.svcStaff === staffId;
-      el.hidden = !matchStaff;
-    });
+<style>
+  .services-page__lead {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: #6b7280;
   }
 
-  document.querySelectorAll("[data-svc-filter-category], [data-svc-filter-staff]").forEach((el) => {
-    el.addEventListener("change", applyServiceFilters);
-  });
-</script>
-
-<style>
   .services__info {
     display: grid;
     gap: 0.15rem;

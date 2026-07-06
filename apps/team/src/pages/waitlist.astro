@@ -1,0 +1,263 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamListLayout from "../components/TeamListLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import { teamUrl } from "../lib/supabase-server";
+
+const { staff, supabase } = Astro.locals;
+if (!staff) {
+  return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
+}
+
+const managerView = isSalonManager(staff);
+
+const [{ data: staffRows }, { data: serviceRows }] = await Promise.all([
+  supabase
+    .from("staff")
+    .select("id, name")
+    .in("role", ["owner", "stylist", "esthetician"])
+    .order("name"),
+  supabase.from("services").select("id, name").eq("is_active", true).order("name"),
+]);
+
+const providers = staffRows ?? [];
+const services = serviceRows ?? [];
+---
+
+<TeamLayout title="Waitlist" activeNav="book" plain wide fullBleed>
+  <div
+    class="waitlist-page"
+    data-waitlist-root
+    data-api-base={teamUrl("/api/waitlist")}
+    data-clients-base={teamUrl("/clients")}
+    data-manager={managerView ? "1" : "0"}
+  >
+    <TeamListLayout title="Waitlist" mainTitle="Waitlist" showSidebar={false}>
+      {
+        managerView ? (
+          <button slot="headerActions" class="team-list-layout__btn-accent" type="button" data-waitlist-add-open>
+            Add To Waitlist
+          </button>
+        ) : null
+      }
+
+      <label slot="toolbar" class="team-list-layout__search waitlist-page__search">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
+          <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+        </svg>
+        <input
+          class="team-list-layout__search-input"
+          type="search"
+          placeholder="Filter waitlist"
+          autocomplete="off"
+          data-waitlist-filter
+        />
+      </label>
+
+      <p class="team-list-layout__notice" data-waitlist-status hidden aria-live="polite"></p>
+
+      <div class="team-list-layout__table-wrap">
+        <table class="team-list-layout__data-table waitlist-table">
+          <thead>
+            <tr>
+              <th scope="col">Client</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Requested Staff</th>
+              <th scope="col">Service(s)</th>
+              <th scope="col">Preferred Time</th>
+              <th scope="col">Date Added</th>
+            </tr>
+          </thead>
+          <tbody data-waitlist-results></tbody>
+        </table>
+        <p class="waitlist-page__empty" data-waitlist-empty hidden>No waitlist entries found.</p>
+      </div>
+    </TeamListLayout>
+  </div>
+
+  {
+    managerView ? (
+      <div class="waitlist-modal" data-waitlist-add-modal hidden>
+        <div class="waitlist-modal__backdrop" data-waitlist-add-close></div>
+        <div class="waitlist-modal__panel" role="dialog" aria-modal="true" aria-labelledby="waitlist-add-title">
+          <div class="waitlist-modal__head">
+            <h2 id="waitlist-add-title">Add To Waitlist</h2>
+            <button class="waitlist-modal__close" type="button" data-waitlist-add-close aria-label="Close">×</button>
+          </div>
+          <form class="waitlist-modal__form" data-waitlist-add-form>
+            <label class="waitlist-modal__label">
+              First name
+              <input class="waitlist-modal__input" name="firstName" required autocomplete="given-name" />
+            </label>
+            <label class="waitlist-modal__label">
+              Last name
+              <input class="waitlist-modal__input" name="lastName" required autocomplete="family-name" />
+            </label>
+            <label class="waitlist-modal__label">
+              Email
+              <input class="waitlist-modal__input" name="email" type="email" required autocomplete="email" />
+            </label>
+            <label class="waitlist-modal__label">
+              Phone
+              <input class="waitlist-modal__input" name="phone" type="tel" autocomplete="tel" />
+            </label>
+            <label class="waitlist-modal__label">
+              Requested staff
+              <select class="waitlist-modal__input" name="staffId">
+                <option value="">Any professional</option>
+                {
+                  providers.map((member) => (
+                    <option value={member.id}>{member.name}</option>
+                  ))
+                }
+              </select>
+            </label>
+            <label class="waitlist-modal__label">
+              Service
+              <select class="waitlist-modal__input" name="serviceId" required>
+                <option value="" disabled selected>
+                  Select a service
+                </option>
+                {
+                  services.map((service) => (
+                    <option value={service.id}>{service.name}</option>
+                  ))
+                }
+              </select>
+            </label>
+            <label class="waitlist-modal__label">
+              Preferred date
+              <input class="waitlist-modal__input" name="preferredDate" type="date" />
+            </label>
+            <label class="waitlist-modal__label">
+              Notes
+              <textarea class="waitlist-modal__input waitlist-modal__textarea" name="clientMessage" rows="2"></textarea>
+            </label>
+            <p class="team-list-layout__notice team-list-layout__notice--error" data-waitlist-add-error hidden></p>
+            <div class="waitlist-modal__actions">
+              <button class="team-list-layout__btn-secondary" type="button" data-waitlist-add-close>Cancel</button>
+              <button class="team-list-layout__btn-accent" type="submit">Add To Waitlist</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    ) : null
+  }
+
+  <script src="../scripts/waitlist.ts"></script>
+</TeamLayout>
+
+<style>
+  .waitlist-page__search {
+    margin-bottom: 0;
+    max-width: 20rem;
+    margin-left: auto;
+  }
+
+  .waitlist-page :global(.team-list-layout__toolbar) {
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+  }
+
+  .waitlist-page__empty {
+    margin: 1.5rem 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #9ca3af;
+  }
+
+  .waitlist-modal[hidden] {
+    display: none;
+  }
+
+  .waitlist-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .waitlist-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(17, 24, 39, 0.45);
+  }
+
+  .waitlist-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 28rem);
+    max-height: 90vh;
+    overflow: auto;
+    padding: 1.25rem;
+    border-radius: 0.35rem;
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  .waitlist-modal__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .waitlist-modal__head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .waitlist-modal__close {
+    border: none;
+    background: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+  }
+
+  .waitlist-modal__form {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .waitlist-modal__label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .waitlist-modal__input {
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    color: #111827;
+  }
+
+  .waitlist-modal__textarea {
+    resize: vertical;
+    min-height: 4rem;
+  }
+
+  .waitlist-modal__input:focus-visible {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  }
+
+  .waitlist-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+</style>

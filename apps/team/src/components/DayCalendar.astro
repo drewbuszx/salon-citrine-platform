@@ -185,9 +185,9 @@ const calendarConfig = {
       <div class="day-cal__subbar-actions">
         <span class="day-cal__view-pill" aria-current="true">Day</span>
         <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${dayParam}`}>Week</a>
-        <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--ghost" data-waitlist-btn disabled title="Coming soon">
+        <a class="day-cal__subbar-btn day-cal__subbar-btn--ghost" href={teamUrl("/waitlist")}>
           Waitlist
-        </button>
+        </a>
         <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--primary" data-new-appointment>
           New appointment
         </button>

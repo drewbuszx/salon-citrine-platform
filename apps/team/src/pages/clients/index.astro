@@ -80,7 +80,7 @@ if (!countError) {
 
 <TeamLayout title="Clients" activeNav="clients" plain wide fullBleed>
   <div class="clients-page" data-clients-root>
-  <TeamListLayout title="Clients" mainTitle="Your Clients" sidebarTitle="Filters">
+  <TeamListLayout title="Clients" mainTitle="Your Clients" sidebarTitle="Refine Your Search">
     <button slot="headerActions" class="team-list-layout__btn-secondary" type="button" data-coming-soon>
       Merge Clients
     </button>
@@ -111,6 +111,13 @@ if (!countError) {
 
     <TeamListFilter slot="sidebarFilters" label="Primary Locations" count={locations.length}>
       <p class="team-list-layout__filter-placeholder">Primary location tracking coming soon.</p>
+    </TeamListFilter>
+
+    <TeamListFilter slot="sidebarFilters" label="Purchased">
+      <label class="team-list-layout__filter-option">
+        <input type="checkbox" data-filter-purchased />
+        <span>Has purchase history</span>
+      </label>
     </TeamListFilter>
 
     <TeamListFilter slot="sidebarFilters" label="Provider" count={providers.length} open={providers.length > 0}>
@@ -194,13 +201,6 @@ if (!countError) {
       <p class="team-list-layout__filter-placeholder">No blocked clients.</p>
     </TeamListFilter>
 
-    <TeamListFilter slot="sidebarFilters" label="Purchased">
-      <label class="team-list-layout__filter-option">
-        <input type="checkbox" data-filter-purchased />
-        <span>Has purchase history</span>
-      </label>
-    </TeamListFilter>
-
     <TeamListExportButton slot="sidebarFooter" />
 
     <Fragment slot="stats">
@@ -226,8 +226,8 @@ if (!countError) {
 
     <p class="team-list-layout__notice" data-status hidden aria-live="polite"></p>
 
-    <div class="clients-page__table-wrap">
-      <table class="clients-table">
+    <div class="team-list-layout__table-wrap">
+      <table class="team-list-layout__data-table clients-table">
         <thead>
           <tr>
             <th scope="col">First Name</th>
@@ -359,8 +359,8 @@ if (!countError) {
       const tr = document.createElement("tr");
       const linkBase = `${clientsBase}/${client.id}`;
       tr.innerHTML = `
-        <td><a class="clients-table__link" href="${linkBase}">${client.firstName || "—"}</a></td>
-        <td><a class="clients-table__link" href="${linkBase}">${client.lastName || "—"}</a></td>
+        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${client.firstName || "—"}</a></td>
+        <td><a class="team-list-layout__data-table__link" href="${linkBase}">${client.lastName || "—"}</a></td>
         <td>${formatPhone(client.phone)}</td>
         <td>${formatEmail(client.email)}</td>
       `;
@@ -505,36 +505,8 @@ if (!countError) {
 </script>
 
 <style>
-  .clients-page__table-wrap {
-    overflow-x: auto;
-  }
-
   .clients-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-  }
-
-  .clients-table th {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-align: left;
-    color: #6b7280;
-    background: #fff;
-  }
-
-  .clients-table td {
-    padding: 0.95rem 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    color: #374151;
-    vertical-align: middle;
-  }
-
-  .clients-table tbody tr:hover td {
-    background: #f9fafb;
+    /* inherits team-list-layout__data-table zebra + padding */
   }
 
   .clients-table__skeleton-row .skeleton--line {
@@ -545,14 +517,7 @@ if (!countError) {
   }
 
   .clients-table__link {
-    color: #0096ff;
-    text-decoration: none;
-  }
-
-  .clients-table__link:hover,
-  .clients-table__link:focus-visible {
-    text-decoration: underline;
-    outline: none;
+    color: inherit;
   }
 
   .clients-page__empty {

@@ -158,20 +158,25 @@ const hasToolbar = Astro.slots.has("toolbar");
     list-style: none;
   }
 
+  .team-list-layout__filter-label {
+    flex: 1;
+    min-width: 0;
+  }
+
   .team-list-layout__filter-trigger::-webkit-details-marker {
     display: none;
   }
 
   .team-list-layout__filter-chevron {
-    width: 1rem;
-    height: 1rem;
+    width: 0.75rem;
+    height: 0.75rem;
     flex-shrink: 0;
     color: #9ca3af;
     transition: transform 0.15s ease;
   }
 
   .team-list-layout__filter[open] .team-list-layout__filter-chevron {
-    transform: rotate(180deg);
+    transform: rotate(90deg);
   }
 
   .team-list-layout__filter-body {
@@ -234,8 +239,8 @@ const hasToolbar = Astro.slots.has("toolbar");
   }
 
   .team-list-layout__search svg {
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.125rem;
+    height: 1.125rem;
     flex-shrink: 0;
     color: #9ca3af;
   }
@@ -288,8 +293,9 @@ const hasToolbar = Astro.slots.has("toolbar");
   }
 
   .team-list-layout__export svg {
-    width: 1rem;
-    height: 1rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
   }
 
   .team-list-layout__export:hover,
@@ -396,10 +402,54 @@ const hasToolbar = Astro.slots.has("toolbar");
   }
 
   .team-list-layout__filter-count {
-    margin-left: auto;
-    font-size: 0.6875rem;
-    font-weight: 500;
-    color: #9ca3af;
+    display: none;
+  }
+
+  :global(.team-list-layout__data-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+  }
+
+  :global(.team-list-layout__data-table th) {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    color: #6b7280;
+    background: #fff;
+  }
+
+  :global(.team-list-layout__data-table td) {
+    padding: 0.95rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    color: #374151;
+    vertical-align: middle;
+  }
+
+  :global(.team-list-layout__data-table tbody tr:nth-child(even) td) {
+    background: #f9fafb;
+  }
+
+  :global(.team-list-layout__data-table tbody tr:hover td) {
+    background: #f3f4f6;
+  }
+
+  :global(.team-list-layout__data-table__link) {
+    color: #0096ff;
+    text-decoration: none;
+  }
+
+  :global(.team-list-layout__data-table__link:hover),
+  :global(.team-list-layout__data-table__link:focus-visible) {
+    text-decoration: underline;
+    outline: none;
+  }
+
+  :global(.team-list-layout__table-wrap) {
+    overflow-x: auto;
   }
 
   .team-list-layout__sidebar-shortcuts {
@@ -476,6 +526,31 @@ const hasToolbar = Astro.slots.has("toolbar");
   :global(.team-list-layout__btn-primary:hover),
   :global(.team-list-layout__btn-primary:focus-visible) {
     background: #0084e0;
+    outline: none;
+  }
+
+  :global(.team-list-layout__btn-accent) {
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: #7c3aed;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.team-list-layout__btn-accent:hover),
+  :global(.team-list-layout__btn-accent:focus-visible) {
+    background: #6d28d9;
     outline: none;
   }
 

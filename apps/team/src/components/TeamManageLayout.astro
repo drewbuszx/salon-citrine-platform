@@ -1,0 +1,313 @@
+---
+import { MANAGE_NAV, type ManageSection } from "../lib/manage-nav";
+
+interface Props {
+  title: string;
+  activeSection?: ManageSection;
+  rootClass?: string;
+}
+
+const { title, activeSection = "hub", rootClass = "" } = Astro.props;
+const hasHeaderActions = Astro.slots.has("headerActions");
+---
+
+<div class:list={["team-manage-layout", rootClass]}>
+  <header class="team-manage-layout__subheader">
+    <h1 class="team-manage-layout__title">{title}</h1>
+    {
+      hasHeaderActions ? (
+        <div class="team-manage-layout__header-actions">
+          <slot name="headerActions" />
+        </div>
+      ) : null
+    }
+  </header>
+
+  <div class="team-manage-layout__body">
+    <aside class="team-manage-layout__sidebar" aria-label="Manage business">
+      <h2 class="team-manage-layout__sidebar-title">Manage Business</h2>
+      <nav class="team-manage-layout__nav" aria-label="Business settings">
+        {
+          MANAGE_NAV.map((item) =>
+            item.disabled ? (
+              <span class="team-manage-layout__nav-link team-manage-layout__nav-link--disabled">
+                {item.label}
+              </span>
+            ) : (
+              <a
+                class:list={[
+                  "team-manage-layout__nav-link",
+                  { "is-active": activeSection === item.id },
+                ]}
+                href={item.href}
+                aria-current={activeSection === item.id ? "page" : undefined}
+              >
+                {item.label}
+              </a>
+            ),
+          )
+        }
+      </nav>
+    </aside>
+
+    <main class="team-manage-layout__main">
+      <slot />
+    </main>
+  </div>
+</div>
+
+<style>
+  .team-manage-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    font-family: var(--font-sans);
+    background: #fff;
+    color: #111827;
+  }
+
+  .team-manage-layout__subheader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+  }
+
+  .team-manage-layout__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .team-manage-layout__header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .team-manage-layout__body {
+    display: grid;
+    grid-template-columns: minmax(200px, 220px) 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .team-manage-layout__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem 0;
+    border-right: 1px solid #e5e7eb;
+    background: #fafafa;
+  }
+
+  .team-manage-layout__sidebar-title {
+    margin: 0 0 0.5rem;
+    padding: 0 1rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+  }
+
+  .team-manage-layout__nav {
+    display: grid;
+    gap: 0;
+  }
+
+  .team-manage-layout__nav-link {
+    display: block;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .team-manage-layout__nav-link:hover,
+  .team-manage-layout__nav-link:focus-visible {
+    color: #6d28d9;
+    background: #f5f3ff;
+    outline: none;
+  }
+
+  .team-manage-layout__nav-link.is-active {
+    border-left-color: #7c3aed;
+    color: #6d28d9;
+    background: #ede9fe;
+    font-weight: 600;
+  }
+
+  .team-manage-layout__nav-link--disabled {
+    padding: 0.6rem 1rem;
+    border-left: 3px solid transparent;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  .team-manage-layout__main {
+    padding: 1.25rem 1.5rem 2rem;
+    background: #fff;
+    min-width: 0;
+  }
+
+  :global(.team-manage-layout__hub-list) {
+    display: grid;
+    gap: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
+
+  :global(.team-manage-layout__hub-row) {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+  }
+
+  :global(.team-manage-layout__hub-row:last-child) {
+    border-bottom: none;
+  }
+
+  :global(.team-manage-layout__hub-icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.35rem;
+    background: #f3f4f6;
+    color: #6b7280;
+    flex-shrink: 0;
+  }
+
+  :global(.team-manage-layout__hub-icon svg) {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  :global(.team-manage-layout__hub-copy) {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  :global(.team-manage-layout__hub-title) {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  :global(.team-manage-layout__hub-desc) {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    line-height: 1.4;
+  }
+
+  :global(.team-manage-layout__hub-action) {
+    padding: 0.45rem 0.85rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.25rem;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  :global(.team-manage-layout__hub-action:hover),
+  :global(.team-manage-layout__hub-action:focus-visible) {
+    background: #f9fafb;
+    outline: none;
+  }
+
+  :global(.team-manage-layout__hub-action--disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  :global(.team-list-layout__btn-primary),
+  :global(.team-list-layout__btn-secondary) {
+    padding: 0.55rem 0.9rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.team-list-layout__btn-primary) {
+    border: none;
+    background: #0096ff;
+    color: #fff;
+  }
+
+  :global(.team-list-layout__btn-secondary) {
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #374151;
+  }
+
+  @media (max-width: 900px) {
+    .team-manage-layout__body {
+      grid-template-columns: 1fr;
+    }
+
+    .team-manage-layout__sidebar {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 0.75rem;
+    }
+
+    .team-manage-layout__nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      padding: 0 0.75rem;
+    }
+
+    .team-manage-layout__nav-link,
+    .team-manage-layout__nav-link--disabled {
+      border-left: none;
+      border-radius: 0.25rem;
+      padding: 0.45rem 0.65rem;
+    }
+
+    .team-manage-layout__nav-link.is-active {
+      border-left: none;
+      box-shadow: inset 0 0 0 2px #7c3aed;
+    }
+  }
+</style>
