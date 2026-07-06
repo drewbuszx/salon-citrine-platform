@@ -319,7 +319,10 @@ const calendarConfig = {
         }
       </div>
 
-      <div class="day-cal__columns">
+      <div
+        class="day-cal__columns"
+        style={`--day-staff-count: ${staff.length}`}
+      >
         {
           staff.map((member) => {
             const events = staffEventsForDay(
@@ -2341,6 +2344,7 @@ const calendarConfig = {
   }
 
   .day-cal__columns {
+    position: relative;
     display: flex;
     flex: 1 1 auto;
     min-width: max-content;
@@ -2348,24 +2352,27 @@ const calendarConfig = {
     background: var(--color-bg);
   }
 
+  /* Full-height column dividers as an overlay — survives slot tint stacking */
+  .day-cal__columns::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(var(--day-staff-width) - 1px),
+      var(--color-border) calc(var(--day-staff-width) - 1px),
+      var(--color-border) var(--day-staff-width)
+    );
+  }
+
   .day-cal__column {
     position: relative;
     flex: 0 0 var(--day-staff-width);
     width: var(--day-staff-width);
     min-width: var(--day-staff-width);
-  }
-
-  /* Full-height dividers above slot backgrounds (opaque tints were hiding border-right) */
-  .day-cal__column:not(:last-child)::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--color-border);
-    z-index: 3;
-    pointer-events: none;
   }
 
   .day-cal__staff-header {
@@ -2385,7 +2392,7 @@ const calendarConfig = {
     overflow: visible;
     position: sticky;
     top: 0;
-    z-index: 4;
+    z-index: 6;
   }
 
   .day-cal__avatar-wrap {
@@ -2819,6 +2826,16 @@ const calendarConfig = {
       flex: 1 1 var(--day-staff-width);
       width: auto;
       max-width: none;
+    }
+
+    .day-cal__columns::after {
+      background-image: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent calc(100% / var(--day-staff-count) - 1px),
+        var(--color-border) calc(100% / var(--day-staff-count) - 1px),
+        var(--color-border) calc(100% / var(--day-staff-count))
+      );
     }
   }
 
