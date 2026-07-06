@@ -51,6 +51,20 @@ export type ClientProfile = {
   emailOptIn: boolean;
 };
 
+/** Default retail sales tax rate (products only). Override via PUBLIC_RETAIL_TAX_RATE. */
+export const DEFAULT_RETAIL_TAX_RATE = 0.07;
+
+export function calculateRetailTaxCents(
+  lineItems: CheckoutLineItem[],
+  rate = DEFAULT_RETAIL_TAX_RATE,
+): number {
+  const retailSubtotal = lineItems
+    .filter((item) => item.kind === "product")
+    .reduce((sum, item) => sum + Math.max(0, item.totalCents), 0);
+  if (retailSubtotal <= 0 || rate <= 0) return 0;
+  return Math.round(retailSubtotal * rate);
+}
+
 export function calculateCheckoutTotals(input: {
   lineItems: CheckoutLineItem[];
   tipCents?: number;

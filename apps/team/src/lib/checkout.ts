@@ -1,8 +1,21 @@
 import {
   calculateCheckoutTotals,
+  calculateRetailTaxCents,
+  DEFAULT_RETAIL_TAX_RATE,
   type CheckoutLineItem,
   type CheckoutOrder,
 } from "@saloncitrine/shared";
+
+function retailTaxRate(): number {
+  const raw = import.meta.env.PUBLIC_RETAIL_TAX_RATE;
+  if (raw == null || raw === "") return DEFAULT_RETAIL_TAX_RATE;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_RETAIL_TAX_RATE;
+}
+
+function taxForLines(lineItems: CheckoutLineItem[]): number {
+  return calculateRetailTaxCents(lineItems, retailTaxRate());
+}
 
 type SupabaseClient = App.Locals["supabase"];
 
@@ -123,8 +136,10 @@ export async function getOrCreateCheckoutOrder(
   }
 
   const depositApplied = Math.max(0, appointment.deposit_charged_cents ?? 0);
+  const taxCents = taxForLines(lineItems);
   const totals = calculateCheckoutTotals({
     lineItems,
+    taxCents,
     depositAppliedCents: depositApplied,
   });
 
@@ -249,16 +264,20 @@ export async function syncCheckoutOrderLines(
 
   if (insertError) throw insertError;
 
-  const totals = calculateCheckoutTotals({
-    lineItems,
-    tipCents,
-    depositAppliedCents: (
+  const depositAppliedCents =
+    (
       await supabase
         .from("checkout_orders")
         .select("deposit_applied_cents")
         .eq("id", orderId)
         .single()
-    ).data?.deposit_applied_cents ?? 0,
+    ).data?.deposit_applied_cents ?? 0;
+  const taxCents = taxForLines(lineItems);
+  const totals = calculateCheckoutTotals({
+    lineItems,
+    tipCents,
+    taxCents,
+    depositAppliedCents,
   });
 
   const { error: updateError } = await supabase
@@ -266,6 +285,7 @@ export async function syncCheckoutOrderLines(
     .update({
       subtotal_cents: totals.subtotalCents,
       tip_cents: totals.tipCents,
+      tax_cents: totals.taxCents,
       total_cents: totals.totalCents,
     })
     .eq("id", orderId);

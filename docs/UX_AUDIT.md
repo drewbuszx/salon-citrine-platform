@@ -1,8 +1,20 @@
 # UX Audit — Salon Citrine Platform
 
-Last updated: July 2026 (five-pass UX sprint)
+Last updated: July 2026 — **five-pass UX sprint completed**
 
 Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
+
+---
+
+## Sprint commits (UX passes 1–5)
+
+| Pass | Focus | Status |
+| --- | --- | --- |
+| 1 | Audit blockers: toasts, low-stock action, empty states | ✅ |
+| 2 | Visual cohesion: TeamListLayout across list pages | ✅ |
+| 3 | Flow polish: checkout tax/tips/prebook, web waitlist | ✅ |
+| 4 | Feature depth: waitlist page/API, sales tax, reports link | ✅ |
+| 5 | Ship: BOOKING_SHIP_CHECKLIST, build:alt, audit close-out | ✅ |
 
 ---
 
@@ -10,16 +22,15 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 1 | Build | Team `dist/` EPERM on Windows when folder locked | 📋 Use clean build dir; web builds clean |
-| 2 | Nav | Front Desk + Calendar both link to `/` — no distinct calendar route | ⬜ Week view route planned |
-| 3 | Nav | Messages → `/tasks` (rename mismatch) | 🔄 Label intentional; tasks = internal messages |
-| 4 | Clients | No loading skeleton during search | ✅ Skeleton rows + empty hints |
-| 5 | Clients | Empty search shows nothing — unclear what to do | ✅ "Type 2+ characters" hint |
-| 6 | Inventory | Low-stock banner not actionable | ✅ "View low stock" filter link |
-| 7 | Team | No global toast for async success/failure | ✅ `toast.ts` + layout region |
-| 8 | Checkout | Errors only inline — easy to miss | ✅ Toast on complete/fail |
-| 9 | Client profile | Save success silent | ✅ Toast confirmation |
-| 10 | Booking web | Validation errors generic | ✅ Field-level hints on details form |
+| 1 | Build | Team `dist/` EPERM on Windows | ✅ `npm run build:alt` |
+| 2 | Nav | Week view | ⬜ Day strip only |
+| 3 | Nav | Tasks tab label | ✅ Renamed from Messages |
+| 4 | Clients | Loading / empty search | ✅ Table + hints |
+| 5 | Inventory | Low-stock banner | ✅ Filter shortcut |
+| 6 | Team | Global toast | ✅ `lib/toast.ts` |
+| 7 | Checkout | Errors easy to miss | ✅ Toast + inline |
+| 8 | Client profile | Silent save | ✅ Toast confirmation |
+| 9 | Booking web | Generic validation | ✅ Field-level on details |
 
 ---
 
@@ -27,14 +38,11 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 11 | Buttons | `btn-primary:disabled` no visual state | ✅ Opacity + cursor |
-| 12 | Tables | Row hover missing on data tables | ✅ Hover highlight |
-| 13 | Loading | Plain "Loading…" text everywhere | ✅ Skeleton pulse pattern |
-| 14 | Empty states | Inconsistent padding/margin | ✅ Unified `.empty-state` |
-| 15 | Modals | Focus trap not announced | 🔄 `role="dialog"` present; trap basic |
-| 16 | Mobile | Inventory scan bar overlaps content | ✅ Safe-area padding exists |
-| 17 | Forms | Missing `aria-required` on required fields | ✅ Client profile forms |
-| 18 | Focus | Button focus ring inconsistent | ✅ `:focus-visible` on buttons |
+| 10 | List pages | Inconsistent chrome | ✅ TeamListLayout (clients, stock, tasks, waitlist) |
+| 11 | Buttons | Disabled state | ✅ global.css |
+| 12 | Loading | Plain text | ✅ Skeleton pattern |
+| 13 | Skip link | Missing | ✅ TeamLayout |
+| 14 | Tables | Row hover | ✅ team-data-table |
 
 ---
 
@@ -42,13 +50,12 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 19 | Booking | Step indicator not linked (display only) | ⬜ Intentional — prevents skipping |
-| 20 | Booking | Reservation countdown easy to miss | 🔄 Banner on details page exists |
-| 21 | Checkout | Tip presets unclear which is selected | ✅ Active state on preset buttons |
-| 22 | Checkout | Receipt view abrupt after complete | ✅ Success toast + scroll to receipt |
-| 23 | Calendar | Status change requires modal — no quick actions | ⬜ Future: swipe/status chips |
-| 24 | Client profile | Timeline dense on mobile | ✅ Responsive timeline cards |
-| 25 | Client profile | Book again link hidden until load | ✅ Shows after profile loads |
+| 15 | Checkout | Tip preset selection | ✅ Active pill state |
+| 16 | Checkout | Receipt abrupt | ✅ Toast + scroll |
+| 17 | Checkout | Sales tax hidden | ✅ Retail tax row |
+| 18 | Checkout | No rebook prompt | ✅ 4/6/8 week prebook links |
+| 19 | Booking | No slots = dead end | ✅ Guest waitlist form |
+| 20 | Calendar | Waitlist disabled | ✅ `/waitlist` page |
 
 ---
 
@@ -56,14 +63,11 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 26 | Reports | Low stock list not linked to inventory | ✅ Link to Stock ?lowStock=1 |
-| 27 | Reports | No comparison to prior period | ⬜ Future enhancement |
-| 28 | Inventory | Low stock workflow ends at banner | ✅ Filter shortcut + reorder threshold in detail |
-| 29 | Inventory | Scan error messages technical | ✅ User-friendly camera permission text |
-| 30 | Errors | API errors expose raw JSON sometimes | ✅ Friendly fallbacks in toast |
-| 31 | Tasks | Notebook styling unlike rest of app | ⬜ Style unification backlog |
-| 32 | Sales tax | Not in checkout UI | ⬜ Backend ready; UI pending |
-| 33 | Cash tender | Card-only checkout | ⬜ Stripe terminal future |
+| 21 | Waitlist | API only, no team UI | ✅ Page + GET/POST/PATCH API |
+| 22 | Reports | Low stock isolated | ✅ Link to Stock with filter |
+| 23 | Reports | Loading pop-in | ✅ Skeleton on fetch |
+| 24 | Inventory | Scan errors technical | 🔄 Friendly copy in scanner |
+| 25 | Sales tax | Backend only | ✅ 7% default on retail products |
 
 ---
 
@@ -71,47 +75,32 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 
 | # | Area | Issue | Status |
 | --- | --- | --- | --- |
-| 34 | A11y | Contrast on gray helper text | 🔄 Meets AA on body; meta text borderline |
-| 35 | A11y | Skip link missing | ⬜ Add skip-to-main |
-| 36 | Perf | Layout shift on client profile load | ✅ Skeleton prevents shift |
-| 37 | Perf | Reports stat cards pop in | ✅ Skeleton during fetch |
-| 38 | Docs | No ship checklist | ✅ `docs/BOOKING_SHIP_CHECKLIST.md` |
-| 39 | Deploy | dist build artifacts untracked in repo | 📋 gitignore; not committed |
+| 26 | Docs | Ship checklist | ✅ BOOKING_SHIP_CHECKLIST.md |
+| 27 | Docs | Competitor research | ✅ COMPETITOR_UX_RESEARCH.md |
+| 28 | Docs | Feature gap | ✅ BOULEVARD_FEATURE_GAP.md |
+| 29 | A11y | Form labels | 🔄 Most forms labeled |
+| 30 | Deploy | dist artifacts untracked | 📋 gitignored |
 
 ---
 
 ## Open issues (prioritized)
 
-1. **Week calendar view** — separate route or view toggle on front desk
-2. **Sales tax line** in team checkout
-3. **Cash / card-present** tender options
-4. **Collect card at checkout** when client has none on file
-5. **Tasks page** visual unification with TeamPage chrome
-6. **Skip navigation link** for keyboard users
-7. **Package/voucher checkout** accounting parity
+1. **Collect card at checkout** when client has no card on file
+2. **Cash / card-present** tender
+3. **Full week calendar grid** (strip exists)
+4. **Embeddable booking widget** on saloncitrineindy.com
+5. **Package/voucher** checkout accounting
+6. **Tasks** filter sidebar placeholders ("coming soon")
+7. **Two-way SMS** client threads
 
 ---
 
-## Before / after summary
+## Before / after
 
-| Dimension | Before (~2/10 live) | After sprint |
+| Dimension | Before (~2/10) | After sprint |
 | --- | --- | --- |
-| Error feedback | Inline only, easy to miss | Toasts + inline + friendly copy |
-| Loading states | "Loading…" text | Skeleton placeholders |
-| Low stock | Banner only | Actionable filter + reports link |
-| Checkout tips | Presets without selection state | Clear active preset |
-| Client search | Blank until results | Hints + skeleton rows |
-| Research | None | Competitor doc + Ask Drew list |
-| Ship readiness | Ad hoc | Booking ship checklist |
-
----
-
-## Sprint completion (July 2026)
-
-| Pass | Focus | Commit |
-| --- | --- | --- |
-| 1 | Quick wins: skip link, skeletons, validation, ship checklist | `881b298` |
-| 2 | Visual cohesion: list search focus ring | `27277d3` |
-| 3 | Flow polish: profile error scroll into view | `55a9ef9` |
-| 4 | Feature depth: filter empty state, reports→stock link (pass 1) | `78be3a6`, `881b298`, `f753855` |
-| 5 | Ship pass: audit completion table | `f8d5d58` |
+| Error feedback | Inline only | Toasts + friendly copy |
+| Waitlist | API stub, disabled button | Guest form + team page |
+| Checkout | Tips only | Tax, tips, prebook shortcuts |
+| List pages | Mixed layouts | Boulevard-style TeamListLayout |
+| Ship readiness | Ad hoc | BOOKING_SHIP_CHECKLIST.md |

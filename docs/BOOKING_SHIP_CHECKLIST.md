@@ -1,41 +1,65 @@
-# Booking & Team App Ship Checklist
+# Booking & Team Ship Checklist
 
-Last updated: July 2026
+Use before redeploying **web** (`/book`) and **team** Workers after UX sprint changes.
 
-Use this before promoting Workers deployments to production.
+## Build verification
 
-## Web booking (`apps/web`)
+- [ ] Team: `npm run build:alt --workspace apps/team` (avoids Windows `dist/` EPERM)
+- [ ] Web: `npm run build --workspace apps/web`
+- [ ] No TypeScript errors in changed scripts
 
-- [ ] `/book` cart → stylist → datetime → details → confirm completes with test card
-- [ ] Guest can book without creating an account (email + phone only)
-- [ ] Reservation countdown visible on details step; expired cart shows clear recovery
-- [ ] New-client intake fields validate (referral source required for new clients)
-- [ ] Returning client lookup fills name/phone from email blur
-- [ ] Stripe setup intent loads after valid email; card errors show friendly copy
-- [ ] Confirmation page shows appointment summary and salon contact info
+## Guest booking (`/book`)
 
-## Team front desk (`apps/team`)
+- [ ] Services → cart → stylist (if any pro) → datetime → details → confirm
+- [ ] Step indicator shows correct step for both booking paths
+- [ ] Returning client lookup fills name/phone on details
+- [ ] Card form loads after valid email; policy ack required
+- [ ] Reservation countdown visible on details; expired hold shows clear error
+- [ ] **Waitlist**: pick a fully booked stylist/date range → join waitlist form submits
+- [ ] Confirmation email/SMS (if env configured)
 
-- [ ] Login → dashboard loads; nav links resolve (no 404s on Tasks, Stock, Clients, Events)
-- [ ] Day calendar: create appointment, change status, block time
-- [ ] Checkout: tip presets highlight selection; complete payment shows toast + receipt
-- [ ] Client search: skeleton while loading; filters (tag, referral, provider) narrow results
-- [ ] Stock: category/brand/stock-level filters work; square grid; low-stock banner → filter
-- [ ] Tasks: sidebar views filter list; red badge shows real attention count
-- [ ] Events: calendar shows markers only (no text in cells); list below has full details
-- [ ] Reports: date range applies; low-stock section links to Stock with filter
+## Team calendar & waitlist
 
-## Infrastructure
+- [ ] Dashboard loads upcoming appointments
+- [ ] `/book` day calendar: book, block time, status changes
+- [ ] **Waitlist** link opens `/waitlist` with active entries
+- [ ] Manager can add waitlist entry manually
 
-- [ ] `npm run build` succeeds for team + web (use alternate `outDir` if Windows EPERM on `dist/`)
-- [ ] Supabase migrations applied; RLS policies allow team staff roles
-- [ ] Cloudflare Workers secrets set: Supabase, Stripe, etc. (see `docs/CLOUDFLARE_DEPLOY.md`)
-- [ ] Smoke test on production URLs after deploy
+## Checkout
 
-## Known open items (not blocking smoke test)
+- [ ] Open checkout from completed/in-service appointment
+- [ ] Retail products add to line items
+- [ ] **Sales tax** row appears when retail products on ticket (default 7% on products)
+- [ ] Tip presets highlight selection; custom tip works
+- [ ] Complete checkout charges card on file
+- [ ] Receipt shows; **prebook** shortcuts (4/6/8 weeks) visible
+- [ ] Clear error when client has no card on file
 
-- Week calendar view (separate from day front desk)
-- Sales tax line in team checkout UI
-- Cash / card-present tender
-- Client blocked flag filter (schema pending)
-- First/last appointment date filters on Clients
+## CRM & ops
+
+- [ ] Clients list search + add client
+- [ ] Client profile save shows toast confirmation
+- [ ] Inventory low-stock banner → filter works; reports link to stock
+- [ ] Reports load with skeleton; CSV export downloads
+
+## Deploy
+
+- [ ] Deploy team Worker (not legacy Pages project)
+- [ ] Deploy web/book Worker when applicable
+- [ ] Smoke test production URLs after deploy
+
+## Known open items (post-sprint)
+
+- Cash / card-present tender at checkout
+- Collect card at checkout when none on file
+- Week calendar view (day strip exists; full week grid TBD)
+- Package/voucher redemption
+- Embeddable booking widget on marketing site
+
+## Env vars (reference)
+
+| Var | App | Purpose |
+| --- | --- | --- |
+| `PUBLIC_RETAIL_TAX_RATE` | team | Retail sales tax (default `0.07`) |
+| `PUBLIC_BOOK_URL` | team | Prebook links on checkout receipt |
+| Stripe + Supabase + Twilio/Resend | both | Payments & comms |

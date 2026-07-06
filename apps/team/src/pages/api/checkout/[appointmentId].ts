@@ -165,6 +165,7 @@ export const POST: APIRoute = async (context) => {
     const totals = calculateCheckoutTotals({
       lineItems: synced.lineItems,
       tipCents: synced.tipCents,
+      taxCents: synced.taxCents,
       depositAppliedCents: synced.depositAppliedCents,
     });
 

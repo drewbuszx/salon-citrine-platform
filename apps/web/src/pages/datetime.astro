@@ -143,12 +143,52 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
 
   {
     !hasAnyAvailability ? (
-      <p class="empty">
-        No open times in the next few weeks.{" "}
-        <a href={`${withBase()}?stylist=${stylist.slug}`}>
-          Try another service or professional
-        </a>
-      </p>
+      <section
+        class="waitlist-offer"
+        data-waitlist-offer
+        data-waitlist-api={withBase("api/booking/waitlist.json")}
+        data-stylist-slug={stylist.slug}
+        data-service-ids={servicesParamValue}
+      >
+        <h2>No open times right now</h2>
+        <p class="lead">
+          Join the waitlist and we will reach out when {stylist.name.split(" ")[0]} has an opening.
+        </p>
+        <form class="waitlist-offer__form" data-waitlist-form>
+          <div class="waitlist-offer__row">
+            <label class="form-label">
+              First name
+              <input class="form-input" name="firstName" required autocomplete="given-name" />
+            </label>
+            <label class="form-label">
+              Last name
+              <input class="form-input" name="lastName" required autocomplete="family-name" />
+            </label>
+          </div>
+          <label class="form-label">
+            Email
+            <input class="form-input" name="email" type="email" required autocomplete="email" />
+          </label>
+          <label class="form-label">
+            Phone
+            <input class="form-input" name="phone" type="tel" autocomplete="tel" />
+          </label>
+          <label class="form-label">
+            Preferred date (optional)
+            <input class="form-input" name="preferredDate" type="date" />
+          </label>
+          <label class="form-label">
+            Notes (optional)
+            <textarea class="form-input form-input--textarea" name="clientMessage" rows="2"></textarea>
+          </label>
+          <p class="notice notice--error" data-waitlist-error hidden role="alert"></p>
+          <p class="notice notice--success" data-waitlist-success hidden role="status"></p>
+          <button class="btn-primary" type="submit">Join waitlist</button>
+        </form>
+        <p class="waitlist-offer__alt">
+          Or <a href={`${withBase()}?stylist=${stylist.slug}`}>try another service or professional</a>.
+        </p>
+      </section>
     ) : (
       <div
         class="datetime-picker"
@@ -325,6 +365,7 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
 </BookingLayout>
 
 <script src="../scripts/datetime-booking.ts"></script>
+<script src="../scripts/waitlist-offer.ts"></script>
 
 <script define:vars={{ existingClientAckParam: EXISTING_CLIENT_ACK_PARAM }}>
   function monthParam(year, month) {
@@ -923,6 +964,40 @@ const newClientsContinueHref = `${datetimeUrl}?${datetimeContinueParams.toString
     background: var(--color-light);
     color: var(--color-gray);
     text-align: center;
+  }
+
+  .waitlist-offer {
+    padding: 1.25rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-booking-panel-bg);
+  }
+
+  .waitlist-offer h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+  }
+
+  .waitlist-offer__form {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1rem;
+  }
+
+  .waitlist-offer__row {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  @media (min-width: 32rem) {
+    .waitlist-offer__row {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .waitlist-offer__alt {
+    margin: 1rem 0 0;
+    font-size: 0.9rem;
+    color: var(--color-gray);
   }
 
   .back {

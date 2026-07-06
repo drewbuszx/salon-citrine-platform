@@ -17,6 +17,8 @@ if (!appointmentId) {
     data-appointment-id={appointmentId}
     data-api-url={teamUrl(`/api/checkout/${appointmentId}`)}
     data-calendar-url={teamUrl("/book")}
+    data-book-url={teamUrl("/book")}
+    data-retail-tax-rate={import.meta.env.PUBLIC_RETAIL_TAX_RATE ?? "0.07"}
   >
     <header class="checkout-page__header">
       <div class="checkout-page__intro">
@@ -96,6 +98,7 @@ if (!appointmentId) {
       <h2 id="receipt-title" class="team-panel__title">Receipt</h2>
       <p class="checkout-receipt__lead" data-receipt-lead></p>
       <dl class="checkout-summary" data-receipt-summary></dl>
+      <div class="checkout-prebook" data-prebook-links hidden aria-label="Prebook next visit"></div>
       <div class="checkout-receipt__actions">
         <a class="btn-primary" href={teamUrl("/book")}>Back to book</a>
         <button class="btn-secondary" type="button" data-print-receipt>Print</button>
@@ -329,6 +332,17 @@ if (!appointmentId) {
     flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 1rem;
+  }
+
+  .checkout-prebook {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+  }
+
+  .checkout-prebook__btn {
+    font-size: 0.72rem;
   }
 
   .checkout-modal {

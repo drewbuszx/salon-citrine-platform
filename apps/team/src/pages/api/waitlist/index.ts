@@ -3,7 +3,7 @@ import { z } from "zod";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import { isSalonManager } from "../../../lib/auth";
 
-const waitlistPostSchema = z.object({
+const createSchema = z.object({
   staffId: z.string().uuid().optional(),
   serviceIds: z.array(z.string().uuid()).min(1),
   preferredDate: z
@@ -18,6 +18,46 @@ const waitlistPostSchema = z.object({
   }),
   clientMessage: z.string().max(1200).optional(),
 });
+
+async function mapEntries(
+  supabase: App.Locals["supabase"],
+  rows: Array<Record<string, unknown>>,
+) {
+  const serviceIds = [
+    ...new Set(rows.flatMap((row) => (row.service_ids as string[]) ?? [])),
+  ];
+  const serviceNameById = new Map<string, string>();
+
+  if (serviceIds.length > 0) {
+    const { data: services } = await supabase
+      .from("services")
+      .select("id, name")
+      .in("id", serviceIds);
+    for (const svc of services ?? []) {
+      serviceNameById.set(svc.id as string, svc.name as string);
+    }
+  }
+
+  return rows.map((row) => ({
+    id: row.id as string,
+    staffName: (row.staff as { name?: string } | null)?.name ?? "Any professional",
+    serviceIds: row.service_ids as string[],
+    serviceNames: ((row.service_ids as string[]) ?? [])
+      .map((id) => serviceNameById.get(id))
+      .filter(Boolean) as string[],
+    preferredDate: row.preferred_date as string | null,
+    preferredTimeStart: row.preferred_time_start as string | null,
+    preferredTimeEnd: row.preferred_time_end as string | null,
+    clientEmail: row.client_email as string,
+    clientPhone: row.client_phone as string | null,
+    clientFirstName: row.client_first_name as string | null,
+    clientLastName: row.client_last_name as string | null,
+    clientMessage: row.client_message as string | null,
+    status: row.status as string,
+    notes: row.notes as string | null,
+    insertedAt: row.inserted_at as string,
+  }));
+}
 
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
@@ -48,7 +88,7 @@ export const GET: APIRoute = async (context) => {
       `,
       )
       .order("inserted_at", { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (status !== "all") {
       query = query.eq("status", status);
@@ -57,45 +97,7 @@ export const GET: APIRoute = async (context) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    const serviceIdSet = new Set<string>();
-    for (const row of data ?? []) {
-      for (const id of (row.service_ids as string[]) ?? []) {
-        serviceIdSet.add(id);
-      }
-    }
-
-    const serviceNameById = new Map<string, string>();
-    if (serviceIdSet.size > 0) {
-      const { data: services } = await auth.supabase
-        .from("services")
-        .select("id, name")
-        .in("id", [...serviceIdSet]);
-      for (const service of services ?? []) {
-        serviceNameById.set(service.id as string, service.name as string);
-      }
-    }
-
-    const entries = (data ?? []).map((row) => {
-      const serviceIds = (row.service_ids as string[]) ?? [];
-      return {
-        id: row.id as string,
-        staffName: (row.staff as { name?: string } | null)?.name ?? "Any professional",
-        serviceIds,
-        serviceNames: serviceIds.map((id) => serviceNameById.get(id) ?? "Service"),
-        preferredDate: row.preferred_date as string | null,
-        preferredTimeStart: row.preferred_time_start as string | null,
-        preferredTimeEnd: row.preferred_time_end as string | null,
-        clientEmail: row.client_email as string,
-        clientPhone: row.client_phone as string | null,
-        clientFirstName: row.client_first_name as string | null,
-        clientLastName: row.client_last_name as string | null,
-        clientMessage: row.client_message as string | null,
-        status: row.status as string,
-        notes: row.notes as string | null,
-        insertedAt: row.inserted_at as string,
-      };
-    });
-
+    const entries = await mapEntries(auth.supabase, data ?? []);
     return jsonOk({ entries });
   } catch (error) {
     console.error("waitlist GET", error);
@@ -118,22 +120,21 @@ export const POST: APIRoute = async (context) => {
     return jsonError("Invalid JSON body", 400);
   }
 
-  const parsed = waitlistPostSchema.safeParse(body);
+  const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
     return jsonError(parsed.error.errors[0]?.message ?? "Invalid request", 400);
   }
 
   try {
-    const { data: location, error: locationError } = await auth.supabase
+    const { data: location } = await auth.supabase
       .from("locations")
       .select("id")
-      .eq("is_active", true)
-      .order("name")
       .limit(1)
       .maybeSingle();
 
-    if (locationError) throw locationError;
-    if (!location) return jsonError("No active location configured", 500);
+    if (!location?.id) {
+      return jsonError("No location configured", 500);
+    }
 
     const { data, error } = await auth.supabase
       .from("waitlist_entries")
@@ -152,11 +153,11 @@ export const POST: APIRoute = async (context) => {
       .select("id")
       .single();
 
-    if (error) throw error;
+    if (error || !data) throw error ?? new Error("Insert failed");
     return jsonOk({ id: data.id, status: "active" });
   } catch (error) {
     console.error("waitlist POST", error);
-    return jsonError("Failed to add waitlist entry", 500);
+    return jsonError("Failed to add to waitlist", 500);
   }
 };
 

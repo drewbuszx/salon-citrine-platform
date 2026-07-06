@@ -1,4 +1,4 @@
-import { calculateCheckoutTotals, formatCents, type CheckoutLineItem } from "@saloncitrine/shared";
+import { calculateCheckoutTotals, calculateRetailTaxCents, formatCents, type CheckoutLineItem } from "@saloncitrine/shared";
 import { showToast, friendlyError } from "../lib/toast";
 
 type RetailProduct = {
@@ -45,6 +45,8 @@ type CheckoutPayload = {
 function initCheckout(root: HTMLElement) {
   const apiUrl = root.dataset.apiUrl ?? "";
   const calendarUrl = root.dataset.calendarUrl ?? "/";
+  const retailTaxRate = Number(root.dataset.retailTaxRate ?? "0.07");
+  const bookUrl = root.dataset.bookUrl ?? calendarUrl;
 
   const loadingEl = root.querySelector<HTMLElement>("[data-checkout-loading]");
   const bodyEl = root.querySelector<HTMLElement>("[data-checkout-body]");
@@ -112,10 +114,15 @@ function initCheckout(root: HTMLElement) {
       .reduce((sum, item) => sum + item.totalCents, 0);
   }
 
+  function computeTaxCents() {
+    return calculateRetailTaxCents(lineItems, retailTaxRate);
+  }
+
   function computeTotals() {
     return calculateCheckoutTotals({
       lineItems,
       tipCents,
+      taxCents: computeTaxCents(),
       depositAppliedCents: payload?.order.depositAppliedCents ?? 0,
     });
   }
@@ -124,6 +131,11 @@ function initCheckout(root: HTMLElement) {
     const deposit = payload?.order.depositAppliedCents ?? 0;
     target.innerHTML = `
       <div class="checkout-summary__row"><dt>Subtotal</dt><dd>${formatMoney(totals.subtotalCents)}</dd></div>
+      ${
+        totals.taxCents > 0
+          ? `<div class="checkout-summary__row"><dt>Sales tax (retail)</dt><dd>${formatMoney(totals.taxCents)}</dd></div>`
+          : ""
+      }
       <div class="checkout-summary__row"><dt>Tip</dt><dd>${formatMoney(totals.tipCents)}</dd></div>
       ${
         deposit > 0
@@ -243,6 +255,24 @@ function initCheckout(root: HTMLElement) {
       .join("");
   }
 
+  function renderPrebookLinks() {
+    const prebookEl = root.querySelector<HTMLElement>("[data-prebook-links]");
+    if (!prebookEl || !payload) return;
+    const clientId = payload.client?.id;
+    if (!clientId) {
+      prebookEl.hidden = true;
+      return;
+    }
+    const base = bookUrl.replace(/\/$/, "");
+    prebookEl.innerHTML = [4, 6, 8]
+      .map(
+        (weeks) =>
+          `<a class="btn-secondary checkout-prebook__btn" href="${base}?prebook=${weeks}&client=${encodeURIComponent(clientId)}">Book in ${weeks} weeks</a>`,
+      )
+      .join("");
+    prebookEl.hidden = false;
+  }
+
   function showReceipt(order: CheckoutPayload["order"]) {
     bodyEl?.setAttribute("hidden", "");
     receiptEl?.removeAttribute("hidden");
@@ -265,6 +295,7 @@ function initCheckout(root: HTMLElement) {
     }
     showStatus("Payment captured successfully.", true);
     showToast("Payment captured successfully.", "success");
+    renderPrebookLinks();
     receiptEl?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
