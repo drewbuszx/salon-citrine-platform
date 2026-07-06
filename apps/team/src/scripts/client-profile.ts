@@ -23,6 +23,9 @@ function showError(message: string) {
   if (!errorEl) return;
   errorEl.textContent = message;
   errorEl.hidden = !message;
+  if (message) {
+    errorEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 function setField(form: HTMLFormElement | null, name: string, value: string | boolean) {
