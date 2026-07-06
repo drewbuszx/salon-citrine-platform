@@ -165,6 +165,37 @@ const hasToolbar = Astro.slots.has("toolbar");
     width: 100%;
   }
 
+  :global(.team-list-layout__header-actions .team-list-layout__btn-primary) {
+    border: none;
+    background-color: var(--color-citrine);
+    color: var(--color-black);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  :global(.team-list-layout__header-actions .team-list-layout__btn-primary:hover),
+  :global(.team-list-layout__header-actions .team-list-layout__btn-primary:focus-visible) {
+    background-color: var(--color-citrine-dark);
+    outline: none;
+    box-shadow: var(--shadow-sm), 0 0 0 3px var(--color-focus-ring);
+  }
+
+  :global(.team-list-layout__header-actions .team-list-layout__btn-secondary) {
+    border: 1px solid var(--color-stone-300);
+    background-color: var(--color-bg);
+    color: var(--color-stone-700);
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  :global(.team-list-layout__header-actions .team-list-layout__btn-secondary:hover),
+  :global(.team-list-layout__header-actions .team-list-layout__btn-secondary:focus-visible) {
+    background-color: var(--color-stone-50);
+    border-color: var(--color-stone-400);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+
   @media (max-width: 900px) {
     .team-list-layout__body {
       grid-template-columns: 1fr;

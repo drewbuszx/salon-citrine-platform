@@ -85,6 +85,20 @@
   gap: 0.35rem;
 }
 
+.team-list-layout__filter-options--scroll {
+  max-height: 10.5rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-stone-300) transparent;
+}
+
+.team-list-layout__filter-options--scroll .team-list-layout__filter-option {
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  gap: 0.4rem;
+}
+
 .team-list-layout__filter-option {
   display: flex;
   align-items: center;
@@ -491,10 +505,28 @@
 }
 
 .team-list-layout__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
   margin: 0 0 1rem;
   font-family: var(--font-body);
   font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   color: var(--color-stone-500);
+}
+
+.team-list-layout__stats-item strong,
+.team-list-layout__stats [data-total-count],
+.team-list-layout__stats [data-filter-count] {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-stone-700);
+}
+
+.team-list-layout__stats-sep {
+  color: var(--color-stone-300);
+  user-select: none;
 }
 
 .team-list-layout__toolbar {
@@ -532,11 +564,18 @@
   vertical-align: middle;
 }
 
+.team-list-layout__data-table tbody tr:nth-child(odd) td {
+  background: var(--color-bg);
+}
+
 .team-list-layout__data-table tbody tr:nth-child(even) td {
   background: var(--color-stone-50);
 }
 
-.team-list-layout__data-table__link {
+.team-list-layout__data-table a,
+.team-list-layout__data-table__link,
+.team-list-layout__data-table__link:link,
+.team-list-layout__data-table__link:visited {
   color: var(--color-link);
   text-decoration: none;
   font-weight: 500;
@@ -566,8 +605,11 @@
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   transition:
     background var(--transition-fast),
+    background-color var(--transition-fast),
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
   text-decoration: none;
@@ -578,15 +620,15 @@
 
 .team-list-layout__btn-primary {
   border: none;
-  background: var(--color-citrine);
+  background-color: var(--color-citrine);
   color: var(--color-black);
 }
 
 .team-list-layout__btn-primary:hover,
 .team-list-layout__btn-primary:focus-visible {
-  background: var(--color-citrine-dark);
+  background-color: var(--color-citrine-dark);
   outline: none;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm), 0 0 0 3px var(--color-focus-ring);
 }
 
 .team-list-layout__btn-accent {
@@ -616,15 +658,16 @@
 
 .team-list-layout__btn-secondary {
   border: 1px solid var(--color-stone-300);
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: var(--color-stone-700);
 }
 
 .team-list-layout__btn-secondary:hover,
 .team-list-layout__btn-secondary:focus-visible {
-  background: var(--color-stone-50);
+  background-color: var(--color-stone-50);
   border-color: var(--color-stone-400);
   outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .team-list-layout__btn-destructive {

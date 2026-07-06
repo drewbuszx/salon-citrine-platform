@@ -116,7 +116,7 @@ if (!countError) {
     <TeamListFilter slot="sidebarFilters" label="Provider" count={providers.length} open={providers.length > 0}>
       {
         providers.length > 0 ? (
-          <div class="team-list-layout__filter-options">
+          <div class="team-list-layout__filter-options team-list-layout__filter-options--scroll">
             <label class="team-list-layout__filter-option">
               <input type="radio" name="client-provider" value="" data-filter-provider checked />
               <span>All providers</span>
@@ -187,12 +187,13 @@ if (!countError) {
     </TeamListFilter>
 
     <Fragment slot="stats">
-      Total: <span data-total-count>{countError ? "—" : (totalCount ?? initialClients.length)}</span>
-      | <span data-filter-count>0</span> filters applied
+      <span class="team-list-layout__stats-item">Total: <strong data-total-count>{countError ? "—" : (totalCount ?? initialClients.length)}</strong></span>
+      <span class="team-list-layout__stats-sep" aria-hidden="true">|</span>
+      <span class="team-list-layout__stats-item"><strong data-filter-count>0</strong> filters applied</span>
     </Fragment>
 
     <label slot="searchBar" class="team-list-layout__search clients-page__search" data-search-wrap>
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" data-search-icon>
+      <svg class="team-list-layout__search-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" data-search-icon>
         <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.75"></circle>
         <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
       </svg>
@@ -210,7 +211,7 @@ if (!countError) {
 
     <p class="team-list-layout__notice" data-status hidden aria-live="polite"></p>
 
-    <div class="team-list-layout__table-wrap">
+    <div class="team-list-layout__table-wrap clients-page__table-wrap" data-table-wrap>
       <table class="team-list-layout__data-table clients-table">
         <thead>
           <tr>
@@ -301,6 +302,7 @@ if (!countError) {
   const searchIcon = root?.querySelector("[data-search-icon]");
   const emptyTitle = root?.querySelector("[data-empty-title]");
   const emptyHint = root?.querySelector("[data-empty-hint]");
+  const tableWrap = root?.querySelector("[data-table-wrap]");
   let debounce = null;
   let toastTimer = null;
   let loadingCount = 0;
@@ -378,6 +380,7 @@ if (!countError) {
 
     if (clients.length === 0) {
       emptyState.hidden = false;
+      tableWrap?.classList.add("clients-page__table-wrap--empty");
       const filters = getFilters();
       const hasFilters =
         filters.provider ||
@@ -404,6 +407,7 @@ if (!countError) {
     }
 
     emptyState.hidden = true;
+    tableWrap?.classList.remove("clients-page__table-wrap--empty");
 
     for (const client of clients) {
       const tr = document.createElement("tr");
@@ -425,6 +429,7 @@ if (!countError) {
   function renderSkeletonRows() {
     if (!tbody) return;
     emptyState.hidden = true;
+    tableWrap?.classList.remove("clients-page__table-wrap--empty");
     tbody.innerHTML = Array.from({ length: 6 }, () =>
       `<tr class="clients-table__skeleton-row">
         <td><span class="skeleton skeleton--line"></span></td>
@@ -659,12 +664,23 @@ if (!countError) {
     display: grid;
     gap: 0.35rem;
     justify-items: center;
-    margin: 2.5rem auto 0;
-    max-width: 20rem;
-    padding: 2rem 1rem;
+    margin: 0;
+    max-width: none;
+    padding: 2rem 1.25rem;
+    border: 1px dashed var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
     text-align: center;
     font-size: var(--text-sm);
     color: var(--color-stone-500);
+  }
+
+  .clients-page__table-wrap--empty .team-list-layout__data-table {
+    border-bottom: none;
+  }
+
+  .clients-page__table-wrap--empty .team-list-layout__data-table tbody:empty {
+    display: none;
   }
 
   .clients-page__empty[hidden] {
