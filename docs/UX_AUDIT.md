@@ -114,4 +114,4 @@ Legend: ✅ Fixed · 🔄 Improved · ⬜ Open · 📋 Documented
 | 2 | Visual cohesion: list search focus ring | `27277d3` |
 | 3 | Flow polish: profile error scroll into view | `55a9ef9` |
 | 4 | Feature depth: filter empty state, reports→stock link (pass 1) | `78be3a6`, `881b298`, `f753855` |
-| 5 | Ship pass: audit completion table | `3f5582d` |
+| 5 | Ship pass: audit completion table | `f8d5d58` |
