@@ -47,6 +47,7 @@ async function mapEntries(
 
   return rows.map((row) => ({
     id: row.id as string,
+    staffId: row.staff_id as string | null,
     staffName: (row.staff as { name?: string } | null)?.name ?? "Any professional",
     serviceIds: row.service_ids as string[],
     serviceNames: ((row.service_ids as string[]) ?? [])

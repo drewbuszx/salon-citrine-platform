@@ -61,7 +61,6 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     title: "Employees",
     description: "Team members, roles, and schedules.",
     href: teamUrl("/manage#staff"),
-    actionLabel: "Coming soon",
     disabled: true,
   },
   {
@@ -69,7 +68,6 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     title: "Tags",
     description: "Client tags for segmentation and marketing.",
     href: teamUrl("/manage#tags"),
-    actionLabel: "Coming soon",
     disabled: true,
   },
   {
@@ -77,7 +75,6 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     title: "Business Details",
     description: "Salon name, locations, and contact information.",
     href: teamUrl("/manage#business"),
-    actionLabel: "Coming soon",
     disabled: true,
   },
 ];

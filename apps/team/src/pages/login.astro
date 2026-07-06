@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import { BUSINESS } from "@saloncitrine/shared";
 import { teamUrl } from "../lib/supabase-server";
 
 const error = Astro.url.searchParams.get("error");
@@ -11,29 +12,49 @@ const message =
       : null;
 ---
 
-<TeamLayout title="Sign in" loginPage>
-  <section class="login-page form-stack form-stack--narrow">
-    <h1 class="page-title">Team sign in</h1>
-    <p class="page-lead">Salon Citrine staff only</p>
+<TeamLayout title="Sign in" loginPage plain>
+  <section class="login-split">
+    <aside class="login-split__hero" aria-hidden="true">
+      <div class="login-split__photo">
+        <div class="login-split__photo-shimmer"></div>
+      </div>
+      <div class="login-split__hero-copy">
+        <p class="login-split__kicker">{BUSINESS.name}</p>
+        <p class="login-split__tagline">Warm gold clarity for your working day.</p>
+        <ul class="login-split__features">
+          <li>Today's book at a glance</li>
+          <li>Clients, waitlist, checkout — one sign-in</li>
+          <li>Built for iPad at the chair</li>
+        </ul>
+      </div>
+    </aside>
 
-    {message ? <p class="notice notice--error" role="alert">{message}</p> : null}
+    <div class="login-split__panel">
+      <header class="login-page__brand">
+        <p class="login-page__kicker">Staff portal</p>
+        <h1 class="login-page__title">Welcome back</h1>
+        <p class="login-page__lead">Sign in to manage your book, clients, and salon day.</p>
+      </header>
 
-    <form class="form-stack" method="post" action={teamUrl("/api/auth/login")}>
-      <label class="form-label">
-        Email
-        <input class="form-input" name="email" type="email" autocomplete="username" required />
-      </label>
-      <label class="form-label">
-        Password
-        <input
-          class="form-input"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-        />
-      </label>
-      <button class="btn-primary" type="submit">Sign in</button>
-    </form>
+      {message ? <p class="notice notice--error" role="alert">{message}</p> : null}
+
+      <form class="form-stack" method="post" action={teamUrl("/api/auth/login")}>
+        <label class="form-label">
+          Email
+          <input class="form-input" name="email" type="email" autocomplete="username" required />
+        </label>
+        <label class="form-label">
+          Password
+          <input
+            class="form-input"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button class="btn-primary" type="submit">Sign in</button>
+      </form>
+    </div>
   </section>
 </TeamLayout>

@@ -115,6 +115,7 @@ const calendarConfig = {
   servicesByStaff,
   appointments,
   blockedTimes,
+  nextOpenGap,
   api: {
     appointments: teamUrl("/api/appointments"),
     blockedTimes: teamUrl("/api/blocked-times"),
@@ -269,9 +270,16 @@ const calendarConfig = {
             </span>
           )}
           {nextOpenGap ? (
-            <span class="day-cal__gap-hint-slot">
+            <button
+              type="button"
+              class="day-cal__gap-hint-slot day-cal__gap-hint-btn"
+              data-gap-book
+              data-staff-id={nextOpenGap.staffId}
+              data-starts-at={nextOpenGap.startsAt}
+            >
               Next open: <strong>{nextOpenGap.label}</strong>
-            </span>
+              <span class="day-cal__gap-hint-cta">Book slot →</span>
+            </button>
           ) : waitlistCount > 0 ? (
             <span class="day-cal__gap-hint-slot">No open 60-min gaps today</span>
           ) : null}
@@ -1775,6 +1783,79 @@ const calendarConfig = {
         });
       });
 
+      root.querySelector("[data-gap-book]")?.addEventListener("click", (event) => {
+        const btn = event.currentTarget;
+        if (!(btn instanceof HTMLElement)) return;
+        const staffId = btn.dataset.staffId || config.currentStaffId;
+        const startsAt = btn.dataset.startsAt;
+        if (!startsAt) return;
+        openNewAppointmentForm({ staffId, startsAt });
+      });
+
+      function applyWaitlistPrefill(form) {
+        const raw = sessionStorage.getItem("sc-waitlist-book");
+        if (!raw) return;
+        sessionStorage.removeItem("sc-waitlist-book");
+        let payload;
+        try {
+          payload = JSON.parse(raw);
+        } catch {
+          return;
+        }
+        const nameInput = form.querySelector('input[name="client_name"]');
+        const emailInput = form.querySelector('input[name="email"]');
+        const phoneInput = form.querySelector('input[name="phone"]');
+        const staffSelect = form.querySelector('select[name="staff_id"]');
+        const serviceField = form.querySelector("[data-service-field]");
+        if (nameInput instanceof HTMLInputElement && payload.clientName) {
+          nameInput.value = payload.clientName;
+        }
+        if (emailInput instanceof HTMLInputElement && payload.clientEmail) {
+          emailInput.value = payload.clientEmail;
+        }
+        if (phoneInput instanceof HTMLInputElement && payload.clientPhone) {
+          phoneInput.value = payload.clientPhone;
+        }
+        if (staffSelect instanceof HTMLSelectElement && payload.staffId) {
+          staffSelect.value = payload.staffId;
+          if (serviceField) {
+            serviceField.innerHTML = renderServiceOptions(
+              payload.staffId,
+              payload.serviceIds ?? [],
+            );
+          }
+        } else if (serviceField && payload.serviceIds?.length) {
+          serviceField.innerHTML = renderServiceOptions(
+            form.querySelector('select[name="staff_id"]')?.value ?? config.currentStaffId,
+            payload.serviceIds,
+          );
+        }
+      }
+
+      const waitlistRaw = sessionStorage.getItem("sc-waitlist-book");
+      if (waitlistRaw) {
+        let payload;
+        try {
+          payload = JSON.parse(waitlistRaw);
+        } catch {
+          payload = null;
+        }
+        if (payload?.preferredDate && payload.preferredDate !== config.dayParam) {
+          sessionStorage.setItem("sc-waitlist-book", waitlistRaw);
+        } else if (payload) {
+          openNewAppointmentForm({
+            staffId: payload.staffId || config.currentStaffId,
+            startsAt: payload.preferredDate
+              ? `${payload.preferredDate}T10:00:00`
+              : new Date().toISOString(),
+          });
+          const form = modalBody.querySelector('[data-form="appointment-create"]');
+          if (form instanceof HTMLFormElement) {
+            applyWaitlistPrefill(form);
+          }
+        }
+      }
+
       root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
         chip.addEventListener("click", () => {
           if (!(chip instanceof HTMLButtonElement)) return;
@@ -1974,6 +2055,44 @@ const calendarConfig = {
 
   .day-cal__gap-hint-slot strong {
     font-weight: 600;
+  }
+
+  .day-cal__gap-hint-btn {
+    display: inline;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .day-cal__gap-hint-btn:hover strong,
+  .day-cal__gap-hint-btn:focus-visible strong {
+    color: var(--color-citrine-dark);
+  }
+
+  .day-cal__gap-hint-btn:focus-visible {
+    outline: 2px solid var(--color-citrine);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  .day-cal__gap-hint-cta {
+    margin-left: 0.35rem;
+    font-weight: 600;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .day-cal__gap-hint-btn:hover .day-cal__gap-hint-cta,
+  .day-cal__gap-hint-btn:focus-visible .day-cal__gap-hint-cta {
+    opacity: 1;
   }
 
   .day-cal__subbar-btn:hover:not(:disabled),

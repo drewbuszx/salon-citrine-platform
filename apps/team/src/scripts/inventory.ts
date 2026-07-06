@@ -697,10 +697,6 @@ function initInventory(root: HTMLElement) {
     },
   );
 
-  root.querySelectorAll("[data-coming-soon]").forEach((el) => {
-    el.addEventListener("click", () => showToast("Coming soon"));
-  });
-
   addForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     void (async () => {

@@ -2,7 +2,6 @@
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamListFilter from "../components/TeamListFilter.astro";
-import TeamListExportButton from "../components/TeamListExportButton.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -121,8 +120,6 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
           </label>
         </div>
       </TeamListFilter>
-
-      <TeamListExportButton slot="sidebarFooter" />
 
       <Fragment slot="stats">
         <span class="stock-page__filter-stats" data-filter-stats>

@@ -39,6 +39,22 @@ try {
 const todaySalon = salonDateString(new Date());
 const pulseMetrics = await loadTeamPulseMetrics(supabase, staff);
 
+const checkoutHref =
+  upcoming.length > 0
+    ? teamUrl(`/checkout/${upcoming[0]!.id}`)
+    : teamUrl("/book");
+
+function minutesUntil(iso: string) {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs < 0) return null;
+  const mins = Math.round(diffMs / 60_000);
+  if (mins < 1) return "Starting now";
+  if (mins < 60) return `In ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `In ${hours}h ${rem}m` : `In ${hours}h`;
+}
+
 function formatUpcomingWhen(startsAt: string, endsAt: string) {
   const dateLabel = salonDateString(new Date(startsAt));
   const timeRange = formatTimeRangeInSalon(startsAt, endsAt);
@@ -81,9 +97,14 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
       </div>
       <h1 class="dashboard__name">{staff.name}</h1>
       <p class="dashboard__salon">{BUSINESS.name}</p>
-      <a class="dashboard__booking-link" href={bookingLink} target="_blank" rel="noopener noreferrer">
-        Your booking link
-      </a>
+      <div class="dashboard__booking-row">
+        <a class="dashboard__booking-link" href={bookingLink} target="_blank" rel="noopener noreferrer">
+          Your booking link
+        </a>
+        <button class="dashboard__copy-link" type="button" data-copy-booking-link data-booking-url={bookingLink}>
+          Copy link
+        </button>
+      </div>
     </header>
 
     <TeamPulse metrics={pulseMetrics} />
@@ -97,7 +118,7 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
         </span>
         Book appointment
       </a>
-      <a class="dashboard__action" href={teamUrl("/book")}>
+      <a class="dashboard__action" href={checkoutHref}>
         <span class="dashboard__action-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <path d="M6 8h12M6 12h8M6 16h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -140,19 +161,35 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
           </div>
         ) : (
           <ul class="dashboard__list">
-            {upcoming.map((appt) => {
+            {upcoming.map((appt, index) => {
               const when = formatUpcomingWhen(appt.startsAt, appt.endsAt);
+              const isTodayAppt = salonDateString(new Date(appt.startsAt)) === todaySalon;
+              const urgency = isTodayAppt ? minutesUntil(appt.startsAt) : null;
               return (
               <li>
-                <a class="dashboard__card" href={teamUrl(`/checkout/${appt.id}`)}>
+                <a
+                  class:list={[
+                    "dashboard__card",
+                    index === 0 && urgency && "dashboard__card--next",
+                  ]}
+                  href={teamUrl(`/checkout/${appt.id}`)}
+                >
                   <div class="dashboard__card-main">
-                    <p class="dashboard__card-client">{appt.clientName}</p>
+                    <p class="dashboard__card-client">
+                      {index === 0 && urgency ? (
+                        <span class="dashboard__live-dot" aria-hidden="true" />
+                      ) : null}
+                      {appt.clientName}
+                    </p>
                     <p class="dashboard__card-service">
                       {appt.serviceLabel ?? "Appointment"}
                     </p>
                     <p class="dashboard__card-time">
                       <span class="dashboard__card-day">{when.day}</span>
                       <span class="dashboard__card-range">{when.time}</span>
+                      {urgency ? (
+                        <span class="dashboard__card-urgency">{urgency}</span>
+                      ) : null}
                     </p>
                   </div>
                   <span
@@ -173,6 +210,24 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
     </section>
   </section>
 </TeamLayout>
+
+<script>
+  const copyBtn = document.querySelector("[data-copy-booking-link]");
+  copyBtn?.addEventListener("click", async () => {
+    const url = copyBtn.getAttribute("data-booking-url");
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      const prev = copyBtn.textContent;
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => {
+        copyBtn.textContent = prev;
+      }, 2000);
+    } catch {
+      window.prompt("Copy your booking link:", url);
+    }
+  });
+</script>
 
 <style>
   .dashboard {
@@ -248,12 +303,44 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
     color: var(--color-stone-500);
   }
 
+  .dashboard__booking-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+  }
+
   .dashboard__booking-link {
     font-family: var(--font-sans);
     font-size: 0.82rem;
     color: var(--color-sage-dark, var(--color-sage));
     text-decoration: underline;
     text-underline-offset: 0.15em;
+  }
+
+  .dashboard__copy-link {
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-700);
+    cursor: pointer;
+    transition:
+      border-color var(--transition-fast),
+      background var(--transition-fast);
+  }
+
+  .dashboard__copy-link:hover,
+  .dashboard__copy-link:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    outline: none;
   }
 
   .dashboard__actions {
@@ -459,6 +546,41 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
 
   .dashboard__card-main {
     min-width: 0;
+  }
+
+  .dashboard__card--next {
+    border-color: rgba(231, 172, 70, 0.45);
+    background: rgba(231, 172, 70, 0.06);
+  }
+
+  .dashboard__live-dot {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-right: 0.35rem;
+    border-radius: 50%;
+    background: var(--color-sage);
+    vertical-align: middle;
+    box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.45);
+    animation: dashboard-live-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes dashboard-live-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(141, 158, 136, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(141, 158, 136, 0);
+    }
+  }
+
+  .dashboard__card-urgency {
+    font-weight: 600;
+    color: var(--color-citrine-dark);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
   }
 
   .dashboard__card-client {

@@ -4,12 +4,24 @@ import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 const LIST_LIMIT = 100;
 const SEARCH_LIMIT = 50;
 
+function formatLtv(cents: number | null | undefined) {
+  const value = (cents ?? 0) / 100;
+  if (value <= 0) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function mapClientRow(row: {
   id: string;
   first_name: string;
   last_name: string;
   phone: string | null;
   email: string | null;
+  visit_count?: number | null;
+  lifetime_value_cents?: number | null;
 }) {
   return {
     id: row.id,
@@ -18,6 +30,8 @@ function mapClientRow(row: {
     fullName: `${row.first_name} ${row.last_name}`.trim(),
     phone: row.phone,
     email: row.email,
+    visitCount: row.visit_count ?? 0,
+    ltvLabel: formatLtv(row.lifetime_value_cents),
   };
 }
 
@@ -69,7 +83,9 @@ export const GET: APIRoute = async (context) => {
 
   let query = supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email, tags, referral_sources, lifetime_value_cents")
+    .select(
+      "id, first_name, last_name, phone, email, tags, referral_sources, lifetime_value_cents, visit_count",
+    )
     .order("last_name")
     .order("first_name");
 

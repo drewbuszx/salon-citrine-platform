@@ -2,8 +2,10 @@ import { showToast, friendlyError } from "../lib/toast";
 
 type WaitlistEntry = {
   id: string;
+  staffId: string | null;
   staffName: string;
   serviceNames: string[];
+  serviceIds: string[];
   preferredDate: string | null;
   preferredTimeStart: string | null;
   preferredTimeEnd: string | null;
@@ -15,6 +17,8 @@ type WaitlistEntry = {
   status: string;
   insertedAt: string;
 };
+
+const WAITLIST_BOOK_KEY = "sc-waitlist-book";
 
 type TimeSlot = "morning" | "afternoon" | "evening";
 
@@ -130,11 +134,56 @@ function updateEmptyState(entries: WaitlistEntry[], query: string) {
   }
 }
 
+function todayParam() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function bookFromWaitlist(entry: WaitlistEntry, bookBase: string) {
+  const name = clientName(entry);
+  sessionStorage.setItem(
+    WAITLIST_BOOK_KEY,
+    JSON.stringify({
+      clientName: name,
+      clientEmail: entry.clientEmail,
+      clientPhone: entry.clientPhone,
+      staffId: entry.staffId,
+      serviceIds: entry.serviceIds,
+      preferredDate: entry.preferredDate,
+      waitlistId: entry.id,
+    }),
+  );
+  const day = entry.preferredDate || todayParam();
+  window.location.href = `${bookBase}?day=${encodeURIComponent(day)}`;
+}
+
+async function removeFromWaitlist(entryId: string, apiBase: string) {
+  if (!window.confirm("Remove this client from the waitlist?")) return;
+
+  const res = await fetch(`${apiBase}/${entryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "cancelled" }),
+  });
+  const body = await res.json();
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error ?? "Failed to remove from waitlist");
+  }
+  showToast("Removed from waitlist.", "success");
+  await loadEntries(apiBase);
+}
+
 function renderTable(entries: WaitlistEntry[], query = "") {
   const root = document.querySelector<HTMLElement>("[data-waitlist-root]");
   const tbody = root?.querySelector<HTMLElement>("[data-waitlist-results]");
   const emptyEl = root?.querySelector<HTMLElement>("[data-waitlist-empty]");
   const clientsBase = root?.dataset.clientsBase ?? "";
+  const bookBase = root?.dataset.bookUrl ?? "";
+  const apiBase = root?.dataset.apiBase ?? "";
+  const isManager = root?.dataset.manager === "1";
 
   if (!tbody || !emptyEl) return;
 
@@ -154,6 +203,9 @@ function renderTable(entries: WaitlistEntry[], query = "") {
       const services =
         entry.serviceNames.length > 0 ? entry.serviceNames.join(", ") : "—";
       const preferred = formatPreferredTime(entry);
+      const removeBtn = isManager
+        ? `<button type="button" class="waitlist-table__action waitlist-table__action--remove" data-waitlist-remove="${entry.id}">Remove</button>`
+        : "";
       return `
         <tr data-waitlist-row="${entry.id}">
           <td><a class="team-list-layout__data-table__link" href="${clientsBase}?q=${encodeURIComponent(entry.clientEmail)}">${escapeHtml(name)}</a></td>
@@ -162,9 +214,33 @@ function renderTable(entries: WaitlistEntry[], query = "") {
           <td class="waitlist-table__services">${escapeHtml(services)}</td>
           <td class="waitlist-table__preferred">${escapeHtml(preferred)}</td>
           <td class="waitlist-table__date">${escapeHtml(formatDateAdded(entry.insertedAt))}</td>
+          <td class="waitlist-table__actions">
+            <button type="button" class="waitlist-table__action waitlist-table__action--book" data-waitlist-book="${entry.id}">Book</button>
+            ${removeBtn}
+          </td>
         </tr>`;
     })
     .join("");
+
+  tbody.querySelectorAll("[data-waitlist-book]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const id = btn.getAttribute("data-waitlist-book");
+      const entry = allEntries.find((row) => row.id === id);
+      if (entry) bookFromWaitlist(entry, bookBase);
+    });
+  });
+
+  tbody.querySelectorAll("[data-waitlist-remove]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const id = btn.getAttribute("data-waitlist-remove");
+      if (!id) return;
+      removeFromWaitlist(id, apiBase).catch((err) => {
+        showToast(friendlyError(err, "Could not remove"), "error");
+      });
+    });
+  });
 }
 
 function applyFilter(term: string) {
@@ -198,7 +274,7 @@ async function loadEntries(apiBase: string) {
 
   if (status) status.hidden = true;
   if (tbody) {
-    tbody.innerHTML = `<tr class="waitlist-table__loading"><td colspan="6">Loading waitlist…</td></tr>`;
+    tbody.innerHTML = `<tr class="waitlist-table__loading"><td colspan="7">Loading waitlist…</td></tr>`;
   }
 
   try {

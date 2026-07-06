@@ -2,7 +2,6 @@
 import TeamLayout from "../../layouts/TeamLayout.astro";
 import TeamListLayout from "../../components/TeamListLayout.astro";
 import TeamListFilter from "../../components/TeamListFilter.astro";
-import TeamListExportButton from "../../components/TeamListExportButton.astro";
 import { teamUrl } from "../../lib/supabase-server";
 
 const { staff, supabase } = Astro.locals;
@@ -17,13 +16,11 @@ const [
   { data: tagRows },
   { data: referralRows },
   { data: staffRows },
-  { data: locationRows },
 ] = await Promise.all([
   supabase.from("clients").select("*", { count: "exact", head: true }),
   supabase.from("clients").select("tags"),
   supabase.from("clients").select("referral_sources"),
   supabase.from("staff").select("id, name").in("role", ["owner", "stylist", "esthetician"]).order("name"),
-  supabase.from("locations").select("id, name").eq("is_active", true).order("name"),
 ]);
 
 const tagSet = new Set<string>();
@@ -43,7 +40,6 @@ for (const row of referralRows ?? []) {
 const referralSources = [...referralSet].sort((a, b) => a.localeCompare(b));
 
 const providers = staffRows ?? [];
-const locations = locationRows ?? [];
 
 let initialClients: Array<{
   id: string;
@@ -51,12 +47,24 @@ let initialClients: Array<{
   lastName: string;
   phone: string | null;
   email: string | null;
+  visitCount: number;
+  ltvLabel: string;
 }> = [];
+
+function formatLtv(cents: number | null | undefined) {
+  const value = (cents ?? 0) / 100;
+  if (value <= 0) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 if (!countError) {
   let listQuery = supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email")
+    .select("id, first_name, last_name, phone, email, visit_count, lifetime_value_cents")
     .order("last_name")
     .order("first_name");
 
@@ -74,6 +82,8 @@ if (!countError) {
     lastName: row.last_name,
     phone: row.phone,
     email: row.email,
+    visitCount: row.visit_count ?? 0,
+    ltvLabel: formatLtv(row.lifetime_value_cents),
   }));
 }
 ---
@@ -81,9 +91,6 @@ if (!countError) {
 <TeamLayout title="Clients" activeNav="clients" plain wide fullBleed>
   <div class="clients-page" data-clients-root>
   <TeamListLayout title="Clients" mainTitle="Your Clients" sidebarTitle="Refine Your Search">
-    <button slot="headerActions" class="team-list-layout__btn-secondary" type="button" data-coming-soon>
-      Merge Clients
-    </button>
     <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-add-open>
       Add New Client
     </button>
@@ -93,29 +100,6 @@ if (!countError) {
         <span class="clients-filter-empty__icon" aria-hidden="true">◎</span>
         Save filtered lists here soon — for now, use Tags or Referral below.
       </p>
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="Locations" count={locations.length} open={locations.length > 0}>
-      {
-        locations.length > 0 ? (
-          <div class="team-list-layout__filter-options">
-            {
-              locations.map((loc) => (
-                <label class="team-list-layout__filter-option">
-                  <input type="radio" name="client-location" value={loc.id} data-filter-location disabled />
-                  <span>{loc.name}</span>
-                </label>
-              ))
-            }
-          </div>
-        ) : (
-          <p class="team-list-layout__filter-placeholder">Single-location salon — all clients.</p>
-        )
-      }
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="Primary Locations" count={locations.length}>
-      <p class="team-list-layout__filter-placeholder">Primary location tracking coming soon.</p>
     </TeamListFilter>
 
     <TeamListFilter slot="sidebarFilters" label="Purchased">
@@ -150,14 +134,6 @@ if (!countError) {
           <p class="team-list-layout__filter-placeholder">No providers found.</p>
         )
       }
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="First Appointment">
-      <p class="clients-filter-empty clients-filter-empty--compact">Date range filter coming soon — use search or tags for now.</p>
-    </TeamListFilter>
-
-    <TeamListFilter slot="sidebarFilters" label="Last Appointment">
-      <p class="clients-filter-empty clients-filter-empty--compact">Date range filter coming soon — sort by visit timeline on a profile.</p>
     </TeamListFilter>
 
     <TeamListFilter slot="sidebarFilters" label="Tags" count={tags.length} open={tags.length > 0}>
@@ -210,8 +186,6 @@ if (!countError) {
       <p class="clients-filter-empty clients-filter-empty--compact">No blocked clients — blocking will appear here when enabled.</p>
     </TeamListFilter>
 
-    <TeamListExportButton slot="sidebarFooter" />
-
     <Fragment slot="stats">
       Total: <span data-total-count>{countError ? "—" : (totalCount ?? initialClients.length)}</span>
       | <span data-filter-count>0</span> filters applied
@@ -244,6 +218,8 @@ if (!countError) {
             <th scope="col">Last Name</th>
             <th scope="col">Mobile</th>
             <th scope="col">Email</th>
+            <th scope="col" class="clients-table__num">Visits</th>
+            <th scope="col" class="clients-table__num">LTV</th>
           </tr>
         </thead>
         <tbody data-results></tbody>
@@ -438,6 +414,8 @@ if (!countError) {
         <td><a class="team-list-layout__data-table__link" href="${linkBase}">${client.lastName || "—"}</a></td>
         <td>${formatPhone(client.phone)}</td>
         <td>${formatEmail(client.email)}</td>
+        <td class="clients-table__num">${client.visitCount ?? 0}</td>
+        <td class="clients-table__num clients-table__ltv">${client.ltvLabel ?? "—"}</td>
       `;
       bindClientRow(tr, linkBase);
       tbody.appendChild(tr);
@@ -453,6 +431,8 @@ if (!countError) {
         <td><span class="skeleton skeleton--line"></span></td>
         <td><span class="skeleton skeleton--line"></span></td>
         <td><span class="skeleton skeleton--line"></span></td>
+        <td><span class="skeleton skeleton--line skeleton--short"></span></td>
+        <td><span class="skeleton skeleton--line skeleton--short"></span></td>
       </tr>`,
     ).join("");
   }
@@ -549,10 +529,6 @@ if (!countError) {
   root?.querySelector("[data-add-open]")?.addEventListener("click", openAddModal);
   document.querySelectorAll("[data-modal-close]").forEach((el) => {
     el.addEventListener("click", closeAddModal);
-  });
-
-  document.querySelectorAll("[data-coming-soon]").forEach((el) => {
-    el.addEventListener("click", () => showToast("Coming soon"));
   });
 
   addForm?.addEventListener("submit", async (event) => {
@@ -719,6 +695,23 @@ if (!countError) {
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
     color: var(--color-stone-500);
+  }
+
+  .clients-page :global(.clients-table__num) {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .clients-page :global(.clients-table__ltv) {
+    font-weight: 600;
+    color: var(--color-stone-700);
+  }
+
+  .clients-table__skeleton-row .skeleton--short {
+    width: 55%;
+    max-width: 3.5rem;
+    margin-left: auto;
   }
 
   .clients-modal[hidden] {
