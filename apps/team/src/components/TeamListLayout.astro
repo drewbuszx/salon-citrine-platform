@@ -73,9 +73,9 @@ const hasToolbar = Astro.slots.has("toolbar");
     display: flex;
     flex-direction: column;
     min-height: calc(100vh - var(--team-bar-height, 3.25rem));
-    font-family: var(--font-sans);
-    background: #fff;
-    color: #111827;
+    font-family: var(--font-body);
+    background: var(--color-bg);
+    color: var(--color-text);
   }
 
   .team-list-layout__subheader {
@@ -83,25 +83,27 @@ const hasToolbar = Astro.slots.has("toolbar");
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem 1rem;
-    padding: 0.85rem 1.25rem;
-    border-bottom: 1px solid #e5e7eb;
-    background: #fff;
+    gap: var(--space-3) var(--space-4);
+    min-height: 3.25rem;
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--color-stone-200);
+    background: var(--color-bg);
   }
 
   .team-list-layout__title {
     margin: 0;
-    font-family: var(--font-sans);
-    font-size: 1.1rem;
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
     font-weight: 600;
-    letter-spacing: 0.01em;
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-tight);
   }
 
   .team-list-layout__header-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .team-list-layout__body {
@@ -120,159 +122,46 @@ const hasToolbar = Astro.slots.has("toolbar");
     flex-direction: column;
     gap: 0.35rem;
     padding: 1rem 0;
-    border-right: 1px solid #e5e7eb;
-    background: #fafafa;
+    border-right: 1px solid var(--color-stone-200);
+    background: var(--team-sidebar-bg);
   }
 
   .team-list-layout__main {
-    padding: 1.25rem 1.5rem 2rem;
-    background: #fff;
+    padding: var(--space-5) var(--space-6) var(--space-8);
+    background: var(--color-bg);
     min-width: 0;
   }
 
   .team-list-layout__main-title {
     margin: 0 0 0.35rem;
-    font-family: var(--font-sans);
-    font-size: 1rem;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
     font-weight: 600;
-    color: #111827;
+    color: var(--color-text);
   }
 
   .team-list-layout__main-lead {
     margin: 0 0 1rem;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-    line-height: 1.45;
-    color: #6b7280;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-500);
   }
 
   .team-list-layout__stats {
     margin: 0 0 1rem;
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    color: #6b7280;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
   }
 
   .team-list-layout__toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     margin-bottom: 1rem;
     width: 100%;
-  }
-
-  :global(.team-list-layout__data-table) {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--font-sans);
-    font-size: 0.875rem;
-  }
-
-  :global(.team-list-layout__data-table th) {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-align: left;
-    color: #6b7280;
-    background: #fff;
-  }
-
-  :global(.team-list-layout__data-table td) {
-    padding: 0.95rem 1rem;
-    border-bottom: 1px solid #e5e7eb;
-    color: #374151;
-    vertical-align: middle;
-  }
-
-  :global(.team-list-layout__data-table tbody tr:nth-child(even) td) {
-    background: #f9fafb;
-  }
-
-  :global(.team-list-layout__data-table tbody tr:hover td) {
-    background: #f3f4f6;
-  }
-
-  :global(.team-list-layout__data-table__link) {
-    color: #0096ff;
-    text-decoration: none;
-  }
-
-  :global(.team-list-layout__data-table__link:hover),
-  :global(.team-list-layout__data-table__link:focus-visible) {
-    text-decoration: underline;
-    outline: none;
-  }
-
-  :global(.team-list-layout__table-wrap) {
-    overflow-x: auto;
-  }
-
-  :global(.team-list-layout__btn-primary),
-  :global(.team-list-layout__btn-secondary) {
-    padding: 0.55rem 0.9rem;
-    border-radius: 0.25rem;
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
-    cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  :global(.team-list-layout__btn-primary) {
-    border: none;
-    background: #0096ff;
-    color: #fff;
-  }
-
-  :global(.team-list-layout__btn-primary:hover),
-  :global(.team-list-layout__btn-primary:focus-visible) {
-    background: #0084e0;
-    outline: none;
-  }
-
-  :global(.team-list-layout__btn-accent) {
-    padding: 0.55rem 0.9rem;
-    border: none;
-    border-radius: 0.25rem;
-    background: #7c3aed;
-    color: #fff;
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    letter-spacing: 0;
-    text-transform: none;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  :global(.team-list-layout__btn-accent:hover),
-  :global(.team-list-layout__btn-accent:focus-visible) {
-    background: #6d28d9;
-    outline: none;
-  }
-
-  :global(.team-list-layout__btn-secondary) {
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #374151;
-  }
-
-  :global(.team-list-layout__btn-secondary:hover),
-  :global(.team-list-layout__btn-secondary:focus-visible) {
-    background: #f9fafb;
-    outline: none;
   }
 
   @media (max-width: 900px) {
@@ -282,7 +171,7 @@ const hasToolbar = Astro.slots.has("toolbar");
 
     .team-list-layout__sidebar {
       border-right: none;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--color-stone-200);
       max-height: 16rem;
       padding-bottom: 0.75rem;
     }
@@ -290,11 +179,11 @@ const hasToolbar = Astro.slots.has("toolbar");
 
   @media (max-width: 640px) {
     .team-list-layout__subheader {
-      padding-inline: 1rem;
+      padding-inline: var(--space-4);
     }
 
     .team-list-layout__main {
-      padding-inline: 1rem;
+      padding-inline: var(--space-4);
     }
   }
 </style>

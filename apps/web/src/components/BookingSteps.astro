@@ -55,14 +55,16 @@ const currentIndex = steps.findIndex((step) => step.id === current);
 
 <style>
   .steps {
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .steps__list {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem 0.75rem;
+    gap: var(--space-2) var(--space-3);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -72,11 +74,12 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.62rem;
-    letter-spacing: 0.07em;
+    letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
     color: var(--color-gray);
+    transition: color var(--transition-fast);
   }
 
   @media (min-width: 640px) {
@@ -91,6 +94,10 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     font-weight: 600;
   }
 
+  .steps__item--complete {
+    color: var(--color-sage-dark);
+  }
+
   .steps__item--complete .steps__num {
     background: var(--color-sage);
     border-color: var(--color-sage);
@@ -101,16 +108,27 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.4rem;
-    height: 1.4rem;
-    border: 1px solid var(--color-border);
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--color-stone-300);
     border-radius: 50%;
     font-size: 0.62rem;
+    font-weight: 600;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast);
   }
 
   .steps__item--current .steps__num {
     background: var(--color-citrine);
     border-color: var(--color-citrine);
     color: var(--color-black);
+    box-shadow: 0 0 0 3px var(--color-citrine-muted);
+  }
+
+  .steps__item--complete .steps__label {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-stone-300);
+    opacity: 0.75;
   }
 </style>

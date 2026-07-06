@@ -1,22 +1,38 @@
 /*
- * @saloncitrine/theme — brand tokens
- * Extracted from the marketing site (saloncitrineindy, src/styles/global.css)
- * so the booking platform is immediately recognizable as Salon Citrine.
- * Light/dark theming via [data-theme], matching the marketing site.
+ * @saloncitrine/theme — Salon Citrine design tokens
+ * Warm citrine/gold, cream/stone neutrals, dusty rose accents.
+ * Light/dark via [data-theme], matching the marketing site.
  */
 
 :root,
 [data-theme="light"] {
-  /* Core palette */
+  /* ── Core palette ── */
   --color-black: #0a0a0a;
   --color-white: #ffffff;
   --color-citrine: #e7ac46;
-  --color-citrine-dark: #d3a946;
+  --color-citrine-dark: #c9952e;
+  --color-citrine-light: #f0c872;
+  --color-citrine-muted: rgba(231, 172, 70, 0.12);
   --color-dusty-rose: #ae948f;
+  --color-dusty-rose-muted: rgba(174, 148, 143, 0.12);
   --color-sage: #8d9e88;
+  --color-sage-dark: #6f8269;
+  --color-sage-muted: rgba(141, 158, 136, 0.12);
   --color-charcoal: #3c3d3c;
 
-  /* Surfaces & text */
+  /* ── Stone neutrals (team UI surfaces) ── */
+  --color-stone-50: #faf9f7;
+  --color-stone-100: #f3f1ec;
+  --color-stone-200: #e8e4dc;
+  --color-stone-300: #d4cfc4;
+  --color-stone-400: #a8a093;
+  --color-stone-500: #787068;
+  --color-stone-600: #5c554e;
+  --color-stone-700: #3c3835;
+  --color-stone-800: #2f2a28;
+  --color-stone-900: #1a1816;
+
+  /* ── Surfaces & text ── */
   --color-gray: #666666;
   --color-light: #f5f5f5;
   --color-bg: #ffffff;
@@ -25,7 +41,16 @@
   --color-border-subtle: rgba(0, 0, 0, 0.06);
   --color-header-border: var(--color-text);
 
-  /* On-brand sections (dusty rose / sage / charcoal backgrounds) */
+  /* ── Semantic ── */
+  --color-link: #8a7044;
+  --color-link-hover: var(--color-citrine-dark);
+  --color-focus-ring: rgba(231, 172, 70, 0.35);
+  --color-error: #b42318;
+  --color-error-muted: rgba(180, 35, 24, 0.08);
+  --color-success: #556648;
+  --color-success-muted: rgba(141, 158, 136, 0.12);
+
+  /* ── On-brand sections ── */
   --color-on-brand-section: #ffffff;
   --color-on-brand-section-muted: rgba(255, 255, 255, 0.68);
   --color-charcoal-muted: rgba(255, 255, 255, 0.68);
@@ -33,26 +58,82 @@
   --color-charcoal-border-subtle: rgba(255, 255, 255, 0.08);
   --color-charcoal-card: rgba(255, 255, 255, 0.06);
 
-  /* Book bar (citrine bottom CTA bar) */
+  /* ── Book bar ── */
   --color-book-bar-bg: var(--color-citrine);
   --color-book-bar-text: var(--color-black);
   --color-book-bar-hover-bg: var(--color-black);
   --color-book-bar-hover-text: var(--color-citrine);
 
-  /* Typography */
+  /* ── Typography ── */
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-sans: "Oswald", "Arial Narrow", "Helvetica Neue", sans-serif;
-  --font-serif: "Cormorant Garamond", "Times New Roman", serif;
-  --font-nav: "Serling Galleria", var(--font-serif);
+  --font-serif: var(--font-display);
+  --font-nav: "Serling Galleria", var(--font-display);
   --font-basic-title: "Basic Title", var(--font-sans);
 
-  /* Booking flow surfaces */
+  /* Type scale */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --tracking-tight: 0.01em;
+  --tracking-wide: 0.06em;
+  --tracking-wider: 0.1em;
+  --tracking-widest: 0.14em;
+
+  /* ── Spacing (4/8px grid) ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* ── Radius ── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-pill: 999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 2px 8px rgba(47, 42, 40, 0.06);
+  --shadow-md: 0 4px 16px rgba(47, 42, 40, 0.08);
+  --shadow-lg: 0 8px 28px rgba(47, 42, 40, 0.12);
+  --shadow-card-hover: 0 6px 24px rgba(47, 42, 40, 0.1);
+
+  /* ── Motion ── */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.25s ease;
+
+  /* ── Booking surfaces ── */
   --color-cream: #f7f2ea;
   --color-cream-deep: #efe6d8;
   --color-booking-panel-bg: rgba(255, 255, 255, 0.92);
   --color-booking-card-bg: rgba(255, 255, 255, 0.88);
   --color-card-shadow: rgba(60, 61, 60, 0.06);
 
-  /* Layout — header matches marketing site (saloncitrineindy) */
+  /* ── Team app chrome ── */
+  --team-bar-height: 3.25rem;
+  --team-bar-bg: var(--color-stone-800);
+  --team-bar-border: rgba(255, 255, 255, 0.1);
+  --team-bar-text: rgba(255, 255, 255, 0.92);
+  --team-sidebar-bg: var(--color-stone-50);
+  --team-sidebar-active-bg: var(--color-citrine-muted);
+  --team-sidebar-active-border: var(--color-citrine);
+
+  /* ── Layout ── */
   --header-logo-height: clamp(4.7rem, 12vw, 6.4rem);
   --header-logo-padding-bottom: 0.225rem;
   --header-logo-nav-gap: clamp(4.5rem, 9vw, 6.75rem);
@@ -81,4 +162,9 @@
   --color-booking-panel-bg: rgba(24, 24, 24, 0.92);
   --color-booking-card-bg: rgba(32, 32, 32, 0.88);
   --color-card-shadow: rgba(0, 0, 0, 0.35);
+  --color-stone-50: #1e1c1a;
+  --color-stone-100: #262422;
+  --color-stone-200: #33302c;
+  --team-sidebar-bg: var(--color-stone-100);
+  --color-focus-ring: rgba(231, 172, 70, 0.25);
 }

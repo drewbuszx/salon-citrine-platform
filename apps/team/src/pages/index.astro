@@ -164,8 +164,11 @@ function formatUpcomingWhen(startsAt: string) {
   .dashboard__avatar {
     width: 7.5rem;
     height: 7.5rem;
-    border: 3px solid var(--color-citrine);
-    box-shadow: 0 8px 28px rgba(47, 42, 40, 0.12);
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 3px var(--color-cream),
+      0 0 0 5px rgba(231, 172, 70, 0.4),
+      var(--shadow-lg);
   }
 
   .dashboard__avatar--initials {
