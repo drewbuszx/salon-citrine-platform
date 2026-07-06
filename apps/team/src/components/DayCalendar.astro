@@ -207,7 +207,15 @@ const calendarConfig = {
 
       <div class="day-cal__subbar-actions">
         <span class="day-cal__view-pill" aria-current="true">Day</span>
-        <a class="day-cal__subbar-btn" href={`${teamUrl("/book")}?day=${dayParam}`}>Week</a>
+        <button
+          type="button"
+          class="day-cal__subbar-btn day-cal__subbar-btn--disabled"
+          disabled
+          title="Day view only"
+          aria-disabled="true"
+        >
+          Week
+        </button>
         <a
           class:list={[
             "day-cal__subbar-btn",
@@ -258,7 +266,7 @@ const calendarConfig = {
 
     {
       (waitlistCount > 0 || nextOpenGap) && (
-        <p class="day-cal__gap-hint">
+        <aside class="day-cal__gap-hint" role="status" aria-live="polite">
           {waitlistCount > 0 && (
             <span class="day-cal__gap-hint-waitlist">
               {waitlistCount} {waitlistCount === 1 ? "client" : "clients"} waiting
@@ -283,7 +291,7 @@ const calendarConfig = {
           ) : waitlistCount > 0 ? (
             <span class="day-cal__gap-hint-slot">No open 60-min gaps today</span>
           ) : null}
-        </p>
+        </aside>
       )
     }
   </header>
@@ -324,7 +332,11 @@ const calendarConfig = {
             const memberSchedules = staffSchedules[member.id] ?? [];
 
             return (
-              <div class="day-cal__column" data-staff-column={member.id}>
+              <div
+                class="day-cal__column"
+                data-staff-column={member.id}
+                style={`--staff-accent: ${accent}`}
+              >
                 <header class="day-cal__staff-header">
                   <div class="day-cal__avatar-wrap">
                     <img
@@ -1987,9 +1999,18 @@ const calendarConfig = {
     color: var(--color-black);
   }
 
-  .day-cal__subbar-btn--ghost:disabled {
+  .day-cal__subbar-btn--ghost:disabled,
+  .day-cal__subbar-btn--disabled:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+    border-color: var(--color-border);
+    color: var(--color-gray);
+  }
+
+  .day-cal__subbar-btn--disabled:disabled:hover,
+  .day-cal__subbar-btn--disabled:disabled:focus-visible {
+    border-color: var(--color-border);
+    outline: none;
   }
 
   .day-cal__subbar-btn--today-active {
@@ -2032,15 +2053,16 @@ const calendarConfig = {
 
   .day-cal__gap-hint {
     margin: 0;
-    padding: 0.35rem 0.65rem;
-    border-radius: 0.35rem;
-    background: color-mix(in srgb, var(--color-citrine) 10%, var(--color-light));
-    border: 1px solid color-mix(in srgb, var(--color-citrine) 28%, var(--color-border));
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, var(--color-citrine) 14%, var(--color-light));
+    border: 1px solid color-mix(in srgb, var(--color-citrine) 38%, var(--color-border));
+    border-left: 3px solid var(--color-citrine);
     font-family: var(--font-sans);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     letter-spacing: 0.02em;
     color: var(--color-text);
-    line-height: 1.4;
+    line-height: 1.45;
   }
 
   .day-cal__gap-hint-waitlist {
@@ -2193,7 +2215,20 @@ const calendarConfig = {
 
   .day-cal__week-day--selected {
     border-color: var(--color-citrine);
-    background: rgba(231, 172, 70, 0.15);
+    background: rgba(231, 172, 70, 0.22);
+    box-shadow:
+      inset 0 -3px 0 var(--color-citrine),
+      0 0 0 1px rgba(231, 172, 70, 0.35);
+  }
+
+  .day-cal__week-day--selected .day-cal__week-day-label {
+    color: var(--color-citrine-dark, #c9952e);
+    font-weight: 600;
+  }
+
+  .day-cal__week-day--selected .day-cal__week-day-num {
+    color: var(--color-citrine-dark, #c9952e);
+    font-weight: 700;
   }
 
   .day-cal__week-day--today:not(.day-cal__week-day--selected) {
@@ -2399,7 +2434,7 @@ const calendarConfig = {
   .day-cal__slot--available {
     background: color-mix(
       in srgb,
-      var(--staff-accent, var(--color-citrine)) 16%,
+      var(--staff-accent, var(--color-citrine)) 26%,
       var(--color-bg)
     );
   }
@@ -2408,7 +2443,7 @@ const calendarConfig = {
   .day-cal__slot--available:focus-visible {
     background: color-mix(
       in srgb,
-      var(--staff-accent, var(--color-citrine)) 24%,
+      var(--staff-accent, var(--color-citrine)) 38%,
       var(--color-bg)
     );
     outline: none;

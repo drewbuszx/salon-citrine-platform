@@ -29,9 +29,9 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** Drop compact logo at public/images/salon-citrine-logo-compact.png (120×32 recommended) */
-const logoCompactSrc = withBase("images/salon-citrine-logo-compact.png");
-const logoFallbackSrc = withBase("images/salon-citrine-logo.png");
+/** White wordmark for dark team bar; compact PNG is invert-filter fallback */
+const logoPrimarySrc = withBase("images/salon-citrine-banner-dark.png");
+const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
 const profileMenuId = "team-profile-menu";
 
 const navTabs: {
@@ -62,10 +62,10 @@ const initials = staff ? staffInitials(staff.name) : "";
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
           class="team-bar__logo-img"
-          src={logoCompactSrc}
+          src={logoPrimarySrc}
           data-fallback-src={logoFallbackSrc}
-          alt=""
-          width="120"
+          alt={BUSINESS.name}
+          width="160"
           height="32"
           loading="eager"
         />
@@ -286,7 +286,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     display: block;
     height: 1.65rem;
     width: auto;
-    max-width: 7.25rem;
+    max-width: 9rem;
     object-fit: contain;
     opacity: 0.92;
     transition: opacity var(--transition-fast);
