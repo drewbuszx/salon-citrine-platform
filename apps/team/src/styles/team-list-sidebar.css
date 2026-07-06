@@ -54,8 +54,15 @@
 .team-list-layout__filters {
   display: grid;
   gap: 0;
-  flex: 1;
-  overflow-y: auto;
+  /*
+   * align-content:start is load-bearing: the sidebar is a grid item that
+   * stretches to the full (tall) body row, so a flex:1 grid here would let
+   * align-content:stretch distribute the leftover height across the filter
+   * rows — inserting large blank gaps between Category / Stock level / Brand.
+   * Keep the filters intrinsically sized and top-aligned instead.
+   */
+  align-content: start;
+  min-height: 0;
 }
 
 /* Collapsible filter sections (Clients, Stock, Events, etc.) */
@@ -771,4 +778,33 @@
   .team-list-layout__main {
     padding-inline: var(--space-4);
   }
+}
+
+/*
+ * Stock page: sticky filter panel beneath the team nav so product results
+ * scroll independently. Scoped to .stock-page so other list pages keep the
+ * existing full-height sidebar chrome.
+ */
+@media (min-width: 901px) {
+  .stock-page .team-list-layout__sidebar {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    align-self: start;
+    max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+    overflow-y: auto;
+  }
+}
+
+.stock-page .team-list-layout__filters {
+  flex: 0 0 auto;
+}
+
+.stock-page .team-list-layout__sidebar-footer {
+  margin-top: auto;
+  padding: 0.75rem var(--team-sidebar-inset-x) 0;
+}
+
+.stock-page .team-list-layout__clear-filters {
+  width: 100%;
+  justify-content: center;
 }
