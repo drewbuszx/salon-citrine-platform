@@ -1,3 +1,5 @@
+import { TIMEZONE } from "@saloncitrine/shared";
+import { localDateTimeToUtc } from "../lib/datetime";
 import { staffAccentColor } from "../lib/staff-colors";
 
 type TeamEvent = {
@@ -29,7 +31,6 @@ const listEl = root.querySelector<HTMLElement>("[data-events-list]");
 const listTitleEl = root.querySelector<HTMLElement>("[data-events-list-title]");
 const clearDayBtn = root.querySelector<HTMLButtonElement>("[data-events-clear-day]");
 const errorEl = root.querySelector<HTMLElement>("[data-events-error]");
-const monthLabel = root.querySelector<HTMLElement>("[data-month-label]");
 const monthHeader = root.querySelector<HTMLElement>("[data-month-header]");
 const prevBtn = root.querySelector<HTMLButtonElement>("[data-month-prev]");
 const nextBtn = root.querySelector<HTMLButtonElement>("[data-month-next]");
@@ -96,47 +97,60 @@ function clearError() {
   errorEl.hidden = true;
 }
 
+const salonDateFormatter = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE });
+
+function salonDateFromIso(iso: string) {
+  return salonDateFormatter.format(new Date(iso));
+}
+
+function calendarDateStr(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function monthRange(year: number, month: number) {
-  const from = new Date(Date.UTC(year, month, 1));
-  const to = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59));
-  return { from: from.toISOString(), to: to.toISOString() };
+  const firstDay = calendarDateStr(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const lastDay = calendarDateStr(year, month, daysInMonth);
+  return {
+    from: localDateTimeToUtc(firstDay, "00:00").toISOString(),
+    to: localDateTimeToUtc(lastDay, "23:59").toISOString(),
+  };
 }
 
 function formatMonthLabel(year: number, month: number) {
   return new Intl.DateTimeFormat(undefined, {
+    timeZone: TIMEZONE,
     month: "long",
     year: "numeric",
-  }).format(new Date(year, month, 1));
+  }).format(new Date(Date.UTC(year, month, 15)));
 }
 
 function formatEventRange(event: TeamEvent) {
   const start = new Date(event.startsAt);
   const end = event.endsAt ? new Date(event.endsAt) : null;
-  if (event.allDay) {
-    const startFmt = new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-    }).format(start);
-    if (!end || start.toDateString() === end.toDateString()) {
-      return `${startFmt} · All day`;
-    }
-    const endFmt = new Intl.DateTimeFormat(undefined, {
-      month: "short",
-      day: "numeric",
-    }).format(end);
-    return `${startFmt} – ${endFmt} · All day`;
-  }
-  const startFmt = new Intl.DateTimeFormat(undefined, {
+  const dateFmt = new Intl.DateTimeFormat(undefined, {
+    timeZone: TIMEZONE,
     month: "short",
     day: "numeric",
+  });
+  const timeFmt = new Intl.DateTimeFormat(undefined, {
+    timeZone: TIMEZONE,
     hour: "numeric",
     minute: "2-digit",
-  }).format(start);
+  });
+
+  if (event.allDay) {
+    const startFmt = dateFmt.format(start);
+    if (!end || salonDateFromIso(event.startsAt) === salonDateFromIso(event.endsAt)) {
+      return `${startFmt} · All day`;
+    }
+    const endFmt = dateFmt.format(end);
+    return `${startFmt} – ${endFmt} · All day`;
+  }
+
+  const startFmt = `${dateFmt.format(start)}, ${timeFmt.format(start)}`;
   if (!end) return startFmt;
-  const endFmt = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(end);
+  const endFmt = timeFmt.format(end);
   return `${startFmt} – ${endFmt}`;
 }
 
@@ -158,20 +172,11 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function eventOnDate(event: TeamEvent, date: Date) {
-  const start = new Date(event.startsAt);
-  const end = event.endsAt ? new Date(event.endsAt) : start;
-  const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59);
-  return start <= dayEnd && end >= dayStart;
+function eventOnDate(event: TeamEvent, year: number, month: number, day: number) {
+  const dateStr = calendarDateStr(year, month, day);
+  const startDate = salonDateFromIso(event.startsAt);
+  const endDate = salonDateFromIso(event.endsAt ?? event.startsAt);
+  return dateStr >= startDate && dateStr <= endDate;
 }
 
 /** Staff color: time off uses the subject; everything else uses who created it. */
@@ -190,22 +195,15 @@ function dayKey(year: number, month: number, day: number) {
   return `${year}-${month}-${day}`;
 }
 
-function isSelectedDay(date: Date) {
-  if (!selectedDay) return false;
-  return (
-    date.getFullYear() === selectedDay.year &&
-    date.getMonth() === selectedDay.month &&
-    date.getDate() === selectedDay.day
-  );
-}
-
 function formatSelectedDayLabel(year: number, month: number, day: number) {
+  const noonUtc = localDateTimeToUtc(calendarDateStr(year, month, day), "12:00");
   return new Intl.DateTimeFormat(undefined, {
+    timeZone: TIMEZONE,
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(year, month, day));
+  }).format(noonUtc);
 }
 
 function renderEventMarker(event: TeamEvent) {
@@ -228,9 +226,6 @@ function renderDayMarkers(dayEvents: TeamEvent[]) {
 
 function renderCalendar() {
   if (!calendarEl) return;
-  if (monthLabel) {
-    monthLabel.textContent = formatMonthLabel(viewYear, viewMonth);
-  }
   if (monthHeader) {
     monthHeader.textContent = formatMonthLabel(viewYear, viewMonth);
   }
@@ -238,7 +233,7 @@ function renderCalendar() {
   const first = new Date(viewYear, viewMonth, 1);
   const startOffset = first.getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const today = new Date();
+  const todayStr = salonDateFromIso(new Date().toISOString());
 
   let html = weekdayLabels
     .map((label) => `<div class="events-calendar__head">${label}</div>`)
@@ -249,12 +244,13 @@ function renderCalendar() {
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(viewYear, viewMonth, day);
-    const dayEvents = filteredEvents().filter((event) => eventOnDate(event, date));
+    const dateStr = calendarDateStr(viewYear, viewMonth, day);
+    const dayEvents = filteredEvents().filter((event) => eventOnDate(event, viewYear, viewMonth, day));
     const markers = renderDayMarkers(dayEvents);
-    const isToday = sameDay(date, today);
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const isSelected = isSelectedDay(date);
+    const isToday = dateStr === todayStr;
+    const dayOfWeek = new Date(viewYear, viewMonth, day).getDay();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isSelected = selectedDay?.year === viewYear && selectedDay.month === viewMonth && selectedDay.day === day;
     const classes = [
       "events-calendar__cell",
       dayEvents.length > 0 ? "events-calendar__cell--has-events" : "",
@@ -292,8 +288,7 @@ function eventsForList() {
   );
 
   if (selectedDay) {
-    const date = new Date(selectedDay.year, selectedDay.month, selectedDay.day);
-    return base.filter((event) => eventOnDate(event, date));
+    return base.filter((event) => eventOnDate(event, selectedDay.year, selectedDay.month, selectedDay.day));
   }
 
   const now = new Date();
@@ -335,12 +330,9 @@ function renderList() {
       const metaParts = [formatEventRange(event)];
       if (staffName) metaParts.push(staffName);
       const metaLine = `<span class="event-row__meta">${escapeHtml(metaParts.join(" · "))}</span>`;
-      const startDate = new Date(event.startsAt);
-      const eventDayKey = dayKey(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-      );
+      const startDateStr = salonDateFromIso(event.startsAt);
+      const [eventYear, eventMonth, eventDay] = startDateStr.split("-").map(Number);
+      const eventDayKey = dayKey(eventYear, eventMonth - 1, eventDay);
       return `
         <button
           class="event-row event-row--${event.eventType}"
@@ -373,21 +365,26 @@ function toggleSelectedDay(year: number, month: number, day: number) {
 }
 
 function toDateInputValue(iso: string) {
-  const date = new Date(iso);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return salonDateFromIso(iso);
 }
 
 function toDateTimeLocalValue(iso: string) {
-  const date = new Date(iso);
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  return `${y}-${m}-${d}T${hh}:${mm}`;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(new Date(iso))
+      .map((part) => [part.type, part.value]),
+  );
+  const hour = String(Number(parts.hour === "24" ? "0" : parts.hour)).padStart(2, "0");
+  const minute = String(parts.minute).padStart(2, "0");
+  return `${parts.year}-${parts.month}-${parts.day}T${hour}:${minute}`;
 }
 
 function updateFormMode() {
