@@ -1,0 +1,71 @@
+/*
+ * Team app — mobile layout tokens & semantic color roles.
+ * Page agents should prefer these variables over raw hex values.
+ */
+
+:root,
+[data-theme="light"] {
+  /* ── Mobile spacing (8px grid) ── */
+  --mobile-space-xs: 0.5rem; /* 8px */
+  --mobile-space-sm: 0.75rem; /* 12px */
+  --mobile-space-md: 1rem; /* 16px */
+  --mobile-space-lg: 1.5rem; /* 24px */
+  --mobile-space-xl: 2rem; /* 32px */
+
+  /* Aliases for page agents */
+  --space-1: var(--mobile-space-xs);
+  --space-2: var(--mobile-space-sm);
+  --space-3: var(--mobile-space-md);
+  --space-4: var(--mobile-space-lg);
+  --space-5: var(--mobile-space-xl);
+
+  /* ── Touch targets (WCAG 2.5.5) ── */
+  --touch-target-min: 2.75rem; /* 44px */
+  --touch-target-comfortable: 3rem; /* 48px */
+
+  /* ── Safe areas ── */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* ── Semantic action colors (gold = primary CTA only) ── */
+  --color-action-primary: var(--color-citrine);
+  --color-action-primary-hover: var(--color-citrine-hover);
+  --color-action-primary-text: var(--color-black);
+  --color-selection: var(--color-sage);
+  --color-selection-bg: var(--color-sage-muted);
+  --color-selection-border: var(--color-sage);
+  --color-warning: #9a6700;
+  --color-warning-bg: rgba(231, 172, 70, 0.14);
+  --color-warning-border: rgba(231, 172, 70, 0.45);
+  --color-info: var(--color-stone-600);
+  --color-info-bg: var(--color-stone-100);
+
+  /* ── Typography roles (mobile) ── */
+  --ui-page-title-size: clamp(1.25rem, 4vw, 1.5rem);
+  --ui-section-title-size: 1rem;
+  --ui-card-title-size: 0.9375rem;
+  --ui-label-size: var(--text-xs);
+  --ui-data-value-size: var(--text-base);
+
+  /* ── Layout ── */
+  --ui-bottom-sheet-max-height: min(85vh, 32rem);
+  --ui-fab-size: 3.5rem; /* 56px */
+  --ui-fab-offset: var(--mobile-space-md);
+  --ui-scroll-fade-width: 1.25rem;
+
+  /* ── Z-index scale ── */
+  --z-filter-backdrop: 199;
+  --z-filter-sheet: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-fab: 150;
+}
+
+[data-theme="dark"] {
+  --color-action-primary-text: var(--color-black);
+  --color-selection-bg: rgba(141, 158, 136, 0.18);
+  --color-warning-bg: rgba(231, 172, 70, 0.12);
+  --color-info-bg: rgba(255, 255, 255, 0.06);
+}

@@ -1,5 +1,7 @@
 @import "./fonts.css";
 @import "@saloncitrine/theme/tokens.css";
+@import "./mobile-tokens.css";
+@import "./mobile-ui.css";
 @import "./team-list-sidebar.css";
 
 :root {
@@ -18,14 +20,28 @@
   box-sizing: border-box;
 }
 
+/* Prevent flex/grid children from forcing horizontal page scroll */
+.team-shell,
+.team-list-layout,
+.team-page,
+.team-main,
+[class*="__body"],
+[class*="__main"],
+[class*="__content"] {
+  min-width: 0;
+}
+
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip;
+  max-width: 100%;
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -98,6 +114,8 @@ textarea {
   --team-bar-height: 3.25rem;
   --header-height: var(--team-bar-height);
   min-height: 100vh;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   padding-top: var(--team-bar-height);
@@ -106,6 +124,7 @@ textarea {
 .team-main {
   flex: 1;
   width: min(var(--team-max-width), 100%);
+  min-width: 0;
   margin: 0 auto;
   padding: var(--section-padding);
   padding-bottom: calc(var(--section-padding) + 1rem);
@@ -1579,94 +1598,40 @@ textarea {
   .team-toolbar-spacer {
     display: none;
   }
-}
 
-html.team-filter-sheet-open {
-  overflow: hidden;
-}
+  /* Tables scroll inside their container, not the page */
+  .team-data-table-wrap,
+  .team-list-layout__table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
 
-/* Mobile filter bar (Agent 4 — also in mobile-ui.css when foundation is merged) */
-.team-list-layout__mobile-filter-bar .ui-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  min-width: 0;
-}
+  .team-page__header {
+    padding-inline: var(--mobile-space-md);
+  }
 
-.team-list-layout__filter-chip.ui-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  max-width: 100%;
-  min-height: 2rem;
-  padding: 0.25rem 0.55rem;
-  border: 1px solid var(--color-sage, #8d9e88);
-  border-radius: 999px;
-  background: rgba(141, 158, 136, 0.12);
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--color-stone-700);
-}
+  .team-page__body {
+    padding-inline: var(--mobile-space-md);
+  }
 
-.team-list-layout__filter-chip .ui-filter-chip__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
+  .team-page__title {
+    font-family: var(--font-display);
+    font-size: var(--ui-page-title-size);
+  }
 
-.team-list-layout__filter-open.ui-filter-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 2.75rem;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid var(--color-stone-300);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  font-family: var(--font-body);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text);
-  cursor: pointer;
-}
+  /* Sentence case — avoid ALL CAPS button labels on mobile */
+  .ui-btn,
+  .team-list-layout__btn-primary,
+  .team-list-layout__btn-secondary {
+    text-transform: none;
+    letter-spacing: normal;
+  }
 
-.team-list-layout__filter-open .ui-filter-trigger__count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.3rem;
-  border-radius: 999px;
-  background: rgba(141, 158, 136, 0.14);
-  color: var(--color-stone-700);
-  font-size: var(--text-xs);
-  font-weight: 700;
-}
-
-.team-list-layout__filter-open .ui-filter-trigger__count[hidden] {
-  display: none;
-}
-
-.team-list-layout__sheet-done {
-  min-height: 2.25rem;
-  padding: 0.35rem 0.75rem;
-  border: 1px solid var(--color-stone-300);
-  border-radius: var(--radius-md);
-  background: var(--color-bg);
-  font-family: var(--font-body);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  cursor: pointer;
+  /* Shorter placeholders on narrow screens */
+  .form-input::placeholder,
+  input::placeholder,
+  textarea::placeholder {
+    text-overflow: ellipsis;
+  }
 }

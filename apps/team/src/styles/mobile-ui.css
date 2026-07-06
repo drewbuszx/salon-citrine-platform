@@ -1,0 +1,525 @@
+/*
+ * Shared mobile UI primitives — use these classes or Ui* Astro components.
+ * Sentence case labels; 44px min touch on interactive controls.
+ */
+
+/* ── Buttons ── */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: var(--touch-target-min);
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.ui-btn--primary {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+}
+
+.ui-btn--primary:hover {
+  background: var(--color-action-primary-hover);
+  border-color: var(--color-action-primary-hover);
+}
+
+.ui-btn--secondary {
+  border-color: var(--color-stone-300);
+  background: var(--color-bg);
+  color: var(--color-stone-700);
+}
+
+.ui-btn--secondary:hover {
+  background: var(--color-stone-50);
+  border-color: var(--color-stone-400);
+}
+
+.ui-btn--destructive {
+  border-color: var(--color-error);
+  background: var(--color-bg);
+  color: var(--color-error);
+}
+
+.ui-btn--destructive:hover {
+  background: var(--color-error-muted);
+}
+
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--color-stone-700);
+}
+
+.ui-btn--ghost:hover {
+  background: var(--color-stone-100);
+}
+
+.ui-btn--compact {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  font-size: var(--text-xs);
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+.ui-btn--icon {
+  min-width: var(--touch-target-min);
+  padding-inline: 0.5rem;
+}
+
+.ui-btn[disabled],
+.ui-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Cards ── */
+.ui-card {
+  display: grid;
+  gap: var(--mobile-space-sm);
+  padding: var(--mobile-space-md);
+  border: 1px solid var(--color-stone-200);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+  min-width: 0;
+}
+
+.ui-card--interactive {
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.ui-card--interactive:hover,
+.ui-card--interactive:focus-within {
+  border-color: var(--color-stone-300);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.06));
+}
+
+.ui-card__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--ui-card-title-size);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  color: var(--color-stone-800);
+}
+
+.ui-card__body {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-stone-600);
+}
+
+/* ── Badges ── */
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.375rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-stone-300);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-stone-700);
+  background: var(--color-stone-50);
+}
+
+.ui-badge--success {
+  color: var(--color-success);
+  border-color: rgba(85, 102, 72, 0.35);
+  background: var(--color-success-muted);
+}
+
+.ui-badge--warning {
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+}
+
+.ui-badge--error {
+  color: var(--color-error);
+  border-color: rgba(180, 35, 24, 0.35);
+  background: var(--color-error-muted);
+}
+
+.ui-badge--info {
+  color: var(--color-info);
+  border-color: var(--color-stone-300);
+  background: var(--color-info-bg);
+}
+
+/* ── Segmented control ── */
+.ui-segmented {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  padding: 0.2rem;
+  border: 1px solid var(--color-stone-200);
+  border-radius: var(--radius-md);
+  background: var(--color-stone-50);
+  gap: 0.15rem;
+}
+
+.ui-segmented__item {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--touch-target-min);
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-stone-600);
+  cursor: pointer;
+  text-align: center;
+}
+
+.ui-segmented__item.is-active,
+.ui-segmented__item[aria-selected="true"] {
+  background: var(--color-bg);
+  color: var(--color-stone-800);
+  box-shadow: inset 0 0 0 2px var(--color-selection-border);
+}
+
+.ui-segmented__item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+/* ── Filter chips & trigger ── */
+.ui-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mobile-space-xs);
+  min-width: 0;
+}
+
+.ui-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--color-selection-border, var(--color-sage));
+  border-radius: 999px;
+  background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-stone-700);
+}
+
+.ui-filter-chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ui-filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: var(--touch-target-min);
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--color-stone-300);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ui-filter-trigger__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--color-selection-bg);
+  color: var(--color-stone-700);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.ui-filter-trigger__count[hidden] {
+  display: none;
+}
+
+/* TeamListLayout filter bar hooks */
+.team-list-layout__filter-chip.ui-filter-chip,
+.team-list-layout__filter-open.ui-filter-trigger,
+.team-list-layout__sheet-done {
+  /* inherits from ui-* above */
+}
+
+.team-list-layout__sheet-done {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-stone-300);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+html.team-filter-sheet-open {
+  overflow: hidden;
+}
+
+/* ── Empty state ── */
+.ui-empty {
+  display: grid;
+  gap: var(--mobile-space-sm);
+  justify-items: center;
+  margin: 0;
+  padding: var(--mobile-space-lg) var(--mobile-space-md);
+  border: 1px dashed var(--color-stone-200);
+  border-radius: var(--radius-md);
+  background: var(--color-stone-50);
+  text-align: center;
+}
+
+.ui-empty__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--color-stone-100);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.ui-empty__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-stone-700);
+}
+
+.ui-empty__hint {
+  margin: 0;
+  max-width: 22rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-stone-500);
+}
+
+.ui-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--mobile-space-sm);
+  margin-top: 0.25rem;
+}
+
+.ui-empty--compact {
+  padding: var(--mobile-space-md);
+}
+
+.ui-empty--compact .ui-empty__icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 1rem;
+}
+
+/* ── Warning / info panel ── */
+.ui-warning-panel {
+  display: grid;
+  gap: 0.35rem;
+  padding: var(--mobile-space-sm) var(--mobile-space-md);
+  border: 1px solid var(--color-warning-border);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-stone-800);
+}
+
+.ui-warning-panel__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ui-warning-panel__body {
+  margin: 0;
+  color: var(--color-stone-700);
+}
+
+.ui-warning-panel--error {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: var(--color-error-muted);
+}
+
+/* ── Horizontal scroll row with edge fade ── */
+.ui-scroll-row {
+  position: relative;
+  min-width: 0;
+}
+
+.ui-scroll-row__track {
+  display: flex;
+  gap: var(--mobile-space-sm);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-block: 0.15rem;
+}
+
+.ui-scroll-row__track::-webkit-scrollbar {
+  display: none;
+}
+
+.ui-scroll-row::before,
+.ui-scroll-row::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--ui-scroll-fade-width);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.ui-scroll-row::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-bg), transparent);
+}
+
+.ui-scroll-row::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-bg), transparent);
+}
+
+.ui-scroll-row.is-scrollable-start::before,
+.ui-scroll-row.is-scrollable-end::after {
+  opacity: 1;
+}
+
+/* ── FAB & fixed bottom bar helpers ── */
+.ui-fab {
+  position: fixed;
+  right: calc(var(--ui-fab-offset) + var(--safe-area-right));
+  bottom: calc(var(--ui-fab-offset) + var(--safe-area-bottom));
+  z-index: var(--z-fab);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ui-fab-size);
+  height: var(--ui-fab-size);
+  border: none;
+  border-radius: 999px;
+  background: var(--color-action-primary);
+  color: var(--color-action-primary-text);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.18));
+  cursor: pointer;
+}
+
+.ui-fab:focus-visible {
+  outline: none;
+  box-shadow:
+    var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.18)),
+    0 0 0 3px var(--color-focus-ring);
+}
+
+.ui-has-fab-padding {
+  padding-bottom: calc(var(--ui-fab-size) + var(--ui-fab-offset) * 2 + var(--safe-area-bottom));
+}
+
+/* ── Bottom sheet chrome (content lives in page components) ── */
+.ui-bottom-sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: var(--z-filter-sheet);
+  max-height: var(--ui-bottom-sheet-max-height);
+  padding-bottom: var(--safe-area-bottom);
+  border-top: 1px solid var(--color-stone-200);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(110%);
+  visibility: hidden;
+  transition:
+    transform var(--transition-base),
+    visibility var(--transition-base);
+}
+
+.ui-bottom-sheet.is-open {
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.ui-bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-filter-backdrop);
+  background: rgba(10, 10, 10, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--transition-base),
+    visibility var(--transition-base);
+}
+
+.ui-bottom-sheet-backdrop.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}

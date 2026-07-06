@@ -1,0 +1,58 @@
+---
+/**
+ * Shared button — sentence case labels, 44px min touch target.
+ * Variants: primary | secondary | destructive | ghost
+ */
+interface Props {
+  variant?: "primary" | "secondary" | "destructive" | "ghost";
+  compact?: boolean;
+  block?: boolean;
+  icon?: boolean;
+  href?: string;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  class?: string;
+  id?: string;
+  "aria-label"?: string;
+  "aria-expanded"?: string;
+  "aria-controls"?: string;
+}
+
+const {
+  variant = "primary",
+  compact = false,
+  block = false,
+  icon = false,
+  href,
+  type = "button",
+  disabled = false,
+  class: className,
+  id,
+  "aria-label": ariaLabel,
+  "aria-expanded": ariaExpanded,
+  "aria-controls": ariaControls,
+} = Astro.props;
+
+const Tag = href ? "a" : "button";
+---
+
+<Tag
+  class:list={[
+    "ui-btn",
+    `ui-btn--${variant}`,
+    compact && "ui-btn--compact",
+    block && "ui-btn--block",
+    icon && "ui-btn--icon",
+    className,
+  ]}
+  id={id}
+  href={href}
+  type={href ? undefined : type}
+  disabled={href ? undefined : disabled}
+  aria-disabled={href && disabled ? "true" : undefined}
+  aria-label={ariaLabel}
+  aria-expanded={ariaExpanded}
+  aria-controls={ariaControls}
+>
+  <slot />
+</Tag>
