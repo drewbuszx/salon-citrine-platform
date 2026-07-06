@@ -55,6 +55,12 @@ const errorMessage =
       <a class="team-list-layout__sidebar-link" href={teamUrl("/change-password")}>Password</a>
     </nav>
 
+    <form slot="sidebarFooter" class="team-list-layout__sidebar-logout" method="post" action={teamUrl("/api/auth/logout")}>
+      <button class="team-list-layout__sidebar-logout-btn" type="submit">
+        Log out
+      </button>
+    </form>
+
     <Fragment slot="mainLead">Update your staff profile and contact information.</Fragment>
 
   <section class="form-stack form-stack--medium">

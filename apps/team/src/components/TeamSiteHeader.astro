@@ -69,6 +69,7 @@ const initials = staff ? staffInitials(staff.name) : "";
           height="32"
           loading="eager"
         />
+        <span class="team-bar__logo-wordmark">{BUSINESS.name}</span>
       </a>
     </div>
 
@@ -300,6 +301,25 @@ const initials = staff ? staffInitials(staff.name) : "";
   .team-bar__logo-img--fallback {
     height: 1.35rem;
     max-width: 5.5rem;
+  }
+
+  .team-bar__logo-wordmark {
+    display: none;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.92);
+    white-space: nowrap;
+  }
+
+  .team-bar__logo.is-wordmark .team-bar__logo-img {
+    display: none;
+  }
+
+  .team-bar__logo.is-wordmark .team-bar__logo-wordmark {
+    display: block;
   }
 
   .team-bar__nav {
