@@ -1,0 +1,39 @@
+---
+interface Props {
+  title: string;
+  lead?: string;
+  toolbar?: boolean;
+}
+
+const { title, lead, toolbar = false } = Astro.props;
+const hasActions = Astro.slots.has("actions");
+const hasToolbar = toolbar || Astro.slots.has("toolbar");
+---
+
+<div class="team-page">
+  <header class="team-page__header">
+    <div class="team-page__intro">
+      <h1 class="team-page__title">{title}</h1>
+      {lead ? <p class="team-page__lead">{lead}</p> : null}
+    </div>
+    {
+      hasActions ? (
+        <div class="team-page__actions">
+          <slot name="actions" />
+        </div>
+      ) : null
+    }
+  </header>
+
+  {
+    hasToolbar ? (
+      <div class="team-page__toolbar">
+        <slot name="toolbar" />
+      </div>
+    ) : null
+  }
+
+  <div class="team-page__body">
+    <slot />
+  </div>
+</div>

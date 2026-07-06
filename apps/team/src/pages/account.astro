@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import StaffAvatar from "../components/StaffAvatar.astro";
 import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
@@ -46,11 +47,9 @@ const errorMessage =
               : null;
 ---
 
-<TeamLayout title="Account" activeNav="account">
+<TeamLayout title="Account" activeNav="account" plain>
+  <TeamPage title="Account" lead="Update your staff profile and contact information.">
   <section class="form-stack form-stack--medium">
-    <h1 class="page-title">Account</h1>
-    <p class="page-lead">Update your staff profile and contact information.</p>
-
     {saved ? (
       <p class="notice notice--success" role="status">
         {photoSaved ? "Profile photo saved." : "Profile saved."}
@@ -207,6 +206,7 @@ const errorMessage =
       <button class="btn-primary" type="submit">Save changes</button>
     </form>
   </section>
+  </TeamPage>
 </TeamLayout>
 
 <script src="../scripts/account-photo-editor.ts"></script>

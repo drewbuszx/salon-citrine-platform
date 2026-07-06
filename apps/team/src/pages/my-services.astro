@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
@@ -54,12 +55,11 @@ const updateError = Astro.url.searchParams.get("error") === "update";
 const returnTo = teamUrl("/my-services");
 ---
 
-<TeamLayout title="My services">
-  <h1 class="page-title">My services</h1>
-  <p class="page-lead">
-    Choose which services you offer are for returning clients only. New clients
-    will see a notice before booking those services with you.
-  </p>
+<TeamLayout title="My services" activeNav="manage" plain>
+  <TeamPage
+    title="My services"
+    lead="Choose which services you offer are for returning clients only. New clients will see a notice before booking those services with you."
+  >
 
   {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
@@ -112,6 +112,7 @@ const returnTo = teamUrl("/my-services");
       </div>
     )
   }
+  </TeamPage>
 </TeamLayout>
 
 <style>

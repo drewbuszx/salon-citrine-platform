@@ -838,3 +838,314 @@ textarea {
   margin-top: 1.5rem;
   color: var(--color-gray);
 }
+
+/* Boulevard-style team page chrome (shared across app screens) */
+.team-page {
+  display: grid;
+  gap: 0;
+  min-height: calc(100vh - var(--team-bar-height, 3.25rem) - 2rem);
+}
+
+.team-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: clamp(1rem, 2.5vw, 1.35rem) clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-bg);
+}
+
+.team-page__intro {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.team-page__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-sans);
+  font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.team-page__lead {
+  margin: 0;
+  max-width: 42rem;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-gray);
+}
+
+.team-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.team-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  padding: 0.55rem clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-booking-panel-bg);
+}
+
+.team-page__body {
+  padding: clamp(1rem, 2.5vw, 1.35rem) clamp(1rem, 3vw, 2rem) clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.team-page__body .notice:first-child,
+.team-page__body .empty-state:first-child {
+  margin-top: 0;
+}
+
+.team-toolbar-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.team-toolbar-field--grow {
+  flex: 1 1 12rem;
+}
+
+.team-toolbar-field--compact {
+  flex: 0 1 10rem;
+}
+
+.team-toolbar-field .form-input {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.88rem;
+}
+
+.team-toolbar-label {
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+
+.team-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.team-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.team-filter-pill {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: var(--color-gray);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.team-filter-pill:hover,
+.team-filter-pill:focus-visible {
+  border-color: var(--color-sage);
+  color: var(--color-text);
+  outline: none;
+}
+
+.team-filter-pill--active {
+  border-color: var(--color-dusty-rose);
+  background: rgba(174, 148, 143, 0.12);
+  color: var(--color-text);
+}
+
+.team-panel {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.team-panel + .team-panel {
+  margin-top: 1rem;
+}
+
+.team-panel__title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+
+.team-stat-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.team-stat-card {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-booking-card-bg);
+}
+
+.team-stat-card__label {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+}
+
+.team-stat-card__value {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.team-stat-card__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-gray);
+}
+
+.team-data-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.team-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.team-data-table th,
+.team-data-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: top;
+}
+
+.team-data-table th {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gray);
+  background: var(--color-booking-panel-bg);
+}
+
+.team-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.team-data-table td.num,
+.team-data-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.team-data-table tbody tr:hover td {
+  background: rgba(141, 158, 136, 0.06);
+}
+
+.team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.team-list__link {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.team-list__link:hover,
+.team-list__link:focus-visible {
+  border-color: var(--color-sage);
+  outline: none;
+}
+
+.team-list__primary {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.team-list__secondary {
+  font-size: 0.82rem;
+  color: var(--color-gray);
+}
+
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid currentColor;
+  font-family: var(--font-sans);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.team-badge--warn {
+  color: #922;
+  border-color: #c44;
+  background: rgba(200, 60, 60, 0.08);
+}
+
+.team-badge--ok {
+  color: #556648;
+  border-color: #7a8f6e;
+  background: rgba(141, 158, 136, 0.12);
+}
+
+.team-badge--muted {
+  color: var(--color-gray);
+  border-color: var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .team-page__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .team-toolbar-spacer {
+    display: none;
+  }
+}

@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -19,7 +20,7 @@ const { data: staffRows } = await supabase
 const staffOptions = staffRows ?? [];
 ---
 
-<TeamLayout title="Calendar" activeNav="marketing">
+<TeamLayout title="Events" activeNav="events" plain>
   <div
     class="events-page"
     data-events-app
@@ -27,19 +28,15 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <header class="events-page__header">
-      <div>
-        <h1 class="page-title">Team calendar</h1>
-        <p class="page-lead">
-          Birthdays, time off, closures, and salon announcements — not the appointment book.
-        </p>
-      </div>
-      <button class="btn-primary events-page__add" type="button" data-event-create>
+    <TeamPage
+      title="Team calendar"
+      lead="Birthdays, time off, closures, and salon announcements — not the appointment book."
+    >
+      <button slot="actions" class="btn-primary" type="button" data-event-create>
         Add event
       </button>
-    </header>
 
-    <div class="events-page__nav">
+      <div class="events-page__nav">
       <button class="btn-secondary" type="button" data-month-prev aria-label="Previous month">
         ‹
       </button>
@@ -62,6 +59,7 @@ const staffOptions = staffRows ?? [];
         <p class="empty-state">Loading events…</p>
       </div>
     </section>
+    </TeamPage>
   </div>
 
   <dialog class="events-modal" data-event-modal aria-labelledby="event-modal-title">
@@ -155,15 +153,6 @@ const staffOptions = staffRows ?? [];
 <script src="../scripts/events.ts"></script>
 
 <style>
-  .events-page__header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
   .events-page__nav {
     display: flex;
     flex-wrap: wrap;

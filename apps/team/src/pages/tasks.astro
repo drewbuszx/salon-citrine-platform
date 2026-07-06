@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -19,7 +20,7 @@ const { data: staffRows } = await supabase
 const staffOptions = staffRows ?? [];
 ---
 
-<TeamLayout title="Tasks" activeNav="messages">
+<TeamLayout title="Tasks" activeNav="messages" plain>
   <div
     class="tasks-page"
     data-tasks-app
@@ -27,21 +28,16 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <header class="tasks-page__header">
-      <div>
-        <h1 class="tasks-page__title">Tasks</h1>
-        <p class="tasks-page__subtitle">Team to-dos &amp; salon checklists</p>
-      </div>
+    <TeamPage title="Tasks" lead="Team to-dos & salon checklists">
       {
         managerView ? (
-          <button class="tasks-page__create" type="button" data-task-create>
+          <button slot="actions" class="btn-primary" type="button" data-task-create>
             + New entry
           </button>
         ) : null
       }
-    </header>
 
-    <div class="notebook" aria-label="Task notebook">
+      <div class="notebook" aria-label="Task notebook">
       <div class="notebook__binding" aria-hidden="true">
         <span class="notebook__hole"></span>
         <span class="notebook__hole"></span>
@@ -74,7 +70,8 @@ const staffOptions = staffRows ?? [];
           <p class="notebook-empty">Loading tasks…</p>
         </div>
       </div>
-    </div>
+      </div>
+    </TeamPage>
   </div>
 
   <dialog class="tasks-modal" data-task-modal aria-labelledby="task-modal-title">
@@ -179,54 +176,6 @@ const staffOptions = staffRows ?? [];
     --notebook-paper-dark: #1e1c19;
     --notebook-rule: rgba(174, 148, 143, 0.32);
     --notebook-margin-line: rgba(196, 90, 78, 0.42);
-  }
-
-  .tasks-page__header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .tasks-page__title {
-    margin: 0 0 0.25rem;
-    font-family: var(--font-nav);
-    font-size: clamp(1.75rem, 4.5vw, 2.25rem);
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    line-height: 1.1;
-  }
-
-  .tasks-page__subtitle {
-    margin: 0;
-    font-family: var(--font-serif);
-    font-size: 1rem;
-    font-style: italic;
-    color: var(--color-gray);
-  }
-
-  .tasks-page__create {
-    flex-shrink: 0;
-    padding: 0.55rem 1rem;
-    border: 1px solid var(--color-dusty-rose);
-    background: transparent;
-    color: var(--color-text);
-    font-family: var(--font-basic-title);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
-  }
-
-  .tasks-page__create:hover,
-  .tasks-page__create:focus-visible {
-    background: var(--color-dusty-rose);
-    color: var(--color-on-brand-section);
-    outline: none;
   }
 
   /* Notebook shell */

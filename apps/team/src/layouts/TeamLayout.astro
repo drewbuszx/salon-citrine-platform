@@ -10,10 +10,18 @@ interface Props {
   activeNav?: TeamActiveNav;
   wide?: boolean;
   fullBleed?: boolean;
+  plain?: boolean;
   loginPage?: boolean;
 }
 
-const { title, activeNav, wide = false, fullBleed = false, loginPage = false } = Astro.props;
+const {
+  title,
+  activeNav,
+  wide = false,
+  fullBleed = false,
+  plain = false,
+  loginPage = false,
+} = Astro.props;
 const { staff, user } = Astro.locals;
 const isAuthenticated = Boolean(user && staff);
 ---
@@ -54,7 +62,13 @@ const isAuthenticated = Boolean(user && staff);
     </script>
   </head>
   <body>
-    <div class:list={["team-shell", loginPage && "team-shell--login", fullBleed && "team-shell--book"]}>
+    <div
+      class:list={[
+        "team-shell",
+        loginPage && "team-shell--login",
+        (fullBleed || plain) && "team-shell--book",
+      ]}
+    >
       <TeamSiteHeader
         activeNav={activeNav}
         staff={staff}
@@ -69,7 +83,7 @@ const isAuthenticated = Boolean(user && staff);
         ]}
       >
         {
-          fullBleed ? (
+          fullBleed || plain ? (
             <slot />
           ) : (
             <div class:list={["team-content", loginPage && "team-content--login"]}>

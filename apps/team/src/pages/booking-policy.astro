@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { formatBookingPolicySummary } from "@saloncitrine/shared";
 import {
   defaultPolicyResponse,
@@ -27,18 +28,16 @@ const depositValueDollars =
   policy.depositValue != null ? (policy.depositValue / 100).toFixed(2) : "";
 ---
 
-<TeamLayout title="Booking policy" activeNav="manage">
+<TeamLayout title="Booking policy" activeNav="manage" plain>
+  <TeamPage
+    title="Booking policy"
+    lead="Online booking uses the active policy below. Existing appointments keep the policy snapshot stored at booking time."
+  >
   <section
     class="form-stack form-stack--medium"
     data-booking-policy
     data-api-base={teamUrl("/api/booking-policy")}
   >
-    <h1 class="page-title">Booking policy</h1>
-    <p class="page-lead">
-      Online booking uses the active policy below. Existing appointments keep the
-      policy snapshot stored at booking time.
-    </p>
-
     <p class="notice notice--success" data-policy-success hidden role="status">
       Policy saved.
     </p>
@@ -192,6 +191,7 @@ const depositValueDollars =
       <a href={teamUrl("/services")}>Back to services</a>
     </p>
   </section>
+  </TeamPage>
 
   <script src="../scripts/booking-policy.ts"></script>
 </TeamLayout>

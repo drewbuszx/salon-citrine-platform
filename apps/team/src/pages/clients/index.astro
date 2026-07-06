@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamPage from "../../components/TeamPage.astro";
 import { teamUrl } from "../../lib/supabase-server";
 
 const { staff } = Astro.locals;
@@ -10,30 +11,30 @@ if (!staff) {
 const initialQuery = Astro.url.searchParams.get("q") ?? "";
 ---
 
-<TeamLayout title="Clients" activeNav="clients" wide>
+<TeamLayout title="Clients" activeNav="clients" plain wide>
   <div class="clients-page" data-clients-search>
-    <header class="clients-page__header">
-      <h1 class="page-title">Clients</h1>
-      <p class="page-lead">Search by name, email, or phone to open a client chart.</p>
-    </header>
+    <TeamPage
+      title="Clients"
+      lead="Search by name, email, or phone to open a client chart."
+      toolbar
+    >
+      <label slot="toolbar" class="team-toolbar-field team-toolbar-field--grow">
+        <span class="team-toolbar-label">Search clients</span>
+        <input
+          class="form-input"
+          type="search"
+          name="q"
+          value={initialQuery}
+          placeholder="Start typing…"
+          autocomplete="off"
+          data-search-input
+          autofocus
+        />
+      </label>
 
-    <label class="form-label clients-page__search">
-      Search clients
-      <input
-        class="form-input"
-        type="search"
-        name="q"
-        value={initialQuery}
-        placeholder="Start typing…"
-        autocomplete="off"
-        data-search-input
-        autofocus
-      />
-    </label>
-
-    <p class="notice" data-status hidden aria-live="polite"></p>
-
-    <ul class="clients-results" data-results role="listbox" aria-label="Search results"></ul>
+      <p class="notice" data-status hidden aria-live="polite"></p>
+      <ul class="team-list" data-results role="listbox" aria-label="Search results"></ul>
+    </TeamPage>
   </div>
 </TeamLayout>
 
@@ -70,13 +71,12 @@ const initialQuery = Astro.url.searchParams.get("q") ?? "";
 
     for (const client of clients) {
       const li = document.createElement("li");
-      li.className = "clients-results__item";
       const link = document.createElement("a");
-      link.className = "clients-results__link";
+      link.className = "team-list__link";
       link.href = `${clientsBase}/${client.id}`;
       link.innerHTML = `
-        <span class="clients-results__name">${client.fullName}</span>
-        <span class="clients-results__meta">${[client.phone, client.email].filter(Boolean).join(" · ") || "No contact on file"}</span>
+        <span class="team-list__primary">${client.fullName}</span>
+        <span class="team-list__secondary">${[client.phone, client.email].filter(Boolean).join(" · ") || "No contact on file"}</span>
       `;
       li.appendChild(link);
       results.appendChild(li);
@@ -113,49 +113,3 @@ const initialQuery = Astro.url.searchParams.get("q") ?? "";
     search(initialQuery);
   }
 </script>
-
-<style>
-  .clients-page__header {
-    margin-bottom: 1.25rem;
-  }
-
-  .clients-page__search {
-    max-width: 32rem;
-    margin-bottom: 1rem;
-  }
-
-  .clients-results {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .clients-results__link {
-    display: grid;
-    gap: 0.2rem;
-    padding: 0.85rem 1rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s ease;
-  }
-
-  .clients-results__link:hover,
-  .clients-results__link:focus-visible {
-    border-color: var(--color-citrine);
-    outline: none;
-  }
-
-  .clients-results__name {
-    font-weight: 600;
-    font-size: 1.05rem;
-  }
-
-  .clients-results__meta {
-    font-size: 0.9rem;
-    color: var(--color-gray);
-  }
-</style>

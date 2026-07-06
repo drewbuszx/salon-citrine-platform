@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -12,56 +13,52 @@ if (!staff) {
 const managerView = isSalonManager(staff);
 ---
 
-<TeamLayout title="Docs" activeNav="reports">
+<TeamLayout title="Docs" activeNav="docs" plain>
   <div
     class="docs-page"
     data-docs-app
     data-api-base={teamUrl("/api/documents")}
     data-manager={managerView ? "1" : "0"}
   >
-    <header class="docs-page__header">
-      <div>
-        <h1 class="page-title">Docs</h1>
-        <p class="page-lead">Employee handbook, procedures, and salon resources.</p>
-      </div>
+    <TeamPage title="Docs" lead="Employee handbook, procedures, and salon resources." toolbar>
       {
         managerView ? (
-          <button class="btn-primary docs-page__upload" type="button" data-doc-upload-open>
+          <button slot="actions" class="btn-primary" type="button" data-doc-upload-open>
             Upload
           </button>
         ) : null
       }
-    </header>
 
-    <div class="docs-page__filters">
-      <label class="form-label docs-page__search">
-        Search
-        <input
-          class="form-input"
-          type="search"
-          placeholder="Title or description…"
-          autocomplete="off"
-          data-doc-search
-        />
-      </label>
+      <div slot="toolbar" class="docs-page__filters">
+        <label class="team-toolbar-field team-toolbar-field--grow">
+          <span class="team-toolbar-label">Search</span>
+          <input
+            class="form-input"
+            type="search"
+            placeholder="Title or description…"
+            autocomplete="off"
+            data-doc-search
+          />
+        </label>
 
-      <label class="form-label docs-page__category">
-        Category
-        <select class="form-input" data-doc-category>
-          <option value="all">All categories</option>
-          <option value="policies">Policies</option>
-          <option value="training">Training</option>
-          <option value="forms">Forms</option>
-          <option value="other">Other</option>
-        </select>
-      </label>
-    </div>
+        <label class="team-toolbar-field team-toolbar-field--compact">
+          <span class="team-toolbar-label">Category</span>
+          <select class="form-input" data-doc-category>
+            <option value="all">All categories</option>
+            <option value="policies">Policies</option>
+            <option value="training">Training</option>
+            <option value="forms">Forms</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
 
-    <p class="notice notice--error docs-page__error" data-docs-error hidden role="alert"></p>
+      <p class="notice notice--error docs-page__error" data-docs-error hidden role="alert"></p>
 
-    <div class="docs-list" data-docs-list aria-live="polite">
-      <p class="empty-state">Loading documents…</p>
-    </div>
+      <div class="docs-list" data-docs-list aria-live="polite">
+        <p class="empty-state">Loading documents…</p>
+      </div>
+    </TeamPage>
   </div>
 
   <dialog class="docs-modal" data-doc-modal aria-labelledby="doc-modal-title">
@@ -118,25 +115,12 @@ const managerView = isSalonManager(staff);
 <script src="../scripts/docs.ts"></script>
 
 <style>
-  .docs-page__header {
+  .docs-page__filters {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-
-  .docs-page__filters {
-    display: grid;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
-  }
-
-  @media (min-width: 640px) {
-    .docs-page__filters {
-      grid-template-columns: 1fr minmax(10rem, 14rem);
-    }
+    align-items: end;
+    gap: 0.75rem 1rem;
+    width: 100%;
   }
 
   .docs-page__error {

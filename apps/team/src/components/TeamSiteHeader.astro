@@ -14,8 +14,9 @@ export type TeamActiveNav =
   | "messages"
   | "sales"
   | "clients"
+  | "docs"
+  | "events"
   | "reports"
-  | "marketing"
   | "manage"
   | "account";
 
@@ -44,8 +45,9 @@ const navTabs: {
   { id: "messages", label: "Messages", href: teamUrl("/tasks") },
   { id: "sales", label: "Sales", href: teamUrl("/inventory") },
   { id: "clients", label: "Clients", href: teamUrl("/clients") },
-  { id: "reports", label: "Reports", href: teamUrl("/docs") },
-  { id: "marketing", label: "Marketing", href: teamUrl("/events") },
+  { id: "docs", label: "Docs", href: teamUrl("/docs") },
+  { id: "events", label: "Events", href: teamUrl("/events") },
+  { id: "reports", label: "Reports", href: teamUrl("/reports") },
   { id: "manage", label: "Manage", href: teamUrl("/services") },
 ];
 

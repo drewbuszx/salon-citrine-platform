@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase } = Astro.locals;
@@ -45,14 +46,10 @@ for (const row of staffServices ?? []) {
 }
 ---
 
-<TeamLayout title="Services" activeNav="manage">
-  <h1 class="page-title">Services</h1>
-  <p class="page-lead">
-    Update service durations and returning-clients-only settings per stylist.
-    <a href={teamUrl("/booking-policy")}>Edit booking policy</a>
-  </p>
-
-  {saved ? <p class="notice notice--success">Settings saved.</p> : null}
+<TeamLayout title="Services" activeNav="manage" plain wide>
+  <TeamPage title="Services" lead="Update service durations and returning-clients-only settings per stylist.">
+    <a slot="actions" class="btn-secondary" href={teamUrl("/booking-policy")}>Booking policy</a>
+    {saved ? <p class="notice notice--success">Settings saved.</p> : null}
   {
     updateError ? (
       <p class="notice notice--error" role="alert">
@@ -180,6 +177,7 @@ for (const row of staffServices ?? []) {
       </>
     )
   }
+  </TeamPage>
 </TeamLayout>
 
 <style>

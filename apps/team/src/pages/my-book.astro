@@ -1,5 +1,6 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
+import TeamPage from "../components/TeamPage.astro";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
@@ -98,17 +99,12 @@ const apiServices = teamUrl("/api/my-book/services");
 const apiProfile = teamUrl("/api/my-book/profile");
 ---
 
-<TeamLayout title="My Book">
-  <nav class="my-book__back" aria-label="Back">
-    <a href={calendarUrl} class="my-book__back-link">← Back to calendar</a>
-  </nav>
-
-  <h1 class="page-title">My Book</h1>
-  <p class="page-lead">
-    Set your bookable hours and control which services clients can see online.
-    You can still manually book any service on the team calendar.
-  </p>
-
+<TeamLayout title="My Book" activeNav="manage" plain>
+  <TeamPage
+    title="My Book"
+    lead="Set your bookable hours and control which services clients can see online. You can still manually book any service on the team calendar."
+  >
+    <a slot="actions" class="btn-secondary" href={calendarUrl}>← Calendar</a>
   <section class="page-section my-book__section" aria-labelledby="my-book-availability">
     <h2 id="my-book-availability">Client availability</h2>
     <p class="page-section__lead">
@@ -267,6 +263,7 @@ const apiProfile = teamUrl("/api/my-book/profile");
     }
     <p class="my-book__status" id="services-status" role="status" hidden></p>
   </section>
+  </TeamPage>
 </TeamLayout>
 
 <script define:vars={{ apiSchedules, apiServices, apiProfile }}>
