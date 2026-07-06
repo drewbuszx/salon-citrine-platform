@@ -15,6 +15,7 @@ import { resolveBookingSlot } from "../lib/availability";
 import { fetchActiveBookingPolicy } from "../lib/booking-policy";
 import { bookingApi } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
+import { calculateRequiredDepositCents, formatCents } from "@saloncitrine/shared";
 
 const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
@@ -60,6 +61,20 @@ const serviceSummary =
     ? services[0].name
     : `${services[0].name} + ${services.length - 1} more`;
 const totalDuration = sumServiceDuration(services);
+const subtotalCents = services.reduce(
+  (sum, service) => sum + (service.basePriceCents ?? 0),
+  0,
+);
+const depositRequiredCents = calculateRequiredDepositCents(
+  bookingPolicy,
+  subtotalCents,
+);
+const depositLabel =
+  depositRequiredCents > 0
+    ? formatCents(depositRequiredCents)
+    : bookingPolicy.depositType === "card_on_file" || bookingPolicy.requiresCardOnFile
+      ? "Card on file only"
+      : "None today";
 
 const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const setupIntentUrl = withBase("api/booking/setup-intent");
@@ -152,10 +167,28 @@ const confirmUrl = withBase("confirm/");
       />
     </label>
 
+    <div class="order-summary" aria-label="Order summary">
+      <div class="order-summary__row">
+        <span>Services subtotal</span>
+        <span>{formatCents(subtotalCents)}</span>
+      </div>
+      <div class="order-summary__row order-summary__row--deposit">
+        <span>Deposit due today</span>
+        <span>{depositLabel}</span>
+      </div>
+      <p class="order-summary__hint">
+        {
+          depositRequiredCents > 0
+            ? "Your deposit is charged when you confirm. The remaining balance is due at your appointment."
+            : "Your card secures this appointment. You won't be charged now unless noted in the policy."
+        }
+      </p>
+    </div>
+
     <div class="card-section">
-      <p class="card-section__label">Card on file</p>
+      <p class="card-section__label">Payment method</p>
       <p class="card-section__hint">
-        Your card secures this appointment. You won't be charged now.
+        Secure card on file — Boulevard-style checkout. Required to complete booking.
       </p>
       <div id="payment-element" class="payment-element" aria-busy="false" aria-live="polite">
         <p class="payment-element__status">Enter your email above to load the card form.</p>
@@ -242,6 +275,36 @@ const confirmUrl = withBase("confirm/");
     gap: 0.5rem;
     align-items: flex-start;
     font-size: 0.95rem;
+  }
+
+  .order-summary {
+    margin: 1.25rem 0;
+    padding: 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .order-summary__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+  }
+
+  .order-summary__row--deposit {
+    font-weight: 600;
+    padding-top: 0.35rem;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .order-summary__hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+    color: var(--color-gray);
+    line-height: 1.45;
   }
 
   .card-section {
