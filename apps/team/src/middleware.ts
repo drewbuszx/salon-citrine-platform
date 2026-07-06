@@ -17,8 +17,35 @@ function normalizePath(pathname: string, base: string) {
   return pathname;
 }
 
+function isStaticAssetPath(routePath: string) {
+  return (
+    routePath.startsWith("/_astro/") ||
+    routePath.startsWith("/fonts/") ||
+    routePath.startsWith("/images/") ||
+    routePath.endsWith(".css") ||
+    routePath.endsWith(".js") ||
+    routePath.endsWith(".woff2") ||
+    routePath.endsWith(".ico")
+  );
+}
+
+function isMissingRuntimeConfigError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.message.includes("Missing required runtime configuration") ||
+    error.message.includes("Invalid supabaseUrl")
+  );
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const routePath = normalizePath(context.url.pathname, import.meta.env.BASE_URL);
+
+  if (isStaticAssetPath(routePath)) {
+    return next();
+  }
+
   const isApiRoute = routePath.startsWith("/api/");
   const isPublicRoute = PUBLIC_PATHS.has(routePath);
   const isPublicApi = routePath === "/api/auth/login";
@@ -39,10 +66,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       ? await loadStaffProfile(supabase, user.id)
       : null;
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Missing required runtime configuration")
-    ) {
+    if (isMissingRuntimeConfigError(error)) {
       context.locals.user = null;
       context.locals.staff = null;
 

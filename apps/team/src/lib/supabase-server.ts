@@ -8,29 +8,48 @@ import { env as workerEnv } from "cloudflare:workers";
 
 type RequiredSupabaseEnv = "SUPABASE_URL" | "SUPABASE_ANON_KEY";
 
+function isValidSupabaseUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isValidSupabaseAnonKey(value: string) {
+  return value.length >= 20 && !/^(undefined|null|REPLACE|your[-_])/i.test(value);
+}
+
+function isValidEnvValue(name: RequiredSupabaseEnv, value: string) {
+  return name === "SUPABASE_URL"
+    ? isValidSupabaseUrl(value)
+    : isValidSupabaseAnonKey(value);
+}
+
 function resolveEnv(name: RequiredSupabaseEnv) {
-  const fromImportMeta = import.meta.env[name];
-  if (fromImportMeta) {
-    return fromImportMeta;
-  }
-
-  const fromWorkerBinding = workerEnv[name];
-  if (fromWorkerBinding) {
-    return fromWorkerBinding;
-  }
-
-  const fromProcess = process.env[name];
-  if (fromProcess) {
-    return fromProcess;
-  }
-
   const publicName =
     name === "SUPABASE_URL" ? "PUBLIC_SUPABASE_URL" : "PUBLIC_SUPABASE_ANON_KEY";
-  return (
-    import.meta.env[publicName] ??
-    workerEnv[publicName] ??
-    process.env[publicName]
-  );
+
+  const candidates = [
+    import.meta.env[name],
+    workerEnv[name],
+    process.env[name],
+    import.meta.env[publicName],
+    workerEnv[publicName],
+    process.env[publicName],
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || candidate.length === 0) {
+      continue;
+    }
+    if (isValidEnvValue(name, candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
 }
 
 function requireEnv(name: RequiredSupabaseEnv) {
