@@ -1,0 +1,23 @@
+---
+interface Props {
+  title?: string;
+  tone?: "warning" | "error";
+  class?: string;
+}
+
+const { title, tone = "warning", class: className } = Astro.props;
+---
+
+<aside
+  class:list={[
+    "ui-warning-panel",
+    tone === "error" && "ui-warning-panel--error",
+    className,
+  ]}
+  role="status"
+>
+  {title ? <p class="ui-warning-panel__title">{title}</p> : null}
+  <p class="ui-warning-panel__body">
+    <slot />
+  </p>
+</aside>

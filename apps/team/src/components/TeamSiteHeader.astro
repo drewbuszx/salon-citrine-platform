@@ -24,9 +24,10 @@ interface Props {
   activeNav?: TeamActiveNav;
   staff?: StaffProfile | null;
   isAuthenticated?: boolean;
+  pageTitle?: string;
 }
 
-const { activeNav, staff = null, isAuthenticated = false } = Astro.props;
+const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
 /** White wordmark for dark team bar; compact PNG is invert-filter fallback */
@@ -64,32 +65,41 @@ const initials = staff ? staffInitials(staff.name) : "";
           class="team-bar__logo-img"
           src={logoPrimarySrc}
           data-fallback-src={logoFallbackSrc}
-          alt={BUSINESS.name}
+          alt=""
           width="200"
           height="40"
           loading="eager"
         />
         <span class="team-bar__logo-wordmark">{BUSINESS.name}</span>
       </a>
+      {
+        pageTitle ? (
+          <span class="team-bar__page-title" data-page-title hidden>
+            {pageTitle}
+          </span>
+        ) : null
+      }
     </div>
 
     {
       isAuthenticated ? (
         <>
-          <nav class="team-bar__nav" aria-label="Team">
-            {navTabs.map((item) => (
-              <a
-                class:list={[
-                  "team-bar__tab",
-                  { "team-bar__tab--active": activeNav === item.id },
-                ]}
-                href={item.href}
-                aria-current={activeNav === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+          <div class="team-bar__nav-wrap">
+            <nav class="team-bar__nav" aria-label="Team">
+              {navTabs.map((item) => (
+                <a
+                  class:list={[
+                    "team-bar__tab",
+                    { "team-bar__tab--active": activeNav === item.id },
+                  ]}
+                  href={item.href}
+                  aria-current={activeNav === item.id ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+          </div>
 
           <div class="team-bar__utilities">
             <button
@@ -109,18 +119,7 @@ const initials = staff ? staffInitials(staff.name) : "";
               </svg>
             </button>
 
-            <a class="team-bar__icon-btn" href={teamUrl("/account")} aria-label="Settings" title="Account settings">
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"></circle>
-                <path
-                  d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"></path>
-              </svg>
-            </a>
-
-            <div class="team-bar__profile" data-profile-dropdown>
+            <div class="team-bar__profile team-bar__profile--desktop" data-profile-dropdown>
               <button
                 class="team-bar__profile-btn"
                 type="button"
@@ -165,13 +164,24 @@ const initials = staff ? staffInitials(staff.name) : "";
                 </li>
                 <li role="none">
                   <a class="team-bar__profile-item" href={teamUrl("/account")} role="menuitem">
-                    Account
+                    Account settings
                   </a>
                 </li>
                 <li role="none">
                   <a class="team-bar__profile-item" href={teamUrl("/my-book")} role="menuitem">
                     My book
                   </a>
+                </li>
+                <li class="team-bar__profile-divider" role="separator" aria-hidden="true"></li>
+                <li role="none">
+                  <button
+                    type="button"
+                    class="team-bar__profile-item team-bar__profile-item--button"
+                    role="menuitem"
+                    data-theme-toggle
+                  >
+                    Change appearance
+                  </button>
                 </li>
                 <li class="team-bar__profile-divider" role="separator" aria-hidden="true"></li>
                 <li role="none">
@@ -190,57 +200,98 @@ const initials = staff ? staffInitials(staff.name) : "";
 
             <button
               type="button"
-              class="team-bar__menu-toggle"
-              aria-label="Open menu"
+              class="team-bar__mobile-menu-btn"
+              data-mobile-menu-open
               aria-expanded="false"
-              data-menu-toggle
+              aria-controls="team-mobile-drawer"
+              aria-label={`Open menu${staff?.name ? ` for ${staff.name}` : ""}`}
             >
-              <span></span>
-              <span></span>
-              <span></span>
+              {
+                photoSrc ? (
+                  <StaffAvatar src={photoSrc} crop={photoCrop} size="header" class="team-bar__avatar-wrap" />
+                ) : (
+                  <span class="team-bar__avatar team-bar__avatar--initials" aria-hidden="true">
+                    {initials}
+                  </span>
+                )}
             </button>
           </div>
 
-          <nav class="team-bar__nav team-bar__nav--mobile" aria-label="Mobile" data-mobile-nav>
-            {navTabs.map((item) => (
-              <a
-                class:list={[
-                  "team-bar__tab",
-                  { "team-bar__tab--active": activeNav === item.id },
-                ]}
-                href={item.href}
-                aria-current={activeNav === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </a>
-            ))}
-            <button
-              class="team-bar__theme-toggle"
-              type="button"
-              aria-label="Switch theme"
-              data-theme-toggle
-            >
-              <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.75"/>
-                <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-              </svg>
-            </button>
-            <form
-              class="team-bar__mobile-logout"
-              method="post"
-              action={teamUrl("/api/auth/logout")}
-            >
-              <button class="team-bar__mobile-logout-btn" type="submit">
-                Log out
+          <div class="team-bar__drawer-backdrop" data-drawer-backdrop hidden></div>
+          <aside
+            id="team-mobile-drawer"
+            class="team-bar__drawer"
+            data-mobile-drawer
+            inert
+            aria-label="Account and navigation"
+          >
+            <header class="team-bar__drawer-head">
+              <div class="team-bar__drawer-user">
+                {
+                  photoSrc ? (
+                    <StaffAvatar src={photoSrc} crop={photoCrop} size="header" class="team-bar__avatar-wrap" />
+                  ) : (
+                    <span class="team-bar__avatar team-bar__avatar--initials" aria-hidden="true">
+                      {initials}
+                    </span>
+                  )}
+                <p class="team-bar__drawer-name">{staff?.name}</p>
+              </div>
+              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close>
+                Done
               </button>
-            </form>
-            <button class="team-bar__menu-close" type="button" aria-label="Close menu" data-menu-close>
-              ×
-            </button>
-          </nav>
+            </header>
+
+            <nav class="team-bar__drawer-section" aria-label="Navigation">
+              <h2 class="team-bar__drawer-label">Navigation</h2>
+              <ul class="team-bar__drawer-list">
+                {
+                  navTabs.map((item) => (
+                    <li>
+                      <a
+                        class:list={[
+                          "team-bar__drawer-link",
+                          { "team-bar__drawer-link--active": activeNav === item.id },
+                        ]}
+                        href={item.href}
+                        aria-current={activeNav === item.id ? "page" : undefined}
+                      >
+                        <span>{item.label}</span>
+                        {activeNav === item.id ? (
+                          <span class="team-bar__drawer-check" aria-hidden="true">✓</span>
+                        ) : null}
+                      </a>
+                    </li>
+                  ))
+                }
+              </ul>
+            </nav>
+
+            <div class="team-bar__drawer-section">
+              <h2 class="team-bar__drawer-label">Account</h2>
+              <ul class="team-bar__drawer-list">
+                <li>
+                  <a class="team-bar__drawer-link" href={teamUrl("/account")}>Account settings</a>
+                </li>
+                <li>
+                  <a class="team-bar__drawer-link" href={teamUrl("/my-book")}>My book</a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="team-bar__drawer-section">
+              <h2 class="team-bar__drawer-label">Appearance</h2>
+              <button type="button" class="team-bar__drawer-link team-bar__drawer-link--button" data-theme-toggle>
+                Change appearance
+              </button>
+            </div>
+
+            <footer class="team-bar__drawer-footer">
+              <form method="post" action={teamUrl("/api/auth/logout")}>
+                <button type="submit" class="team-bar__drawer-logout">Log out</button>
+              </form>
+            </footer>
+          </aside>
         </>
       ) : (
         <div class="team-bar__guest" aria-hidden="true"></div>
@@ -273,7 +324,29 @@ const initials = staff ? staffInitials(staff.name) : "";
   }
 
   .team-bar__brand {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .team-bar__page-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .team-bar__page-title[hidden] {
+    display: none;
+  }
+
+  :global(.team-shell.is-page-scrolled) .team-bar__page-title:not([hidden]) {
+    display: block;
   }
 
   .team-bar__logo {
@@ -323,6 +396,40 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__logo.is-wordmark .team-bar__logo-wordmark {
     display: block;
+  }
+
+  .team-bar__nav-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .team-bar__nav-wrap::before,
+  .team-bar__nav-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: var(--ui-scroll-fade-width, 1.25rem);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .team-bar__nav-wrap::before {
+    left: 0;
+    background: linear-gradient(to right, var(--team-bar-bg, #2f2a28), transparent);
+  }
+
+  .team-bar__nav-wrap::after {
+    right: 0;
+    background: linear-gradient(to left, var(--team-bar-bg, #2f2a28), transparent);
+  }
+
+  .team-bar__nav-wrap.is-scrollable-start::before,
+  .team-bar__nav-wrap.is-scrollable-end::after {
+    opacity: 1;
   }
 
   .team-bar__nav {
@@ -386,8 +493,8 @@ const initials = staff ? staffInitials(staff.name) : "";
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: var(--touch-target-min, 2.75rem);
+    height: var(--touch-target-min, 2.75rem);
     padding: 0;
     border: none;
     border-radius: 0.35rem;
@@ -557,125 +664,214 @@ const initials = staff ? staffInitials(staff.name) : "";
     background: rgba(180, 35, 24, 0.06);
   }
 
-  .team-bar__mobile-logout {
-    margin-top: 0.5rem;
-    padding: 0 0.5rem;
-  }
-
-  .team-bar__mobile-logout-btn {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 0.35rem;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.88);
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  .team-bar__mobile-menu-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--touch-target-min, 2.75rem);
+    min-height: var(--touch-target-min, 2.75rem);
+    padding: 0.12rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
     cursor: pointer;
-    transition: background var(--transition-fast);
   }
 
-  .team-bar__mobile-logout-btn:hover,
-  .team-bar__mobile-logout-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.08);
+  .team-bar__mobile-menu-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(231, 172, 70, 0.45);
+  }
+
+  .team-bar__drawer-backdrop {
+    display: none;
+  }
+
+  .team-bar__drawer {
+    display: none;
+  }
+
+  .team-bar__drawer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mobile-space-sm, 0.75rem);
+    padding: var(--mobile-space-md, 1rem);
+    border-bottom: 1px solid var(--color-stone-200);
+  }
+
+  .team-bar__drawer-user {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .team-bar__drawer-name {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-800);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .team-bar__drawer-section {
+    padding: 0.65rem var(--mobile-space-md, 1rem);
+    border-bottom: 1px solid var(--color-stone-200);
+  }
+
+  .team-bar__drawer-label {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .team-bar__drawer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .team-bar__drawer-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: var(--touch-target-min, 2.75rem);
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-stone-800);
+    text-decoration: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .team-bar__drawer-link:hover,
+  .team-bar__drawer-link:focus-visible {
+    background: var(--color-stone-100);
     outline: none;
   }
 
-  .team-bar__menu-toggle {
-    display: none;
-    flex-direction: column;
+  .team-bar__drawer-link--active {
+    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
+    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
+    font-weight: 600;
+  }
+
+  .team-bar__drawer-check {
+    flex-shrink: 0;
+    color: var(--color-sage);
+    font-weight: 700;
+  }
+
+  .team-bar__drawer-footer {
+    margin-top: auto;
+    padding: var(--mobile-space-md, 1rem);
+    padding-bottom: calc(var(--mobile-space-md, 1rem) + var(--safe-area-bottom));
+  }
+
+  .team-bar__drawer-logout {
+    display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 0.22rem;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    border: none;
-    background: transparent;
+    width: 100%;
+    min-height: var(--touch-target-min, 2.75rem);
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-error);
     cursor: pointer;
   }
 
-  .team-bar__menu-toggle span {
-    display: block;
-    width: 1.1rem;
-    height: 2px;
-    background: currentColor;
-    border-radius: 1px;
-  }
-
-  .team-bar__nav--mobile {
-    display: none;
-  }
-
   @media (max-width: 1100px) {
-    .team-bar__nav:not(.team-bar__nav--mobile) {
+    .team-bar__nav-wrap {
       display: none;
     }
 
-    .team-bar__menu-toggle {
+    .team-bar__profile--desktop {
+      display: none;
+    }
+
+    .team-bar__mobile-menu-btn {
       display: inline-flex;
     }
 
-    .team-bar__nav--mobile {
-      display: none;
-      position: fixed;
-      top: var(--team-bar-height, 3.25rem);
-      left: 0;
-      right: 0;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0;
-      max-height: calc(100vh - var(--team-bar-height, 3.25rem));
-      overflow-y: auto;
-      padding: 0.5rem;
-      background: var(--team-bar-bg, #2f2a28);
-      border-bottom: 1px solid var(--team-bar-border);
-    }
-
-    .team-bar__nav--mobile.is-open {
-      display: flex;
-    }
-
-    .team-bar__nav--mobile .team-bar__tab {
-      padding: 0.75rem 0.85rem;
-      border-radius: 0.35rem;
-    }
-
-    .team-bar__theme-toggle,
-    .team-bar__menu-close {
-      margin-top: 0.35rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.35rem;
-      padding: 0.65rem 0.85rem;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 0.35rem;
-      background: transparent;
-      color: inherit;
-      font-family: var(--font-sans);
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    .team-bar__theme-toggle .theme-toggle__icon {
-      width: 1rem;
-      height: 1rem;
-    }
-
-    .team-bar__theme-toggle .theme-toggle__icon--sun {
-      display: none;
-    }
-
-    :global([data-theme="dark"]) .team-bar__theme-toggle .theme-toggle__icon--moon {
-      display: none;
-    }
-
-    :global([data-theme="dark"]) .team-bar__theme-toggle .theme-toggle__icon--sun {
+    .team-bar__drawer-backdrop {
       display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 125;
+      background: rgba(10, 10, 10, 0.45);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity var(--transition-base),
+        visibility var(--transition-base);
+    }
+
+    .team-bar__drawer-backdrop:not([hidden]) {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .team-bar__drawer {
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 126;
+      width: min(100%, 20rem);
+      background: var(--color-bg);
+      color: var(--color-text);
+      box-shadow: var(--shadow-lg);
+      transform: translateX(105%);
+      visibility: hidden;
+      transition:
+        transform var(--transition-base),
+        visibility var(--transition-base);
+    }
+
+    .team-bar__drawer.is-open {
+      transform: translateX(0);
+      visibility: visible;
+    }
+
+    :global(.team-shell.is-page-scrolled) .team-bar__logo-img,
+    :global(.team-shell.is-page-scrolled) .team-bar__logo-wordmark {
+      display: none;
+    }
+
+    :global(.team-shell.is-page-scrolled) .team-bar__brand {
+      flex: 1 1 auto;
+    }
+  }
+
+  @media (min-width: 1101px) {
+    .team-bar__mobile-menu-btn,
+    .team-bar__drawer,
+    .team-bar__drawer-backdrop {
+      display: none !important;
     }
   }
 </style>

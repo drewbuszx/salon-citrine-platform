@@ -29,6 +29,8 @@ Thumbs.db
 # agent / local scratch (do not commit)
 tmp-*
 tmp/
+apps/team/qa-reports/
+team-auth.json
 packages/db/seed/tmp-*
 packages/db/seed/_*
 packages/db/seed/mcp-args-*.json

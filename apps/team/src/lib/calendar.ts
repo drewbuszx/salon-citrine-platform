@@ -15,15 +15,18 @@ export type CalendarAppointment = {
   clientPhone: string | null;
   clientEmail: string | null;
   serviceLabel: string | null;
+  serviceCategory: string | null;
   serviceIds: string[];
   serviceNames: string[];
   serviceCount: number;
+  hasNotes: boolean;
 };
 
 export type StaffServiceOption = {
   id: string;
   name: string;
   durationMinutes: number;
+  category: string | null;
 };
 
 export type CalendarBlockedTime = {
@@ -60,7 +63,9 @@ export type CalendarEvent =
       clientLabel: string;
       clientFullName: string;
       serviceLabel: string | null;
+      serviceCategory: string | null;
       serviceCount: number;
+      hasNotes: boolean;
     }
   | {
       kind: "blocked";
@@ -77,6 +82,10 @@ export const CALENDAR_END_HOUR = 24;
 export const CALENDAR_SLOT_MINUTES = 15;
 export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
+/** Minimum provider column width so appointment text stays readable. */
+export const MIN_STAFF_COLUMN_WIDTH_REM = 9;
+/** Compact sticky provider header height. */
+export const STAFF_HEADER_HEIGHT_REM = 2.75;
 
 export { STAFF_ACCENT_COLORS, staffAccentColor } from "./staff-colors";
 
@@ -269,7 +278,11 @@ export function formatSlotHourLabel(totalMinutes: number) {
   date.setHours(hour, 0, 0, 0);
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
-  }).format(date);
+    hour12: true,
+  })
+    .format(date)
+    .replace(/\s/g, "")
+    .toLowerCase();
 }
 
 export function formatSlotMinuteLabel(totalMinutes: number) {
@@ -291,17 +304,20 @@ export function formatSlotTimeLabel(totalMinutes: number) {
   }).format(date);
 }
 
-/** Minimum uniform staff column width (rem) from avatar + longest name, no side padding. */
+/** Minimum uniform staff column width (rem) from avatar + longest name. */
 export function staffColumnWidthRem(staff: Pick<CalendarStaff, "name">[]) {
   if (staff.length === 0) {
-    return STAFF_AVATAR_SIZE_REM;
+    return MIN_STAFF_COLUMN_WIDTH_REM;
   }
   const nameCharWidthRem = 0.36;
   const maxNameWidth = Math.max(
     ...staff.map((member) => member.name.length * nameCharWidthRem),
   );
   const contentWidth = Math.max(STAFF_AVATAR_SIZE_REM, maxNameWidth);
-  return Math.ceil(contentWidth * 100) / 100;
+  return Math.max(
+    MIN_STAFF_COLUMN_WIDTH_REM,
+    Math.ceil(contentWidth * 100) / 100,
+  );
 }
 
 function dayBounds(dayStart: Date) {
@@ -371,12 +387,65 @@ export function salonOpenMinutesForDay(dateStr: string) {
   return parseTimeToMinutes(hours.open);
 }
 
+export function isSalonClosedOnDay(dateStr: string) {
+  return salonOpenMinutesForDay(dateStr) === null;
+}
+
+export function formatNowLabel(now = new Date()) {
+  return `Now ${formatTimeInSalon(now.toISOString())}`;
+}
+
+export type StaffShiftStatus = {
+  label: string;
+  shortLabel: string;
+  kind: "working" | "off" | "no_schedule" | "closed";
+};
+
+function formatScheduleTimeLabel(time: string) {
+  const [h, m] = time.split(":").map(Number);
+  const date = new Date();
+  date.setHours(h, m ?? 0, 0, 0);
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: m ? "2-digit" : undefined,
+    hour12: true,
+  }).format(date);
+}
+
+/** Provider shift summary for column header on a given date. */
+export function staffShiftStatus(
+  schedules: StaffSchedule[],
+  dateStr: string,
+): StaffShiftStatus {
+  if (isSalonClosedOnDay(dateStr)) {
+    return { label: "Salon closed", shortLabel: "Closed", kind: "closed" };
+  }
+  const schedule = scheduleForStaffOnDay(schedules, dateStr);
+  if (!schedule) {
+    return { label: "Off today", shortLabel: "Off", kind: "off" };
+  }
+  const endLabel = formatScheduleTimeLabel(schedule.endTime);
+  return {
+    label: `Working until ${endLabel}`,
+    shortLabel: `Until ${endLabel}`,
+    kind: "working",
+  };
+}
+
 /**
- * Default vertical scroll offset (rem) — one hour before salon opens that day.
- * Falls back to 8:00 AM when the salon is closed or hours are unavailable.
+ * Default vertical scroll offset (rem).
+ * Today: one hour before current time. Other days: one hour before salon open.
  */
-export function defaultCalendarScrollTopRem(dateStr: string) {
+export function defaultCalendarScrollTopRem(dateStr: string, now = new Date()) {
   const gridStart = CALENDAR_START_HOUR * 60;
+  if (isTodayInSalon(parseDayParam(dateStr))) {
+    const minutes = minutesFromDayStart(now.toISOString());
+    const targetMinutes = Math.max(gridStart, minutes - 60);
+    return (
+      ((targetMinutes - gridStart) / CALENDAR_SLOT_MINUTES) *
+      CALENDAR_ROW_HEIGHT_REM
+    );
+  }
   const openMinutes = salonOpenMinutesForDay(dateStr) ?? 9 * 60;
   const targetMinutes = Math.max(gridStart, openMinutes - 60);
   return (
@@ -408,7 +477,7 @@ export async function loadCalendarData(
   let appointmentsQuery = supabase
     .from("appointments")
     .select(
-      "id, client_id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name))",
+      "id, client_id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name, category))",
     )
     .gte("starts_at", startIso)
     .lt("starts_at", endIso)
@@ -485,7 +554,10 @@ export async function loadCalendarData(
         | null
         | undefined;
       const services = row.appointment_services as
-        | Array<{ service_id: string; services: { name: string } | null }>
+        | Array<{
+            service_id: string;
+            services: { name: string; category: string } | null;
+          }>
         | null
         | undefined;
       const serviceNames =
@@ -495,6 +567,7 @@ export async function loadCalendarData(
       const serviceIds =
         services?.map((item) => item.service_id).filter(Boolean) ?? [];
       const serviceName = serviceNames[0] ?? null;
+      const serviceCategory = services?.[0]?.services?.category ?? null;
       const clientFullName = client
         ? `${client.first_name} ${client.last_name}`.trim()
         : "Client";
@@ -516,9 +589,11 @@ export async function loadCalendarData(
         clientPhone: client?.phone ?? null,
         clientEmail: client?.email ?? null,
         serviceLabel: serviceName,
+        serviceCategory,
         serviceIds,
         serviceNames,
         serviceCount: serviceNames.length,
+        hasNotes: Boolean(row.notes?.trim()),
       };
     },
   );
@@ -549,6 +624,143 @@ export async function loadCalendarData(
   return { staff, appointments, blockedTimes, staffSchedules };
 }
 
+/** Load one provider's appointments and blocks across a 7-day week. */
+export async function loadWeekCalendarData(
+  supabase: App.Locals["supabase"],
+  options: {
+    weekStart: Date;
+    staffId: string;
+  },
+) {
+  const weekEnd = shiftDay(options.weekStart, 7);
+  const startIso = dayBounds(options.weekStart).startIso;
+  const endIso = dayBounds(weekEnd).startIso;
+
+  const [staffResult, appointmentsResult, blockedResult, schedulesResult] =
+    await Promise.all([
+      supabase
+        .from("staff")
+        .select("id, slug, name, photo_url")
+        .eq("id", options.staffId)
+        .maybeSingle(),
+      supabase
+        .from("appointments")
+        .select(
+          "id, client_id, staff_id, starts_at, ends_at, status, notes, clients(first_name, last_name, phone, email), appointment_services(service_id, services(name, category))",
+        )
+        .eq("staff_id", options.staffId)
+        .gte("starts_at", startIso)
+        .lt("starts_at", endIso)
+        .neq("status", "cancelled")
+        .order("starts_at"),
+      supabase
+        .from("blocked_times")
+        .select("id, staff_id, starts_at, ends_at, reason")
+        .eq("staff_id", options.staffId)
+        .lt("starts_at", endIso)
+        .gt("ends_at", startIso)
+        .order("starts_at"),
+      supabase
+        .from("staff_schedules")
+        .select(
+          "staff_id, day_of_week, start_time, end_time, effective_from, effective_until",
+        )
+        .eq("staff_id", options.staffId),
+    ]);
+
+  if (staffResult.error || !staffResult.data) {
+    throw staffResult.error ?? new Error("Staff not found");
+  }
+  if (appointmentsResult.error) throw appointmentsResult.error;
+  if (blockedResult.error) throw blockedResult.error;
+  if (schedulesResult.error) throw schedulesResult.error;
+
+  const staff: CalendarStaff = {
+    id: staffResult.data.id,
+    slug: staffResult.data.slug,
+    name: staffResult.data.name,
+    photoUrl: staffResult.data.photo_url,
+  };
+
+  const appointments: CalendarAppointment[] = (appointmentsResult.data ?? []).map(
+    (row) => {
+      const client = row.clients as
+        | {
+            first_name: string;
+            last_name: string;
+            phone: string | null;
+            email: string | null;
+          }
+        | null
+        | undefined;
+      const services = row.appointment_services as
+        | Array<{
+            service_id: string;
+            services: { name: string; category: string } | null;
+          }>
+        | null
+        | undefined;
+      const serviceNames =
+        services
+          ?.map((item) => item.services?.name)
+          .filter((name): name is string => Boolean(name)) ?? [];
+      const serviceIds =
+        services?.map((item) => item.service_id).filter(Boolean) ?? [];
+      const serviceName = serviceNames[0] ?? null;
+      const serviceCategory = services?.[0]?.services?.category ?? null;
+      const clientFullName = client
+        ? `${client.first_name} ${client.last_name}`.trim()
+        : "Client";
+      const clientLabel = client
+        ? `${client.first_name} ${client.last_name.charAt(0)}.`
+        : "Client";
+
+      return {
+        id: row.id,
+        clientId: row.client_id,
+        staffId: row.staff_id,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+        status: row.status,
+        notes: row.notes ?? null,
+        clientLabel,
+        clientFirstName: client?.first_name ?? "",
+        clientLastName: client?.last_name ?? "",
+        clientPhone: client?.phone ?? null,
+        clientEmail: client?.email ?? null,
+        serviceLabel: serviceName,
+        serviceCategory,
+        serviceIds,
+        serviceNames,
+        serviceCount: serviceNames.length,
+        hasNotes: Boolean(row.notes?.trim()),
+      };
+    },
+  );
+
+  const blockedTimes: CalendarBlockedTime[] = (blockedResult.data ?? []).map(
+    (row) => ({
+      id: row.id,
+      staffId: row.staff_id,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      reason: row.reason,
+    }),
+  );
+
+  const staffSchedules: StaffSchedule[] = (schedulesResult.data ?? []).map(
+    (row) => ({
+      dayOfWeek: row.day_of_week,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      effectiveFrom: row.effective_from,
+      effectiveUntil: row.effective_until,
+    }),
+  );
+
+  return { staff, appointments, blockedTimes, staffSchedules };
+}
+
 export async function loadStaffServicesByStaff(
   supabase: App.Locals["supabase"],
   staffIds: string[],
@@ -559,7 +771,7 @@ export async function loadStaffServicesByStaff(
 
   const { data, error } = await supabase
     .from("staff_services")
-    .select("staff_id, services(id, name, duration_minutes)")
+    .select("staff_id, services(id, name, duration_minutes, category)")
     .in("staff_id", staffIds);
 
   if (error) {
@@ -569,8 +781,8 @@ export async function loadStaffServicesByStaff(
   const grouped: Record<string, StaffServiceOption[]> = {};
   for (const row of data ?? []) {
     const raw = row.services as
-      | { id: string; name: string; duration_minutes: number }
-      | Array<{ id: string; name: string; duration_minutes: number }>
+      | { id: string; name: string; duration_minutes: number; category: string }
+      | Array<{ id: string; name: string; duration_minutes: number; category: string }>
       | null;
     const svc = Array.isArray(raw) ? raw[0] : raw;
     if (!svc) continue;
@@ -579,6 +791,7 @@ export async function loadStaffServicesByStaff(
       id: svc.id,
       name: svc.name,
       durationMinutes: svc.duration_minutes,
+      category: svc.category ?? null,
     });
     grouped[row.staff_id] = list;
   }
@@ -683,7 +896,9 @@ export function staffEventsForDay(
       clientLabel: item.clientLabel,
       clientFullName: `${item.clientFirstName} ${item.clientLastName}`.trim() || "Client",
       serviceLabel: item.serviceLabel,
+      serviceCategory: item.serviceCategory,
       serviceCount: item.serviceCount,
+      hasNotes: item.hasNotes,
     }));
 
   const blocks: CalendarEvent[] = blockedTimes
@@ -717,37 +932,54 @@ function slotRangeOverlapsEvents(
   });
 }
 
-export type NextOpenGap = {
+export type OpenGapResult = {
   staffId: string;
   staffName: string;
   startsAt: string;
+  endsAt: string;
+  dayParam: string;
   label: string;
+  sortMinutes: number;
 };
 
-/** First open gap (default 60 min) on the selected day, earliest across staff. */
-export function findNextOpenGap(
+export type NextOpenGap = Pick<
+  OpenGapResult,
+  "staffId" | "staffName" | "startsAt" | "label"
+>;
+
+/** Open gaps on one day, sorted earliest first. */
+export function findOpenGaps(
   selectedDay: Date,
   dayParam: string,
   staff: CalendarStaff[],
   appointments: CalendarAppointment[],
   blockedTimes: CalendarBlockedTime[],
   staffSchedules: Record<string, StaffSchedule[]>,
-  minDurationMinutes = 60,
-): NextOpenGap | null {
+  options: {
+    minDurationMinutes?: number;
+    maxResults?: number;
+    staffIds?: string[] | null;
+    afterMinutes?: number;
+  } = {},
+): OpenGapResult[] {
+  const minDurationMinutes = options.minDurationMinutes ?? 60;
+  const maxResults = options.maxResults ?? 8;
   const slotsNeeded = Math.ceil(minDurationMinutes / CALENDAR_SLOT_MINUTES);
   const timeSlots = calendarTimeSlots();
-  const afterMinutes = isTodayInSalon(selectedDay)
-    ? minutesFromDayStart(new Date().toISOString())
-    : 0;
+  const afterMinutes =
+    options.afterMinutes ??
+    (isTodayInSalon(selectedDay)
+      ? minutesFromDayStart(new Date().toISOString())
+      : 0);
 
-  let earliest: {
-    staffId: string;
-    staffName: string;
-    startsAt: string;
-    slotMinutes: number;
-  } | null = null;
+  const staffList =
+    options.staffIds && options.staffIds.length > 0
+      ? staff.filter((member) => options.staffIds!.includes(member.id))
+      : staff;
 
-  for (const member of staff) {
+  const results: OpenGapResult[] = [];
+
+  for (const member of staffList) {
     const events = staffEventsForDay(
       member.id,
       selectedDay,
@@ -784,27 +1016,55 @@ export function findNextOpenGap(
       }
 
       if (allFree) {
-        const candidate = {
+        const startsAt = slotStartsAtIso(selectedDay, startSlot);
+        const endsAt = slotStartsAtIso(
+          selectedDay,
+          startSlot + minDurationMinutes,
+        );
+        const firstName = member.name.split(" ")[0] ?? member.name;
+        results.push({
           staffId: member.id,
           staffName: member.name,
-          startsAt: slotStartsAtIso(selectedDay, startSlot),
-          slotMinutes: startSlot,
-        };
-        if (!earliest || startSlot < earliest.slotMinutes) {
-          earliest = candidate;
-        }
-        break;
+          startsAt,
+          endsAt,
+          dayParam,
+          sortMinutes: startSlot,
+          label: `${formatTimeInSalon(startsAt)} · ${firstName}`,
+        });
       }
     }
   }
 
-  if (!earliest) return null;
+  return results
+    .sort((a, b) => a.sortMinutes - b.sortMinutes)
+    .slice(0, maxResults);
+}
 
-  const firstName = earliest.staffName.split(" ")[0] ?? earliest.staffName;
+/** First open gap (default 60 min) on the selected day, earliest across staff. */
+export function findNextOpenGap(
+  selectedDay: Date,
+  dayParam: string,
+  staff: CalendarStaff[],
+  appointments: CalendarAppointment[],
+  blockedTimes: CalendarBlockedTime[],
+  staffSchedules: Record<string, StaffSchedule[]>,
+  minDurationMinutes = 60,
+): NextOpenGap | null {
+  const [first] = findOpenGaps(
+    selectedDay,
+    dayParam,
+    staff,
+    appointments,
+    blockedTimes,
+    staffSchedules,
+    { minDurationMinutes, maxResults: 1 },
+  );
+  if (!first) return null;
+  const firstName = first.staffName.split(" ")[0] ?? first.staffName;
   return {
-    staffId: earliest.staffId,
-    staffName: earliest.staffName,
-    startsAt: earliest.startsAt,
-    label: `${formatTimeInSalon(earliest.startsAt)} with ${firstName}`,
+    staffId: first.staffId,
+    staffName: first.staffName,
+    startsAt: first.startsAt,
+    label: `${formatTimeInSalon(first.startsAt)} with ${firstName}`,
   };
 }

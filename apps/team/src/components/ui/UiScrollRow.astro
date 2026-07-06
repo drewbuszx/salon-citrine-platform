@@ -1,0 +1,37 @@
+---
+interface Props {
+  class?: string;
+  label?: string;
+}
+
+const { class: className, label = "Scrollable options" } = Astro.props;
+---
+
+<div class="ui-scroll-row" data-ui-scroll-row class:list={[className]}>
+  <div class="ui-scroll-row__track" role="list" aria-label={label}>
+    <slot />
+  </div>
+</div>
+
+<script>
+  function initScrollRow(root: HTMLElement) {
+    const track = root.querySelector<HTMLElement>(".ui-scroll-row__track");
+    if (!track || root.dataset.scrollReady === "1") return;
+    root.dataset.scrollReady = "1";
+
+    function update() {
+      const { scrollLeft, scrollWidth, clientWidth } = track!;
+      root.classList.toggle("is-scrollable-start", scrollLeft > 4);
+      root.classList.toggle("is-scrollable-end", scrollLeft + clientWidth < scrollWidth - 4);
+    }
+
+    track.addEventListener("scroll", update, { passive: true });
+    new ResizeObserver(update).observe(track);
+    update();
+  }
+
+  document.querySelectorAll<HTMLElement>("[data-ui-scroll-row]").forEach(initScrollRow);
+  document.addEventListener("astro:page-load", () => {
+    document.querySelectorAll<HTMLElement>("[data-ui-scroll-row]").forEach(initScrollRow);
+  });
+</script>

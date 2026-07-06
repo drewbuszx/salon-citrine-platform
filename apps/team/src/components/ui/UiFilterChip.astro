@@ -1,0 +1,24 @@
+---
+interface Props {
+  label: string;
+  removable?: boolean;
+  class?: string;
+}
+
+const { label, removable = true, class: className } = Astro.props;
+---
+
+<span class:list={["ui-filter-chip", className]}>
+  <span class="ui-filter-chip__label">{label}</span>
+  {
+    removable ? (
+      <button
+        type="button"
+        class="ui-filter-chip__remove"
+        aria-label={`Remove filter: ${label}`}
+      >
+        ×
+      </button>
+    ) : null
+  }
+</span>

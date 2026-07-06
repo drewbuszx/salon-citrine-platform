@@ -1,3 +1,8 @@
+import {
+  formatCategoryLabel,
+  formatQty,
+  formatQuantity,
+} from "@saloncitrine/shared";
 import { startBarcodeScanner } from "./barcode-scanner";
 
 type Product = {
@@ -45,8 +50,10 @@ function apiUrl(path: string) {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function formatQty(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2);
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const letters = parts.slice(0, 2).map((word) => word.charAt(0).toUpperCase());
+  return letters.join("") || "?";
 }
 
 /**
@@ -1049,6 +1056,8 @@ function initInventory(root: HTMLElement) {
   stockFilters.forEach((el) => el.addEventListener("change", scheduleFetch));
   minPriceInput?.addEventListener("change", scheduleFetch);
   maxPriceInput?.addEventListener("change", scheduleFetch);
+
+  root.closest(".team-list-layout")?.addEventListener("team-filters-restored", scheduleFetch);
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && document.querySelector(".inventory-modal.is-open")) {

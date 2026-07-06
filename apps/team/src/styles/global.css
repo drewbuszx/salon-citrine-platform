@@ -1,5 +1,7 @@
 @import "./fonts.css";
 @import "@saloncitrine/theme/tokens.css";
+@import "./mobile-tokens.css";
+@import "./mobile-ui.css";
 @import "./team-list-sidebar.css";
 
 :root {
@@ -18,14 +20,28 @@
   box-sizing: border-box;
 }
 
+/* Prevent flex/grid children from forcing horizontal page scroll */
+.team-shell,
+.team-list-layout,
+.team-page,
+.team-main,
+[class*="__body"],
+[class*="__main"],
+[class*="__content"] {
+  min-width: 0;
+}
+
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
+  overflow-x: clip;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: clip;
+  max-width: 100%;
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
@@ -98,6 +114,8 @@ textarea {
   --team-bar-height: 3.25rem;
   --header-height: var(--team-bar-height);
   min-height: 100vh;
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   padding-top: var(--team-bar-height);
@@ -106,6 +124,7 @@ textarea {
 .team-main {
   flex: 1;
   width: min(var(--team-max-width), 100%);
+  min-width: 0;
   margin: 0 auto;
   padding: var(--section-padding);
   padding-bottom: calc(var(--section-padding) + 1rem);
@@ -1578,5 +1597,41 @@ textarea {
 
   .team-toolbar-spacer {
     display: none;
+  }
+
+  /* Tables scroll inside their container, not the page */
+  .team-data-table-wrap,
+  .team-list-layout__table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .team-page__header {
+    padding-inline: var(--mobile-space-md);
+  }
+
+  .team-page__body {
+    padding-inline: var(--mobile-space-md);
+  }
+
+  .team-page__title {
+    font-family: var(--font-display);
+    font-size: var(--ui-page-title-size);
+  }
+
+  /* Sentence case — avoid ALL CAPS button labels on mobile */
+  .ui-btn,
+  .team-list-layout__btn-primary,
+  .team-list-layout__btn-secondary {
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  /* Shorter placeholders on narrow screens */
+  .form-input::placeholder,
+  input::placeholder,
+  textarea::placeholder {
+    text-overflow: ellipsis;
   }
 }

@@ -1,0 +1,17 @@
+---
+interface Props {
+  title?: string;
+  interactive?: boolean;
+  class?: string;
+}
+
+const { title, interactive = false, class: className } = Astro.props;
+---
+
+<div class:list={["ui-card", interactive && "ui-card--interactive", className]}>
+  {title ? <h3 class="ui-card__title">{title}</h3> : null}
+  <div class="ui-card__body">
+    <slot />
+  </div>
+  <slot name="footer" />
+</div>

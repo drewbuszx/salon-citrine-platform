@@ -10,6 +10,7 @@ import {
   CALENDAR_ROW_HEIGHT_REM,
   CALENDAR_SLOT_MINUTES,
   CALENDAR_START_HOUR,
+  STAFF_HEADER_HEIGHT_REM,
   calendarGridHeightRem,
   calendarTimeSlots,
   currentTimeLineTopRem,
@@ -18,18 +19,26 @@ import {
   formatDayLabel,
   formatDayParam,
   formatCompactTimeRangeInSalon,
+  formatNowLabel,
   formatSlotHourLabel,
   formatSlotMinuteLabel,
   formatSlotTimeLabel,
+  isSalonClosedOnDay,
   isSlotWithinStaffSchedule,
   staffAccentColor,
   staffColumnWidthRem,
+  staffShiftStatus,
   isTodayInSalon,
   shiftDay,
   slotStartsAtIso,
   staffEventsForDay,
   findNextOpenGap,
 } from "../lib/calendar";
+import {
+  appointmentStatusMeta,
+  formatServiceDisplayName,
+  serviceCategoryColor,
+} from "../lib/appointment-ui";
 import { teamUrl } from "../lib/supabase-server";
 
 interface Props {
@@ -65,6 +74,8 @@ const timeSlots = calendarTimeSlots();
 const gridHeight = calendarGridHeightRem();
 const isToday = isTodayInSalon(selectedDay);
 const nowLineTop = isToday ? currentTimeLineTopRem() : null;
+const nowLabel = isToday && nowLineTop !== null ? formatNowLabel() : null;
+const salonClosed = isSalonClosedOnDay(dayParam);
 const staffColWidthRem = staffColumnWidthRem(staff);
 const defaultScrollTopRem = defaultCalendarScrollTopRem(dayParam);
 const nextOpenGap = findNextOpenGap(
@@ -111,10 +122,12 @@ const calendarConfig = {
   slotMinutes: CALENDAR_SLOT_MINUTES,
   managerView,
   currentStaffId,
+  canMoveAppointments: managerView,
   staff,
   servicesByStaff,
   appointments,
   blockedTimes,
+  staffSchedules,
   nextOpenGap,
   api: {
     appointments: teamUrl("/api/appointments"),
@@ -123,9 +136,13 @@ const calendarConfig = {
     clientProfile: teamUrl("/api/clients"),
     clientsPage: teamUrl("/clients"),
     checkout: teamUrl("/checkout"),
+    findOpenings: teamUrl("/api/calendar/find-openings"),
+    waitlist: teamUrl("/api/waitlist"),
+    waitlistPage: teamUrl("/waitlist"),
   },
   reloadUrl: `${teamUrl("/book")}?day=${dayParam}`,
   weekUrl: teamUrl("/week"),
+  staffIds: staff.map((member) => member.id),
   defaultScrollTopRem,
   calendarStartHour: CALENDAR_START_HOUR,
 };
@@ -134,10 +151,10 @@ const calendarConfig = {
 <section
   class="day-cal"
   aria-label="Day calendar"
-  style={`--day-staff-width: ${staffColWidthRem}rem`}
+  style={`--day-staff-width: ${staffColWidthRem}rem; --day-header-height: ${STAFF_HEADER_HEIGHT_REM}rem`}
 >
-  <header class="day-cal__subbar">
-    <div class="day-cal__subbar-row">
+  <header class="day-cal__header" data-sticky-header>
+    <div class="day-cal__toolbar-primary">
       <nav class="day-cal__date-nav" aria-label="Day navigation">
         <a
           class="day-cal__subbar-btn day-cal__subbar-btn--icon"
@@ -176,9 +193,83 @@ const calendarConfig = {
         </a>
       </nav>
 
-      {
-        staff.length > 0 && (
+      <div class="day-cal__toolbar-primary-actions">
+        <span class="day-cal__view-pill" aria-current="true">Day</span>
+        <a
+          class="day-cal__subbar-btn day-cal__subbar-btn--ghost"
+          href={teamUrl(`/week?week=${dayParam}`)}
+          data-week-link
+        >
+          Week
+        </a>
+        <button
+          type="button"
+          class="day-cal__subbar-btn day-cal__subbar-btn--ghost"
+          data-find-opening
+        >
+          Find opening
+        </button>
+        <button
+          type="button"
+          class:list={[
+            "day-cal__subbar-btn",
+            "day-cal__subbar-btn--ghost",
+            "day-cal__subbar-btn--waitlist",
+            waitlistCount > 0 && "day-cal__subbar-btn--waitlist-hot",
+          ]}
+          data-waitlist-drawer
+        >
+          Waitlist
+          <span
+            class:list={[
+              "day-cal__waitlist-badge",
+              waitlistCount > 0 && "day-cal__waitlist-badge--active",
+            ]}
+            aria-label={`${waitlistCount} on waitlist`}
+          >
+            {waitlistCount}
+          </span>
+        </button>
+        <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--primary" data-new-appointment>
+          New appointment
+        </button>
+      </div>
+    </div>
+
+    {
+      staff.length > 0 && (
+        <div class="day-cal__toolbar-secondary">
+          <nav class="day-cal__week-strip" aria-label="Week">
+            {
+              weekDays.map((day) => (
+                <a
+                  class:list={[
+                    "day-cal__week-day",
+                    day.isSelected && "day-cal__week-day--selected",
+                    day.isToday && "day-cal__week-day--today",
+                  ]}
+                  href={`${teamUrl("/book")}?day=${day.param}`}
+                  aria-current={day.isSelected ? "date" : undefined}
+                >
+                  <span class="day-cal__week-day-label">{day.label}</span>
+                  <span class="day-cal__week-day-num">{day.dayNum}</span>
+                  {day.count > 0 && (
+                    <span class="day-cal__week-day-dot" aria-label={`${day.count} appointments`} />
+                  )}
+                </a>
+              ))
+            }
+          </nav>
+
           <div class="day-cal__staff-filter" data-staff-filter aria-label="Filter by professional">
+            <button
+              type="button"
+              class="day-cal__staff-chip day-cal__staff-chip--all is-active"
+              data-staff-filter-all
+              aria-pressed="true"
+            >
+              All staff
+            </button>
             {staff.map((member) => (
               <button
                 type="button"
@@ -194,104 +285,15 @@ const calendarConfig = {
                   class="day-cal__staff-chip-photo"
                   src={staffPhotoUrl(member)}
                   alt=""
-                  width="28"
-                  height="28"
+                  width="22"
+                  height="22"
                   loading="lazy"
                 />
                 <span class="day-cal__staff-chip-name">{member.name.split(" ")[0]}</span>
               </button>
             ))}
           </div>
-        )
-      }
-
-      <div class="day-cal__subbar-actions">
-        <span class="day-cal__view-pill" aria-current="true">Day</span>
-        <button
-          type="button"
-          class="day-cal__subbar-btn day-cal__subbar-btn--disabled"
-          disabled
-          title="Day view only"
-          aria-disabled="true"
-        >
-          Week
-        </button>
-        <a
-          class:list={[
-            "day-cal__subbar-btn",
-            "day-cal__subbar-btn--ghost",
-            "day-cal__subbar-btn--waitlist",
-            waitlistCount > 0 && "day-cal__subbar-btn--waitlist-hot",
-          ]}
-          href={teamUrl("/waitlist")}
-        >
-          Waitlist
-          <span
-            class:list={[
-              "day-cal__waitlist-badge",
-              waitlistCount > 0 && "day-cal__waitlist-badge--active",
-            ]}
-            aria-label={`${waitlistCount} on waitlist`}
-          >
-            {waitlistCount}
-          </span>
-        </a>
-        <button type="button" class="day-cal__subbar-btn day-cal__subbar-btn--primary" data-new-appointment>
-          New appointment
-        </button>
-      </div>
-    </div>
-
-    <nav class="day-cal__week-strip" aria-label="Week">
-      {
-        weekDays.map((day) => (
-          <a
-            class:list={[
-              "day-cal__week-day",
-              day.isSelected && "day-cal__week-day--selected",
-              day.isToday && "day-cal__week-day--today",
-            ]}
-            href={`${teamUrl("/book")}?day=${day.param}`}
-            aria-current={day.isSelected ? "date" : undefined}
-          >
-            <span class="day-cal__week-day-label">{day.label}</span>
-            <span class="day-cal__week-day-num">{day.dayNum}</span>
-            {day.count > 0 && (
-              <span class="day-cal__week-day-dot" aria-label={`${day.count} appointments`} />
-            )}
-          </a>
-        ))
-      }
-    </nav>
-
-    {
-      (waitlistCount > 0 || nextOpenGap) && (
-        <aside class="day-cal__gap-hint" role="status" aria-live="polite">
-          {waitlistCount > 0 && (
-            <span class="day-cal__gap-hint-waitlist">
-              {waitlistCount} {waitlistCount === 1 ? "client" : "clients"} waiting
-            </span>
-          )}
-          {waitlistCount > 0 && nextOpenGap && (
-            <span class="day-cal__gap-hint-sep" aria-hidden="true">
-              ·
-            </span>
-          )}
-          {nextOpenGap ? (
-            <button
-              type="button"
-              class="day-cal__gap-hint-slot day-cal__gap-hint-btn"
-              data-gap-book
-              data-staff-id={nextOpenGap.staffId}
-              data-starts-at={nextOpenGap.startsAt}
-            >
-              Next open: <strong>{nextOpenGap.label}</strong>
-              <span class="day-cal__gap-hint-cta">Book slot →</span>
-            </button>
-          ) : waitlistCount > 0 ? (
-            <span class="day-cal__gap-hint-slot">No open 60-min gaps today</span>
-          ) : null}
-        </aside>
+        </div>
       )
     }
   </header>
@@ -299,30 +301,59 @@ const calendarConfig = {
   <div class="day-cal__frame">
     <div class="day-cal__viewport" data-calendar-viewport>
       <div class="day-cal__time-axis" aria-hidden="true">
-        <div class="day-cal__time-spacer"></div>
-        {
-          timeSlots.map((minutes) => {
-            const hourLabel = formatSlotHourLabel(minutes);
-            const minuteLabel = formatSlotMinuteLabel(minutes);
-            return (
+        <div class="day-cal__time-spacer">
+          {
+            nowLabel ? (
+              <span class="day-cal__now-label day-cal__now-label--rail">{nowLabel}</span>
+            ) : null
+          }
+        </div>
+        <div class="day-cal__time-rail" style={`height: ${gridHeight}rem`}>
+          {
+            timeSlots.map((minutes) => {
+              const hourLabel = formatSlotHourLabel(minutes);
+              const minuteLabel = formatSlotMinuteLabel(minutes);
+              const isHour = minutes % 60 === 0;
+              return (
+                <div
+                  class:list={[
+                    "day-cal__time-label",
+                    isHour && "day-cal__time-label--hour",
+                    minuteLabel && "day-cal__time-label--minute",
+                  ]}
+                  style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
+                >
+                  {hourLabel || minuteLabel}
+                </div>
+              );
+            })
+          }
+          {
+            nowLineTop !== null ? (
               <div
-                class:list={[
-                  "day-cal__time-label",
-                  minuteLabel && "day-cal__time-label--minute",
-                ]}
-                style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
-              >
-                {hourLabel || minuteLabel}
-              </div>
-            );
-          })
-        }
+                class="day-cal__now-marker"
+                style={`top: ${nowLineTop}rem`}
+                aria-hidden="true"
+              />
+            ) : null
+          }
+        </div>
       </div>
 
       <div
         class="day-cal__columns"
         style={`--day-staff-count: ${staff.length}`}
+        data-staff-columns
       >
+        {
+          isToday && nowLineTop !== null ? (
+            <div
+              class="day-cal__now-line"
+              style={`top: calc(var(--day-header-height) + ${nowLineTop}rem)`}
+              aria-hidden="true"
+            />
+          ) : null
+        }
         {
           staff.map((member) => {
             const events = staffEventsForDay(
@@ -333,6 +364,7 @@ const calendarConfig = {
             );
             const accent = staffAccentColor(member.id);
             const memberSchedules = staffSchedules[member.id] ?? [];
+            const shiftStatus = staffShiftStatus(memberSchedules, dayParam);
 
             return (
               <div
@@ -341,18 +373,27 @@ const calendarConfig = {
                 style={`--staff-accent: ${accent}`}
               >
                 <header class="day-cal__staff-header">
-                  <div class="day-cal__avatar-wrap">
-                    <img
-                      class="day-cal__avatar"
-                      src={staffPhotoUrl(member)}
-                      alt=""
-                      width="40"
-                      height="40"
-                      loading="lazy"
-                      style={`border-color: ${accent}`}
-                    />
+                  <img
+                    class="day-cal__avatar"
+                    src={staffPhotoUrl(member)}
+                    alt=""
+                    width="28"
+                    height="28"
+                    loading="lazy"
+                    style={`border-color: ${accent}`}
+                  />
+                  <div class="day-cal__staff-heading">
+                    <span class="day-cal__staff-name">{member.name.split(" ")[0]}</span>
+                    <span
+                      class:list={[
+                        "day-cal__staff-shift",
+                        `day-cal__staff-shift--${shiftStatus.kind}`,
+                      ]}
+                      title={shiftStatus.label}
+                    >
+                      {shiftStatus.shortLabel}
+                    </span>
                   </div>
-                  <span class="day-cal__staff-name">{member.name}</span>
                 </header>
 
                 <div
@@ -361,23 +402,27 @@ const calendarConfig = {
                 >
                   {
                     timeSlots.map((minutes) => {
-                      const isAvailable = isSlotWithinStaffSchedule(
-                        minutes,
-                        memberSchedules,
-                        dayParam,
-                      );
+                      const inShift =
+                        !salonClosed &&
+                        isSlotWithinStaffSchedule(
+                          minutes,
+                          memberSchedules,
+                          dayParam,
+                        );
                       return (
                         <button
                           type="button"
                           class:list={[
                             "day-cal__slot",
-                            isAvailable && "day-cal__slot--available",
+                            salonClosed && "day-cal__slot--salon-closed",
+                            !salonClosed && inShift && "day-cal__slot--shift",
+                            !salonClosed && !inShift && "day-cal__slot--off",
                           ]}
                           style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
                           data-staff-id={member.id}
                           data-starts-at={slotStartsAtIso(selectedDay, minutes)}
                           data-slot-minutes={CALENDAR_SLOT_MINUTES}
-                          aria-label={`Open actions for ${member.name} at ${formatSlotTimeLabel(minutes)}`}
+                          aria-label={`${inShift ? "Book" : "Unavailable"} · ${member.name} · ${formatSlotTimeLabel(minutes)}`}
                         />
                       );
                     })
@@ -389,9 +434,29 @@ const calendarConfig = {
                       const isBlocked = event.kind === "blocked";
                       const apptStatus =
                         event.kind === "appointment" ? event.status : null;
+                      const statusMeta = apptStatus
+                        ? appointmentStatusMeta(apptStatus)
+                        : null;
+                      const blockAccent = isBlocked
+                        ? null
+                        : serviceCategoryColor(
+                            event.kind === "appointment"
+                              ? event.serviceCategory
+                              : null,
+                          );
                       const timeRange = formatCompactTimeRangeInSalon(
                         event.startsAt,
                         event.endsAt,
+                      );
+                      const serviceDisplay =
+                        event.kind === "appointment" && event.serviceLabel
+                          ? formatServiceDisplayName(event.serviceLabel)
+                          : null;
+
+                      const durationMinutes = Math.round(
+                        (new Date(event.endsAt).getTime() -
+                          new Date(event.startsAt).getTime()) /
+                          60000,
                       );
 
                       return (
@@ -399,33 +464,95 @@ const calendarConfig = {
                           type="button"
                           class:list={[
                             "day-cal__block",
+                            "day-cal__appt-card",
                             isBlocked && "day-cal__block--blocked",
-                            apptStatus && `day-cal__block--${apptStatus}`,
+                            !isBlocked && (managerView || member.id === currentStaffId) && "day-cal__appt-card--draggable",
+                            apptStatus && `day-cal__appt-card--${apptStatus}`,
                           ]}
-                          style={`${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join("; ")}; --block-accent: ${accent}`}
+                          style={`${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join("; ")}${blockAccent ? `; --block-accent: ${blockAccent}` : ""}`}
                           data-kind={event.kind}
                           data-id={event.id}
                           data-staff-id={event.staffId}
                           data-starts-at={event.startsAt}
                           data-ends-at={event.endsAt}
+                          data-duration-minutes={isBlocked ? undefined : durationMinutes}
                           aria-label={
                             isBlocked
                               ? `${event.label}, ${timeRange}`
-                              : `${event.clientFullName}, ${timeRange}`
+                              : `${event.clientFullName}, ${serviceDisplay ?? "appointment"}, ${statusMeta?.label ?? apptStatus}, ${timeRange}`
                           }
                         >
-                          <span class="day-cal__block-time">{timeRange}</span>
-                          <span class="day-cal__block-title">
-                            {isBlocked ? event.label : event.clientFullName}
-                          </span>
                           {
-                            !isBlocked && event.serviceLabel ? (
-                              <span class="day-cal__block-meta">{event.serviceLabel}</span>
-                            ) : !isBlocked && event.serviceCount > 0 ? (
-                              <span class="day-cal__block-meta">
-                                {event.serviceCount}{" "}
-                                {event.serviceCount === 1 ? "service" : "services"}
-                              </span>
+                            isBlocked ? (
+                              <>
+                                <span class="day-cal__appt-card-time">{timeRange}</span>
+                                <span class="day-cal__appt-card-client">{event.label}</span>
+                              </>
+                            ) : (
+                              <>
+                                <div class="day-cal__appt-card-head">
+                                  <span class="day-cal__appt-card-time">{timeRange}</span>
+                                  {
+                                    statusMeta ? (
+                                      <span
+                                        class:list={[
+                                          "day-cal__appt-status",
+                                          apptStatus && `day-cal__appt-status--${apptStatus}`,
+                                        ]}
+                                        title={statusMeta.label}
+                                      >
+                                        <span class="day-cal__appt-status-icon" aria-hidden="true">
+                                          {statusMeta.icon}
+                                        </span>
+                                        <span class="day-cal__appt-status-label">
+                                          {statusMeta.shortLabel}
+                                        </span>
+                                      </span>
+                                    ) : null
+                                  }
+                                </div>
+                                <span class="day-cal__appt-card-client">
+                                  {event.clientFullName}
+                                </span>
+                                {
+                                  serviceDisplay ? (
+                                    <span class="day-cal__appt-card-service">
+                                      {serviceDisplay}
+                                    </span>
+                                  ) : event.serviceCount > 0 ? (
+                                    <span class="day-cal__appt-card-service">
+                                      {event.serviceCount}{" "}
+                                      {event.serviceCount === 1 ? "service" : "services"}
+                                    </span>
+                                  ) : null
+                                }
+                                {
+                                  event.serviceCount > 1 ? (
+                                    <span class="day-cal__appt-card-more">
+                                      +{event.serviceCount - 1} more
+                                    </span>
+                                  ) : null
+                                }
+                                <div class="day-cal__appt-card-indicators">
+                                  {
+                                    event.hasNotes ? (
+                                      <span class="day-cal__appt-indicator" title="Has internal note" aria-label="Has note">
+                                        note
+                                      </span>
+                                    ) : null
+                                  }
+                                </div>
+                              </>
+                            )
+                          }
+                          {
+                            !isBlocked && (managerView || member.id === currentStaffId) ? (
+                              <span
+                                class="day-cal__appt-resize-handle"
+                                data-resize-handle
+                                aria-hidden="true"
+                                tabindex="-1"
+                              ></span>
                             ) : null
                           }
                         </button>
@@ -433,15 +560,6 @@ const calendarConfig = {
                     })
                   }
 
-                  {
-                    isToday && nowLineTop !== null ? (
-                      <div
-                        class="day-cal__now-line"
-                        style={`top: ${nowLineTop}rem`}
-                        aria-hidden="true"
-                      />
-                    ) : null
-                  }
                 </div>
               </div>
             );
@@ -514,22 +632,43 @@ const calendarConfig = {
     </div>
   </div>
 
-  <div class="day-cal__center-modal" id="day-cal-modal" hidden aria-hidden="true">
-    <div class="day-cal__center-modal-backdrop" data-close-modal tabindex="-1"></div>
-    <div
-      class="day-cal__center-modal-panel"
+  <div class="day-cal__drawer" id="day-cal-drawer" hidden aria-hidden="true">
+    <button
+      type="button"
+      class="day-cal__drawer-backdrop"
+      data-close-drawer
+      tabindex="-1"
+      aria-label="Close panel"
+    ></button>
+    <aside
+      class="day-cal__drawer-panel"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="day-cal-modal-title"
+      aria-labelledby="day-cal-drawer-title"
     >
-      <header class="day-cal__center-modal-header">
-        <h3 class="day-cal__center-modal-title" id="day-cal-modal-title"></h3>
-        <button type="button" class="day-cal__center-modal-close" data-close-modal aria-label="Close">
+      <header class="day-cal__drawer-header">
+        <div class="day-cal__drawer-heading">
+          <h2 class="day-cal__drawer-title" id="day-cal-drawer-title"></h2>
+          <p class="day-cal__drawer-subtitle" id="day-cal-drawer-subtitle"></p>
+        </div>
+        <button
+          type="button"
+          class="day-cal__drawer-close"
+          data-close-drawer
+          aria-label="Close panel"
+        >
           ×
         </button>
       </header>
-      <div class="day-cal__center-modal-body" id="day-cal-modal-body"></div>
-    </div>
+      <div class="day-cal__drawer-body" id="day-cal-drawer-body"></div>
+    </aside>
+  </div>
+
+  <div class="day-cal__toast" id="day-cal-toast" hidden role="status" aria-live="polite">
+    <span class="day-cal__toast-message" id="day-cal-toast-message"></span>
+    <button type="button" class="day-cal__toast-undo" id="day-cal-toast-undo" hidden>
+      Undo
+    </button>
   </div>
 
   <script
@@ -562,10 +701,21 @@ const calendarConfig = {
       const selectionSheet = document.getElementById("day-cal-selection");
       const selectionSummary = document.getElementById("day-cal-selection-summary");
       const selectionTitle = document.getElementById("day-cal-selection-title");
-      const modal = document.getElementById("day-cal-modal");
-      const modalTitle = document.getElementById("day-cal-modal-title");
-      const modalBody = document.getElementById("day-cal-modal-body");
-      if (!menu || !selectionSheet || !selectionSummary || !selectionTitle || !modal || !modalTitle || !modalBody) return;
+      const drawer = document.getElementById("day-cal-drawer");
+      const drawerTitle = document.getElementById("day-cal-drawer-title");
+      const drawerSubtitle = document.getElementById("day-cal-drawer-subtitle");
+      const drawerBody = document.getElementById("day-cal-drawer-body");
+      if (
+        !menu ||
+        !selectionSheet ||
+        !selectionSummary ||
+        !selectionTitle ||
+        !drawer ||
+        !drawerTitle ||
+        !drawerSubtitle ||
+        !drawerBody
+      )
+        return;
 
       if (root.dataset.dayCalReady === "true") return;
       root.dataset.dayCalReady = "true";
@@ -703,28 +853,336 @@ const calendarConfig = {
         openSheet(menu);
       }
 
-      function openModal(title, html) {
-        modalTitle.textContent = title;
-        modalBody.innerHTML = html;
-        modal.hidden = false;
-        modal.setAttribute("aria-hidden", "false");
-        modal.classList.remove("is-open");
-        void modal.offsetHeight;
-        modal.classList.add("is-open");
-        const firstField = modalBody.querySelector("input, select, textarea, button");
+      function openDrawer(title, subtitle, html) {
+        drawerTitle.textContent = title;
+        drawerSubtitle.textContent = subtitle || "";
+        drawerSubtitle.hidden = !subtitle;
+        drawerBody.innerHTML = html;
+        drawer.hidden = false;
+        drawer.setAttribute("aria-hidden", "false");
+        root.classList.add("day-cal--drawer-open");
+        drawer.classList.remove("is-open");
+        void drawer.offsetHeight;
+        drawer.classList.add("is-open");
+        const firstField = drawerBody.querySelector("input, select, textarea, button");
         if (firstField instanceof HTMLElement) {
           firstField.focus();
         }
       }
 
-      function closeModal() {
-        modal.classList.remove("is-open");
-        modal.setAttribute("aria-hidden", "true");
+      function closeDrawer() {
+        drawer.classList.remove("is-open");
+        drawer.setAttribute("aria-hidden", "true");
+        root.classList.remove("day-cal--drawer-open");
         window.setTimeout(() => {
-          if (modal.classList.contains("is-open")) return;
-          modal.hidden = true;
-          modalBody.innerHTML = "";
+          if (drawer.classList.contains("is-open")) return;
+          drawer.hidden = true;
+          drawerBody.innerHTML = "";
+          drawerSubtitle.textContent = "";
         }, SHEET_TRANSITION_MS);
+      }
+
+      const toast = document.getElementById("day-cal-toast");
+      const toastMessage = document.getElementById("day-cal-toast-message");
+      const toastUndo = document.getElementById("day-cal-toast-undo");
+      let toastTimer = 0;
+      /** @type {null | (() => Promise<void>)} */
+      let undoAction = null;
+
+      function hideToast() {
+        if (toastTimer) window.clearTimeout(toastTimer);
+        if (toast instanceof HTMLElement) toast.hidden = true;
+        undoAction = null;
+        if (toastUndo instanceof HTMLButtonElement) toastUndo.hidden = true;
+      }
+
+      function showToast(message, undoFn) {
+        if (!(toast instanceof HTMLElement) || !(toastMessage instanceof HTMLElement)) return;
+        hideToast();
+        toastMessage.textContent = message;
+        toast.hidden = false;
+        undoAction = undoFn ?? null;
+        if (toastUndo instanceof HTMLButtonElement) {
+          toastUndo.hidden = !undoFn;
+        }
+        toastTimer = window.setTimeout(hideToast, undoFn ? 8000 : 4000);
+      }
+
+      if (toastUndo instanceof HTMLButtonElement) {
+        toastUndo.addEventListener("click", async () => {
+          if (!undoAction) return;
+          toastUndo.disabled = true;
+          try {
+            await undoAction();
+            hideToast();
+            reloadCalendar();
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Undo failed");
+          } finally {
+            toastUndo.disabled = false;
+          }
+        });
+      }
+
+      async function patchAppointment(id, payload) {
+        const res = await fetch(`${config.api.appointments}/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Could not update appointment");
+        }
+      }
+
+      function openFindOpeningDrawer() {
+        const staffOptions = config.staff
+          .map(
+            (member) =>
+              `<option value="${member.id}">${member.name}</option>`,
+          )
+          .join("");
+        openDrawer(
+          "Find opening",
+          config.nextOpenGap
+            ? `Next today: ${config.nextOpenGap.label}`
+            : "Search bookable times",
+          `<form class="day-cal__form day-cal__find-form" data-form="find-opening">
+            <label class="form-label day-cal__form-field">Provider
+              <select class="form-input" name="staff_id">
+                <option value="all">Any provider</option>
+                ${staffOptions}
+              </select>
+            </label>
+            <label class="form-label day-cal__form-field">Duration
+              <select class="form-input" name="duration">
+                <option value="30">30 minutes</option>
+                <option value="60" selected>60 minutes</option>
+                <option value="90">90 minutes</option>
+                <option value="120">2 hours</option>
+              </select>
+            </label>
+            <label class="form-label day-cal__form-field">Search range
+              <select class="form-input" name="days">
+                <option value="1">Today only</option>
+                <option value="3">Next 3 days</option>
+                <option value="7" selected>Next 7 days</option>
+              </select>
+            </label>
+            <button type="submit" class="btn-primary">Search openings</button>
+          </form>
+          <div class="day-cal__find-results" data-find-results hidden>
+            <h4 class="day-cal__form-section-title">Results</h4>
+            <ul class="day-cal__find-list" data-find-list></ul>
+          </div>
+          <p class="day-cal__hint day-cal__find-empty" data-find-empty hidden>No openings match. Try a shorter duration or wider date range.</p>`,
+        );
+
+        const form = drawerBody.querySelector('[data-form="find-opening"]');
+        if (form instanceof HTMLFormElement) {
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const data = new FormData(form);
+            const staffId = String(data.get("staff_id") || "all");
+            const duration = String(data.get("duration") || "60");
+            const days = String(data.get("days") || "7");
+            const params = new URLSearchParams({
+              from: config.dayParam,
+              days,
+              duration,
+              limit: "12",
+            });
+            if (staffId !== "all") params.set("staff_id", staffId);
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = true;
+
+            try {
+              const res = await fetch(`${config.api.findOpenings}?${params}`);
+              const body = await res.json();
+              if (!res.ok) throw new Error(body.error || "Search failed");
+
+              const resultsWrap = drawerBody.querySelector("[data-find-results]");
+              const list = drawerBody.querySelector("[data-find-list]");
+              const empty = drawerBody.querySelector("[data-find-empty]");
+              const openings = body.openings ?? [];
+
+              if (list instanceof HTMLUListElement) {
+                list.innerHTML = openings
+                  .map(
+                    (item) =>
+                      `<li class="day-cal__find-item">
+                        <div class="day-cal__find-item-main">
+                          <strong>${item.label}</strong>
+                          <span class="day-cal__find-item-meta">${new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, weekday: "short", month: "short", day: "numeric" }).format(new Date(item.startsAt))}</span>
+                        </div>
+                        <button type="button" class="day-cal__link-btn day-cal__link-btn--primary" data-book-opening data-staff-id="${item.staffId}" data-starts-at="${item.startsAt}" data-day-param="${item.dayParam}">Book</button>
+                      </li>`,
+                  )
+                  .join("");
+              }
+
+              if (resultsWrap instanceof HTMLElement) {
+                resultsWrap.hidden = openings.length === 0;
+              }
+              if (empty instanceof HTMLElement) {
+                empty.hidden = openings.length > 0;
+              }
+            } catch (err) {
+              alert(err instanceof Error ? err.message : "Search failed");
+            } finally {
+              if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = false;
+            }
+          });
+        }
+      }
+
+      async function openWaitlistDrawer() {
+        openDrawer("Waitlist", "Active requests", `<p class="day-cal__hint">Loading…</p>`);
+        try {
+          const res = await fetch(`${config.api.waitlist}?status=active`);
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || "Failed to load waitlist");
+          const entries = body.entries ?? [];
+
+          if (entries.length === 0) {
+            drawerBody.innerHTML = `<p class="day-cal__hint">No one on the waitlist right now.</p>
+              <div class="day-cal__detail-actions">
+                <a class="day-cal__link-btn" href="${config.api.waitlistPage}">Open waitlist page</a>
+              </div>`;
+            return;
+          }
+
+          drawerBody.innerHTML = `<ul class="day-cal__waitlist-list">
+            ${entries
+              .map((entry) => {
+                const name = `${entry.clientFirstName ?? ""} ${entry.clientLastName ?? ""}`.trim() || entry.clientEmail;
+                const services = (entry.serviceNames ?? []).join(", ") || "Any service";
+                const preferred = entry.preferredDate
+                  ? new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, month: "short", day: "numeric" }).format(new Date(`${entry.preferredDate}T12:00:00`))
+                  : "Flexible";
+                return `<li class="day-cal__waitlist-item">
+                  <div class="day-cal__waitlist-item-head">
+                    <strong>${name}</strong>
+                    <span class="day-cal__waitlist-item-status">${entry.status}</span>
+                  </div>
+                  <p class="day-cal__waitlist-item-services">${services}</p>
+                  <p class="day-cal__waitlist-item-meta">${entry.staffName} · ${preferred}</p>
+                  <button type="button" class="day-cal__link-btn day-cal__link-btn--primary" data-waitlist-book data-entry='${JSON.stringify({ clientName: name, clientEmail: entry.clientEmail, clientPhone: entry.clientPhone, staffId: entry.staffId, serviceIds: entry.serviceIds }).replace(/'/g, "&#39;")}'>Book</button>
+                </li>`;
+              })
+              .join("")}
+          </ul>
+          <div class="day-cal__detail-actions">
+            <a class="day-cal__link-btn" href="${config.api.waitlistPage}">Manage waitlist</a>
+          </div>`;
+        } catch (err) {
+          drawerBody.innerHTML = `<p class="day-cal__form-error">${err instanceof Error ? err.message : "Failed to load"}</p>`;
+        }
+      }
+
+      /** @type {{
+       *   block: HTMLElement;
+       *   pointerId: number;
+       *   startX: number;
+       *   startY: number;
+       *   moved: boolean;
+       *   durationMinutes: number;
+       *   ghost: HTMLElement | null;
+       * } | null} */
+      let apptDragState = null;
+
+      /** @type {{
+       *   block: HTMLElement;
+       *   pointerId: number;
+       *   startY: number;
+       *   originalEndsAt: string;
+       *   originalHeightRem: number;
+       * } | null} */
+      let apptResizeState = null;
+
+      function removeApptGhost() {
+        document.querySelectorAll(".day-cal__appt-ghost").forEach((el) => el.remove());
+        root.querySelectorAll(".day-cal__slot--drop-target").forEach((el) => {
+          el.classList.remove("day-cal__slot--drop-target");
+        });
+      }
+
+      function createApptGhost(block) {
+        const ghost = block.cloneNode(true);
+        if (!(ghost instanceof HTMLElement)) return null;
+        ghost.classList.add("day-cal__appt-ghost");
+        ghost.classList.remove("day-cal__appt-card--draggable");
+        ghost.style.position = "fixed";
+        ghost.style.zIndex = "500";
+        ghost.style.pointerEvents = "none";
+        ghost.style.opacity = "0.85";
+        ghost.style.width = `${block.offsetWidth}px`;
+        ghost.style.height = `${block.offsetHeight}px`;
+        ghost.querySelectorAll("[data-resize-handle]").forEach((el) => el.remove());
+        document.body.appendChild(ghost);
+        return ghost;
+      }
+
+      function slotAtPointer(clientX, clientY) {
+        const slot = hitTargetAt(clientX, clientY, "day-cal__slot");
+        return slot instanceof HTMLElement ? slot : null;
+      }
+
+      function isoFromSlot(slot, durationMinutes) {
+        const startsAt = slot.dataset.startsAt;
+        if (!startsAt) return null;
+        const endsAt = addMinutesToIso(startsAt, durationMinutes);
+        return {
+          staffId: slot.dataset.staffId || "",
+          startsAt,
+          endsAt,
+        };
+      }
+
+      function handleApptDragMove(event) {
+        if (!apptDragState || event.pointerId !== apptDragState.pointerId) return;
+        const dx = event.clientX - apptDragState.startX;
+        const dy = event.clientY - apptDragState.startY;
+        if (!apptDragState.moved && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+          apptDragState.moved = true;
+          apptDragState.ghost = createApptGhost(apptDragState.block);
+          apptDragState.block.classList.add("day-cal__appt-card--dragging");
+        }
+        if (!apptDragState.moved || !(apptDragState.ghost instanceof HTMLElement)) return;
+
+        apptDragState.ghost.style.left = `${event.clientX - apptDragState.ghost.offsetWidth / 2}px`;
+        apptDragState.ghost.style.top = `${event.clientY - 12}px`;
+
+        root.querySelectorAll(".day-cal__slot--drop-target").forEach((el) => {
+          el.classList.remove("day-cal__slot--drop-target");
+        });
+        const slot = slotAtPointer(event.clientX, event.clientY);
+        if (slot?.classList.contains("day-cal__slot--shift")) {
+          slot.classList.add("day-cal__slot--drop-target");
+        }
+      }
+
+      function stopApptDragTracking() {
+        document.removeEventListener("pointermove", handleApptDragMove);
+      }
+
+      function stopApptResizeTracking() {
+        document.removeEventListener("pointermove", handleApptResizeMove);
+      }
+
+      function handleApptResizeMove(event) {
+        if (!apptResizeState || event.pointerId !== apptResizeState.pointerId) return;
+        const grid = apptResizeState.block.closest(".day-cal__grid");
+        if (!(grid instanceof HTMLElement)) return;
+        const gridRect = grid.getBoundingClientRect();
+        const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const slotHeightPx = ROW_HEIGHT_REM * remPx;
+        const deltaSlots = Math.round((event.clientY - apptResizeState.startY) / slotHeightPx);
+        const minSlots = 1;
+        const newHeightRem = Math.max(minSlots, apptResizeState.originalHeightRem / ROW_HEIGHT_REM + deltaSlots) * ROW_HEIGHT_REM;
+        apptResizeState.block.style.height = `${newHeightRem}rem`;
       }
 
       function showError(form, message) {
@@ -823,19 +1281,48 @@ const calendarConfig = {
           .join("")}</select></label>`;
       }
 
+      function formatDrawerWhen(iso) {
+        return new Intl.DateTimeFormat("en-US", {
+          timeZone: TIMEZONE,
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(iso));
+      }
+
+      const APPT_STATUS_LABELS = {
+        booked: "Booked",
+        pending: "Unconfirmed",
+        confirmed: "Confirmed",
+        arrived: "Arrived",
+        completed: "Completed",
+        cancelled: "Canceled",
+        no_show: "No show",
+      };
+
       function openNewAppointmentForm(context) {
         const slotMinutes = Number(config.slotMinutes || 15);
         const startsLocal = roundDatetimeLocalToSlot(
           toDatetimeLocal(context.startsAt),
           slotMinutes,
         );
-        openModal(
+        const subtitle = `${staffName(context.staffId)} · ${formatDrawerWhen(context.startsAt)}`;
+        openDrawer(
           "New appointment",
-          `<form class="day-cal__form day-cal__form--create" data-form="appointment-create">
+          subtitle,
+          `<nav class="day-cal__drawer-steps" aria-label="Booking steps">
+            <span class="day-cal__drawer-step is-active">1 · Client</span>
+            <span class="day-cal__drawer-step">2 · Services</span>
+            <span class="day-cal__drawer-step">3 · Save</span>
+          </nav>
+          <form class="day-cal__form day-cal__form--create" data-form="appointment-create">
             <div class="day-cal__form-section">
               <h4 class="day-cal__form-section-title">When</h4>
               ${renderStaffSelect("staff_id", context.staffId)}
               <label class="form-label day-cal__form-field">Start<input class="form-input" name="starts_at" type="datetime-local" step="900" value="${startsLocal}" required /></label>
+              <p class="day-cal__duration-hint" data-duration-hint hidden></p>
             </div>
             <div class="day-cal__form-section">
               <h4 class="day-cal__form-section-title">Client</h4>
@@ -865,15 +1352,15 @@ const calendarConfig = {
               <div data-service-field>${renderServiceOptions(context.staffId, [])}</div>
             </div>
             <div class="day-cal__form-section day-cal__form-section--notes">
-              <label class="form-label day-cal__form-field">Notes<textarea class="form-input form-input--textarea" name="notes" rows="2" placeholder="Optional"></textarea></label>
+              <label class="form-label day-cal__form-field">Notes<textarea class="form-input form-input--textarea" name="notes" rows="2" placeholder="Optional internal note"></textarea></label>
             </div>
-            <div class="day-cal__form-actions">
+            <div class="day-cal__form-actions day-cal__form-actions--sticky">
               <button type="submit" class="btn-primary">Save appointment</button>
-              <button type="button" class="day-cal__btn-secondary" data-close-modal>Cancel</button>
+              <button type="button" class="day-cal__btn-secondary" data-close-drawer>Cancel</button>
             </div>
           </form>`,
         );
-        const form = modalBody.querySelector('[data-form="appointment-create"]');
+        const form = drawerBody.querySelector('[data-form="appointment-create"]');
         if (form instanceof HTMLFormElement) {
           setupAppointmentCreateForm(form, slotMinutes);
         }
@@ -1063,10 +1550,10 @@ const calendarConfig = {
           selectClient(matches[index].id);
         });
 
-        function onModalMouseDown(event) {
+        function onDrawerMouseDown(event) {
           if (!(event.target instanceof Node)) return;
           if (!form.isConnected) {
-            modal.removeEventListener("mousedown", onModalMouseDown);
+            drawer.removeEventListener("mousedown", onDrawerMouseDown);
             return;
           }
           const combobox = form.querySelector(".day-cal__client-combobox");
@@ -1074,7 +1561,36 @@ const calendarConfig = {
           hideSuggestions();
         }
 
-        modal.addEventListener("mousedown", onModalMouseDown);
+        drawer.addEventListener("mousedown", onDrawerMouseDown);
+
+        const serviceSelect = form.querySelector('select[name="service_ids"]');
+        const durationHint = form.querySelector("[data-duration-hint]");
+        function updateDurationHint() {
+          if (!(serviceSelect instanceof HTMLSelectElement) || !(durationHint instanceof HTMLElement)) return;
+          const staffSelect = form.querySelector('select[name="staff_id"], input[name="staff_id"]');
+          const staffId =
+            staffSelect instanceof HTMLSelectElement
+              ? staffSelect.value
+              : staffSelect instanceof HTMLInputElement
+                ? staffSelect.value
+                : "";
+          const services = config.servicesByStaff[staffId] || [];
+          const total = Array.from(serviceSelect.selectedOptions).reduce((sum, opt) => {
+            const svc = services.find((s) => s.id === opt.value);
+            return sum + (svc?.durationMinutes ?? 0);
+          }, 0);
+          if (total > 0) {
+            durationHint.hidden = false;
+            durationHint.textContent = `Estimated service time: ${formatDurationMinutes(total)}`;
+          } else {
+            durationHint.hidden = true;
+            durationHint.textContent = "";
+          }
+        }
+        if (serviceSelect instanceof HTMLSelectElement) {
+          serviceSelect.addEventListener("change", updateDurationHint);
+          updateDurationHint();
+        }
       }
 
       function openBlockTimeForm(context, endsAt) {
@@ -1082,16 +1598,17 @@ const calendarConfig = {
         const endsLocal = endsAt
           ? toDatetimeLocal(endsAt)
           : addMinutesToDatetimeLocal(startsLocal, 60);
-        openModal(
+        openDrawer(
           "Block time",
+          staffName(context.staffId),
           `<form class="day-cal__form" data-form="block-create">
             ${renderStaffSelect("staff_id", context.staffId)}
             <label class="form-label">Starts<input class="form-input" name="starts_at" type="datetime-local" value="${startsLocal}" required /></label>
             <label class="form-label">Ends<input class="form-input" name="ends_at" type="datetime-local" value="${endsLocal}" required /></label>
             <label class="form-label">Reason (optional)<input class="form-input" name="reason" type="text" maxlength="200" placeholder="Lunch, meeting…" /></label>
-            <div class="day-cal__form-actions">
+            <div class="day-cal__form-actions day-cal__form-actions--sticky">
               <button type="submit" class="btn-primary">Save block</button>
-              <button type="button" class="day-cal__btn-secondary" data-close-modal>Cancel</button>
+              <button type="button" class="day-cal__btn-secondary" data-close-drawer>Cancel</button>
             </div>
           </form>`,
         );
@@ -1113,31 +1630,40 @@ const calendarConfig = {
           ? `<a href="mailto:${appt.clientEmail}">${appt.clientEmail}</a>`
           : "—";
         const notes = appt.notes?.trim() ? appt.notes : "—";
-        const statusLabel = appt.status.replace(/_/g, " ");
+        const statusLabel = APPT_STATUS_LABELS[appt.status] ?? appt.status.replace(/_/g, " ");
         const checkoutHref = `${config.api.checkout}/${appt.id}`;
         const profileHref = `${config.api.clientsPage}/${appt.clientId}`;
-        openModal(
+        const servicesFormatted =
+          appt.serviceNames.length > 0
+            ? appt.serviceNames
+                .map((name) => `<li>${name.replace(/</g, "&lt;")}</li>`)
+                .join("")
+            : "";
+        openDrawer(
           clientName || "Appointment",
-          `<div class="day-cal__detail">
-            <p><span class="label-meta">Time</span><br />${timeRange}</p>
-            <p><span class="label-meta">Status</span><br />${statusLabel}</p>
-            <p><span class="label-meta">Phone</span><br />${phone}</p>
-            <p><span class="label-meta">Email</span><br />${email}</p>
-            <div><span class="label-meta">Services (${appt.serviceCount})</span>${servicesList}</div>
-            <p><span class="label-meta">Notes</span><br />${notes}</p>
+          `${timeRange} · ${staffName(appt.staffId)}`,
+          `<div class="day-cal__detail-card">
+            <span class="day-cal__detail-status day-cal__detail-status--${appt.status}">${statusLabel}</span>
+            <dl class="day-cal__detail-grid">
+              <div><dt>Phone</dt><dd>${phone}</dd></div>
+              <div><dt>Email</dt><dd>${email}</dd></div>
+              <div class="day-cal__detail-grid--full"><dt>Services</dt><dd>${servicesFormatted ? `<ul class="day-cal__detail-list">${servicesFormatted}</ul>` : "—"}</dd></div>
+              <div class="day-cal__detail-grid--full"><dt>Notes</dt><dd>${notes}</dd></div>
+            </dl>
             <div class="day-cal__detail-actions">
-              <a class="day-cal__link-btn" href="${profileHref}">View client profile</a>
+              <a class="day-cal__link-btn" href="${profileHref}">Client profile</a>
               ${appt.status !== "cancelled" && appt.status !== "completed" ? `<a class="day-cal__link-btn day-cal__link-btn--primary" href="${checkoutHref}">Checkout</a>` : ""}
               ${appt.status === "completed" ? `<a class="day-cal__link-btn" href="${checkoutHref}">View receipt</a>` : ""}
             </div>
           </div>
-          <form class="day-cal__form" data-form="appointment-edit" data-id="${appt.id}">
+          <form class="day-cal__form day-cal__form--edit" data-form="appointment-edit" data-id="${appt.id}">
+            <h4 class="day-cal__form-section-title">Update appointment</h4>
             <label class="form-label">Status
               <select class="form-input" name="status">
                 ${["booked", "pending", "confirmed", "arrived", "completed", "no_show", "cancelled"]
                   .map(
                     (status) =>
-                      `<option value="${status}"${status === appt.status ? " selected" : ""}>${status.replace("_", " ")}</option>`,
+                      `<option value="${status}"${status === appt.status ? " selected" : ""}>${APPT_STATUS_LABELS[status] ?? status}</option>`,
                   )
                   .join("")}
               </select>
@@ -1145,10 +1671,10 @@ const calendarConfig = {
             <label class="form-label">Start<input class="form-input" name="starts_at" type="datetime-local" value="${toDatetimeLocal(appt.startsAt)}" required /></label>
             <label class="form-label">End<input class="form-input" name="ends_at" type="datetime-local" value="${toDatetimeLocal(appt.endsAt)}" required /></label>
             <label class="form-label">Notes<textarea class="form-input form-input--textarea" name="notes" rows="3">${appt.notes || ""}</textarea></label>
-            <div class="day-cal__form-actions">
+            <div class="day-cal__form-actions day-cal__form-actions--sticky">
               <button type="submit" class="btn-primary">Save changes</button>
               <button type="button" class="day-cal__btn-danger" data-action="cancel-appointment" data-id="${appt.id}">Cancel appointment</button>
-              <button type="button" class="day-cal__btn-secondary" data-close-modal>Close</button>
+              <button type="button" class="day-cal__btn-secondary" data-close-drawer>Close</button>
             </div>
           </form>`,
         );
@@ -1158,21 +1684,20 @@ const calendarConfig = {
         const block = config.blockedTimes.find((item) => item.id === id);
         if (!block) return;
         const timeRange = `${formatTime(block.startsAt)} – ${formatTime(block.endsAt)}`;
-        openModal(
+        openDrawer(
           block.reason || "Blocked time",
-          `<div class="day-cal__detail">
-            <p><span class="label-meta">Provider</span><br />${staffName(block.staffId)}</p>
-            <p><span class="label-meta">Time</span><br />${timeRange}</p>
-            <p><span class="label-meta">Reason</span><br />${block.reason || "Blocked"}</p>
+          `${timeRange} · ${staffName(block.staffId)}`,
+          `<div class="day-cal__detail-card day-cal__detail-card--block">
+            <p class="day-cal__detail-block-reason">${block.reason || "Blocked"}</p>
           </div>
           <form class="day-cal__form" data-form="block-edit" data-id="${block.id}">
             <label class="form-label">Starts<input class="form-input" name="starts_at" type="datetime-local" value="${toDatetimeLocal(block.startsAt)}" required /></label>
             <label class="form-label">Ends<input class="form-input" name="ends_at" type="datetime-local" value="${toDatetimeLocal(block.endsAt)}" required /></label>
             <label class="form-label">Reason (optional)<input class="form-input" name="reason" type="text" maxlength="200" value="${block.reason || ""}" /></label>
-            <div class="day-cal__form-actions">
+            <div class="day-cal__form-actions day-cal__form-actions--sticky">
               <button type="submit" class="btn-primary">Save changes</button>
               <button type="button" class="day-cal__btn-danger" data-action="delete-block" data-id="${block.id}">Delete</button>
-              <button type="button" class="day-cal__btn-secondary" data-close-modal>Close</button>
+              <button type="button" class="day-cal__btn-secondary" data-close-drawer>Close</button>
             </div>
           </form>`,
         );
@@ -1405,7 +1930,50 @@ const calendarConfig = {
         grid.addEventListener("pointerdown", (event) => {
           if (event.pointerType === "mouse" && event.button !== 0) return;
 
+          const targetEl =
+            document.elementFromPoint(event.clientX, event.clientY) instanceof HTMLElement
+              ? document.elementFromPoint(event.clientX, event.clientY)
+              : null;
+          const resizeHandle =
+            targetEl instanceof HTMLElement ? targetEl.closest("[data-resize-handle]") : null;
           const block = hitTargetAt(event.clientX, event.clientY, "day-cal__block");
+
+          if (resizeHandle instanceof HTMLElement && block instanceof HTMLElement) {
+            if (block.dataset.kind !== "appointment") return;
+            if (!canSelectStaffColumn(block.dataset.staffId || "")) return;
+            const style = block.style.height;
+            const heightRem = parseFloat(style) || ROW_HEIGHT_REM;
+            apptResizeState = {
+              block,
+              pointerId: event.pointerId,
+              startY: event.clientY,
+              originalEndsAt: block.dataset.endsAt || "",
+              originalHeightRem: heightRem,
+            };
+            block.setPointerCapture(event.pointerId);
+            document.addEventListener("pointermove", handleApptResizeMove);
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+
+          if (block instanceof HTMLElement && block.dataset.kind === "appointment" && block.classList.contains("day-cal__appt-card--draggable")) {
+            pendingBlockClick = null;
+            apptDragState = {
+              block,
+              pointerId: event.pointerId,
+              startX: event.clientX,
+              startY: event.clientY,
+              moved: false,
+              durationMinutes: Number(block.dataset.durationMinutes || 60),
+              ghost: null,
+            };
+            block.setPointerCapture(event.pointerId);
+            document.addEventListener("pointermove", handleApptDragMove);
+            event.preventDefault();
+            return;
+          }
+
           if (block instanceof HTMLElement) {
             pendingBlockClick = block;
             return;
@@ -1439,7 +2007,118 @@ const calendarConfig = {
           event.preventDefault();
         });
 
-        grid.addEventListener("pointerup", (event) => {
+        grid.addEventListener("pointerup", async (event) => {
+          if (apptResizeState && apptResizeState.block && event.pointerId === apptResizeState.pointerId) {
+            const state = apptResizeState;
+            apptResizeState = null;
+            stopApptResizeTracking();
+            if (state.block.hasPointerCapture(event.pointerId)) {
+              state.block.releasePointerCapture(event.pointerId);
+            }
+
+            const id = state.block.dataset.id;
+            const startsAt = state.block.dataset.startsAt;
+            const originalEndsAt = state.originalEndsAt;
+            if (!id || !startsAt) {
+              state.block.style.height = "";
+              return;
+            }
+
+            const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+            const heightRem = parseFloat(state.block.style.height) || state.originalHeightRem;
+            const durationMinutes = Math.max(
+              Number(config.slotMinutes || 15),
+              Math.round((heightRem / ROW_HEIGHT_REM) * Number(config.slotMinutes || 15)),
+            );
+            const newEndsAt = addMinutesToIso(startsAt, durationMinutes);
+
+            if (newEndsAt === originalEndsAt) {
+              state.block.style.height = "";
+              return;
+            }
+
+            try {
+              await patchAppointment(id, {
+                starts_at: toDatetimeLocal(startsAt),
+                ends_at: toDatetimeLocal(newEndsAt),
+              });
+              showToast("Appointment duration updated", async () => {
+                await patchAppointment(id, {
+                  starts_at: toDatetimeLocal(startsAt),
+                  ends_at: toDatetimeLocal(originalEndsAt),
+                });
+              });
+              reloadCalendar();
+            } catch (err) {
+              state.block.style.height = "";
+              alert(err instanceof Error ? err.message : "Could not resize");
+            }
+            return;
+          }
+
+          if (apptDragState && event.pointerId === apptDragState.pointerId) {
+            const state = apptDragState;
+            apptDragState = null;
+            stopApptDragTracking();
+            removeApptGhost();
+            if (state.block.hasPointerCapture(event.pointerId)) {
+              state.block.releasePointerCapture(event.pointerId);
+            }
+            state.block.classList.remove("day-cal__appt-card--dragging");
+
+            if (state.moved) {
+              const slot = slotAtPointer(event.clientX, event.clientY);
+              const id = state.block.dataset.id;
+              const originalStaffId = state.block.dataset.staffId;
+              const originalStartsAt = state.block.dataset.startsAt;
+              const originalEndsAt = state.block.dataset.endsAt;
+
+              if (slot && id && originalStartsAt && originalEndsAt && originalStaffId) {
+                const target = isoFromSlot(slot, state.durationMinutes);
+                if (
+                  target &&
+                  canSelectStaffColumn(target.staffId) &&
+                  (target.startsAt !== originalStartsAt || target.staffId !== originalStaffId)
+                ) {
+                  const payload = {
+                    starts_at: toDatetimeLocal(target.startsAt),
+                    ends_at: toDatetimeLocal(target.endsAt),
+                  };
+                  if (target.staffId !== originalStaffId) {
+                    payload.staff_id = target.staffId;
+                  }
+                  try {
+                    await patchAppointment(id, payload);
+                    const providerChanged = target.staffId !== originalStaffId;
+                    showToast(
+                      providerChanged ? "Appointment moved to another provider" : "Appointment rescheduled",
+                      async () => {
+                        const undoPayload = {
+                          starts_at: toDatetimeLocal(originalStartsAt),
+                          ends_at: toDatetimeLocal(originalEndsAt),
+                        };
+                        if (providerChanged) undoPayload.staff_id = originalStaffId;
+                        await patchAppointment(id, undoPayload);
+                      },
+                    );
+                    reloadCalendar();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : "Could not move appointment");
+                  }
+                  return;
+                }
+              }
+              return;
+            }
+
+            const id = state.block.dataset.id;
+            const kind = state.block.dataset.kind;
+            if (kind === "appointment" && id) {
+              openAppointmentModal(id);
+            }
+            return;
+          }
+
           if (pendingBlockClick instanceof HTMLElement) {
             const block = pendingBlockClick;
             pendingBlockClick = null;
@@ -1484,6 +2163,17 @@ const calendarConfig = {
         });
 
         grid.addEventListener("pointercancel", (event) => {
+          if (apptResizeState?.block && event.pointerId === apptResizeState.pointerId) {
+            apptResizeState.block.style.height = "";
+            apptResizeState = null;
+            stopApptResizeTracking();
+          }
+          if (apptDragState && event.pointerId === apptDragState.pointerId) {
+            apptDragState.block.classList.remove("day-cal__appt-card--dragging");
+            removeApptGhost();
+            apptDragState = null;
+            stopApptDragTracking();
+          }
           if (dragState?.grid === grid && event.pointerId === dragState.pointerId) {
             dragState = null;
             stopDragPointerTracking();
@@ -1562,11 +2252,45 @@ const calendarConfig = {
         }
       });
 
-      modal.addEventListener("click", (event) => {
+      drawer.addEventListener("click", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLElement)) return;
-        if (target.matches("[data-close-modal]")) {
-          closeModal();
+        if (target.matches("[data-close-drawer]")) {
+          closeDrawer();
+          return;
+        }
+        const bookOpening = target.closest("[data-book-opening]");
+        if (bookOpening instanceof HTMLElement) {
+          const staffId = bookOpening.dataset.staffId;
+          const startsAt = bookOpening.dataset.startsAt;
+          const dayParam = bookOpening.dataset.dayParam;
+          if (staffId && startsAt) {
+            closeDrawer();
+            if (dayParam && dayParam !== config.dayParam) {
+              sessionStorage.setItem(
+                "sc-slot-book",
+                JSON.stringify({ staffId, startsAt }),
+              );
+              window.location.href = `${config.reloadUrl.split("?")[0]}?day=${dayParam}`;
+              return;
+            }
+            openNewAppointmentForm({ staffId, startsAt });
+          }
+          return;
+        }
+        const waitlistBook = target.closest("[data-waitlist-book]");
+        if (waitlistBook instanceof HTMLElement && waitlistBook.dataset.entry) {
+          try {
+            const entry = JSON.parse(waitlistBook.dataset.entry);
+            sessionStorage.setItem("sc-waitlist-book", JSON.stringify(entry));
+            closeDrawer();
+            openNewAppointmentForm({
+              staffId: entry.staffId || config.currentStaffId,
+              startsAt: new Date().toISOString(),
+            });
+          } catch {
+            /* ignore */
+          }
           return;
         }
         const cancelAppt = target.closest("[data-action='cancel-appointment']");
@@ -1598,17 +2322,17 @@ const calendarConfig = {
         }
       });
 
-      modalBody.addEventListener("change", (event) => {
+      drawerBody.addEventListener("change", (event) => {
         const target = event.target;
         if (!(target instanceof HTMLSelectElement)) return;
         if (target.name !== "staff_id") return;
-        const serviceField = modalBody.querySelector("[data-service-field]");
+        const serviceField = drawerBody.querySelector("[data-service-field]");
         if (serviceField) {
           serviceField.innerHTML = renderServiceOptions(target.value, []);
         }
       });
 
-      modalBody.addEventListener("submit", async (event) => {
+      drawerBody.addEventListener("submit", async (event) => {
         const form = event.target;
         if (!(form instanceof HTMLFormElement)) return;
         event.preventDefault();
@@ -1759,8 +2483,8 @@ const calendarConfig = {
 
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
-        if (modal.classList.contains("is-open")) {
-          closeModal();
+        if (drawer.classList.contains("is-open")) {
+          closeDrawer();
           return;
         }
         if (selectionSheet.classList.contains("is-open")) {
@@ -1786,6 +2510,14 @@ const calendarConfig = {
         window.location.href = `${config.reloadUrl.split("?")[0]}?day=${input.value}`;
       });
 
+      root.querySelector("[data-find-opening]")?.addEventListener("click", () => {
+        openFindOpeningDrawer();
+      });
+
+      root.querySelector("[data-waitlist-drawer]")?.addEventListener("click", () => {
+        openWaitlistDrawer();
+      });
+
       root.querySelector("[data-new-appointment]")?.addEventListener("click", () => {
         const staffId = config.currentStaffId;
         const now = new Date();
@@ -1796,15 +2528,6 @@ const calendarConfig = {
           staffId,
           startsAt: now.toISOString(),
         });
-      });
-
-      root.querySelector("[data-gap-book]")?.addEventListener("click", (event) => {
-        const btn = event.currentTarget;
-        if (!(btn instanceof HTMLElement)) return;
-        const staffId = btn.dataset.staffId || config.currentStaffId;
-        const startsAt = btn.dataset.startsAt;
-        if (!startsAt) return;
-        openNewAppointmentForm({ staffId, startsAt });
       });
 
       function applyWaitlistPrefill(form) {
@@ -1864,26 +2587,194 @@ const calendarConfig = {
               ? `${payload.preferredDate}T10:00:00`
               : new Date().toISOString(),
           });
-          const form = modalBody.querySelector('[data-form="appointment-create"]');
+          const form = drawerBody.querySelector('[data-form="appointment-create"]');
           if (form instanceof HTMLFormElement) {
             applyWaitlistPrefill(form);
           }
         }
       }
 
+      const slotBookRaw = sessionStorage.getItem("sc-slot-book");
+      if (slotBookRaw) {
+        sessionStorage.removeItem("sc-slot-book");
+        try {
+          const payload = JSON.parse(slotBookRaw);
+          if (payload?.staffId && payload?.startsAt) {
+            openNewAppointmentForm({
+              staffId: payload.staffId,
+              startsAt: payload.startsAt,
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
       root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
         chip.addEventListener("click", () => {
           if (!(chip instanceof HTMLButtonElement)) return;
-          const staffId = chip.dataset.staffFilterId ?? "";
           const pressed = chip.getAttribute("aria-pressed") !== "false";
           chip.setAttribute("aria-pressed", pressed ? "false" : "true");
           chip.classList.toggle("day-cal__staff-chip--off", pressed);
-          const column = root.querySelector(`[data-staff-column="${staffId}"]`);
-          if (column instanceof HTMLElement) {
-            column.hidden = pressed;
-          }
+          chip.classList.toggle("is-active", !pressed);
+          syncStaffFilterFromUi();
         });
       });
+
+      const allStaffChip = root.querySelector("[data-staff-filter-all]");
+      allStaffChip?.addEventListener("click", () => {
+        setStaffFilterAll(true);
+      });
+
+      function getStaffFilterStorageKey() {
+        return `sc-book-staff-filter-${config.currentStaffId}`;
+      }
+
+      function readStaffFilter() {
+        try {
+          const raw = localStorage.getItem(getStaffFilterStorageKey());
+          if (!raw) return { mode: "all" };
+          const parsed = JSON.parse(raw);
+          if (parsed?.mode === "selected" && Array.isArray(parsed.ids)) {
+            const ids = parsed.ids.filter((id) => config.staffIds.includes(id));
+            if (ids.length > 0) return { mode: "selected", ids };
+          }
+        } catch {
+          /* ignore */
+        }
+        return { mode: "all" };
+      }
+
+      function writeStaffFilter(state) {
+        try {
+          localStorage.setItem(getStaffFilterStorageKey(), JSON.stringify(state));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      function setStaffFilterAll(persist) {
+        root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
+          if (!(chip instanceof HTMLButtonElement)) return;
+          chip.setAttribute("aria-pressed", "true");
+          chip.classList.remove("day-cal__staff-chip--off");
+          chip.classList.add("is-active");
+        });
+        if (allStaffChip instanceof HTMLButtonElement) {
+          allStaffChip.setAttribute("aria-pressed", "true");
+          allStaffChip.classList.add("is-active");
+        }
+        root.querySelectorAll("[data-staff-column]").forEach((column) => {
+          if (column instanceof HTMLElement) column.hidden = false;
+        });
+        updateStaffColumnCount();
+        if (persist) writeStaffFilter({ mode: "all" });
+      }
+
+      function syncStaffFilterFromUi() {
+        const chips = Array.from(
+          root.querySelectorAll("[data-staff-filter-id]"),
+        ).filter((el) => el instanceof HTMLButtonElement);
+        const active = chips.filter(
+          (chip) => chip.getAttribute("aria-pressed") !== "false",
+        );
+
+        if (active.length === 0 || active.length === chips.length) {
+          setStaffFilterAll(true);
+          return;
+        }
+
+        if (allStaffChip instanceof HTMLButtonElement) {
+          allStaffChip.setAttribute("aria-pressed", "false");
+          allStaffChip.classList.remove("is-active");
+        }
+
+        chips.forEach((chip) => {
+          const visible = chip.getAttribute("aria-pressed") !== "false";
+          const staffId = chip.dataset.staffFilterId ?? "";
+          const column = root.querySelector(`[data-staff-column="${staffId}"]`);
+          if (column instanceof HTMLElement) column.hidden = !visible;
+        });
+
+        const selectedIds = chips
+          .filter((chip) => chip.getAttribute("aria-pressed") !== "false")
+          .map((chip) => chip.dataset.staffFilterId ?? "")
+          .filter(Boolean);
+
+        updateStaffColumnCount();
+        writeStaffFilter({ mode: "selected", ids: selectedIds });
+      }
+
+      function applyStaffFilterFromStorage() {
+        const state = readStaffFilter();
+        if (state.mode === "all") {
+          setStaffFilterAll(false);
+          return;
+        }
+        const ids = new Set(state.ids);
+        if (allStaffChip instanceof HTMLButtonElement) {
+          allStaffChip.setAttribute("aria-pressed", "false");
+          allStaffChip.classList.remove("is-active");
+        }
+        root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
+          if (!(chip instanceof HTMLButtonElement)) return;
+          const on = ids.has(chip.dataset.staffFilterId ?? "");
+          chip.setAttribute("aria-pressed", on ? "true" : "false");
+          chip.classList.toggle("day-cal__staff-chip--off", !on);
+          chip.classList.toggle("is-active", on);
+          const column = root.querySelector(
+            `[data-staff-column="${chip.dataset.staffFilterId}"]`,
+          );
+          if (column instanceof HTMLElement) column.hidden = !on;
+        });
+        updateStaffColumnCount();
+      }
+
+      function updateStaffColumnCount() {
+        const visible = root.querySelectorAll(
+          "[data-staff-column]:not([hidden])",
+        ).length;
+        const columns = root.querySelector("[data-staff-columns]");
+        if (columns instanceof HTMLElement) {
+          columns.style.setProperty("--day-staff-count", String(visible || 1));
+        }
+        updateWeekLinkHref();
+      }
+
+      function updateWeekLinkHref() {
+        const weekLink = root.querySelector("[data-week-link]");
+        if (weekLink instanceof HTMLAnchorElement) {
+          weekLink.href = `${config.weekUrl}?week=${config.dayParam}&staff=${weekLinkStaffId()}`;
+        }
+      }
+
+      function weekLinkStaffId() {
+        const state = readStaffFilter();
+        if (state.mode === "selected" && state.ids.length === 1) {
+          return state.ids[0];
+        }
+        return config.currentStaffId;
+      }
+
+      root.querySelector("[data-week-link]")?.addEventListener("click", (event) => {
+        const activeIds = root.querySelectorAll(
+          '[data-staff-filter-id][aria-pressed="true"]',
+        );
+        if (activeIds.length !== 1) {
+          event.preventDefault();
+          const staffId = weekLinkStaffId();
+          const member = config.staff.find((item) => item.id === staffId);
+          const name = member?.name.split(" ")[0] ?? "this provider";
+          const proceed = window.confirm(
+            `Week view shows one provider at a time. Open week view for ${name}?`,
+          );
+          if (proceed) {
+            window.location.href = `${config.weekUrl}?week=${config.dayParam}&staff=${staffId}`;
+          }
+        }
+      });
+
+      applyStaffFilterFromStorage();
       }
 
       if (document.readyState === "loading") {
@@ -1897,9 +2788,9 @@ const calendarConfig = {
 
 <style>
   .day-cal {
-    --day-staff-width: 5rem;
-    --day-time-width: 2.35rem;
-    --day-header-height: 3.75rem;
+    --day-staff-width: 9rem;
+    --day-time-width: 3rem;
+    --day-header-height: 2.75rem;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -1919,6 +2810,41 @@ const calendarConfig = {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  .day-cal__header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.4rem clamp(0.75rem, 2vw, 1.25rem) 0.45rem;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .day-cal__toolbar-primary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .day-cal__toolbar-primary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+  }
+
+  .day-cal__toolbar-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
   }
 
   .day-cal__subbar {
@@ -2152,18 +3078,29 @@ const calendarConfig = {
     flex: 0 0 auto;
   }
 
-  .day-cal__staff-chip--self {
+  .day-cal__staff-chip.is-active,
+  .day-cal__staff-chip--all.is-active {
     border-color: var(--color-citrine);
-    box-shadow: 0 0 0 1px rgba(231, 172, 70, 0.35);
+    background: rgba(231, 172, 70, 0.14);
+    box-shadow: inset 0 0 0 1px rgba(231, 172, 70, 0.25);
+  }
+
+  .day-cal__staff-chip--self .day-cal__staff-chip-photo {
+    box-shadow: 0 0 0 1px var(--color-citrine);
   }
 
   .day-cal__staff-chip--off {
-    opacity: 0.45;
+    opacity: 0.42;
+    filter: grayscale(0.35);
+  }
+
+  .day-cal__staff-chip--all {
+    padding: 0.2rem 0.65rem;
   }
 
   .day-cal__staff-chip-photo {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.375rem;
+    height: 1.375rem;
     border-radius: 50%;
     object-fit: cover;
   }
@@ -2196,32 +3133,31 @@ const calendarConfig = {
 
   .day-cal__week-strip {
     display: flex;
-    gap: 0.35rem;
+    gap: 0.2rem;
     overflow-x: auto;
     scrollbar-width: none;
+    flex: 0 0 auto;
   }
 
   .day-cal__week-day {
-    flex: 1 0 3rem;
-    min-width: 3rem;
+    flex: 0 0 auto;
+    min-width: 2.35rem;
     display: grid;
-    gap: 0.15rem;
+    gap: 0;
     justify-items: center;
-    padding: 0.4rem 0.25rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.45rem;
+    padding: 0.18rem 0.35rem 0.22rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.3rem;
     text-decoration: none;
     color: inherit;
-    background: var(--color-light);
+    background: transparent;
     position: relative;
   }
 
   .day-cal__week-day--selected {
     border-color: var(--color-citrine);
-    background: rgba(231, 172, 70, 0.22);
-    box-shadow:
-      inset 0 -3px 0 var(--color-citrine),
-      0 0 0 1px rgba(231, 172, 70, 0.35);
+    background: rgba(231, 172, 70, 0.18);
+    box-shadow: inset 0 -2px 0 var(--color-citrine);
   }
 
   .day-cal__week-day--selected .day-cal__week-day-label {
@@ -2248,7 +3184,8 @@ const calendarConfig = {
 
   .day-cal__week-day-num {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.78rem;
+    line-height: 1.1;
   }
 
   .day-cal__week-day-dot {
@@ -2322,6 +3259,44 @@ const calendarConfig = {
     position: sticky;
     top: 0;
     z-index: 6;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 0.15rem 0.2rem;
+  }
+
+  .day-cal__time-rail {
+    position: relative;
+  }
+
+  .day-cal__now-label {
+    font-family: var(--font-sans);
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #c44;
+    white-space: nowrap;
+  }
+
+  .day-cal__now-marker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    height: 2px;
+    background: #c44;
+    pointer-events: none;
+  }
+
+  .day-cal__now-marker::before {
+    content: "";
+    position: absolute;
+    right: -0.2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #c44;
   }
 
   .day-cal__time-label {
@@ -2337,10 +3312,18 @@ const calendarConfig = {
     background: var(--color-bg);
   }
 
+  .day-cal__time-label--hour {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--color-text);
+    border-bottom-color: var(--color-border);
+  }
+
   .day-cal__time-label--minute {
-    font-size: 0.52rem;
+    font-size: 0.5rem;
     color: var(--color-gray);
-    opacity: 0.75;
+    opacity: 0.7;
+    border-bottom-color: transparent;
   }
 
   .day-cal__columns {
@@ -2350,6 +3333,16 @@ const calendarConfig = {
     min-width: max-content;
     width: max-content;
     background: var(--color-bg);
+  }
+
+  .day-cal__now-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    height: 2px;
+    background: #c44;
+    pointer-events: none;
   }
 
   /* Full-height column dividers as an overlay — survives slot tint stacking */
@@ -2377,22 +3370,53 @@ const calendarConfig = {
 
   .day-cal__staff-header {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    justify-content: stretch;
+    gap: 0.35rem;
     box-sizing: border-box;
     height: var(--day-header-height);
     min-height: var(--day-header-height);
     max-height: var(--day-header-height);
-    padding: 0;
+    padding: 0 0.35rem;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg);
     color: var(--color-text);
-    text-align: center;
-    overflow: visible;
+    overflow: hidden;
     position: sticky;
     top: 0;
     z-index: 6;
+  }
+
+  .day-cal__staff-heading {
+    display: grid;
+    gap: 0.05rem;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .day-cal__staff-shift {
+    font-family: var(--font-sans);
+    font-size: 0.52rem;
+    letter-spacing: 0.03em;
+    color: var(--color-gray);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .day-cal__staff-shift--working {
+    color: var(--color-sage, #6b7f66);
+  }
+
+  .day-cal__staff-shift--off,
+  .day-cal__staff-shift--no_schedule {
+    color: var(--color-gray);
+    font-style: italic;
+  }
+
+  .day-cal__staff-shift--closed {
+    color: #922;
+    font-weight: 600;
   }
 
   .day-cal__avatar-wrap {
@@ -2403,8 +3427,8 @@ const calendarConfig = {
   }
 
   .day-cal__avatar {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 1.75rem;
+    height: 1.75rem;
     border-radius: 50%;
     object-fit: cover;
     object-position: center top;
@@ -2416,8 +3440,9 @@ const calendarConfig = {
   .day-cal__staff-name {
     flex: 0 0 auto;
     font-family: var(--font-sans);
-    font-size: 0.6rem;
-    letter-spacing: 0.05em;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     line-height: 1.1;
     max-width: 100%;
@@ -2445,6 +3470,46 @@ const calendarConfig = {
     pointer-events: auto;
     touch-action: manipulation;
     transition: background 0.15s ease;
+  }
+
+  .day-cal__slot--shift {
+    background: rgba(141, 158, 136, 0.1);
+  }
+
+  .day-cal__slot--shift:hover,
+  .day-cal__slot--shift:focus-visible {
+    background: rgba(141, 158, 136, 0.2);
+    outline: none;
+  }
+
+  .day-cal__slot--off {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--color-bg),
+      var(--color-bg) 4px,
+      rgba(0, 0, 0, 0.04) 4px,
+      rgba(0, 0, 0, 0.04) 8px
+    );
+    cursor: not-allowed;
+    opacity: 0.72;
+  }
+
+  .day-cal__slot--salon-closed {
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.03),
+      rgba(0, 0, 0, 0.03) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .day-cal__slot--drop-target {
+    background: rgba(231, 172, 70, 0.35) !important;
+    box-shadow: inset 0 0 0 2px var(--color-citrine);
+    cursor: copy;
   }
 
   .day-cal__slot--available {
@@ -2586,6 +3651,468 @@ const calendarConfig = {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-transform: none;
+  }
+
+  .day-cal__appt-card {
+    gap: 0.12rem;
+    padding: 0.28rem 0.4rem 0.3rem 0.5rem;
+    border-left-width: 4px;
+  }
+
+  .day-cal__appt-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .day-cal__appt-card-time {
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .day-cal__appt-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
+    font-size: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    max-width: 5.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .day-cal__appt-status-icon {
+    font-size: 0.55rem;
+    line-height: 1;
+  }
+
+  .day-cal__appt-status-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .day-cal__appt-status--confirmed,
+  .day-cal__appt-status--arrived,
+  .day-cal__appt-status--completed {
+    color: #2d5a3d;
+  }
+
+  .day-cal__appt-status--pending,
+  .day-cal__appt-status--booked {
+    color: #6b5a2d;
+  }
+
+  .day-cal__appt-status--no_show {
+    color: #922;
+  }
+
+  .day-cal__appt-card-client {
+    font-weight: 700;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .day-cal__appt-card-service {
+    font-size: 0.58rem;
+    font-weight: 500;
+    line-height: 1.25;
+    opacity: 0.92;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-transform: none;
+  }
+
+  .day-cal__appt-card-more {
+    font-size: 0.52rem;
+    font-weight: 600;
+    opacity: 0.75;
+  }
+
+  .day-cal__appt-card-indicators {
+    display: flex;
+    gap: 0.2rem;
+    margin-top: 0.05rem;
+  }
+
+  .day-cal__appt-indicator {
+    font-size: 0.48rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.05rem 0.25rem;
+    border-radius: 0.15rem;
+    background: rgba(0, 0, 0, 0.08);
+  }
+
+  .day-cal__appt-card--completed {
+    opacity: 0.78;
+  }
+
+  .day-cal__appt-card--no_show {
+    opacity: 0.6;
+    text-decoration: line-through;
+  }
+
+  .day-cal__appt-card--draggable {
+    cursor: grab;
+  }
+
+  .day-cal__appt-card--dragging {
+    opacity: 0.45;
+    cursor: grabbing;
+  }
+
+  .day-cal__appt-resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0.35rem;
+    cursor: ns-resize;
+    border-radius: 0 0 4px 4px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.18), transparent);
+  }
+
+  .day-cal__slot--drop-target {
+    background: rgba(231, 172, 70, 0.35) !important;
+    box-shadow: inset 0 0 0 2px var(--color-citrine);
+  }
+
+  .day-cal__toast {
+    position: fixed;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-radius: 0.4rem;
+    background: var(--color-charcoal, #2a2a2a);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    font-size: 0.85rem;
+  }
+
+  .day-cal__toast[hidden] {
+    display: none !important;
+  }
+
+  .day-cal__toast-undo {
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: transparent;
+    color: #fff;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .day-cal__find-form {
+    margin-bottom: 1rem;
+  }
+
+  .day-cal__find-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .day-cal__find-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.35rem;
+    background: var(--color-light);
+  }
+
+  .day-cal__find-item-main {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .day-cal__find-item-meta {
+    font-size: 0.72rem;
+    color: var(--color-gray);
+  }
+
+  .day-cal__waitlist-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .day-cal__waitlist-item {
+    padding: 0.65rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.35rem;
+    background: var(--color-light);
+  }
+
+  .day-cal__waitlist-item-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  .day-cal__waitlist-item-services {
+    margin: 0.25rem 0 0;
+    font-size: 0.82rem;
+  }
+
+  .day-cal__waitlist-item-meta {
+    margin: 0.15rem 0 0.5rem;
+    font-size: 0.72rem;
+    color: var(--color-gray);
+  }
+
+  .day-cal__waitlist-item-status {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .day-cal__drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .day-cal__drawer[hidden] {
+    display: none !important;
+  }
+
+  .day-cal__drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    border: none;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    cursor: pointer;
+  }
+
+  .day-cal__drawer-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: min(100%, 24rem);
+    max-width: 100%;
+    height: 100%;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border-left: 1px solid var(--color-border);
+    box-shadow: -8px 0 32px var(--color-card-shadow);
+    transform: translateX(100%);
+    transition: transform 0.28s ease;
+  }
+
+  .day-cal__drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+    flex-shrink: 0;
+  }
+
+  .day-cal__drawer-title {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+
+  .day-cal__drawer-subtitle {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+    color: var(--color-gray);
+  }
+
+  .day-cal__drawer-subtitle[hidden] {
+    display: none;
+  }
+
+  .day-cal__drawer-close {
+    border: none;
+    background: none;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .day-cal__drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .day-cal__drawer-steps {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__drawer-step {
+    flex: 1;
+    padding: 0.3rem 0.35rem;
+    border-radius: 0.25rem;
+    background: var(--color-light);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-gray);
+  }
+
+  .day-cal__drawer-step.is-active {
+    background: rgba(231, 172, 70, 0.18);
+    color: var(--color-text);
+    box-shadow: inset 0 -2px 0 var(--color-citrine);
+  }
+
+  .day-cal__duration-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.78rem;
+    color: var(--color-sage, #6b7f66);
+    font-weight: 600;
+  }
+
+  .day-cal__duration-hint[hidden] {
+    display: none;
+  }
+
+  .day-cal__form-actions--sticky {
+    position: sticky;
+    bottom: 0;
+    margin: 0 -1rem -1rem;
+    padding: 0.75rem 1rem 1rem;
+    background: linear-gradient(to top, var(--color-bg) 85%, transparent);
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__detail-card {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 0.4rem;
+    background: var(--color-light);
+  }
+
+  .day-cal__detail-status {
+    display: inline-block;
+    margin-bottom: 0.65rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: rgba(231, 172, 70, 0.2);
+  }
+
+  .day-cal__detail-status--confirmed,
+  .day-cal__detail-status--arrived {
+    background: rgba(141, 158, 136, 0.25);
+  }
+
+  .day-cal__detail-grid {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+  }
+
+  .day-cal__detail-grid dt {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+  }
+
+  .day-cal__detail-grid dd {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .day-cal__detail-grid--full {
+    grid-column: 1 / -1;
+  }
+
+  .day-cal__detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__link-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--color-text);
+    background: transparent;
+  }
+
+  .day-cal__link-btn--primary {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.15);
+  }
+
+  .day-cal__detail-block-reason {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
   }
 
   .day-cal__now-line {
@@ -3082,6 +4609,11 @@ const calendarConfig = {
     text-overflow: ellipsis;
   }
 
+  .day-cal__appt-ghost {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    border-radius: 4px;
+  }
+
   .day-cal__sheet.is-open {
     pointer-events: auto;
   }
@@ -3094,28 +4626,26 @@ const calendarConfig = {
     transform: translateY(0);
   }
 
-  .day-cal__center-modal.is-open {
+  .day-cal__drawer.is-open {
     pointer-events: auto;
   }
 
-  .day-cal__center-modal.is-open .day-cal__center-modal-backdrop {
+  .day-cal__drawer.is-open .day-cal__drawer-backdrop {
     opacity: 1;
   }
 
-  .day-cal__center-modal.is-open .day-cal__center-modal-panel {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+  .day-cal__drawer.is-open .day-cal__drawer-panel {
+    transform: translateX(0);
   }
 
-  /* Modal forms are injected at runtime — theme via global selectors */
-  .day-cal__center-modal-panel .form-label,
+  .day-cal__drawer-panel .form-label,
   .day-cal__sheet-panel .form-label {
     color: var(--color-text);
   }
 
-  .day-cal__center-modal-panel .form-input,
-  .day-cal__center-modal-panel .form-input--textarea,
-  .day-cal__center-modal-panel select.form-input,
+  .day-cal__drawer-panel .form-input,
+  .day-cal__drawer-panel .form-input--textarea,
+  .day-cal__drawer-panel select.form-input,
   .day-cal__sheet-panel .form-input,
   .day-cal__sheet-panel .form-input--textarea,
   .day-cal__sheet-panel select.form-input {
@@ -3124,21 +4654,22 @@ const calendarConfig = {
     border-color: var(--color-border);
   }
 
-  .day-cal__center-modal-panel .label-meta,
+  .day-cal__drawer-panel .label-meta,
   .day-cal__sheet-panel .label-meta {
     color: var(--color-gray);
   }
 
-  .day-cal__center-modal-panel .day-cal__hint,
+  .day-cal__drawer-panel .day-cal__hint,
   .day-cal__sheet-panel .day-cal__hint {
     color: var(--color-gray);
   }
 
-  .day-cal__center-modal-panel .day-cal__form-error,
+  .day-cal__drawer-panel .day-cal__form-error,
   .day-cal__sheet-panel .day-cal__form-error {
     color: var(--color-text);
   }
 
+  .day-cal__drawer-panel .day-cal__btn-secondary,
   .day-cal__center-modal-panel .day-cal__btn-secondary,
   .day-cal__sheet-panel .day-cal__btn-secondary {
     padding: 0.7rem 1rem;
@@ -3152,6 +4683,7 @@ const calendarConfig = {
     cursor: pointer;
   }
 
+  .day-cal__drawer-panel .day-cal__btn-danger,
   .day-cal__center-modal-panel .day-cal__btn-danger,
   .day-cal__sheet-panel .day-cal__btn-danger {
     padding: 0.7rem 1rem;
@@ -3165,12 +4697,14 @@ const calendarConfig = {
     cursor: pointer;
   }
 
+  .day-cal__drawer-panel .day-cal__form,
   .day-cal__center-modal-panel .day-cal__form,
   .day-cal__sheet-panel .day-cal__form {
     display: grid;
     gap: 0.85rem;
   }
 
+  .day-cal__drawer-panel .day-cal__form-actions,
   .day-cal__center-modal-panel .day-cal__form-actions,
   .day-cal__sheet-panel .day-cal__form-actions {
     display: flex;
@@ -3193,6 +4727,7 @@ const calendarConfig = {
     margin: 0;
   }
 
+  .day-cal__drawer-panel .day-cal__detail-list,
   .day-cal__center-modal-panel .day-cal__detail-list {
     margin: 0.25rem 0 0;
     padding-left: 1.15rem;
@@ -3200,10 +4735,12 @@ const calendarConfig = {
     color: var(--color-text);
   }
 
+  .day-cal__drawer-panel .day-cal__detail-list li,
   .day-cal__center-modal-panel .day-cal__detail-list li {
     margin: 0.15rem 0;
   }
 
+  .day-cal__drawer-panel .day-cal__detail a,
   .day-cal__center-modal-panel .day-cal__detail a {
     color: var(--color-text);
   }

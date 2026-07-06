@@ -8,6 +8,9 @@
     "build": "astro build",
     "build:alt": "astro build --outDir dist-build",
     "preview": "astro preview",
+    "test": "node --experimental-strip-types scripts/test-report-range.mjs",
+    "test:report-range": "node --experimental-strip-types scripts/test-report-range.mjs",
+    "qa:mobile-viewport": "node scripts/mobile-viewport-qa.mjs",
     "deploy": "wrangler deploy"
   },
   "dependencies": {
@@ -19,5 +22,8 @@
     "@supabase/supabase-js": "^2.110.0",
     "astro": "^7.0.4",
     "stripe": "^22.3.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
   }
 }

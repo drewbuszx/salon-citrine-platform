@@ -54,6 +54,8 @@ type PatchAppointmentBody = {
 
   status?: string;
 
+  staff_id?: string;
+
 };
 
 
@@ -188,6 +190,34 @@ export const PATCH: APIRoute = async (context) => {
 
 
 
+  let nextStaffId = existing.staff_id;
+
+
+
+  if (body.staff_id !== undefined) {
+
+    const staffId = String(body.staff_id).trim();
+
+    if (!staffId) {
+
+      return jsonError("Invalid staff_id", 400);
+
+    }
+
+    if (!canManageStaffColumn(staff, staffId)) {
+
+      return jsonError("Not allowed to move appointment to this provider", 403);
+
+    }
+
+    nextStaffId = staffId;
+
+    updates.staff_id = staffId;
+
+  }
+
+
+
   if (body.status !== undefined) {
 
     const status = String(body.status);
@@ -226,11 +256,11 @@ export const PATCH: APIRoute = async (context) => {
 
   const nextStatus = updates.status ?? existing.status;
 
-  if (updates.starts_at !== undefined || updates.ends_at !== undefined || updates.status !== undefined) {
+  if (updates.starts_at !== undefined || updates.ends_at !== undefined || updates.status !== undefined || updates.staff_id !== undefined) {
 
     const validation = await validateAppointmentTimeRange(supabase, {
 
-      staffId: existing.staff_id,
+      staffId: nextStaffId,
 
       startsAt: new Date(nextStarts),
 

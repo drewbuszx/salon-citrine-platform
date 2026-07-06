@@ -65,6 +65,7 @@ const isAuthenticated = Boolean(user && staff);
         activeNav={activeNav}
         staff={staff}
         isAuthenticated={isAuthenticated}
+        pageTitle={title}
       />
 
       <main
@@ -88,6 +89,9 @@ const isAuthenticated = Boolean(user && staff);
     </div>
 
     <script>
+      import "../scripts/nav-state.ts";
+      import "../scripts/team-header.ts";
+
       const storageKey = "theme";
       const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
 
@@ -143,128 +147,6 @@ const isAuthenticated = Boolean(user && staff);
           }
           logoLink?.classList.add("is-wordmark");
         });
-      });
-
-      const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
-      const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
-      const profileDropdown = document.querySelector<HTMLElement>("[data-profile-dropdown]");
-      const profileTrigger = document.querySelector<HTMLButtonElement>("[data-profile-trigger]");
-      const profileMenu = document.querySelector<HTMLElement>("[data-profile-menu]");
-
-      function getProfileMenuItems() {
-        return profileMenu
-          ? Array.from(
-              profileMenu.querySelectorAll<HTMLElement>(
-                '[role="menuitem"]:not([disabled])',
-              ),
-            )
-          : [];
-      }
-
-      function closeProfileMenu(returnFocus = false) {
-        profileDropdown?.classList.remove("is-open");
-        profileTrigger?.setAttribute("aria-expanded", "false");
-        profileMenu?.setAttribute("hidden", "");
-        if (returnFocus) {
-          profileTrigger?.focus();
-        }
-      }
-
-      function openProfileMenu(focusFirst = true) {
-        profileDropdown?.classList.add("is-open");
-        profileTrigger?.setAttribute("aria-expanded", "true");
-        profileMenu?.removeAttribute("hidden");
-        if (focusFirst) {
-          getProfileMenuItems()[0]?.focus();
-        }
-      }
-
-      function focusProfileMenuItem(direction: 1 | -1) {
-        const items = getProfileMenuItems();
-        if (!items.length) return;
-        const active = document.activeElement;
-        const index = items.findIndex((item) => item === active);
-        const nextIndex =
-          index === -1
-            ? direction === 1
-              ? 0
-              : items.length - 1
-            : (index + direction + items.length) % items.length;
-        items[nextIndex]?.focus();
-      }
-
-      profileTrigger?.addEventListener("click", (event) => {
-        event.stopPropagation();
-        const isOpen = profileDropdown?.classList.contains("is-open");
-        if (isOpen) {
-          closeProfileMenu();
-        } else {
-          openProfileMenu();
-        }
-      });
-
-      document.addEventListener("click", (event) => {
-        if (
-          profileDropdown &&
-          !profileDropdown.contains(event.target as Node)
-        ) {
-          closeProfileMenu();
-        }
-      });
-
-      profileTrigger?.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          closeProfileMenu(true);
-          return;
-        }
-        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-          event.preventDefault();
-          if (!profileDropdown?.classList.contains("is-open")) {
-            openProfileMenu(event.key === "ArrowUp");
-          } else {
-            focusProfileMenuItem(event.key === "ArrowDown" ? 1 : -1);
-          }
-        }
-      });
-
-      profileMenu?.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeProfileMenu(true);
-          return;
-        }
-        if (event.key === "ArrowDown") {
-          event.preventDefault();
-          focusProfileMenuItem(1);
-        }
-        if (event.key === "ArrowUp") {
-          event.preventDefault();
-          focusProfileMenuItem(-1);
-        }
-        if (event.key === "Tab") {
-          closeProfileMenu();
-        }
-      });
-
-      function closeMobileMenu() {
-        nav?.classList.remove("is-open");
-        menuToggle?.setAttribute("aria-expanded", "false");
-      }
-
-      menuToggle?.addEventListener("click", () => {
-        const isOpen = nav?.classList.toggle("is-open");
-        menuToggle.setAttribute("aria-expanded", String(!!isOpen));
-        if (isOpen) {
-          closeProfileMenu();
-        }
-      });
-
-      document
-        .querySelector<HTMLButtonElement>("[data-menu-close]")
-        ?.addEventListener("click", closeMobileMenu);
-
-      nav?.querySelectorAll("a").forEach((link) => {
-        link.addEventListener("click", closeMobileMenu);
       });
     </script>
   </body>
