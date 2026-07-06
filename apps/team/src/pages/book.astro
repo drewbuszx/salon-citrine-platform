@@ -46,6 +46,11 @@ try {
   console.error("Failed to load calendar", error);
   calendar = { staff: [], appointments: [], blockedTimes: [], staffSchedules: {} };
 }
+
+const { count: waitlistCount } = await supabase
+  .from("waitlist_entries")
+  .select("*", { count: "exact", head: true })
+  .eq("status", "active");
 ---
 
 <TeamLayout title="Book" activeNav="book" fullBleed>
@@ -59,5 +64,6 @@ try {
     servicesByStaff={servicesByStaff}
     currentStaffId={staff.id}
     managerView={managerView}
+    waitlistCount={waitlistCount ?? 0}
   />
 </TeamLayout>

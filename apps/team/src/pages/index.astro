@@ -36,6 +36,35 @@ try {
 
 const todaySalon = salonDateString(new Date());
 
+const [
+  { count: todayApptCount },
+  { count: waitlistCount },
+  { data: productRows },
+] = await Promise.all([
+  supabase
+    .from("appointments")
+    .select("*", { count: "exact", head: true })
+    .eq("staff_id", staff.id)
+    .gte("starts_at", `${todaySalon}T00:00:00`)
+    .lt("starts_at", `${todaySalon}T23:59:59`)
+    .not("status", "in", "(cancelled,no_show)"),
+  supabase
+    .from("waitlist_entries")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "active"),
+  supabase
+    .from("products")
+    .select("reorder_threshold, inventory_stock(quantity)")
+    .eq("is_active", true),
+]);
+
+const lowStockCount = (productRows ?? []).filter((p) => {
+  const stock = Array.isArray(p.inventory_stock) ? p.inventory_stock[0] : p.inventory_stock;
+  const qty = Number(stock?.quantity ?? 0);
+  const threshold = Number(p.reorder_threshold ?? 0);
+  return threshold > 0 && qty <= threshold;
+}).length;
+
 function formatUpcomingWhen(startsAt: string) {
   const dateLabel = salonDateString(new Date(startsAt));
   const timeLabel = formatTimeInSalon(startsAt);
@@ -82,6 +111,21 @@ function formatUpcomingWhen(startsAt: string) {
         Your booking link
       </a>
     </header>
+
+    <div class="dashboard__stats" aria-label="Today's snapshot">
+      <a class="dashboard__stat" href={teamUrl("/book")}>
+        <span class="dashboard__stat-value">{todayApptCount ?? 0}</span>
+        <span class="dashboard__stat-label">Today's appointments</span>
+      </a>
+      <a class="dashboard__stat" href={teamUrl("/waitlist")}>
+        <span class="dashboard__stat-value">{waitlistCount ?? 0}</span>
+        <span class="dashboard__stat-label">Waitlist</span>
+      </a>
+      <a class="dashboard__stat" href={teamUrl("/inventory")}>
+        <span class="dashboard__stat-value">{lowStockCount}</span>
+        <span class="dashboard__stat-label">Low stock</span>
+      </a>
+    </div>
 
     <nav class="dashboard__actions" aria-label="Quick actions">
       <a class="dashboard__action dashboard__action--primary" href={teamUrl("/book")}>
@@ -198,6 +242,50 @@ function formatUpcomingWhen(startsAt: string) {
     color: var(--color-sage-dark, var(--color-sage));
     text-decoration: underline;
     text-underline-offset: 0.15em;
+  }
+
+  .dashboard__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .dashboard__stat {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.85rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.65rem;
+    background: var(--color-bg);
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .dashboard__stat:hover,
+  .dashboard__stat:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 4px 16px rgba(47, 42, 40, 0.08);
+    outline: none;
+  }
+
+  .dashboard__stat-value {
+    font-family: var(--font-sans);
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--color-text);
+  }
+
+  .dashboard__stat-label {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-gray);
   }
 
   .dashboard__actions {
