@@ -77,7 +77,11 @@ const nowLineTop = isToday ? currentTimeLineTopRem() : null;
 const nowLabel = isToday && nowLineTop !== null ? formatNowLabel() : null;
 const salonClosed = isSalonClosedOnDay(dayParam);
 const staffColWidthRem = staffColumnWidthRem(staff);
-const defaultScrollTopRem = defaultCalendarScrollTopRem(dayParam);
+const defaultScrollTopRem = defaultCalendarScrollTopRem(dayParam, {
+  appointments,
+  staffIds: staff.map((member) => member.id),
+  staffSchedules,
+});
 const nextOpenGap = findNextOpenGap(
   selectedDay,
   dayParam,
@@ -119,6 +123,7 @@ function staffPhotoUrl(member: CalendarStaff) {
 
 const calendarConfig = {
   dayParam,
+  dayLabel: formatDayLabel(selectedDay),
   slotMinutes: CALENDAR_SLOT_MINUTES,
   managerView,
   currentStaffId,
@@ -297,6 +302,44 @@ const calendarConfig = {
       )
     }
   </header>
+
+  {
+    staff.length > 1 && (
+      <div class="day-cal__mobile-bar" data-mobile-staff-bar>
+        <button
+          type="button"
+          class="day-cal__mobile-staff-btn"
+          data-mobile-staff-prev
+          aria-label="Previous provider"
+        >
+          ‹
+        </button>
+        <label class="day-cal__mobile-staff-select-wrap">
+          <span class="visually-hidden">Provider</span>
+          <select class="day-cal__mobile-staff-select" data-mobile-staff-select>
+            {staff.map((member) => (
+              <option value={member.id} selected={member.id === currentStaffId}>
+                {member.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          class="day-cal__mobile-staff-btn"
+          data-mobile-staff-next
+          aria-label="Next provider"
+        >
+          ›
+        </button>
+      </div>
+    )
+  }
+
+  <div class="day-cal__compact-subbar" data-compact-subbar aria-hidden="true">
+    <span class="day-cal__compact-date" data-compact-date>{formatDayLabel(selectedDay)}</span>
+    <span class="day-cal__compact-staff" data-compact-staff />
+  </div>
 
   <div class="day-cal__frame">
     <div class="day-cal__viewport" data-calendar-viewport>
@@ -676,6 +719,9 @@ const calendarConfig = {
     id="day-cal-config"
     is:inline
     set:html={JSON.stringify(calendarConfig).replace(/</g, "\\u003c")}></script>
+  <script>
+    import "../scripts/day-calendar-mobile.ts";
+  </script>
   <script is:inline>
     (function () {
       const scriptEl = document.currentScript;
@@ -2739,6 +2785,7 @@ const calendarConfig = {
           columns.style.setProperty("--day-staff-count", String(visible || 1));
         }
         updateWeekLinkHref();
+        root.dispatchEvent(new CustomEvent("team:staff-columns-changed"));
       }
 
       function updateWeekLinkHref() {
@@ -2775,6 +2822,7 @@ const calendarConfig = {
       });
 
       applyStaffFilterFromStorage();
+      root.dispatchEvent(new CustomEvent("team:day-cal-ready"));
       }
 
       if (document.readyState === "loading") {
@@ -4743,5 +4791,186 @@ const calendarConfig = {
   .day-cal__drawer-panel .day-cal__detail a,
   .day-cal__center-modal-panel .day-cal__detail a {
     color: var(--color-text);
+  }
+
+  .day-cal__mobile-bar {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem clamp(0.75rem, 2vw, 1.25rem);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .day-cal__mobile-staff-btn {
+    flex: 0 0 var(--touch-target-min, 2.75rem);
+    width: var(--touch-target-min, 2.75rem);
+    height: var(--touch-target-min, 2.75rem);
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .day-cal__mobile-staff-select-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .day-cal__mobile-staff-select {
+    width: 100%;
+    min-height: var(--touch-target-min, 2.75rem);
+    padding: 0.4rem 0.65rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.35rem;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+  }
+
+  .day-cal__compact-subbar {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 19;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem clamp(0.75rem, 2vw, 1.25rem);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .day-cal__compact-subbar.is-visible {
+    display: flex;
+  }
+
+  .day-cal__compact-date {
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .day-cal__compact-staff {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--color-gray);
+    text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 48rem) {
+    .day-cal__mobile-bar {
+      display: flex;
+    }
+
+    .day-cal__staff-filter {
+      display: none;
+    }
+
+    .day-cal__toolbar-primary-actions .day-cal__subbar-btn--ghost:not(.day-cal__subbar-btn--waitlist) {
+      display: none;
+    }
+
+    .day-cal__header.is-compact .day-cal__toolbar-primary {
+      display: none;
+    }
+
+    .day-cal__header.is-compact .day-cal__toolbar-secondary {
+      padding-top: 0;
+    }
+
+    .day-cal__week-strip {
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-inline: 0.25rem 0.5rem;
+      margin-inline: -0.25rem;
+    }
+
+    .day-cal__week-day {
+      scroll-snap-align: start;
+      min-width: 2.65rem;
+    }
+
+    .day-cal__columns {
+      min-width: 100%;
+      width: 100%;
+    }
+
+    .day-cal:not(.day-cal--mobile-single) [data-staff-column] {
+      display: none;
+      flex: 0 0 100%;
+      width: 100%;
+      min-width: 100%;
+      max-width: 100%;
+    }
+
+    .day-cal:not(.day-cal--mobile-single) [data-staff-column]:not([hidden]) {
+      display: flex;
+    }
+
+    .day-cal:not(.day-cal--mobile-single)
+      [data-staff-column]:not([hidden])
+      ~ [data-staff-column]:not([hidden]) {
+      display: none;
+    }
+
+    .day-cal--mobile-single .day-cal__column {
+      flex: 0 0 100%;
+      width: 100%;
+      min-width: 100%;
+      max-width: 100%;
+      display: none;
+    }
+
+    .day-cal--mobile-single .day-cal__column.is-mobile-active {
+      display: flex;
+    }
+
+    .day-cal--mobile-single .day-cal__columns::after {
+      display: none;
+    }
+
+    .day-cal--mobile-single {
+      --day-staff-width: 100%;
+    }
+
+    .day-cal__block {
+      left: 0.35rem;
+      right: 0.35rem;
+      font-size: 0.72rem;
+      padding: 0.28rem 0.45rem 0.28rem 0.5rem;
+    }
+
+    .day-cal__time-axis {
+      position: sticky;
+      left: 0;
+      z-index: 6;
+      background: var(--color-bg);
+    }
+
+    .day-cal__staff-header {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .day-cal__mobile-bar,
+    .day-cal__compact-subbar {
+      display: none !important;
+    }
   }
 </style>

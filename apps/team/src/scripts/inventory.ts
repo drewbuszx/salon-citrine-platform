@@ -56,42 +56,6 @@ function initials(name: string) {
   return letters.join("") || "?";
 }
 
-/**
- * Pluralize a unit against a quantity: (1, "tube") -> "tube", (2, "tube") -> "tubes".
- * "each" is treated as invariant.
- */
-function pluralizeUnit(unit: string, qty: number) {
-  const u = (unit ?? "").trim();
-  if (!u) return "";
-  const lower = u.toLowerCase();
-  if (lower === "each" || Math.abs(qty) === 1) return u;
-  if (/(s|x|z|ch|sh)$/.test(lower)) return `${u}es`;
-  if (/[^aeiou]y$/.test(lower)) return `${u.slice(0, -1)}ies`;
-  return `${u}s`;
-}
-
-/** (2, "tube") -> "2 tubes"; (1, "tube") -> "1 tube". */
-function formatQuantity(qty: number, unit: string) {
-  return `${formatQty(qty)} ${pluralizeUnit(unit, qty)}`.trim();
-}
-
-/** "developer" -> "Developer"; "hair-color" / "hair_color" -> "Hair Color". */
-function formatCategoryLabel(value: string | null | undefined) {
-  const raw = (value ?? "").trim();
-  if (!raw) return "Uncategorized";
-  return raw
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const letters = parts.slice(0, 2).map((word) => word.charAt(0).toUpperCase());
-  return letters.join("") || "?";
-}
-
 function formatPrice(cents: number | null) {
   if (cents == null) return "—";
   return new Intl.NumberFormat(undefined, {
@@ -151,10 +115,10 @@ function initInventory(root: HTMLElement) {
   const minPriceInput = root.querySelector<HTMLInputElement>("[data-filter-min-price]");
   const maxPriceInput = root.querySelector<HTMLInputElement>("[data-filter-max-price]");
   const clearFiltersBtn = root.querySelector<HTMLButtonElement>("[data-clear-filters-btn]");
-  const lowStockEl = root.querySelector<HTMLElement>("[data-low-stock-banner]");
   const statusEl = root.querySelector<HTMLElement>("[data-status]");
   const totalEl = root.querySelector<HTMLElement>("[data-total-count]");
-  const lowStockCountEl = root.querySelector<HTMLElement>("[data-low-stock-count]");
+  const lowStockSegmentEl = root.querySelector<HTMLElement>("[data-low-stock-segment]");
+  const lowStockSummaryEl = root.querySelector<HTMLElement>("[data-low-stock-summary]");
   const filterCountEl = root.querySelector<HTMLElement>("[data-filter-count]");
   const sortSelect = root.querySelector<HTMLSelectElement>("[data-sort]");
   const viewButtons = root.querySelectorAll<HTMLButtonElement>("[data-view]");
@@ -336,11 +300,10 @@ function initInventory(root: HTMLElement) {
     lowStockCount = data.lowStockCount as number;
 
     if (totalEl) totalEl.textContent = String(totalCount);
-    if (lowStockCountEl) lowStockCountEl.textContent = String(lowStockCount);
     updateFilterCount();
+    renderLowStockSummary(stockLevel === "low");
 
     renderProducts();
-    renderLowStockAlert(stockLevel === "low");
 
     if (detailProductId) {
       const updated = products.find((p) => p.id === detailProductId);
@@ -349,31 +312,41 @@ function initInventory(root: HTMLElement) {
     }
   }
 
-  function renderLowStockAlert(showingLowStock: boolean) {
-    if (!lowStockEl) return;
-    lowStockEl.hidden = lowStockCount === 0 || showingLowStock;
-    if (lowStockCount > 0 && !showingLowStock) {
-      lowStockEl.classList.add("team-list-layout__notice--actionable");
-      lowStockEl.innerHTML = `
-        <span class="stock-alert__text">${lowStockCount} product${lowStockCount === 1 ? "" : "s"} need${lowStockCount === 1 ? "s" : ""} restocking</span>
-        <button type="button" class="stock-alert__view" data-low-stock-view>View</button>`;
-      lowStockEl
-        .querySelector<HTMLButtonElement>("[data-low-stock-view]")
-        ?.addEventListener("click", () => {
-          const lowRadio = root.querySelector<HTMLInputElement>(
-            '[data-filter-stock][value="low"]',
-          );
-          if (lowRadio) {
-            lowRadio.checked = true;
-            updateFilterCount();
-            void fetchProducts(searchInput?.value ?? "");
-          }
-        });
-    } else {
-      lowStockEl.classList.remove("team-list-layout__notice--actionable");
-      lowStockEl.textContent = "";
+  function applyLowStockFilter() {
+    const lowRadio = root.querySelector<HTMLInputElement>('[data-filter-stock][value="low"]');
+    if (lowRadio) {
+      lowRadio.checked = true;
+      updateFilterCount();
+      void fetchProducts(searchInput?.value ?? "");
     }
   }
+
+  function renderLowStockSummary(showingLowStock: boolean) {
+    if (!lowStockSegmentEl || !lowStockSummaryEl) return;
+    if (lowStockCount === 0) {
+      lowStockSegmentEl.hidden = true;
+      lowStockSummaryEl.textContent = "";
+      return;
+    }
+
+    lowStockSegmentEl.hidden = false;
+    const label = `${lowStockCount} below threshold`;
+    if (showingLowStock) {
+      lowStockSummaryEl.textContent = label;
+      return;
+    }
+
+    lowStockSummaryEl.innerHTML = `${escapeHtml(label)} · <button type="button" class="stock-low-stock-link" data-low-stock-view>View low stock</button>`;
+  }
+
+  root.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest("[data-low-stock-view]")) {
+      event.preventDefault();
+      applyLowStockFilter();
+    }
+  });
 
   function sortProducts(list: Product[]) {
     const copy = [...list];
@@ -507,12 +480,11 @@ function initInventory(root: HTMLElement) {
       </div>`;
   }
 
-  function renderGroupHeading(name: string, count: number, low: number) {
-    const lowLabel = low > 0 ? ` · <span class="stock-group__low">${low} low stock</span>` : "";
+  function renderGroupHeading(name: string, count: number) {
     return `
       <div class="stock-group__head">
         <h3 class="stock-group__title">${escapeHtml(formatCategoryLabel(name))}</h3>
-        <span class="stock-group__count">${count} product${count === 1 ? "" : "s"}${lowLabel}</span>
+        <span class="stock-group__count">${count} product${count === 1 ? "" : "s"}</span>
       </div>`;
   }
 
@@ -540,7 +512,7 @@ function initInventory(root: HTMLElement) {
         .map((group) => {
           const sorted = sortProducts(group.products);
           const inner = viewMode === "table" ? renderTable(sorted) : renderGrid(sorted);
-          return `<section class="stock-group">${renderGroupHeading(group.name, group.products.length, group.lowStockCount)}${inner}</section>`;
+          return `<section class="stock-group">${renderGroupHeading(group.name, group.products.length)}${inner}</section>`;
         })
         .join("");
     } else {

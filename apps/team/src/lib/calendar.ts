@@ -234,14 +234,15 @@ export function eventBlockStyle(startsAt: string, endsAt: string) {
   const gridStart = CALENDAR_START_HOUR * 60;
   const startMin = minutesFromDayStart(startsAt);
   const endMin = minutesFromDayStart(endsAt);
-  const top =
-    ((startMin - gridStart) / CALENDAR_SLOT_MINUTES) * CALENDAR_ROW_HEIGHT_REM;
-  const height =
-    ((Math.max(endMin, startMin + 15) - startMin) / CALENDAR_SLOT_MINUTES) *
-    CALENDAR_ROW_HEIGHT_REM;
+  const slotOffset = (startMin - gridStart) / CALENDAR_SLOT_MINUTES;
+  const slotSpan =
+    (Math.max(endMin, startMin + CALENDAR_SLOT_MINUTES) - startMin) /
+    CALENDAR_SLOT_MINUTES;
+  const top = Math.round(slotOffset * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
+  const height = Math.round(Math.max(slotSpan, 1) * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
   return {
     top: `${Math.max(top, 0)}rem`,
-    height: `${Math.max(height, 1.25)}rem`,
+    height: `${Math.max(height, CALENDAR_ROW_HEIGHT_REM)}rem`,
   };
 }
 
@@ -436,21 +437,39 @@ export function staffShiftStatus(
  * Default vertical scroll offset (rem).
  * Today: one hour before current time. Other days: one hour before salon open.
  */
-export function defaultCalendarScrollTopRem(dateStr: string, now = new Date()) {
+export function defaultCalendarScrollTopRem(
+  dateStr: string,
+  options: {
+    appointments?: CalendarAppointment[];
+    staffIds?: string[];
+    staffSchedules?: Record<string, StaffSchedule[]>;
+    now?: Date;
+  } = {},
+) {
+  const now = options.now ?? new Date();
   const gridStart = CALENDAR_START_HOUR * 60;
-  if (isTodayInSalon(parseDayParam(dateStr))) {
-    const minutes = minutesFromDayStart(now.toISOString());
-    const targetMinutes = Math.max(gridStart, minutes - 60);
-    return (
-      ((targetMinutes - gridStart) / CALENDAR_SLOT_MINUTES) *
-      CALENDAR_ROW_HEIGHT_REM
-    );
+  const day = parseDayParam(dateStr);
+  let targetMinutes: number;
+
+  if (isTodayInSalon(day)) {
+    targetMinutes = Math.max(gridStart, minutesFromDayStart(now.toISOString()) - 45);
+  } else {
+    let earliest = salonOpenMinutesForDay(dateStr) ?? 9 * 60;
+    for (const id of options.staffIds ?? []) {
+      const schedule = scheduleForStaffOnDay(options.staffSchedules?.[id] ?? [], dateStr);
+      if (schedule) {
+        earliest = Math.min(earliest, parseTimeToMinutes(schedule.startTime));
+      }
+    }
+    for (const appt of options.appointments ?? []) {
+      if (!isSameDayInSalon(appt.startsAt, day)) continue;
+      earliest = Math.min(earliest, minutesFromDayStart(appt.startsAt));
+    }
+    targetMinutes = Math.max(gridStart, earliest - 30);
   }
-  const openMinutes = salonOpenMinutesForDay(dateStr) ?? 9 * 60;
-  const targetMinutes = Math.max(gridStart, openMinutes - 60);
+
   return (
-    ((targetMinutes - gridStart) / CALENDAR_SLOT_MINUTES) *
-    CALENDAR_ROW_HEIGHT_REM
+    ((targetMinutes - gridStart) / CALENDAR_SLOT_MINUTES) * CALENDAR_ROW_HEIGHT_REM
   );
 }
 
