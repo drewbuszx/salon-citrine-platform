@@ -11,7 +11,7 @@ import { teamUrl } from "../lib/supabase-server";
 export type TeamActiveNav =
   | "dashboard"
   | "book"
-  | "messages"
+  | "tasks"
   | "stock"
   | "clients"
   | "docs"
@@ -42,7 +42,7 @@ const navTabs: {
 }[] = [
   { id: "dashboard", label: "Dashboard", href: teamUrl("/") },
   { id: "book", label: "Book", href: teamUrl("/book") },
-  { id: "messages", label: "Messages", href: teamUrl("/tasks") },
+  { id: "tasks", label: "Tasks", href: teamUrl("/tasks") },
   { id: "stock", label: "Stock", href: teamUrl("/inventory") },
   { id: "clients", label: "Clients", href: teamUrl("/clients") },
   { id: "docs", label: "Docs", href: teamUrl("/docs") },
