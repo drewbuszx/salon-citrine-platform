@@ -219,16 +219,22 @@ const staffOptions = staffRows ?? [];
     --notebook-margin-line: rgba(196, 90, 78, 0.42);
     --notebook-glow-1: rgba(231, 172, 70, 0.06);
     --notebook-glow-2: rgba(141, 158, 136, 0.05);
+    --notebook-sketch-opacity: 0.09;
+    --notebook-sketch-moon: url("data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 7c-10 1-17 10-17 19 0 9 7 16 16 17-7-4-10-10-10-17 0-8 5-15 11-19z' stroke='%23ae948f' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='35' cy='11' r='0.9' fill='%23c45a4e' opacity='0.45'/%3E%3C/svg%3E");
+    --notebook-sketch-moon-sm: url("data:image/svg+xml,%3Csvg viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M26 6c-8 1-13 8-13 15 0 7 5 13 12 14-6-3-8-8-8-14 0-6 4-11 9-15z' stroke='%23ae948f' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E");
+    --notebook-sketch-crystal: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M40 6l10 24-10 44-10-44z' stroke='%238d9e88' stroke-width='1.05' stroke-linejoin='round'/%3E%3Cpath d='M24 34l8-12 8 16 8-12 8 8' stroke='%23c45a4e' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round' opacity='0.75'/%3E%3Cpath d='M18 54l10-10 12 14 10-10 12 10' stroke='%23e7ac46' stroke-width='0.85' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'/%3E%3Cpath d='M34 22l6 8-6 8-6-8z' stroke='%23ae948f' stroke-width='0.7' opacity='0.6'/%3E%3C/svg%3E");
+    --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23ae948f' stroke-width='0.55' stroke-linejoin='round'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23ae948f' stroke-width='0.5' stroke-linejoin='round' opacity='0.8'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%23c45a4e' opacity='0.35'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23e7ac46' stroke-width='0.45' opacity='0.55'/%3E%3C/svg%3E");
   }
 
   /*
-    The notebook is a single clipped shell: the binding strip and the ruled
-    paper are painted as one continuous surface, so the rule lines and the
-    margin line are guaranteed to reach every edge no matter how much task
-    content stretches the container's height.
+    Flex column shell: paper grows with task list height. Rule lines repeat-y;
+    margin line + sketch motifs live on ::before (absolute inset 0) so they
+    always stretch to the full painted paper area as content scrolls.
   */
   .notebook {
     position: relative;
+    display: flex;
+    flex-direction: column;
     max-width: 56rem;
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-lg);
@@ -266,51 +272,81 @@ const staffOptions = staffRows ?? [];
 
   .notebook__paper {
     position: relative;
+    flex: 1 1 auto;
     min-height: 18rem;
     padding: 1.25rem 1.5rem 2rem calc(var(--notebook-margin) + 1.25rem);
     background-color: var(--notebook-paper);
-    background-repeat: repeat-y, no-repeat, no-repeat, no-repeat;
+    background-repeat: repeat-y;
+    background-size: 100% var(--notebook-line);
+    background-position: 0 0;
+    background-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--notebook-line) - 1px),
+      var(--notebook-rule) calc(var(--notebook-line) - 1px),
+      var(--notebook-rule) var(--notebook-line)
+    );
+    isolation: isolate;
+  }
+
+  .notebook__paper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--notebook-sketch-opacity);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat-y;
     background-size:
-      100% var(--notebook-line),
       1.5px 100%,
-      100% 100%,
-      100% 100%;
+      3.25rem 3.25rem,
+      2.75rem 2.75rem,
+      5.5rem 5.5rem,
+      1.75rem calc(var(--notebook-line) * 2.5);
     background-position:
-      0 0,
       var(--notebook-margin) 0,
-      0 0,
-      0 0;
+      calc(var(--notebook-margin) * 0.55) 1.25rem,
+      right 1.35rem top 0.85rem,
+      right 0.65rem bottom 1.25rem,
+      calc(var(--notebook-margin) * 0.22) 0;
     background-image:
-      linear-gradient(
-        to bottom,
-        transparent calc(var(--notebook-line) - 1px),
-        var(--notebook-rule) calc(var(--notebook-line) - 1px),
-        var(--notebook-rule) var(--notebook-line)
-      ),
       linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line)),
-      radial-gradient(ellipse 80% 50% at 15% 0%, var(--notebook-glow-1) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 90% 100%, var(--notebook-glow-2) 0%, transparent 55%);
+      var(--notebook-sketch-moon),
+      var(--notebook-sketch-moon-sm),
+      var(--notebook-sketch-crystal),
+      var(--notebook-sketch-stars);
   }
 
   [data-theme="dark"] .notebook__paper {
     background-color: var(--notebook-paper-dark);
     --notebook-rule: rgba(174, 148, 143, 0.18);
     --notebook-margin-line: rgba(196, 90, 78, 0.35);
-    --notebook-glow-1: rgba(231, 172, 70, 0.04);
-    --notebook-glow-2: rgba(141, 158, 136, 0.03);
+    --notebook-sketch-opacity: 0.07;
+  }
+
+  [data-theme="dark"] .notebook__paper::before {
+    opacity: var(--notebook-sketch-opacity);
   }
 
   .notebook__paper::after {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    z-index: 0;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 15% 0%, var(--notebook-glow-1) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 100%, var(--notebook-glow-2) 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, no-repeat, repeat;
+    background-size: 100% 100%, 100% 100%, auto;
+    background-position: 0 0, 0 0, 0 0;
     opacity: 0.45;
     pointer-events: none;
     mix-blend-mode: multiply;
   }
 
   [data-theme="dark"] .notebook__paper::after {
+    --notebook-glow-1: rgba(231, 172, 70, 0.04);
+    --notebook-glow-2: rgba(141, 158, 136, 0.03);
     opacity: 0.2;
     mix-blend-mode: soft-light;
   }
