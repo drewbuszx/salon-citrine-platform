@@ -232,29 +232,19 @@ const staffOptions = staffRows ?? [];
     --notebook-sketch-crystal: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M40 6l10 24-10 44-10-44z' stroke='%238a7f72' stroke-width='1.05' stroke-linejoin='round'/%3E%3Cpath d='M24 34l8-12 8 16 8-12 8 8' stroke='%23c9a227' stroke-width='0.9' stroke-linecap='round' stroke-linejoin='round' opacity='0.67'/%3E%3Cpath d='M18 54l10-10 12 14 10-10 12 10' stroke='%23c9a227' stroke-width='0.85' stroke-linecap='round' stroke-linejoin='round' opacity='0.5'/%3E%3Cpath d='M34 22l6 8-6 8-6-8z' stroke='%23c4a5a5' stroke-width='0.75' opacity='0.89'/%3E%3C/svg%3E");
     --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23c4a5a5' stroke-width='0.55' stroke-linejoin='round' opacity='0.89'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23c4a5a5' stroke-width='0.5' stroke-linejoin='round' opacity='0.6'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%238a7f72' opacity='1'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23c9a227' stroke-width='0.45' opacity='0.67'/%3E%3C/svg%3E");
     --notebook-sketch-herb: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 100' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 94c-1-20 2-38-1-58-1.3-8 .5-16 3-24' stroke='%238a7f72' stroke-width='1' stroke-linecap='round'/%3E%3Cpath d='M29 70c-6-2-11 1-14 6 5-1 10-3 14-6z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M30 68c6-3 11 0 14 5-5-1-10-2-14-5z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M27 46c-6-2-10 1-13 6 5-1 9-3 13-6z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M28 44c5-3 10 0 13 5-5-1-9-2-13-5z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M26 24c-5-2-9 1-11 5 4-1 8-2 11-5z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Cpath d='M27 22c4-3 8 0 11 4-4-1-8-1-11-4z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Ccircle cx='31' cy='6' r='1.4' fill='%238a7f72' opacity='0.9'/%3E%3Ccircle cx='27' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3Ccircle cx='34' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3C/svg%3E");
-    /*
-      Higgsfield-generated raster assets (apps/team/public/images). Layered
-      alongside the procedural CSS lines/icons above rather than replacing
-      them: each is one comma-separated background layer, so a missing or
-      404'd image just drops that one layer while every CSS-drawn rule
-      line, margin line, and sketch icon keeps rendering untouched.
-    */
-    --notebook-paper-image: url("/team/images/tasks-notebook-paper.png");
-    --notebook-sketch-photo: url("/team/images/tasks-witchy-sketches.png");
   }
 
   /*
-    Flex column shell: paper grows with task list height. Rule lines and the
-    margin line live on the element's own background (full alpha, never
-    dimmed); sketch motifs live on ::before (absolute inset 0) at their own
-    reduced opacity, so both stretch to the full painted paper area as
-    content scrolls.
+    One sheet of paper for the whole list. The paper grows vertically with the
+    task list — its bottom edge only appears after the final task. Centered and
+    constrained to a natural page proportion so it never spans the full viewport.
   */
   .notebook {
     position: relative;
     display: flex;
     flex-direction: column;
-    max-width: 56rem;
+    max-width: 52rem;
+    margin: clamp(0.75rem, 0.4rem + 1vw, 1.5rem) auto 0;
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -289,15 +279,24 @@ const staffOptions = staffRows ?? [];
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   }
 
+  /*
+    The ONE paper layer for the whole list: base cream, horizontal ruled lines
+    on the --notebook-line grid, and a single red margin line. No stacked raster
+    textures — task rows sit transparently on top of this single surface.
+  */
   .notebook__paper {
     position: relative;
     flex: 1 1 auto;
-    min-height: 18rem;
-    padding: 1.25rem 1.5rem 2rem calc(var(--notebook-margin) + 1.25rem);
+    min-height: 16rem;
+    padding:
+      calc(var(--notebook-line) * 1.15)
+      2rem
+      calc(var(--notebook-line) * 0.75)
+      calc(var(--notebook-margin) + 1.75rem);
     background-color: var(--notebook-paper);
-    background-repeat: repeat-y, no-repeat, repeat-y;
-    background-size: 100% var(--notebook-line), 1.5px 100%, 100% auto;
-    background-position: 0 0, var(--notebook-margin) 0, 0 0;
+    background-repeat: repeat-y, no-repeat;
+    background-size: 100% var(--notebook-line), 1.5px 100%;
+    background-position: 0 0, var(--notebook-margin) 0;
     background-image:
       linear-gradient(
         to bottom,
@@ -305,18 +304,14 @@ const staffOptions = staffRows ?? [];
         var(--notebook-rule) calc(var(--notebook-line) - 1px),
         var(--notebook-rule) var(--notebook-line)
       ),
-      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line)),
-      var(--notebook-paper-image);
+      linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line));
     isolation: isolate;
   }
 
   /*
-    Sketch motifs sit on their own layer so the margin line above keeps
-    its full rgba alpha — it must NOT be diluted by --notebook-sketch-opacity.
-    Moons anchor the top-left margin, a second moon tiles repeat-y down
-    the right margin, stars tile repeat-y down the left margin, and the
-    crystal cluster + herb sprig bookend the bottom corners — so motifs
-    keep appearing no matter how far the task list scrolls.
+    The single decorative layer — sketch motifs live only on the paper
+    container, never on individual task rows. Corner/margin-anchored (no
+    full-cover tiling) so nothing bands or reads as a second stacked sheet.
   */
   .notebook__paper::before {
     content: "";
@@ -325,28 +320,22 @@ const staffOptions = staffRows ?? [];
     z-index: 0;
     pointer-events: none;
     opacity: var(--notebook-sketch-opacity);
-    background-repeat: no-repeat, repeat-y, no-repeat, repeat-y, no-repeat, repeat-y;
+    background-repeat: no-repeat;
     background-size:
       3.25rem 3.25rem,
-      1.6rem calc(var(--notebook-line) * 2.75),
       5.5rem 5.5rem,
-      1.75rem calc(var(--notebook-line) * 2.5),
       3.75rem 6.25rem,
-      100% auto;
+      1.75rem 3.5rem;
     background-position:
-      calc(var(--notebook-margin) * 0.55) 1.25rem,
-      right 0.35rem top 2rem,
-      right 0.65rem bottom 1.25rem,
-      calc(var(--notebook-margin) * 0.22) 0,
-      left 0.15rem bottom 0.5rem,
-      0 0;
+      calc(var(--notebook-margin) * 0.5) 0.75rem,
+      right 0.85rem bottom 1rem,
+      left 0.2rem bottom 0.75rem,
+      right 0.6rem top 2.5rem;
     background-image:
       var(--notebook-sketch-moon),
-      var(--notebook-sketch-moon-sm),
       var(--notebook-sketch-crystal),
-      var(--notebook-sketch-stars),
       var(--notebook-sketch-herb),
-      var(--notebook-sketch-photo);
+      var(--notebook-sketch-stars);
   }
 
   [data-theme="dark"] .notebook__paper {
@@ -354,13 +343,6 @@ const staffOptions = staffRows ?? [];
     --notebook-rule: rgba(174, 148, 143, 0.18);
     --notebook-margin-line: rgba(196, 90, 78, 0.35);
     --notebook-sketch-opacity: 0.07;
-    /* Cream paper photo would clash against the dark surface; the CSS-drawn
-       rule lines and margin line above keep working on their own. */
-    --notebook-paper-image: none;
-  }
-
-  [data-theme="dark"] .notebook__paper::before {
-    opacity: var(--notebook-sketch-opacity);
   }
 
   .notebook__paper::after {
@@ -369,22 +351,16 @@ const staffOptions = staffRows ?? [];
     inset: 0;
     z-index: 0;
     background-image:
-      radial-gradient(ellipse 80% 50% at 15% 0%, var(--notebook-glow-1) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 90% 100%, var(--notebook-glow-2) 0%, transparent 55%),
-      url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    background-repeat: no-repeat, no-repeat, repeat;
-    background-size: 100% 100%, 100% 100%, auto;
-    background-position: 0 0, 0 0, 0 0;
-    opacity: 0.45;
+      radial-gradient(ellipse 80% 45% at 12% 0%, var(--notebook-glow-1) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 35% at 92% 100%, var(--notebook-glow-2) 0%, transparent 55%);
+    opacity: 0.6;
     pointer-events: none;
-    mix-blend-mode: multiply;
   }
 
   [data-theme="dark"] .notebook__paper::after {
-    --notebook-glow-1: rgba(231, 172, 70, 0.04);
-    --notebook-glow-2: rgba(141, 158, 136, 0.03);
-    opacity: 0.2;
-    mix-blend-mode: soft-light;
+    --notebook-glow-1: rgba(231, 172, 70, 0.05);
+    --notebook-glow-2: rgba(141, 158, 136, 0.04);
+    opacity: 0.4;
   }
 
   .tasks-tabs {
@@ -417,6 +393,12 @@ const staffOptions = staffRows ?? [];
     border-bottom-color: var(--color-citrine);
   }
 
+  /* Keep the subtitle centred on the same column as the notebook sheet. */
+  .tasks-page :global(.team-list-layout__main-lead) {
+    max-width: 52rem;
+    margin-inline: auto;
+  }
+
   .tasks-page__error {
     position: relative;
     z-index: 1;
@@ -440,12 +422,13 @@ const staffOptions = staffRows ?? [];
     line-height: var(--notebook-line);
   }
 
+  /* Empty state lives at the top of the same sheet, aligned to the rules. */
   .tasks-page :global(.notebook-empty--filter) {
     display: grid;
     gap: 0;
-    align-content: center;
-    min-height: calc(var(--notebook-line) * 4);
-    padding: calc(var(--notebook-line) * 0.5) 0;
+    align-content: start;
+    min-height: calc(var(--notebook-line) * 2);
+    padding: 0;
   }
 
   .tasks-page :global(.notebook-empty__title) {
@@ -467,32 +450,18 @@ const staffOptions = staffRows ?? [];
     color: var(--color-stone-500);
   }
 
+  /*
+    Task rows are written directly on the paper: transparent, no card
+    background, no box-shadow, no rounded corners, no per-row texture. Vertical
+    rhythm follows the --notebook-line grid.
+  */
   .tasks-page :global(.notebook-entry) {
     position: relative;
-    padding: 0.4rem 0.5rem 0.4rem 0.6rem;
-    border-radius: 4px;
-    border-bottom: none;
-    transition: background var(--transition-fast);
-  }
-
-  .tasks-page :global(.notebook-entry:hover) {
-    background: rgba(231, 172, 70, 0.06);
-  }
-
-  /* High-priority tasks get a left accent bar for instant triage. */
-  .tasks-page :global(.notebook-entry.is-high)::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0.45rem;
-    bottom: 0.45rem;
-    width: 3px;
-    border-radius: 999px;
-    background: #c47070;
-  }
-
-  .tasks-page :global(.notebook-entry.is-active) {
-    border-radius: 4px;
+    background: transparent;
+    padding: calc(var(--notebook-line) * 0.28) 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .tasks-page :global(.notebook-entry.is-active .notebook-entry__title) {
@@ -501,25 +470,17 @@ const staffOptions = staffRows ?? [];
 
   .tasks-page :global(.notebook-entry.is-active .notebook-entry__check) {
     border-color: var(--color-citrine-dark);
-    box-shadow: 0 1px 0 rgba(231, 172, 70, 0.2);
   }
 
   .tasks-page :global(.notebook-entry.is-done) {
     opacity: 0.82;
   }
 
-  .tasks-page :global(.notebook-entry.is-done .notebook-entry__body) {
-    background: linear-gradient(
-      90deg,
-      var(--color-sage-muted) 0%,
-      transparent 55%
-    );
-    border-radius: 2px;
-  }
-
+  /* Subtle dashed separator between tasks — not a strong sheet-edge border. */
   .tasks-page :global(.notebook-entry + .notebook-entry) {
-    margin-top: 0.15rem;
-    border-top: 1px solid var(--notebook-rule);
+    margin-top: calc(var(--notebook-line) * 0.28);
+    border-top: 1px dashed var(--notebook-rule);
+    padding-top: calc(var(--notebook-line) * 0.5);
   }
 
   .tasks-page :global(.notebook-entry__row) {
@@ -558,10 +519,6 @@ const staffOptions = staffRows ?? [];
     border: solid 2px var(--color-sage);
     border-width: 0 2px 2px 0;
     transform: rotate(38deg);
-  }
-
-  .tasks-page :global(.notebook-entry.is-high .notebook-entry__check) {
-    border-color: #c47070;
   }
 
   .tasks-page :global(.notebook-entry__body) {
@@ -606,18 +563,22 @@ const staffOptions = staffRows ?? [];
     line-height: 1;
   }
 
-  /* Priority + status read as compact chips, not body copy. */
+  /*
+    Priority + status read as small, quiet chips — consistent height and
+    padding so the task title always stays the strongest element in the row.
+  */
   .tasks-page :global(.task-badge) {
     display: inline-flex;
     align-items: center;
-    padding: 0.05rem 0.45rem;
+    height: 1.15rem;
+    padding: 0 0.45rem;
     border: 1px solid transparent;
     border-radius: 999px;
     font-family: var(--font-body);
     font-size: 0.62rem;
     font-weight: 600;
     font-style: normal;
-    line-height: 1.5;
+    line-height: 1;
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
     white-space: nowrap;
@@ -625,15 +586,17 @@ const staffOptions = staffRows ?? [];
     background: var(--color-stone-100);
   }
 
+  /* High priority: ONE quiet red accent (badge only — no bar, no red check). */
   .tasks-page :global(.task-badge--high) {
-    color: #8f2a2a;
-    background: rgba(196, 90, 78, 0.14);
-    border-color: rgba(196, 90, 78, 0.35);
+    color: #9a4038;
+    background: rgba(196, 90, 78, 0.1);
+    border-color: rgba(196, 90, 78, 0.28);
   }
 
   .tasks-page :global(.task-badge--high::before) {
     content: "★";
-    margin-right: 0.25rem;
+    margin-right: 0.22rem;
+    opacity: 0.8;
   }
 
   .tasks-page :global(.task-badge--low) {
@@ -664,18 +627,20 @@ const staffOptions = staffRows ?? [];
     opacity: 0.7;
   }
 
-  /* Due date is a first-class, colour-coded chip so overdue/soon pop. */
+  /* Due date is a colour-coded chip so overdue/soon are noticeable — sized to
+     match the other badges so it never dominates the title. */
   .tasks-page :global(.task-due) {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.05rem 0.5rem;
+    height: 1.15rem;
+    padding: 0 0.5rem;
     border: 1px solid var(--color-stone-200);
     border-radius: 999px;
     font-family: var(--font-body);
-    font-size: 0.64rem;
+    font-size: 0.62rem;
     font-weight: 600;
-    line-height: 1.5;
+    line-height: 1;
     letter-spacing: 0.02em;
     white-space: nowrap;
     color: var(--color-stone-600, var(--color-stone-500));
@@ -732,18 +697,17 @@ const staffOptions = staffRows ?? [];
     opacity: 0.65;
   }
 
+  /*
+    All actions travel together as one group beneath the details — Claim,
+    Edit, Cancel side by side (primary → secondary → destructive), never a
+    lone Cancel stranded at the far right.
+  */
   .tasks-page :global(.notebook-entry__actions) {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem 0.5rem;
-    margin-top: 0.55rem;
-    padding-bottom: 0.15rem;
-  }
-
-  /* Push destructive Cancel to the far right, away from primary actions. */
-  .tasks-page :global(.notebook-entry__actions .task-action--danger) {
-    margin-left: auto;
+    margin-top: calc(var(--notebook-line) * 0.3);
   }
 
   .tasks-page :global(.task-action) {
@@ -829,6 +793,22 @@ const staffOptions = staffRows ?? [];
 
     .tasks-page :global(.notebook-entry__tags) {
       margin-left: auto;
+    }
+  }
+
+  /*
+    Desktop sidebar polish — page-scoped value tweaks only (slightly narrower
+    column, more compact nav rows). No structural change to the frozen global
+    sidebar architecture.
+  */
+  @media (min-width: 901px) {
+    .tasks-page :global(.team-list-layout__body) {
+      grid-template-columns: minmax(184px, 200px) 1fr;
+    }
+
+    .tasks-page :global(.team-list-layout__sidebar-nav-btn) {
+      padding-top: 0.4rem;
+      padding-bottom: 0.4rem;
     }
   }
 
