@@ -46,7 +46,9 @@ const embed =
       {embed ? null : <SiteHeader />}
 
       <main class="booking-main">
-        <BookingSteps current={step} showStylistStep={showStylistStep} compact={embed} />
+        <div class="booking-steps-wrap">
+          <BookingSteps current={step} showStylistStep={showStylistStep} compact={embed} />
+        </div>
         <div class="booking-content">
           <slot />
         </div>
@@ -76,6 +78,7 @@ const embed =
   .booking-shell--embed {
     padding-top: 0;
     background: var(--color-cream);
+    --booking-steps-sticky-top: 0;
   }
 
   .booking-main {
@@ -87,23 +90,33 @@ const embed =
   }
 
   .booking-shell--embed .booking-main {
-    padding-top: var(--space-4);
-    padding-bottom: var(--space-6);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+
+  .booking-steps-wrap {
+    position: sticky;
+    top: var(--booking-steps-sticky-top, var(--header-height));
+    z-index: 15;
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-2);
+    background: var(--color-cream);
+  }
+
+  .booking-shell--embed .booking-steps-wrap {
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-1);
   }
 
   .booking-content {
-    margin-top: 1.5rem;
     padding: clamp(1.5rem, 4vw, 2.5rem);
     background: var(--color-booking-panel-bg);
-    border: 1px solid var(--color-border-subtle);
+    border: 1px solid var(--color-stone-200);
     box-shadow: 0 8px 40px var(--color-card-shadow);
   }
 
   .booking-shell--embed .booking-content {
-    margin-top: var(--space-3);
-    padding: clamp(1rem, 3vw, 1.75rem);
-    box-shadow: none;
-    border-color: var(--color-stone-200);
+    padding: clamp(0.75rem, 2.5vw, 1.25rem);
+    box-shadow: 0 4px 24px var(--color-card-shadow);
   }
 
   .booking-shell--embed .booking-footer {

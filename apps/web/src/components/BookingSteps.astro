@@ -39,41 +39,59 @@ const currentIndex = steps.findIndex((step) => step.id === current);
 <nav class:list={["steps", compact && "steps--compact"]} aria-label="Booking progress">
   <ol class="steps__list">
     {
-      steps.map((step, index) => (
-        <li
-          class:list={[
-            "steps__item",
-            index === currentIndex && "steps__item--current",
-            index < currentIndex && "steps__item--complete",
-          ]}
-        >
-          <span class="steps__num" aria-hidden="true">
-            {index < currentIndex ? (
-              <svg class="steps__check" viewBox="0 0 12 12" fill="none">
-                <path
-                  d="M2.5 6.25 4.75 8.5 9.5 3.5"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            ) : (
-              index + 1
-            )}
-          </span>
-          <span class="steps__label">{step.label}</span>
-        </li>
-      ))
+      steps.flatMap((step, index) => {
+        const items = [
+          <li
+            class:list={[
+              "steps__item",
+              index === currentIndex && "steps__item--current",
+              index < currentIndex && "steps__item--complete",
+            ]}
+          >
+            <span class="steps__num" aria-hidden="true">
+              {index < currentIndex ? (
+                <svg class="steps__check" viewBox="0 0 12 12" fill="none">
+                  <path
+                    d="M2.5 6.25 4.75 8.5 9.5 3.5"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              ) : (
+                index + 1
+              )}
+            </span>
+            <span class="steps__label">{step.label}</span>
+          </li>,
+        ];
+
+        if (index < steps.length - 1) {
+          items.push(
+            <li
+              class:list={[
+                "steps__connector",
+                index < currentIndex && "steps__connector--complete",
+              ]}
+              aria-hidden="true"
+            />,
+          );
+        }
+
+        return items;
+      })
     }
   </ol>
 </nav>
 
 <style>
   .steps {
-    margin-bottom: var(--space-4);
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--color-stone-200);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-stone-100);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 1px 3px var(--color-card-shadow);
   }
 
   .steps__list {
@@ -81,38 +99,51 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: var(--space-2) var(--space-3);
+    gap: var(--space-2);
     list-style: none;
     margin: 0;
     padding: 0;
-    counter-reset: booking-step;
   }
 
   .steps__item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    padding: 0.22rem 0.6rem 0.22rem 0.22rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-pill);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sm);
     font-family: var(--font-body);
     font-size: 0.62rem;
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
     color: var(--color-gray);
-    transition: color var(--transition-fast);
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      color var(--transition-fast);
   }
 
   @media (min-width: 640px) {
     .steps__item {
       font-size: 0.68rem;
       gap: 0.4rem;
+      padding: 0.25rem 0.7rem 0.25rem 0.25rem;
     }
   }
 
   .steps__item--current {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    box-shadow: inset 0 0 0 1px var(--color-citrine);
     color: var(--color-text);
     font-weight: 600;
   }
 
   .steps__item--complete {
+    border-color: var(--color-sage);
     color: var(--color-sage-dark);
   }
 
@@ -122,21 +153,25 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     color: var(--color-white);
   }
 
-  .steps__item--complete:not(:last-child)::after {
-    content: "";
-    display: none;
+  .steps__connector {
+    flex: 0 0 auto;
     width: 1.25rem;
     height: 2px;
-    margin-left: 0.15rem;
-    background: var(--color-sage);
-    opacity: 0.45;
+    background: var(--color-stone-300);
     border-radius: 1px;
+    align-self: center;
+    transition: background var(--transition-fast);
   }
 
   @media (min-width: 640px) {
-    .steps__item--complete:not(:last-child)::after {
-      display: block;
+    .steps__connector {
+      width: 1.5rem;
     }
+  }
+
+  .steps__connector--complete {
+    background: var(--color-sage);
+    opacity: 0.65;
   }
 
   .steps__num {
@@ -144,28 +179,26 @@ const currentIndex = steps.findIndex((step) => step.id === current);
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 1.375rem;
+    height: 1.375rem;
     border: 1px solid var(--color-stone-300);
     border-radius: 50%;
     font-size: 0.62rem;
     font-weight: 600;
     transition:
       background var(--transition-fast),
-      border-color var(--transition-fast),
-      box-shadow var(--transition-fast);
+      border-color var(--transition-fast);
   }
 
   .steps__check {
-    width: 0.75rem;
-    height: 0.75rem;
+    width: 0.7rem;
+    height: 0.7rem;
   }
 
   .steps__item--current .steps__num {
     background: var(--color-citrine);
     border-color: var(--color-citrine);
     color: var(--color-black);
-    box-shadow: 0 0 0 3px var(--color-citrine-muted);
   }
 
   .steps__item--complete .steps__label {
@@ -173,22 +206,32 @@ const currentIndex = steps.findIndex((step) => step.id === current);
   }
 
   .steps--compact {
-    margin-bottom: var(--space-3);
-    padding-bottom: var(--space-2);
+    padding: var(--space-2) var(--space-3);
   }
 
   .steps--compact .steps__list {
     gap: var(--space-1) var(--space-2);
   }
 
-  .steps--compact .steps__label {
-    display: none;
+  .steps--compact .steps__item {
+    padding: 0.18rem 0.45rem 0.18rem 0.18rem;
   }
 
-  @media (min-width: 480px) {
-    .steps--compact .steps__label {
-      display: inline;
-      font-size: 0.58rem;
+  .steps--compact .steps__connector {
+    width: 0.85rem;
+  }
+
+  @media (max-width: 479px) {
+    .steps__label {
+      display: none;
+    }
+
+    .steps__item {
+      padding: 0.18rem;
+    }
+
+    .steps__connector {
+      width: 0.65rem;
     }
   }
 </style>
