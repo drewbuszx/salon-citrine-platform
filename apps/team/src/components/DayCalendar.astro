@@ -230,6 +230,7 @@ const calendarConfig = {
               "day-cal__waitlist-badge",
               waitlistCount > 0 && "day-cal__waitlist-badge--active",
             ]}
+            data-waitlist-badge
             aria-label={`${waitlistCount} on waitlist`}
           >
             {waitlistCount}
@@ -240,6 +241,45 @@ const calendarConfig = {
         </button>
       </div>
     </div>
+
+    {
+      (nextOpenGap || waitlistCount > 0) && (
+        <p class="day-cal__gap-hint" role="status" aria-live="polite">
+          {
+            waitlistCount > 0 && (
+              <>
+                <button
+                  type="button"
+                  class="day-cal__gap-hint-btn day-cal__gap-hint-waitlist"
+                  data-waitlist-drawer
+                >
+                  <strong data-waitlist-count-inline>{waitlistCount}</strong> on waitlist
+                </button>
+                {nextOpenGap && <span class="day-cal__gap-hint-sep" aria-hidden="true">·</span>}
+              </>
+            )
+          }
+          {
+            nextOpenGap && (
+              <button
+                type="button"
+                class="day-cal__gap-hint-btn"
+                data-gap-book
+                data-staff-id={nextOpenGap.staffId}
+                data-starts-at={nextOpenGap.startsAt}
+                aria-label={`Book next open slot: ${nextOpenGap.label}`}
+              >
+                <span class="day-cal__gap-hint-slot">
+                  Next open <span class="day-cal__gap-hint-sep" aria-hidden="true">·</span>{" "}
+                  <strong>{nextOpenGap.label}</strong>
+                </span>
+                <span class="day-cal__gap-hint-cta">Book slot</span>
+              </button>
+            )
+          }
+        </p>
+      )
+    }
 
     {
       staff.length > 0 && (
@@ -384,38 +424,21 @@ const calendarConfig = {
       </div>
 
       <div
-        class="day-cal__columns"
+        class="day-cal__schedule"
         style={`--day-staff-count: ${staff.length}`}
         data-staff-columns
       >
-        {
-          isToday && nowLineTop !== null ? (
-            <div
-              class="day-cal__now-line"
-              style={`top: calc(var(--day-header-height) + ${nowLineTop}rem)`}
-              aria-hidden="true"
-            />
-          ) : null
-        }
-        {
-          staff.map((member) => {
-            const events = staffEventsForDay(
-              member.id,
-              selectedDay,
-              appointments,
-              blockedTimes,
-            );
-            const accent = staffAccentColor(member.id);
-            const memberSchedules = staffSchedules[member.id] ?? [];
-            const shiftStatus = staffShiftStatus(memberSchedules, dayParam);
-
-            return (
-              <div
-                class="day-cal__column"
-                data-staff-column={member.id}
-                style={`--staff-accent: ${accent}`}
-              >
-                <header class="day-cal__staff-header">
+        <div class="day-cal__staff-row">
+          {
+            staff.map((member) => {
+              const accent = staffAccentColor(member.id);
+              const memberSchedules = staffSchedules[member.id] ?? [];
+              const shiftStatus = staffShiftStatus(memberSchedules, dayParam);
+              return (
+                <header
+                  class="day-cal__staff-header"
+                  data-staff-header-column={member.id}
+                >
                   <img
                     class="day-cal__avatar"
                     src={staffPhotoUrl(member)}
@@ -438,11 +461,42 @@ const calendarConfig = {
                     </span>
                   </div>
                 </header>
+              );
+            })
+          }
+        </div>
 
+        <div class="day-cal__columns">
+          {
+            isToday && nowLineTop !== null ? (
+              <div
+                class="day-cal__now-line"
+                style={`top: ${nowLineTop}rem`}
+                aria-hidden="true"
+              />
+            ) : null
+          }
+          {
+            staff.map((member) => {
+              const events = staffEventsForDay(
+                member.id,
+                selectedDay,
+                appointments,
+                blockedTimes,
+              );
+              const accent = staffAccentColor(member.id);
+              const memberSchedules = staffSchedules[member.id] ?? [];
+
+              return (
                 <div
-                  class="day-cal__grid"
-                  style={`height: ${gridHeight}rem; --staff-accent: ${accent}`}
+                  class="day-cal__column"
+                  data-staff-column={member.id}
+                  style={`--staff-accent: ${accent}`}
                 >
+                  <div
+                    class="day-cal__grid"
+                    style={`height: ${gridHeight}rem; --staff-accent: ${accent}`}
+                  >
                   {
                     timeSlots.map((minutes) => {
                       const inShift =
@@ -603,11 +657,12 @@ const calendarConfig = {
                     })
                   }
 
+                  </div>
                 </div>
-              </div>
-            );
-          })
-        }
+              );
+            })
+          }
+        </div>
       </div>
     </div>
   </div>
@@ -712,6 +767,67 @@ const calendarConfig = {
     <button type="button" class="day-cal__toast-undo" id="day-cal-toast-undo" hidden>
       Undo
     </button>
+  </div>
+
+  <div
+    class="day-cal__shortcuts-help"
+    data-cal-shortcuts-help
+    hidden
+    aria-hidden="true"
+  >
+    <button
+      type="button"
+      class="day-cal__shortcuts-help-backdrop"
+      data-cal-shortcuts-close
+      tabindex="-1"
+      aria-label="Close keyboard shortcuts"
+    ></button>
+    <div
+      class="day-cal__shortcuts-help-panel"
+      data-cal-shortcuts-panel
+      role="dialog"
+      aria-labelledby="day-cal-shortcuts-title"
+    >
+      <header class="day-cal__shortcuts-help-header">
+        <h2 class="day-cal__shortcuts-help-title" id="day-cal-shortcuts-title">
+          Keyboard shortcuts
+        </h2>
+        <button
+          type="button"
+          class="day-cal__shortcuts-help-close"
+          data-cal-shortcuts-close
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </header>
+      <dl class="day-cal__shortcuts-list">
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>T</kbd></dt>
+          <dd>Jump to today</dd>
+        </div>
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>N</kbd></dt>
+          <dd>New appointment</dd>
+        </div>
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>←</kbd> <kbd>→</kbd></dt>
+          <dd>Previous / next day</dd>
+        </div>
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>/</kbd></dt>
+          <dd>Focus client search</dd>
+        </div>
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>Esc</kbd></dt>
+          <dd>Close panel or menu</dd>
+        </div>
+        <div class="day-cal__shortcuts-row">
+          <dt><kbd>?</kbd></dt>
+          <dd>Show this help</dd>
+        </div>
+      </dl>
+    </div>
   </div>
 
   <script
@@ -1091,8 +1207,10 @@ const calendarConfig = {
           const body = await res.json();
           if (!res.ok) throw new Error(body.error || "Failed to load waitlist");
           const entries = body.entries ?? [];
+          updateWaitlistBadge(entries.length);
 
           if (entries.length === 0) {
+            drawerSubtitle.textContent = "Queue empty";
             drawerBody.innerHTML = `<p class="day-cal__hint">No one on the waitlist right now.</p>
               <div class="day-cal__detail-actions">
                 <a class="day-cal__link-btn" href="${config.api.waitlistPage}">Open waitlist page</a>
@@ -1100,14 +1218,24 @@ const calendarConfig = {
             return;
           }
 
+          drawerSubtitle.textContent = `${entries.length} active ${entries.length === 1 ? "request" : "requests"}`;
+
           drawerBody.innerHTML = `<ul class="day-cal__waitlist-list">
             ${entries
               .map((entry) => {
                 const name = `${entry.clientFirstName ?? ""} ${entry.clientLastName ?? ""}`.trim() || entry.clientEmail;
                 const services = (entry.serviceNames ?? []).join(", ") || "Any service";
-                const preferred = entry.preferredDate
-                  ? new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, month: "short", day: "numeric" }).format(new Date(`${entry.preferredDate}T12:00:00`))
-                  : "Flexible";
+                const preferred = formatWaitlistPreferred(entry);
+                const bookPayload = JSON.stringify({
+                  clientName: name,
+                  clientEmail: entry.clientEmail,
+                  clientPhone: entry.clientPhone,
+                  staffId: entry.staffId,
+                  serviceIds: entry.serviceIds ?? [],
+                  preferredDate: entry.preferredDate,
+                  preferredTimeStart: entry.preferredTimeStart,
+                  waitlistId: entry.id,
+                }).replace(/'/g, "&#39;");
                 return `<li class="day-cal__waitlist-item">
                   <div class="day-cal__waitlist-item-head">
                     <strong>${name}</strong>
@@ -1115,7 +1243,7 @@ const calendarConfig = {
                   </div>
                   <p class="day-cal__waitlist-item-services">${services}</p>
                   <p class="day-cal__waitlist-item-meta">${entry.staffName} · ${preferred}</p>
-                  <button type="button" class="day-cal__link-btn day-cal__link-btn--primary" data-waitlist-book data-entry='${JSON.stringify({ clientName: name, clientEmail: entry.clientEmail, clientPhone: entry.clientPhone, staffId: entry.staffId, serviceIds: entry.serviceIds }).replace(/'/g, "&#39;")}'>Book</button>
+                  <button type="button" class="day-cal__link-btn day-cal__link-btn--primary" data-waitlist-book data-entry='${bookPayload}'>Book</button>
                 </li>`;
               })
               .join("")}
@@ -1125,6 +1253,74 @@ const calendarConfig = {
           </div>`;
         } catch (err) {
           drawerBody.innerHTML = `<p class="day-cal__form-error">${err instanceof Error ? err.message : "Failed to load"}</p>`;
+        }
+      }
+
+      function formatWaitlistPreferred(entry) {
+        if (entry.preferredTimeStart && entry.preferredTimeEnd) {
+          const start = entry.preferredTimeStart.slice(0, 5);
+          const end = entry.preferredTimeEnd.slice(0, 5);
+          const slotLabels = {
+            "08:00-12:00": "Morning",
+            "12:00-17:00": "Afternoon",
+            "17:00-20:00": "Evening",
+          };
+          const slotKey = `${start}-${end}`;
+          if (slotLabels[slotKey]) {
+            return entry.preferredDate
+              ? `${slotLabels[slotKey]} · ${new Intl.DateTimeFormat("en-US", { timeZone: TIMEZONE, month: "short", day: "numeric" }).format(new Date(`${entry.preferredDate}T12:00:00`))}`
+              : slotLabels[slotKey];
+          }
+          return `${start} – ${end}`;
+        }
+        if (entry.preferredDate) {
+          return new Intl.DateTimeFormat("en-US", {
+            timeZone: TIMEZONE,
+            month: "short",
+            day: "numeric",
+          }).format(new Date(`${entry.preferredDate}T12:00:00`));
+        }
+        return "Flexible";
+      }
+
+      function waitlistStartsAt(entry) {
+        if (entry.preferredDate) {
+          const time = entry.preferredTimeStart?.slice(0, 5) || "10:00";
+          return `${entry.preferredDate}T${time}:00`;
+        }
+        return new Date().toISOString();
+      }
+
+      function updateWaitlistBadge(count) {
+        const badge = root.querySelector("[data-waitlist-badge]");
+        const inlineCount = root.querySelector("[data-waitlist-count-inline]");
+        const drawerBtn = root.querySelector(".day-cal__subbar-btn--waitlist");
+        const gapHint = root.querySelector(".day-cal__gap-hint");
+
+        if (badge instanceof HTMLElement) {
+          badge.textContent = String(count);
+          badge.setAttribute("aria-label", `${count} on waitlist`);
+          badge.classList.toggle("day-cal__waitlist-badge--active", count > 0);
+        }
+        if (inlineCount instanceof HTMLElement) {
+          inlineCount.textContent = String(count);
+        }
+        if (drawerBtn instanceof HTMLElement) {
+          drawerBtn.classList.toggle("day-cal__subbar-btn--waitlist-hot", count > 0);
+        }
+        if (gapHint instanceof HTMLElement) {
+          gapHint.hidden = count === 0 && !config.nextOpenGap;
+        }
+      }
+
+      async function refreshWaitlistBadge() {
+        try {
+          const res = await fetch(`${config.api.waitlist}?status=active`);
+          const body = await res.json();
+          if (!res.ok || !body.ok) return;
+          updateWaitlistBadge((body.entries ?? []).length);
+        } catch {
+          /* keep server-rendered count */
         }
       }
 
@@ -1375,7 +1571,7 @@ const calendarConfig = {
               <div class="day-cal__client-field">
                 <label class="form-label day-cal__form-field">Name
                   <div class="day-cal__client-combobox">
-                    <input class="form-input" name="client_name" type="text" required autocomplete="off" role="combobox" aria-expanded="false" aria-controls="day-cal-client-suggestions" aria-autocomplete="list" placeholder="Search or type name" />
+                    <input class="form-input" name="client_name" type="text" required autocomplete="off" role="combobox" aria-expanded="false" aria-controls="day-cal-client-suggestions" aria-autocomplete="list" placeholder="Search or type name" data-cal-search />
                     <input type="hidden" name="client_id" value="" />
                     <ul class="day-cal__client-suggestions" id="day-cal-client-suggestions" role="listbox" hidden></ul>
                   </div>
@@ -1637,6 +1833,8 @@ const calendarConfig = {
           serviceSelect.addEventListener("change", updateDurationHint);
           updateDurationHint();
         }
+
+        applyWaitlistPrefill(form);
       }
 
       function openBlockTimeForm(context, endsAt) {
@@ -2328,11 +2526,17 @@ const calendarConfig = {
         if (waitlistBook instanceof HTMLElement && waitlistBook.dataset.entry) {
           try {
             const entry = JSON.parse(waitlistBook.dataset.entry);
+            if (entry.preferredDate && entry.preferredDate !== config.dayParam) {
+              sessionStorage.setItem("sc-waitlist-book", JSON.stringify(entry));
+              closeDrawer();
+              window.location.href = `${config.reloadUrl.split("?")[0]}?day=${encodeURIComponent(entry.preferredDate)}`;
+              return;
+            }
             sessionStorage.setItem("sc-waitlist-book", JSON.stringify(entry));
             closeDrawer();
             openNewAppointmentForm({
               staffId: entry.staffId || config.currentStaffId,
-              startsAt: new Date().toISOString(),
+              startsAt: waitlistStartsAt(entry),
             });
           } catch {
             /* ignore */
@@ -2527,8 +2731,7 @@ const calendarConfig = {
         }
       });
 
-      document.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
+      function closeModals() {
         if (drawer.classList.contains("is-open")) {
           closeDrawer();
           return;
@@ -2548,7 +2751,26 @@ const calendarConfig = {
         if (calMenu?.classList.contains("is-open")) {
           closeCalToolbarMenu();
         }
+      }
+
+      function triggerNewAppointment() {
+        const staffId = config.currentStaffId;
+        const now = new Date();
+        const minutes = now.getMinutes();
+        const rounded = Math.ceil(minutes / 15) * 15;
+        now.setMinutes(rounded, 0, 0);
+        openNewAppointmentForm({
+          staffId,
+          startsAt: now.toISOString(),
+        });
+      }
+
+      window.__teamDayCalShortcuts?.(root, {
+        closeModals,
+        openNewAppointment: triggerNewAppointment,
       });
+
+      root.querySelector("[data-new-appointment]")?.addEventListener("click", triggerNewAppointment);
 
       root.querySelector("[data-date-picker]")?.addEventListener("change", (event) => {
         const input = event.target;
@@ -2560,20 +2782,19 @@ const calendarConfig = {
         openFindOpeningDrawer();
       });
 
-      root.querySelector("[data-waitlist-drawer]")?.addEventListener("click", () => {
-        openWaitlistDrawer();
+      root.querySelectorAll("[data-waitlist-drawer]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          openWaitlistDrawer();
+        });
       });
 
-      root.querySelector("[data-new-appointment]")?.addEventListener("click", () => {
-        const staffId = config.currentStaffId;
-        const now = new Date();
-        const minutes = now.getMinutes();
-        const rounded = Math.ceil(minutes / 15) * 15;
-        now.setMinutes(rounded, 0, 0);
-        openNewAppointmentForm({
-          staffId,
-          startsAt: now.toISOString(),
-        });
+      root.querySelector("[data-gap-book]")?.addEventListener("click", (event) => {
+        const btn = event.currentTarget;
+        if (!(btn instanceof HTMLElement)) return;
+        const staffId = btn.dataset.staffId;
+        const startsAt = btn.dataset.startsAt;
+        if (!staffId || !startsAt) return;
+        openNewAppointmentForm({ staffId, startsAt });
       });
 
       function applyWaitlistPrefill(form) {
@@ -2626,19 +2847,16 @@ const calendarConfig = {
         }
         if (payload?.preferredDate && payload.preferredDate !== config.dayParam) {
           sessionStorage.setItem("sc-waitlist-book", waitlistRaw);
+          window.location.href = `${config.reloadUrl.split("?")[0]}?day=${encodeURIComponent(payload.preferredDate)}`;
         } else if (payload) {
           openNewAppointmentForm({
             staffId: payload.staffId || config.currentStaffId,
-            startsAt: payload.preferredDate
-              ? `${payload.preferredDate}T10:00:00`
-              : new Date().toISOString(),
+            startsAt: waitlistStartsAt(payload),
           });
-          const form = drawerBody.querySelector('[data-form="appointment-create"]');
-          if (form instanceof HTMLFormElement) {
-            applyWaitlistPrefill(form);
-          }
         }
       }
+
+      void refreshWaitlistBadge();
 
       const slotBookRaw = sessionStorage.getItem("sc-slot-book");
       if (slotBookRaw) {
@@ -2699,6 +2917,15 @@ const calendarConfig = {
         }
       }
 
+      function setStaffColumnVisibility(staffId, visible) {
+        const column = root.querySelector(`[data-staff-column="${staffId}"]`);
+        if (column instanceof HTMLElement) column.hidden = !visible;
+        const headerColumn = root.querySelector(
+          `[data-staff-header-column="${staffId}"]`,
+        );
+        if (headerColumn instanceof HTMLElement) headerColumn.hidden = !visible;
+      }
+
       function setStaffFilterAll(persist) {
         root.querySelectorAll("[data-staff-filter-id]").forEach((chip) => {
           if (!(chip instanceof HTMLButtonElement)) return;
@@ -2710,8 +2937,8 @@ const calendarConfig = {
           allStaffChip.setAttribute("aria-pressed", "true");
           allStaffChip.classList.add("is-active");
         }
-        root.querySelectorAll("[data-staff-column]").forEach((column) => {
-          if (column instanceof HTMLElement) column.hidden = false;
+        config.staffIds.forEach((staffId) => {
+          setStaffColumnVisibility(staffId, true);
         });
         updateStaffColumnCount();
         if (persist) writeStaffFilter({ mode: "all" });
@@ -2738,8 +2965,8 @@ const calendarConfig = {
         chips.forEach((chip) => {
           const visible = chip.getAttribute("aria-pressed") !== "false";
           const staffId = chip.dataset.staffFilterId ?? "";
-          const column = root.querySelector(`[data-staff-column="${staffId}"]`);
-          if (column instanceof HTMLElement) column.hidden = !visible;
+          if (!staffId) return;
+          setStaffColumnVisibility(staffId, visible);
         });
 
         const selectedIds = chips
@@ -2768,10 +2995,9 @@ const calendarConfig = {
           chip.setAttribute("aria-pressed", on ? "true" : "false");
           chip.classList.toggle("day-cal__staff-chip--off", !on);
           chip.classList.toggle("is-active", on);
-          const column = root.querySelector(
-            `[data-staff-column="${chip.dataset.staffFilterId}"]`,
-          );
-          if (column instanceof HTMLElement) column.hidden = !on;
+          const staffId = chip.dataset.staffFilterId ?? "";
+          if (!staffId) return;
+          setStaffColumnVisibility(staffId, on);
         });
         updateStaffColumnCount();
       }
@@ -3297,6 +3523,8 @@ const calendarConfig = {
     width: 100%;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable both-edges;
     background: var(--color-bg);
   }
 
@@ -3384,12 +3612,36 @@ const calendarConfig = {
     border-bottom-color: transparent;
   }
 
-  .day-cal__columns {
-    position: relative;
+  .day-cal__schedule {
     display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
     min-width: max-content;
     width: max-content;
+    --day-columns-template: repeat(
+      var(--day-staff-count),
+      minmax(var(--day-staff-width), 1fr)
+    );
+    background: var(--color-bg);
+  }
+
+  .day-cal__staff-row {
+    position: sticky;
+    top: 0;
+    z-index: 36;
+    display: grid;
+    grid-template-columns: var(--day-columns-template);
+    background: var(--day-header-bg);
+    border-bottom: 1px solid var(--day-divider-strong);
+  }
+
+  .day-cal__columns {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--day-columns-template);
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
     background: var(--color-bg);
   }
 
@@ -3403,27 +3655,11 @@ const calendarConfig = {
     pointer-events: none;
   }
 
-  /* Full-height column dividers as an overlay — survives slot tint stacking */
-  .day-cal__columns::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    pointer-events: none;
-    background-image: repeating-linear-gradient(
-      to right,
-      transparent,
-      transparent calc(var(--day-staff-width) - 1px),
-      var(--day-divider) calc(var(--day-staff-width) - 1px),
-      var(--day-divider) var(--day-staff-width)
-    );
-  }
-
   .day-cal__column {
     position: relative;
-    flex: 0 0 var(--day-staff-width);
-    width: var(--day-staff-width);
-    min-width: var(--day-staff-width);
+    min-width: 0;
+    border-right: 1px solid var(--day-divider);
+    background: var(--color-bg);
   }
 
   .day-cal__staff-header {
@@ -3436,14 +3672,12 @@ const calendarConfig = {
     min-height: var(--day-header-height);
     max-height: var(--day-header-height);
     padding: 0 0.45rem;
-    border-bottom: 1px solid var(--day-divider-strong);
     border-right: 1px solid var(--day-divider);
     background: var(--day-header-bg);
     color: var(--color-text);
     overflow: hidden;
-    position: sticky;
-    top: 0;
-    z-index: 6;
+    position: relative;
+    z-index: 2;
   }
 
   .day-cal__staff-heading {
@@ -3624,8 +3858,8 @@ const calendarConfig = {
 
   .day-cal__block {
     position: absolute;
-    left: 0.2rem;
-    right: 0.28rem;
+    left: 0.24rem;
+    right: 0.34rem;
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -3897,6 +4131,118 @@ const calendarConfig = {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     cursor: pointer;
+  }
+
+  .day-cal__shortcuts-help {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .day-cal__shortcuts-help[hidden] {
+    display: none !important;
+  }
+
+  .day-cal__shortcuts-help-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+  }
+
+  [data-theme="dark"] .day-cal__shortcuts-help-backdrop {
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .day-cal__shortcuts-help-panel {
+    position: relative;
+    z-index: 1;
+    width: min(22rem, 100%);
+    padding: 1rem 1.1rem 1.15rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-bg);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  }
+
+  .day-cal__shortcuts-help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .day-cal__shortcuts-help-title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .day-cal__shortcuts-help-close {
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.25rem;
+  }
+
+  .day-cal__shortcuts-help-close:hover,
+  .day-cal__shortcuts-help-close:focus-visible {
+    color: var(--color-text);
+    background: var(--color-light);
+  }
+
+  .day-cal__shortcuts-list {
+    margin: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .day-cal__shortcuts-row {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    gap: 0.65rem;
+    align-items: center;
+  }
+
+  .day-cal__shortcuts-row dt {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+  }
+
+  .day-cal__shortcuts-row dd {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+  }
+
+  .day-cal__shortcuts-row kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.65rem;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.25rem;
+    background: var(--color-light);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text);
   }
 
   .day-cal__find-form {
@@ -4417,24 +4763,6 @@ const calendarConfig = {
     line-height: 1.45;
   }
 
-  @media (min-width: 48rem) {
-    .day-cal__column {
-      flex: 1 1 var(--day-staff-width);
-      width: auto;
-      max-width: none;
-    }
-
-    .day-cal__columns::after {
-      background-image: repeating-linear-gradient(
-        to right,
-        transparent,
-        transparent calc(100% / var(--day-staff-count) - 1px),
-        var(--day-divider) calc(100% / var(--day-staff-count) - 1px),
-        var(--day-divider) calc(100% / var(--day-staff-count))
-      );
-    }
-  }
-
   @media (max-width: 48rem) {
     .day-cal__sheet {
       align-items: flex-end;
@@ -4924,43 +5252,38 @@ const calendarConfig = {
       min-width: 2.65rem;
     }
 
-    .day-cal__columns {
+    .day-cal__schedule,
+    .day-cal__columns,
+    .day-cal__staff-row {
       min-width: 100%;
       width: 100%;
     }
 
-    .day-cal:not(.day-cal--mobile-single) [data-staff-column] {
+    .day-cal:not(.day-cal--mobile-single) [data-staff-column],
+    .day-cal:not(.day-cal--mobile-single) [data-staff-header-column] {
       display: none;
-      flex: 0 0 100%;
-      width: 100%;
-      min-width: 100%;
-      max-width: 100%;
     }
 
     .day-cal:not(.day-cal--mobile-single) [data-staff-column]:not([hidden]) {
-      display: flex;
+      display: block;
     }
 
     .day-cal:not(.day-cal--mobile-single)
-      [data-staff-column]:not([hidden])
-      ~ [data-staff-column]:not([hidden]) {
-      display: none;
-    }
-
-    .day-cal--mobile-single .day-cal__column {
-      flex: 0 0 100%;
-      width: 100%;
-      min-width: 100%;
-      max-width: 100%;
-      display: none;
-    }
-
-    .day-cal--mobile-single .day-cal__column.is-mobile-active {
+      [data-staff-header-column]:not([hidden]) {
       display: flex;
     }
 
-    .day-cal--mobile-single .day-cal__columns::after {
+    .day-cal--mobile-single [data-staff-column],
+    .day-cal--mobile-single [data-staff-header-column] {
       display: none;
+    }
+
+    .day-cal--mobile-single [data-staff-column].is-mobile-active {
+      display: block;
+    }
+
+    .day-cal--mobile-single [data-staff-header-column].is-mobile-active {
+      display: flex;
     }
 
     .day-cal--mobile-single {
@@ -4981,11 +5304,6 @@ const calendarConfig = {
       background: var(--color-bg);
     }
 
-    .day-cal__staff-header {
-      position: sticky;
-      top: 0;
-      z-index: 4;
-    }
   }
 
   @media (min-width: 48rem) {
