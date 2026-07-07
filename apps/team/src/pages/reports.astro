@@ -5,6 +5,7 @@ import UiScrollRow from "../components/ui/UiScrollRow.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 import { defaultReportRangeDates } from "../lib/report-range";
+import { reportNavGroups } from "../lib/report-metrics";
 
 const { staff } = Astro.locals;
 
@@ -17,14 +18,7 @@ if (!isSalonManager(staff)) {
 }
 
 const { fromDate, toDate } = defaultReportRangeDates();
-
-const NAV_SECTIONS = [
-  { id: "reports-overview", label: "Overview", short: "Revenue", exportKey: "revenue" },
-  { id: "reports-appointments", label: "Appointments", short: "Staff", exportKey: "appointments" },
-  { id: "reports-cancellations", label: "Cancellations", short: "Cancels", exportKey: "cancellations" },
-  { id: "reports-status", label: "Appointment status", short: "Status", exportKey: "cancellations" },
-  { id: "reports-inventory", label: "Low stock", short: "Stock", exportKey: "inventory" },
-];
+const navGroups = reportNavGroups();
 
 const PRESETS = [
   { value: "today", label: "Today" },
@@ -34,6 +28,13 @@ const PRESETS = [
   { value: "last-month", label: "Last month" },
   { value: "ytd", label: "YTD" },
   { value: "custom", label: "Custom" },
+];
+
+const COMPARE_OPTIONS = [
+  { value: "none", label: "No comparison" },
+  { value: "previous", label: "Previous period" },
+  { value: "previous-month", label: "Previous month" },
+  { value: "last-year", label: "Same period last year" },
 ];
 ---
 
@@ -49,14 +50,19 @@ const PRESETS = [
     <TeamListLayout title="Reports" mainTitle="Business summaries" sidebarTitle="Sections">
       <nav slot="sidebarExtra" class="team-list-layout__sidebar-nav reports-nav" aria-label="Report sections">
         {
-          NAV_SECTIONS.map((section) => (
-            <a
-              class="team-list-layout__sidebar-link reports-nav__link"
-              href={`#${section.id}`}
-              data-nav-link={section.id}
-            >
-              {section.label}
-            </a>
+          navGroups.map((group) => (
+            <div class="reports-nav__group">
+              <p class="reports-nav__heading">{group.group}</p>
+              {group.sections.map((section) => (
+                <a
+                  class="team-list-layout__sidebar-link reports-nav__link"
+                  href={`#${section.id}`}
+                  data-nav-link={section.id}
+                >
+                  {section.label}
+                </a>
+              ))}
+            </div>
           ))
         }
       </nav>
@@ -66,7 +72,7 @@ const PRESETS = [
       <div class="reports-tabs" data-reports-tabs>
         <UiScrollRow label="Report sections">
           {
-            NAV_SECTIONS.map((section, index) => (
+            navGroups.flatMap((g) => g.sections).map((section, index) => (
               <button
                 type="button"
                 class:list={["reports-tabs__btn", { "is-active": index === 0 }]}
@@ -82,24 +88,79 @@ const PRESETS = [
         </UiScrollRow>
       </div>
 
-      <div slot="toolbar" class="reports-toolbar">
-        <div class="reports-toolbar__presets-wrap">
-          <UiScrollRow label="Date range presets">
-            <div class="reports-toolbar__presets ui-segmented" role="group" aria-label="Date range presets">
-              {
-                PRESETS.map((preset) => (
-                  <button
-                    type="button"
-                    class="ui-segmented__item reports-preset"
-                    data-preset={preset.value}
-                    aria-pressed="false"
-                  >
-                    {preset.label}
-                  </button>
-                ))
-              }
-            </div>
-          </UiScrollRow>
+      <div slot="toolbar" class="reports-toolbar" data-reports-toolbar>
+        <div class="reports-toolbar__row reports-toolbar__row--primary">
+          <div class="reports-toolbar__presets-wrap">
+            <UiScrollRow label="Date range presets">
+              <div class="reports-toolbar__presets ui-segmented" role="group" aria-label="Date range presets">
+                {
+                  PRESETS.map((preset) => (
+                    <button
+                      type="button"
+                      class="ui-segmented__item reports-preset"
+                      data-preset={preset.value}
+                      aria-pressed="false"
+                    >
+                      {preset.label}
+                    </button>
+                  ))
+                }
+              </div>
+            </UiScrollRow>
+          </div>
+
+          <div class="reports-toolbar__actions">
+            <label class="reports-toolbar__compare">
+              <span class="reports-toolbar__compare-label">Compare</span>
+              <select class="form-input reports-toolbar__compare-select" data-compare-mode>
+                {
+                  COMPARE_OPTIONS.map((opt) => (
+                    <option value={opt.value} selected={opt.value === "previous"}>
+                      {opt.label}
+                    </option>
+                  ))
+                }
+              </select>
+            </label>
+
+            <button
+              class="ui-btn ui-btn--secondary ui-btn--compact reports-toolbar__refresh"
+              type="button"
+              data-range-apply
+            >
+              Refresh
+            </button>
+
+            <details class="reports-export-menu" data-export-menu>
+              <summary class="ui-btn ui-btn--secondary ui-btn--compact reports-export-menu__trigger" data-export-trigger>
+                Export
+              </summary>
+              <div class="reports-export-menu__panel" role="menu">
+                <p class="reports-export-menu__hint" data-export-hint>Choose a section to export as CSV.</p>
+                <button type="button" class="reports-export-menu__item" data-export-section="overview" role="menuitem">
+                  Overview
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="revenue" role="menuitem">
+                  Revenue
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="appointments" role="menuitem">
+                  Appointments by staff
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="cancellations" role="menuitem">
+                  Cancellations &amp; no-shows
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="status" role="menuitem">
+                  Appointment status
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="inventory" role="menuitem">
+                  Low stock
+                </button>
+                <button type="button" class="reports-export-menu__item" data-export-section="all" role="menuitem">
+                  Full report
+                </button>
+              </div>
+            </details>
+          </div>
         </div>
 
         <div class="reports-toolbar__custom" data-custom-range hidden>
@@ -117,22 +178,6 @@ const PRESETS = [
           </label>
         </div>
 
-        <div class="reports-toolbar__actions">
-          <button class="ui-btn ui-btn--secondary ui-btn--compact reports-toolbar__refresh" type="button" data-range-apply>
-            Refresh
-          </button>
-
-          <button
-            class="ui-btn ui-btn--secondary ui-btn--compact reports-toolbar__export"
-            type="button"
-            data-export-btn
-            disabled
-            title="Export the visible report section as CSV"
-          >
-            Export revenue CSV
-          </button>
-        </div>
-
         <p class="reports-toolbar__meta">
           <span class="reports-toolbar__range" data-range-label aria-live="polite"></span>
           <span class="reports-toolbar__refreshed" data-refreshed-label></span>
@@ -141,42 +186,90 @@ const PRESETS = [
 
       <p class="notice notice--error reports-error" data-reports-error hidden role="alert"></p>
 
-      <section class="reports-section" id="reports-overview" aria-labelledby="reports-overview-title">
-        <div class="reports-section__head">
-          <h2 class="reports-section__title" id="reports-overview-title">Overview</h2>
-        </div>
-        <div class="reports-metrics" data-revenue-stats>
-          <p class="empty-state">Loading reports…</p>
-        </div>
-      </section>
+      <div class="reports-workspace">
+        <section class="reports-section" id="reports-overview" aria-labelledby="reports-overview-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-overview-title">Overview</h2>
+              <p class="reports-section__desc">Key metrics for the selected range.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-overview-body>
+            <p class="empty-state">Loading reports…</p>
+          </div>
+        </section>
 
-      <section class="team-panel reports-section" id="reports-appointments" aria-labelledby="reports-appointments-title">
-        <h2 class="team-panel__title reports-section__title" id="reports-appointments-title">Appointments by staff</h2>
-        <div class="team-data-table-wrap" data-staff-table>
-          <p class="empty-state">Loading…</p>
-        </div>
-      </section>
+        <section class="reports-section" id="reports-revenue" aria-labelledby="reports-revenue-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-revenue-title">Revenue</h2>
+              <p class="reports-section__desc">Completed checkout totals for this range.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-revenue-body>
+            <p class="empty-state">Loading…</p>
+          </div>
+        </section>
 
-      <section class="team-panel reports-section" id="reports-cancellations" aria-labelledby="reports-cancellations-title">
-        <h2 class="team-panel__title reports-section__title" id="reports-cancellations-title">Cancellations &amp; no-shows</h2>
-        <div data-cancel-stats>
-          <p class="empty-state">Loading…</p>
-        </div>
-      </section>
+        <section class="reports-section" id="reports-appointments" aria-labelledby="reports-appointments-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-appointments-title">Appointments by staff</h2>
+              <p class="reports-section__desc">Scheduled and completed work by provider.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-staff-body>
+            <p class="empty-state">Loading…</p>
+          </div>
+        </section>
 
-      <section class="team-panel reports-section" id="reports-status" aria-labelledby="reports-status-title">
-        <h2 class="team-panel__title reports-section__title" id="reports-status-title">Appointment status</h2>
-        <div data-status-stats>
-          <p class="empty-state">Loading…</p>
-        </div>
-      </section>
+        <section class="reports-section" id="reports-status" aria-labelledby="reports-status-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-status-title">Appointment status</h2>
+              <p class="reports-section__desc">How appointments in this range resolved.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-status-body>
+            <p class="empty-state">Loading…</p>
+          </div>
+        </section>
 
-      <section class="team-panel reports-section" id="reports-inventory" aria-labelledby="reports-inventory-title">
-        <h2 class="team-panel__title reports-section__title" id="reports-inventory-title">Low stock inventory</h2>
-        <div data-inventory-stats>
-          <p class="empty-state">Loading…</p>
-        </div>
-      </section>
+        <section class="reports-section" id="reports-cancellations" aria-labelledby="reports-cancellations-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-cancellations-title">Cancellations &amp; no-shows</h2>
+              <p class="reports-section__desc">Lost appointments and fees collected.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-cancel-body>
+            <p class="empty-state">Loading…</p>
+          </div>
+        </section>
+
+        <section class="reports-section" id="reports-inventory" aria-labelledby="reports-inventory-title">
+          <header class="reports-section__head">
+            <div>
+              <h2 class="reports-section__title" id="reports-inventory-title">Low stock inventory</h2>
+              <p class="reports-section__desc">Products at or below their reorder point.</p>
+            </div>
+          </header>
+          <div class="reports-section__body" data-inventory-body>
+            <p class="empty-state">Loading…</p>
+          </div>
+        </section>
+      </div>
+
+      <aside
+        class="reports-detail"
+        data-detail-panel
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reports-detail-title"
+      >
+        <div class="reports-detail__body" data-detail-body></div>
+      </aside>
     </TeamListLayout>
   </div>
 </TeamLayout>
@@ -185,8 +278,7 @@ const PRESETS = [
 
 <!--
   is:global — reports.ts injects section markup via innerHTML, so scoped
-  selectors (with Astro's data-astro-cid attribute) would never match that DOM.
-  Class names are page-unique (reports-*). Sidebar chrome: team-list-sidebar.css.
+  selectors would never match that DOM. Class names are page-unique (reports-*).
 -->
 <style is:global>
   .reports-page {
@@ -194,18 +286,43 @@ const PRESETS = [
     overflow-x: clip;
   }
 
-  /* Toolbar --------------------------------------------------------------- */
+  .reports-page .team-list-layout__main {
+    max-width: 92rem;
+  }
+
+  /* Sticky toolbar beneath global nav ------------------------------------ */
+  .reports-page .team-list-layout__toolbar {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    z-index: 12;
+    margin: 0 calc(-1 * var(--space-6)) 1rem;
+    padding: 0.75rem var(--space-6);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-stone-200);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  }
+
   .reports-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--mobile-space-sm);
+    display: grid;
+    gap: 0.65rem;
     width: 100%;
     min-width: 0;
   }
 
+  .reports-toolbar__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--mobile-space-sm);
+    min-width: 0;
+  }
+
+  .reports-toolbar__row--primary {
+    justify-content: space-between;
+  }
+
   .reports-toolbar__presets-wrap {
-    flex: 1 1 100%;
+    flex: 1 1 18rem;
     min-width: 0;
   }
 
@@ -221,10 +338,41 @@ const PRESETS = [
     padding-inline: 0.65rem;
   }
 
-  .reports-preset[aria-pressed="true"] {
-    background: var(--color-bg);
+  .reports-preset[aria-pressed="true"],
+  .reports-preset.is-active {
+    background: var(--color-citrine-muted, var(--color-selection-bg));
     color: var(--color-stone-800);
-    box-shadow: inset 0 0 0 2px var(--color-selection-border);
+    box-shadow: inset 0 0 0 2px var(--color-citrine, var(--color-selection-border));
+  }
+
+  .reports-toolbar__actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--mobile-space-xs);
+    flex: 0 0 auto;
+  }
+
+  .reports-toolbar__compare {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: var(--touch-target-min);
+  }
+
+  .reports-toolbar__compare-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-400);
+    white-space: nowrap;
+  }
+
+  .reports-toolbar__compare-select {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: var(--text-xs);
   }
 
   .reports-toolbar__custom {
@@ -232,7 +380,6 @@ const PRESETS = [
     flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--mobile-space-sm);
-    flex: 1 1 100%;
   }
 
   .reports-toolbar__custom[hidden] {
@@ -247,16 +394,11 @@ const PRESETS = [
   }
 
   .reports-toolbar__field-label {
-    font-size: var(--ui-label-size, var(--text-xs));
+    font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
     color: var(--color-stone-400);
-  }
-
-  .reports-toolbar__date {
-    display: block;
-    min-width: 0;
   }
 
   .reports-toolbar__date-input {
@@ -264,31 +406,11 @@ const PRESETS = [
     min-height: var(--touch-target-min);
   }
 
-  .reports-toolbar__actions {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--mobile-space-xs);
-    margin-left: auto;
-  }
-
-  .reports-toolbar__refresh,
-  .reports-toolbar__export {
-    min-height: var(--touch-target-min);
-  }
-
-  .reports-toolbar__export:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
   .reports-toolbar__meta {
-    flex-basis: 100%;
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem 0.75rem;
     margin: 0;
-    font-family: var(--font-body);
     font-size: var(--text-sm);
     color: var(--color-stone-500);
   }
@@ -298,163 +420,460 @@ const PRESETS = [
     color: var(--color-stone-700);
   }
 
-  .reports-toolbar__refreshed {
-    color: var(--color-stone-400);
+  .reports-toolbar__refreshed::before {
+    content: "· ";
+    color: var(--color-stone-300);
   }
 
-  .reports-error {
-    margin: 0 0 1rem;
+  /* Export menu ------------------------------------------------------------ */
+  .reports-export-menu {
+    position: relative;
   }
 
-  .reports-error[hidden] {
-    display: none;
-  }
-
-  /* Mobile section tabs --------------------------------------------------- */
-  .reports-tabs {
-    display: none;
-    margin: 0 0 var(--mobile-space-sm);
-    min-width: 0;
-  }
-
-  .reports-tabs__btn {
-    display: inline-flex;
-    flex: 0 0 auto;
-    align-items: center;
-    min-height: 2.25rem;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--color-stone-200);
-    border-radius: 999px;
-    background: var(--color-bg);
-    color: var(--color-stone-600);
-    font-family: var(--font-body);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    white-space: nowrap;
+  .reports-export-menu__trigger {
+    list-style: none;
     cursor: pointer;
-    transition:
-      background var(--transition-fast),
-      border-color var(--transition-fast),
-      color var(--transition-fast);
   }
 
-  .reports-tabs__btn:hover,
-  .reports-tabs__btn:focus-visible {
-    color: var(--color-text);
-    border-color: var(--color-stone-300);
-    outline: none;
-  }
-
-  .reports-tabs__btn.is-active,
-  .reports-tabs__btn[aria-selected="true"] {
-    color: var(--color-text);
-    border-color: var(--color-sage);
-    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
-    box-shadow: inset 0 0 0 1px var(--color-sage);
-  }
-
-  .reports-tabs__short {
+  .reports-export-menu__trigger::-webkit-details-marker {
     display: none;
   }
 
-  .reports-revenue-def {
-    margin: 0 0 0.75rem;
-    grid-column: 1 / -1;
-    font-size: var(--text-sm);
-    color: var(--color-stone-500);
-    line-height: var(--leading-normal);
-  }
-
-  /* Sections -------------------------------------------------------------- */
-  .reports-section {
-    margin-top: 1.25rem;
-    scroll-margin-top: calc(var(--team-bar-height, 3.25rem) + 1rem);
-  }
-
-  .reports-section:first-of-type {
-    margin-top: 0;
-  }
-
-  .reports-section__head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-bottom: 0.65rem;
-  }
-
-  .reports-section__title {
-    scroll-margin-top: calc(var(--team-bar-height, 3.25rem) + 1rem);
-  }
-
-  /* Compact metric cards -------------------------------------------------- */
-  .reports-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: 0.75rem;
-  }
-
-  .reports-metric {
-    display: grid;
-    gap: 0.2rem;
-    align-content: start;
-    padding: 0.85rem 0.95rem;
+  .reports-export-menu__panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 30;
+    min-width: 14rem;
+    padding: 0.5rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-md);
     background: var(--color-bg);
+    box-shadow: var(--shadow-md);
   }
 
-  .reports-metric__label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin: 0;
-    font-family: var(--font-body);
+  .reports-export-menu__hint {
+    margin: 0 0 0.35rem;
+    padding: 0.35rem 0.5rem;
     font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-wide);
+    color: var(--color-stone-500);
+    line-height: 1.35;
+  }
+
+  .reports-export-menu__item {
+    display: block;
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    text-align: left;
+    color: var(--color-stone-700);
+    cursor: pointer;
+  }
+
+  .reports-export-menu__item:hover,
+  .reports-export-menu__item:focus-visible {
+    background: var(--color-stone-100);
+    outline: none;
+  }
+
+  .reports-export-menu__item:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Nav groups ------------------------------------------------------------- */
+  .reports-nav__group + .reports-nav__group {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-stone-200);
+  }
+
+  .reports-nav__heading {
+    margin: 0;
+    padding: 0.35rem var(--team-sidebar-inset-x) 0.15rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--color-stone-400);
   }
 
-  .reports-metric__value {
+  /* Workspace + sections --------------------------------------------------- */
+  .reports-workspace {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .reports-section {
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    scroll-margin-top: calc(var(--team-bar-height, 3.25rem) + 7rem);
+  }
+
+  .reports-section__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .reports-section__title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 1.5rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--color-stone-800);
+  }
+
+  .reports-section__desc {
+    margin: 0.2rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .reports-section-lead {
+    margin: 0 0 0.75rem;
+    font-size: var(--text-sm);
+    color: var(--color-stone-600);
+  }
+
+  /* KPI grid --------------------------------------------------------------- */
+  .reports-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+  }
+
+  .reports-kpi {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
+    cursor: default;
+  }
+
+  .reports-kpi[role="button"] {
+    cursor: pointer;
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .reports-kpi[role="button"]:hover,
+  .reports-kpi[role="button"]:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 0 0 2px var(--color-focus-ring);
+    outline: none;
+  }
+
+  .reports-kpi__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-400);
+  }
+
+  .reports-kpi__value {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
     font-weight: 500;
     line-height: 1.1;
     color: var(--color-stone-800);
     font-variant-numeric: tabular-nums;
   }
 
-  .reports-metric__meta {
-    margin: 0;
+  .reports-kpi__cmp {
     font-size: var(--text-xs);
     color: var(--color-stone-500);
   }
 
-  /* Info tooltip glyph */
-  .reports-info {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 0.95rem;
-    height: 0.95rem;
-    border-radius: 50%;
-    border: 1px solid var(--color-stone-300);
-    font-size: 0.6rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--color-stone-400);
-    cursor: help;
+  .reports-kpi__cmp--up {
+    color: var(--color-stone-600);
   }
 
-  /* Cancellations single-row panel --------------------------------------- */
+  .reports-kpi__cmp--down {
+    color: var(--color-stone-600);
+  }
+
+  /* Banners + alerts ------------------------------------------------------- */
+  .reports-banner {
+    margin: 0 0 0.85rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-stone-200);
+    background: var(--color-stone-50);
+  }
+
+  .reports-banner--info {
+    border-color: rgba(141, 158, 136, 0.35);
+    background: var(--color-sage-muted, rgba(141, 158, 136, 0.08));
+  }
+
+  .reports-banner__title {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .reports-banner__hint {
+    margin: 0.25rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-600);
+    line-height: 1.4;
+  }
+
+  .reports-inv-alert {
+    margin: 0 0 0.75rem;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .reports-inv-alert a {
+    color: var(--color-link);
+    text-decoration: none;
+  }
+
+  .reports-inv-alert a:hover {
+    text-decoration: underline;
+  }
+
+  /* Trend chart ------------------------------------------------------------ */
+  .reports-trend {
+    margin-top: 0.25rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--color-stone-200);
+  }
+
+  .reports-trend__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reports-trend__title {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-700);
+  }
+
+  .reports-trend__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .reports-trend__metric {
+    min-height: 2rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: 999px;
+    background: var(--color-bg);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--color-stone-600);
+    cursor: pointer;
+  }
+
+  .reports-trend__metric.is-active,
+  .reports-trend__metric[aria-pressed="true"] {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    color: var(--color-stone-800);
+  }
+
+  .reports-trend__summary {
+    margin: 0 0 0.5rem;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
+  }
+
+  .reports-trend__chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.25rem;
+    min-height: 7rem;
+    padding: 0.5rem 0;
+    overflow-x: auto;
+  }
+
+  .reports-trend__bar-wrap {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 1.75rem;
+  }
+
+  .reports-trend__bar {
+    width: 100%;
+    max-width: 2rem;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--color-citrine);
+    min-height: 2px;
+  }
+
+  .reports-trend__bar-label {
+    font-size: 0.5625rem;
+    color: var(--color-stone-400);
+    white-space: nowrap;
+    transform: rotate(-35deg);
+    transform-origin: top center;
+  }
+
+  /* Tables ----------------------------------------------------------------- */
+  .reports-table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reports-table-search {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .reports-table-search__input {
+    width: 100%;
+    min-height: 2.25rem;
+    font-size: var(--text-sm);
+  }
+
+  .reports-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+  }
+
+  .reports-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  .reports-table th,
+  .reports-table td {
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--color-stone-200);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .reports-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+    background: var(--color-stone-50);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .reports-table th.num,
+  .reports-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .reports-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .reports-table tbody tr[role="button"] {
+    cursor: pointer;
+  }
+
+  .reports-table tbody tr[role="button"]:hover td,
+  .reports-table tbody tr[role="button"]:focus-visible td {
+    background: var(--color-sage-muted);
+  }
+
+  .reports-table-foot {
+    margin: 0.5rem 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
+  }
+
+  .reports-table__action {
+    font-weight: 500;
+    color: var(--color-link);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* Column visibility menu ------------------------------------------------- */
+  .reports-col-menu {
+    position: relative;
+  }
+
+  .reports-col-menu__trigger {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .reports-col-menu__trigger::-webkit-details-marker {
+    display: none;
+  }
+
+  .reports-col-menu__panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.25rem);
+    z-index: 20;
+    min-width: 11rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-md);
+  }
+
+  .reports-col-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.35rem;
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+
+  /* Cancellations row ------------------------------------------------------ */
   .reports-cancel-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-    gap: 0.5rem 1.5rem;
-    padding: 0.35rem 0;
+    grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+    gap: 0.5rem 1.25rem;
+    padding: 0.25rem 0;
+    cursor: pointer;
   }
 
   .reports-cancel-cell {
@@ -472,7 +891,7 @@ const PRESETS = [
 
   .reports-cancel-cell__value {
     font-family: var(--font-display);
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 500;
     color: var(--color-stone-800);
     font-variant-numeric: tabular-nums;
@@ -487,23 +906,125 @@ const PRESETS = [
     color: var(--color-stone-500);
   }
 
-  /* Empty / status states ------------------------------------------------- */
-  .reports-state.ui-empty {
-    justify-items: center;
+  /* Status distribution bar ------------------------------------------------ */
+  .reports-status-bar-cell {
+    min-width: 6rem;
   }
 
-  .reports-state.ui-empty--compact {
-    padding: var(--mobile-space-md);
+  .reports-status-bar {
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--color-stone-200);
+    overflow: hidden;
   }
 
+  .reports-status-bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-citrine);
+  }
+
+  /* Inventory severity ----------------------------------------------------- */
+  .reports-severity {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .reports-severity--out-of-stock {
+    background: rgba(180, 35, 24, 0.12);
+    color: var(--color-error);
+  }
+
+  .reports-severity--critical {
+    background: rgba(180, 35, 24, 0.08);
+    color: #a33;
+  }
+
+  .reports-severity--low {
+    background: rgba(231, 172, 70, 0.15);
+    color: #8a5a00;
+  }
+
+  .reports-severity--at-reorder {
+    background: var(--color-stone-100);
+    color: var(--color-stone-600);
+  }
+
+  /* Info tooltip ----------------------------------------------------------- */
+  .reports-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    border: 1px solid var(--color-stone-300);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: var(--color-stone-400);
+    cursor: help;
+  }
+
+  /* Detail drill-down panel ------------------------------------------------ */
+  .reports-detail {
+    position: fixed;
+    inset: 0;
+    z-index: 220;
+    display: grid;
+    align-items: end;
+    padding: 0;
+    background: rgba(10, 10, 10, 0.45);
+  }
+
+  .reports-detail[hidden] {
+    display: none;
+  }
+
+  .reports-detail__body {
+    max-height: min(80vh, 36rem);
+    overflow: auto;
+    padding: 1rem 1.1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background: var(--color-bg);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .reports-detail__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .reports-detail__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 500;
+  }
+
+  .reports-detail__desc {
+    margin: 0.2rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  /* Loading skeleton ------------------------------------------------------- */
   .reports-skeleton {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    gap: 0.65rem;
   }
 
   .reports-skeleton__card {
-    height: 4.75rem;
+    height: 4.5rem;
     border-radius: var(--radius-md);
     background: linear-gradient(
       90deg,
@@ -524,19 +1045,62 @@ const PRESETS = [
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .reports-skeleton__card {
-      animation: none;
-    }
+  .reports-error[hidden] {
+    display: none;
   }
 
-  /* Sidebar nav sits directly under the section title, no big gaps */
-  .reports-nav {
+  /* Mobile tabs ------------------------------------------------------------ */
+  .reports-tabs {
+    display: none;
+    margin: 0 0 var(--mobile-space-sm);
+  }
+
+  .reports-tabs__btn {
+    display: inline-flex;
     flex: 0 0 auto;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: 999px;
+    background: var(--color-bg);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .reports-tabs__btn.is-active,
+  .reports-tabs__btn[aria-selected="true"] {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    box-shadow: inset 0 0 0 1px var(--color-citrine);
+  }
+
+  .reports-tabs__short {
+    display: none;
   }
 
   .reports-section.is-mobile-hidden {
     display: none;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reports-skeleton__card {
+      animation: none;
+    }
   }
 
   @media (max-width: 900px) {
@@ -544,26 +1108,40 @@ const PRESETS = [
       display: block;
     }
 
-    .reports-page :global(.team-list-layout__sidebar) {
+    .reports-page .team-list-layout__sidebar {
       display: none;
     }
 
-    .reports-page :global(.team-list-layout__main-lead) {
+    .reports-page .team-list-layout__main-lead {
       display: none;
+    }
+
+    .reports-page .team-list-layout__toolbar {
+      margin-inline: calc(-1 * var(--space-4));
+      padding-inline: var(--space-4);
+    }
+
+    .reports-toolbar__row--primary {
+      flex-direction: column;
+      align-items: stretch;
     }
 
     .reports-toolbar__actions {
-      margin-left: 0;
       width: 100%;
+      justify-content: stretch;
     }
 
     .reports-toolbar__refresh,
-    .reports-toolbar__export {
-      flex: 1 1 calc(50% - 0.25rem);
+    .reports-export-menu {
+      flex: 1 1 auto;
     }
   }
 
   @media (max-width: 640px) {
+    .reports-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .reports-toolbar__field {
       flex-basis: 100%;
     }
@@ -571,11 +1149,6 @@ const PRESETS = [
     .reports-toolbar__actions {
       flex-direction: column;
       align-items: stretch;
-    }
-
-    .reports-toolbar__refresh,
-    .reports-toolbar__export {
-      width: 100%;
     }
   }
 
@@ -587,11 +1160,39 @@ const PRESETS = [
     .reports-tabs__short {
       display: inline;
     }
+  }
 
-    .reports-tabs__btn {
-      min-height: 2rem;
-      padding-inline: 0.55rem;
-      font-size: 0.75rem;
-    }
+  /* Dark mode -------------------------------------------------------------- */
+  [data-theme="dark"] .reports-preset[aria-pressed="true"],
+  [data-theme="dark"] .reports-preset.is-active {
+    background: var(--color-stone-100);
+    color: var(--color-text);
+    box-shadow: inset 0 0 0 2px var(--color-citrine);
+  }
+
+  [data-theme="dark"] .reports-kpi__value,
+  [data-theme="dark"] .reports-cancel-cell__value,
+  [data-theme="dark"] .reports-section__title {
+    color: var(--color-text);
+  }
+
+  [data-theme="dark"] .reports-kpi,
+  [data-theme="dark"] .reports-section,
+  [data-theme="dark"] .reports-table-wrap,
+  [data-theme="dark"] .reports-banner {
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-100);
+  }
+
+  [data-theme="dark"] .reports-table th {
+    background: var(--color-stone-200);
+    color: var(--color-stone-500);
+  }
+
+  [data-theme="dark"] .reports-export-menu__panel,
+  [data-theme="dark"] .reports-col-menu__panel,
+  [data-theme="dark"] .reports-detail__body {
+    background: var(--color-bg);
+    border-color: var(--color-stone-300);
   }
 </style>

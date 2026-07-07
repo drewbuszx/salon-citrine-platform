@@ -170,6 +170,57 @@ export function resolveReportRange(
   return { fromDate, toDate, startUtc, endExclusiveUtc };
 }
 
+/** Inclusive day count for a range's date strings. */
+function inclusiveDays(fromDate: string, toDate: string): number {
+  const from = new Date(`${fromDate}T00:00:00Z`).getTime();
+  const to = new Date(`${toDate}T00:00:00Z`).getTime();
+  return Math.round((to - from) / 86_400_000) + 1;
+}
+
+/** Shift a YYYY-MM-DD date by whole months, clamping the day to month length. */
+function shiftMonths(dateStr: string, months: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const targetIndex = (m - 1) + months;
+  const targetYear = y + Math.floor(targetIndex / 12);
+  const targetMonth = ((targetIndex % 12) + 12) % 12; // 0-indexed
+  const maxDay = lastDayOfMonth(targetYear, targetMonth + 1);
+  const day = Math.min(d, maxDay);
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export type CompareMode = "previous" | "previous-month" | "last-year";
+
+/**
+ * Resolve a comparison range from a base range.
+ *  - previous: the equally-long window immediately before the base range.
+ *  - previous-month: the same dates shifted back one calendar month.
+ *  - last-year: the same dates shifted back one year.
+ */
+export function resolveCompareRange(
+  range: ReportRange,
+  mode: CompareMode,
+  timeZone: string = SALON_TIME_ZONE,
+): ReportRange {
+  let fromDate: string;
+  let toDate: string;
+
+  if (mode === "previous") {
+    const days = inclusiveDays(range.fromDate, range.toDate);
+    toDate = addDays(range.fromDate, -1);
+    fromDate = addDays(toDate, -(days - 1));
+  } else if (mode === "previous-month") {
+    fromDate = shiftMonths(range.fromDate, -1);
+    toDate = shiftMonths(range.toDate, -1);
+  } else {
+    fromDate = shiftMonths(range.fromDate, -12);
+    toDate = shiftMonths(range.toDate, -12);
+  }
+
+  const startUtc = localWallClockToUtc(fromDate, "00:00", timeZone).toISOString();
+  const endExclusiveUtc = localWallClockToUtc(addDays(toDate, 1), "00:00", timeZone).toISOString();
+  return { fromDate, toDate, startUtc, endExclusiveUtc };
+}
+
 function isoDate(date: Date): string {
   const y = date.getUTCFullYear();
   const m = String(date.getUTCMonth() + 1).padStart(2, "0");

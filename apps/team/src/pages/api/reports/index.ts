@@ -3,10 +3,14 @@ import { isSalonManager } from "../../../lib/auth";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import {
   loadAllReports,
+  loadReportDetail,
   parseReportRange,
   reportsCsvFilename,
   reportsToCsv,
 } from "../../../lib/reports";
+import { resolveCompareRange, type CompareMode } from "../../../lib/report-range";
+
+const COMPARE_MODES = new Set(["previous", "previous-month", "last-year"]);
 
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
@@ -20,7 +24,24 @@ export const GET: APIRoute = async (context) => {
   const range = parseReportRange(url.searchParams);
 
   try {
-    const reports = await loadAllReports(auth.supabase, range);
+    // Drill-down: underlying records for a summary total.
+    const detailKind = url.searchParams.get("detail");
+    if (detailKind) {
+      const detail = await loadReportDetail(auth.supabase, range, {
+        kind: detailKind,
+        status: url.searchParams.get("status"),
+        staffId: url.searchParams.get("staffId"),
+      });
+      return jsonOk({ detail });
+    }
+
+    const compareParam = url.searchParams.get("compare");
+    const compareRange =
+      compareParam && COMPARE_MODES.has(compareParam)
+        ? resolveCompareRange(range, compareParam as CompareMode)
+        : null;
+
+    const reports = await loadAllReports(auth.supabase, range, compareRange);
 
     if (url.searchParams.get("format") === "csv") {
       const csv = reportsToCsv(reports);
