@@ -664,17 +664,18 @@ const staffOptions = staffRows ?? [];
     font-weight: 500;
     line-height: var(--notebook-line);
     letter-spacing: 0.01em;
+    color: var(--notebook-ink);
   }
 
   .tasks-page :global(.notebook-entry.is-done .notebook-entry__title) {
     text-decoration: line-through;
     text-decoration-color: var(--color-sage);
     text-decoration-thickness: 1px;
-    color: var(--color-stone-500);
+    color: var(--notebook-ink-faint);
   }
 
   .tasks-page :global(.notebook-entry.is-low .notebook-entry__title) {
-    color: var(--color-stone-500);
+    color: var(--notebook-ink-faint);
   }
 
   .tasks-page :global(.notebook-entry__tags) {
@@ -704,8 +705,8 @@ const staffOptions = staffRows ?? [];
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
     white-space: nowrap;
-    color: var(--color-stone-500);
-    background: var(--color-stone-100);
+    color: var(--notebook-ink-faint);
+    background: var(--notebook-surface-muted);
   }
 
   /* High priority: ONE quiet red accent (badge only — no bar, no red check). */
@@ -722,9 +723,9 @@ const staffOptions = staffRows ?? [];
   }
 
   .tasks-page :global(.task-badge--low) {
-    color: var(--color-stone-500);
+    color: var(--notebook-ink-faint);
     background: transparent;
-    border-color: var(--color-stone-200);
+    border-color: var(--notebook-border);
   }
 
   .tasks-page :global(.task-badge--open) {
@@ -734,9 +735,9 @@ const staffOptions = staffRows ?? [];
   }
 
   .tasks-page :global(.task-badge--claimed) {
-    color: var(--color-stone-600, var(--color-stone-500));
-    background: var(--color-stone-100);
-    border-color: var(--color-stone-200);
+    color: var(--notebook-ink-muted);
+    background: var(--notebook-surface-muted);
+    border-color: var(--notebook-border);
   }
 
   .tasks-page :global(.task-badge--done) {
@@ -757,7 +758,7 @@ const staffOptions = staffRows ?? [];
     gap: 0.25rem;
     height: 1.15rem;
     padding: 0 0.5rem;
-    border: 1px solid var(--color-stone-200);
+    border: 1px solid var(--notebook-border);
     border-radius: 999px;
     font-family: var(--font-body);
     font-size: 0.62rem;
@@ -765,8 +766,8 @@ const staffOptions = staffRows ?? [];
     line-height: 1;
     letter-spacing: 0.02em;
     white-space: nowrap;
-    color: var(--color-stone-600, var(--color-stone-500));
-    background: var(--color-bg);
+    color: var(--notebook-ink-muted);
+    background: var(--notebook-surface);
   }
 
   .tasks-page :global(.task-due::before) {
@@ -798,7 +799,7 @@ const staffOptions = staffRows ?? [];
     font-size: var(--text-sm);
     font-style: normal;
     line-height: 1.5;
-    color: var(--color-stone-600, var(--color-stone-500));
+    color: var(--notebook-ink-muted);
   }
 
   .tasks-page :global(.notebook-entry__meta) {
@@ -810,7 +811,7 @@ const staffOptions = staffRows ?? [];
     font-family: var(--font-body);
     font-size: var(--text-xs);
     line-height: 1.5;
-    color: var(--color-stone-500);
+    color: var(--notebook-ink-faint);
   }
 
   .tasks-page :global(.notebook-entry__meta span:not(:first-child)::before) {
@@ -870,15 +871,15 @@ const staffOptions = staffRows ?? [];
 
   /* Ghost = neutral outline (EDIT) — available but recessive. */
   .tasks-page :global(.task-action--ghost) {
-    background: var(--color-bg);
-    border-color: var(--color-stone-300);
-    color: var(--color-stone-700);
+    background: var(--notebook-surface);
+    border-color: var(--notebook-border-strong);
+    color: var(--notebook-ink);
   }
 
   .tasks-page :global(.task-action--ghost:hover),
   .tasks-page :global(.task-action--ghost:focus-visible) {
-    background: var(--color-stone-50);
-    border-color: var(--color-stone-400);
+    background: var(--notebook-surface-hover);
+    border-color: var(--notebook-ink-faint);
     outline: none;
     box-shadow: 0 0 0 3px var(--color-focus-ring);
   }
@@ -886,8 +887,8 @@ const staffOptions = staffRows ?? [];
   /* Danger = quiet outline that reveals intent on hover (CANCEL). */
   .tasks-page :global(.task-action--danger) {
     background: transparent;
-    border-color: var(--color-stone-300);
-    color: var(--color-stone-500);
+    border-color: var(--notebook-border-strong);
+    color: var(--notebook-ink-muted);
   }
 
   .tasks-page :global(.task-action--danger:hover),
