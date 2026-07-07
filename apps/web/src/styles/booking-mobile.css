@@ -1,0 +1,17 @@
+/**
+ * Guest booking mobile tokens (375px / thumb zone).
+ * Touch targets: 44px minimum per Apple HIG / WCAG 2.5.5.
+ */
+:root {
+  --touch-target-min: 2.75rem; /* 44px */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+  .booking-content .sc-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-target-min);
+  }
+}

@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import "../styles/fonts.css";
+import "../styles/booking-mobile.css";
 import { BUSINESS } from "@saloncitrine/shared";
 import BookingSteps, {
   type BookingStepId,
@@ -23,7 +24,7 @@ const embed =
 <html lang="en" data-booking-embed={embed ? "1" : undefined}>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex" />
     <title>{title} · Book · {BUSINESS.name}</title>
     <script is:inline>
