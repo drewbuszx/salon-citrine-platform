@@ -30,11 +30,9 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** Light theme: white wordmark on dark team bar; compact PNG is invert-filter fallback */
-const logoLightSrc = withBase("images/salon-citrine-primary-white.png");
-const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
-/** Dark theme: HorizRev horizontal logo on #1a1a1a team bar */
-const logoDarkSrc = withBase("images/logo-horiz-rev-dark.png");
+/** Team bar background is dark (#1a1a1a) in both light and dark mode, so the
+    HorizRev horizontal wordmark is the single logo for every theme. */
+const logoSrc = withBase("images/logo-horiz-rev-dark.png");
 const profileMenuId = "team-profile-menu";
 
 const navTabs: {
@@ -86,22 +84,12 @@ const initials = staff ? staffInitials(staff.name) : "";
     <div class="team-bar__brand">
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
-          class="team-bar__logo-img team-bar__logo-img--light"
-          src={logoLightSrc}
-          data-fallback-src={logoFallbackSrc}
+          class="team-bar__logo-img"
+          src={logoSrc}
           alt=""
           width="200"
           height="40"
           loading="eager"
-        />
-        <img
-          class="team-bar__logo-img team-bar__logo-img--dark"
-          src={logoDarkSrc}
-          alt=""
-          width="200"
-          height="40"
-          loading="eager"
-          aria-hidden="true"
         />
         <span class="team-bar__logo-wordmark">{BUSINESS.name}</span>
       </a>
@@ -409,46 +397,22 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__logo-img {
     display: block;
-    height: calc(var(--team-bar-height, 3.25rem) - 0.75rem);
-    max-height: calc(var(--team-bar-height, 3.25rem) - 0.75rem);
+    /* HorizRev is a wide 2.74:1 wordmark used in both light and dark mode;
+       give it the full bar height and room to breathe so it reads as the
+       horizontal logo, not a tiny crest */
+    height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
+    max-height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
     width: auto;
-    max-width: 12rem;
+    max-width: 14rem;
     object-fit: contain;
     object-position: left center;
     opacity: 0.96;
     transition: opacity var(--transition-fast);
   }
 
-  .team-bar__logo-img--dark {
-    display: none;
-    /* HorizRev is a wide 2.74:1 wordmark; give it the full bar height and
-       room to breathe so it reads as the horizontal logo, not a tiny crest */
-    height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
-    max-height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
-    max-width: 14rem;
-  }
-
-  /* :global() is required: [data-theme="dark"] lives on <html>, which is
-     outside this component's scope. A bare selector gets the component's
-     data-astro-cid appended to the ancestor and never matches <html>. */
-  :global([data-theme="dark"]) .team-bar__logo-img--light {
-    display: none;
-  }
-
-  :global([data-theme="dark"]) .team-bar__logo-img--dark {
-    display: block;
-  }
-
   .team-bar__logo:hover .team-bar__logo-img,
   .team-bar__logo:focus-visible .team-bar__logo-img {
     opacity: 1;
-  }
-
-  .team-bar__logo-img--fallback {
-    height: calc(var(--team-bar-height, 3.25rem) - 1.15rem);
-    max-height: calc(var(--team-bar-height, 3.25rem) - 1.15rem);
-    max-width: 7rem;
-    filter: brightness(0) invert(1);
   }
 
   .team-bar__logo-wordmark {
@@ -462,8 +426,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     white-space: nowrap;
   }
 
-  .team-bar__logo.is-wordmark .team-bar__logo-img--light,
-  .team-bar__logo.is-wordmark .team-bar__logo-img--dark {
+  .team-bar__logo.is-wordmark .team-bar__logo-img {
     display: none;
   }
 
