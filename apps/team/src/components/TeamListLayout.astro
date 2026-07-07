@@ -1,22 +1,38 @@
 ---
+import PageContextHeader from "./PageContextHeader.astro";
+
 interface Props {
   title: string;
+  contextTitle?: string;
+  contextSubtitle?: string;
+  contextEyebrow?: string;
+  contextDensity?: "compact" | "standard";
+  contextStatus?: string;
   mainTitle?: string;
   sidebarTitle?: string;
   showSidebar?: boolean;
   rootClass?: string;
   rootId?: string;
   filterKey?: string;
+  hideContextHeader?: boolean;
+  contentWidth?: "operational" | "reading" | "default";
 }
 
 const {
   title,
+  contextTitle,
+  contextSubtitle = "",
+  contextEyebrow = "",
+  contextDensity = "standard",
+  contextStatus = "",
   mainTitle,
   sidebarTitle = "",
   showSidebar = true,
   rootClass = "",
   rootId,
   filterKey,
+  hideContextHeader = false,
+  contentWidth = "default",
 } = Astro.props;
 
 const hasHeaderActions = Astro.slots.has("headerActions");
@@ -30,6 +46,8 @@ const hasToolbar = Astro.slots.has("toolbar");
 
 const resolvedFilterKey = filterKey ?? rootId ?? title.toLowerCase().replace(/\s+/g, "-");
 const mobileFilters = showSidebar && (hasSidebarFilters || hasSidebarExtra || hasSidebarFooter);
+const resolvedContextTitle = contextTitle ?? title;
+const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
 ---
 
 <div
@@ -38,17 +56,6 @@ const mobileFilters = showSidebar && (hasSidebarFilters || hasSidebarExtra || ha
   data-list-filters={mobileFilters ? "" : undefined}
   data-filter-key={mobileFilters ? resolvedFilterKey : undefined}
 >
-  <header class="team-list-layout__subheader">
-    <h1 class="team-list-layout__title">{title}</h1>
-    {
-      hasHeaderActions ? (
-        <div class="team-list-layout__header-actions">
-          <slot name="headerActions" />
-        </div>
-      ) : null
-    }
-  </header>
-
   {
     mobileFilters ? (
       <div class="team-list-layout__filter-backdrop" data-filter-backdrop hidden />
@@ -56,7 +63,34 @@ const mobileFilters = showSidebar && (hasSidebarFilters || hasSidebarExtra || ha
   }
 
   <div class="team-list-layout__body">
-    <main class="team-list-layout__main">
+    <main
+      class:list={[
+        "team-list-layout__main",
+        contentWidth === "operational" && "team-list-layout__main--operational",
+        contentWidth === "reading" && "team-main--content-reading",
+      ]}
+    >
+      {
+        showContextHeader ? (
+          <PageContextHeader
+            title={resolvedContextTitle}
+            subtitle={contextSubtitle}
+            eyebrow={contextEyebrow}
+            density={contextDensity}
+            status={contextStatus}
+            headingLevel={1}
+          >
+            {
+              hasHeaderActions ? (
+                <Fragment slot="primaryAction">
+                  <slot name="headerActions" />
+                </Fragment>
+              ) : null
+            }
+          </PageContextHeader>
+        ) : null
+      }
+
       {
         mobileFilters ? (
           <div class="team-list-layout__mobile-filter-bar">

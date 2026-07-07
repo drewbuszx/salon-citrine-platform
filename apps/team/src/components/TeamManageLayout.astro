@@ -1,15 +1,36 @@
 ---
+import PageContextHeader from "./PageContextHeader.astro";
 import { MANAGE_NAV, type ManageSection } from "../lib/manage-nav";
 
 interface Props {
   title: string;
+  contextTitle?: string;
+  contextSubtitle?: string;
+  contextEyebrow?: string;
+  contextDensity?: "compact" | "standard";
   activeSection?: ManageSection;
   rootClass?: string;
   managerView?: boolean;
+  hideContextHeader?: boolean;
+  contentWidth?: "operational" | "reading" | "default";
 }
 
-const { title, activeSection = "hub", rootClass = "", managerView = true } = Astro.props;
+const {
+  title,
+  contextTitle,
+  contextSubtitle = "",
+  contextEyebrow = "",
+  contextDensity = "standard",
+  activeSection = "hub",
+  rootClass = "",
+  managerView = true,
+  hideContextHeader = false,
+  contentWidth = "default",
+} = Astro.props;
+
 const hasHeaderActions = Astro.slots.has("headerActions");
+const resolvedContextTitle = contextTitle ?? title;
+const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
 
 const navItems = MANAGE_NAV.filter((item) => {
   if (item.id === "services" || item.id === "booking-policy" || item.id === "staff" || item.id === "business") {
@@ -20,17 +41,6 @@ const navItems = MANAGE_NAV.filter((item) => {
 ---
 
 <div class:list={["team-manage-layout", rootClass]}>
-  <header class="team-manage-layout__subheader">
-    <h1 class="team-manage-layout__title">{title}</h1>
-    {
-      hasHeaderActions ? (
-        <div class="team-manage-layout__header-actions">
-          <slot name="headerActions" />
-        </div>
-      ) : null
-    }
-  </header>
-
   <div class="team-manage-layout__body">
     <aside class="team-manage-layout__sidebar" aria-label="Manage business">
       <h2 class="team-manage-layout__sidebar-title">Manage Business</h2>
@@ -62,7 +72,31 @@ const navItems = MANAGE_NAV.filter((item) => {
       </nav>
     </aside>
 
-    <main class="team-manage-layout__main">
+    <main
+      class:list={[
+        "team-manage-layout__main",
+        contentWidth === "reading" && "team-main--content-reading",
+      ]}
+    >
+      {
+        showContextHeader ? (
+          <PageContextHeader
+            title={resolvedContextTitle}
+            subtitle={contextSubtitle}
+            eyebrow={contextEyebrow}
+            density={contextDensity}
+            headingLevel={1}
+          >
+            {
+              hasHeaderActions ? (
+                <Fragment slot="primaryAction">
+                  <slot name="headerActions" />
+                </Fragment>
+              ) : null
+            }
+          </PageContextHeader>
+        ) : null
+      }
       <slot />
     </main>
   </div>
@@ -76,31 +110,6 @@ const navItems = MANAGE_NAV.filter((item) => {
     font-family: var(--font-body);
     background: var(--color-bg);
     color: var(--color-text);
-  }
-
-  .team-manage-layout__subheader {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem 1rem;
-    padding: 0.85rem 1.25rem;
-    border-bottom: 1px solid var(--color-stone-200);
-    background: var(--color-bg);
-  }
-
-  .team-manage-layout__title {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-  }
-
-  .team-manage-layout__header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
   }
 
   .team-manage-layout__body {
@@ -197,7 +206,7 @@ const navItems = MANAGE_NAV.filter((item) => {
   }
 
   .team-manage-layout__main {
-    padding: 1.25rem 1.5rem 2rem;
+    padding: var(--shell-main-padding-top) var(--shell-main-padding-x) var(--shell-main-padding-bottom);
     background: var(--color-bg);
     min-width: 0;
   }
