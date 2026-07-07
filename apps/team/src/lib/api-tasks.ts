@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSalonManager } from "./auth";
 import type { StaffProfile } from "../env.d.ts";
 
@@ -169,4 +170,44 @@ export function isTaskNeedsAttention(
   if (Number.isNaN(due.getTime())) return false;
   const threshold = Date.now() + TASK_ATTENTION_HOURS * 60 * 60 * 1000;
   return due.getTime() <= threshold;
+}
+
+export async function countOpenPoolTasks(supabase: SupabaseClient) {
+  const { count, error } = await supabase
+    .from("tasks")
+    .select("*", { count: "exact", head: true })
+    .eq("assignment_type", "open")
+    .eq("status", "open");
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
+}
+
+export async function countAttentionTasks(
+  supabase: SupabaseClient,
+  staffId: string,
+  manager: boolean,
+) {
+  const { data, error } = await supabase
+    .from("tasks")
+    .select("id, due_at, status, assignment_type, task_assignees(staff_id)")
+    .in("status", ["open", "claimed"])
+    .not("due_at", "is", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).filter((row) => {
+    if (!isTaskNeedsAttention(row.due_at, row.status as TaskStatus)) {
+      return false;
+    }
+    if (manager) return true;
+    if (row.assignment_type === "open") return true;
+    const assignees = (row.task_assignees ?? []) as Array<{ staff_id: string }>;
+    return assignees.some((a) => a.staff_id === staffId);
+  }).length;
 }

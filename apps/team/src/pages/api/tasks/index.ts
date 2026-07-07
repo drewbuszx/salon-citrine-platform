@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import {
+  countAttentionTasks,
   isTaskNeedsAttention,
   mapTask,
   parseAssignmentType,
@@ -34,33 +35,6 @@ async function loadAssigneeTaskIds(
   }
 
   return (data ?? []).map((row) => row.task_id as string);
-}
-
-async function countAttentionTasks(
-  supabase: App.Locals["supabase"],
-  staffId: string,
-  manager: boolean,
-) {
-  let query = supabase
-    .from("tasks")
-    .select("id, due_at, status, assignment_type, task_assignees(staff_id)")
-    .in("status", ["open", "claimed"])
-    .not("due_at", "is", null);
-
-  const { data, error } = await query;
-  if (error) {
-    throw error;
-  }
-
-  return (data ?? []).filter((row) => {
-    if (!isTaskNeedsAttention(row.due_at, row.status as TaskRow["status"])) {
-      return false;
-    }
-    if (manager) return true;
-    if (row.assignment_type === "open") return true;
-    const assignees = (row.task_assignees ?? []) as Array<{ staff_id: string }>;
-    return assignees.some((a) => a.staff_id === staffId);
-  }).length;
 }
 
 export const GET: APIRoute = async (context) => {
