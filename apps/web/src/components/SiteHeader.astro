@@ -45,9 +45,12 @@ const externalLinkAttrs = (external?: boolean) =>
   external ? { target: "_blank", rel: "noopener noreferrer" } : {};
 
 const shopMenuId = "shop-submenu";
+const mainContentId = "booking-main";
 const logoLightSrc = withBase("images/salon-citrine-logo.png");
 const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
 ---
+
+<a class="site-header__skip-link" href={`#${mainContentId}`}>Skip to main content</a>
 
 <header class="site-header">
   <div class="site-header__inner">
@@ -139,35 +142,37 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
       }
     </nav>
 
-    <button
-      class="site-header__theme-toggle site-header__theme-toggle--desktop"
-      type="button"
-      aria-label="Switch to dark mode"
-      data-theme-toggle
-    >
-      <svg
-        class="theme-toggle__icon theme-toggle__icon--moon"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
+    <div class="site-header__theme-tray site-header__theme-tray--desktop">
+      <button
+        class="site-header__theme-toggle site-header__theme-toggle--desktop"
+        type="button"
+        aria-label="Switch to dark mode"
+        data-theme-toggle
       >
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-      <svg
-        class="theme-toggle__icon theme-toggle__icon--sun"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-      </svg>
-    </button>
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--moon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <svg
+          class="theme-toggle__icon theme-toggle__icon--sun"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </div>
 
     <div class="site-header__controls">
       <button
@@ -175,6 +180,7 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
         type="button"
         aria-label="Open menu"
         aria-expanded="false"
+        aria-controls="site-mobile-nav"
         data-menu-toggle
       >
         <span></span>
@@ -183,7 +189,10 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
       </button>
     </div>
 
+    <div class="site-header__mobile-backdrop" data-mobile-backdrop hidden></div>
+
     <nav
+      id="site-mobile-nav"
       class="site-header__nav site-header__nav--mobile"
       aria-label="Mobile"
       data-mobile-nav
@@ -244,35 +253,37 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
         )
       }
 
-      <button
-        class="site-header__theme-toggle site-header__theme-toggle--mobile"
-        type="button"
-        aria-label="Switch to dark mode"
-        data-theme-toggle
-      >
-        <svg
-          class="theme-toggle__icon theme-toggle__icon--moon"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
+      <div class="site-header__theme-tray site-header__theme-tray--mobile">
+        <button
+          class="site-header__theme-toggle site-header__theme-toggle--mobile"
+          type="button"
+          aria-label="Switch to dark mode"
+          data-theme-toggle
         >
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg
-          class="theme-toggle__icon theme-toggle__icon--sun"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="5"></circle>
-          <line x1="12" y1="1" x2="12" y2="3"></line>
-          <line x1="12" y1="21" x2="12" y2="23"></line>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-          <line x1="1" y1="12" x2="3" y2="12"></line>
-          <line x1="21" y1="12" x2="23" y2="12"></line>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-      </button>
+          <svg
+            class="theme-toggle__icon theme-toggle__icon--moon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg
+            class="theme-toggle__icon theme-toggle__icon--sun"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
       <button
         class="site-header__menu-close"
         type="button"
@@ -286,6 +297,12 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
 </header>
 
 <script>
+  const mainContentId = "booking-main";
+  const main = document.querySelector<HTMLElement>(".booking-main");
+  if (main && !main.id) {
+    main.id = mainContentId;
+  }
+
   const themeToggles = document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]");
   const storageKey = "theme";
 
@@ -315,6 +332,7 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
 
   const menuToggle = document.querySelector<HTMLButtonElement>("[data-menu-toggle]");
   const nav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+  const mobileBackdrop = document.querySelector<HTMLElement>("[data-mobile-backdrop]");
   const dropdowns = document.querySelectorAll<HTMLElement>("[data-nav-dropdown]");
 
   function closeDropdown(dropdown: HTMLElement) {
@@ -413,20 +431,31 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
     });
   });
 
+  function setMobileMenuOpen(open: boolean) {
+    nav?.classList.toggle("is-open", open);
+    menuToggle?.classList.toggle("is-active", open);
+    menuToggle?.setAttribute("aria-expanded", String(open));
+    menuToggle?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    document.body.classList.toggle("site-header-menu-open", open);
+
+    if (mobileBackdrop) {
+      mobileBackdrop.hidden = !open;
+    }
+
+    if (!open) {
+      dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+    }
+  }
+
   function closeMobileMenu() {
-    nav?.classList.remove("is-open");
-    menuToggle?.setAttribute("aria-expanded", "false");
-    dropdowns.forEach((dropdown) => closeDropdown(dropdown));
+    setMobileMenuOpen(false);
   }
 
   menuToggle?.addEventListener("click", () => {
-    const isOpen = nav?.classList.toggle("is-open");
-    menuToggle.setAttribute("aria-expanded", String(!!isOpen));
-
-    if (!isOpen) {
-      dropdowns.forEach((dropdown) => closeDropdown(dropdown));
-    }
+    setMobileMenuOpen(!nav?.classList.contains("is-open"));
   });
+
+  mobileBackdrop?.addEventListener("click", closeMobileMenu);
 
   document
     .querySelector<HTMLButtonElement>("[data-menu-close]")
@@ -435,4 +464,269 @@ const logoDarkSrc = withBase("images/salon-citrine-banner-dark.png");
   nav?.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", closeMobileMenu);
   });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && nav?.classList.contains("is-open")) {
+      closeMobileMenu();
+      menuToggle?.focus();
+    }
+  });
 </script>
+
+<style>
+  .site-header__skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 500;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-800);
+    color: var(--color-cream);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform var(--transition-fast);
+  }
+
+  .site-header__skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--color-citrine);
+    outline-offset: 2px;
+  }
+
+  .site-header__theme-tray {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-pill);
+    background: var(--color-stone-100);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  .site-header__theme-tray--desktop {
+    position: absolute;
+    right: clamp(1rem, 3vw, 2.5rem);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+  }
+
+  .site-header__theme-tray--mobile {
+    display: none;
+  }
+
+  .site-header__theme-tray :global(.site-header__theme-toggle) {
+    width: 2.15rem;
+    height: 2.15rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-pill);
+    background: var(--color-cream);
+    color: var(--color-stone-700);
+    box-shadow:
+      0 1px 2px rgba(47, 42, 40, 0.08),
+      0 1px 0 rgba(255, 255, 255, 0.65) inset;
+    opacity: 1;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .site-header__theme-tray :global(.site-header__theme-toggle:hover),
+  .site-header__theme-tray :global(.site-header__theme-toggle:focus-visible) {
+    opacity: 1;
+    background: var(--color-cream-deep);
+    border-color: var(--color-citrine);
+    transform: translateY(-1px);
+    box-shadow:
+      0 3px 8px rgba(47, 42, 40, 0.1),
+      0 1px 0 rgba(255, 255, 255, 0.65) inset;
+    outline: none;
+  }
+
+  .site-header__theme-tray :global(.site-header__theme-toggle:focus-visible) {
+    box-shadow:
+      0 0 0 3px var(--color-focus-ring),
+      0 1px 2px rgba(47, 42, 40, 0.08);
+  }
+
+  [data-theme="dark"] .site-header__theme-tray {
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-100);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  [data-theme="dark"] .site-header__theme-tray :global(.site-header__theme-toggle) {
+    background: var(--color-stone-50);
+    border-color: var(--color-stone-300);
+    color: var(--color-stone-700);
+    box-shadow:
+      0 2px 6px rgba(0, 0, 0, 0.28),
+      0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  }
+
+  [data-theme="dark"] .site-header__theme-tray :global(.site-header__theme-toggle:hover),
+  [data-theme="dark"] .site-header__theme-tray :global(.site-header__theme-toggle:focus-visible) {
+    background: var(--color-stone-200);
+    border-color: var(--color-citrine);
+  }
+
+  :global(.site-header__logo-image--dark) {
+    display: none;
+  }
+
+  :global([data-theme="dark"] .site-header__logo-image--light) {
+    display: none;
+  }
+
+  :global([data-theme="dark"] .site-header__logo-image--dark) {
+    display: block;
+  }
+
+  :global(.site-header__mobile-backdrop) {
+    display: none;
+  }
+
+  :global(.site-header__menu-toggle.is-active span:nth-child(1)) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  :global(.site-header__menu-toggle.is-active span:nth-child(2)) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  :global(.site-header__menu-toggle.is-active span:nth-child(3)) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  :global(.site-header__menu-toggle span) {
+    transition:
+      transform var(--transition-base),
+      opacity var(--transition-fast);
+  }
+
+  :global(body.site-header-menu-open) {
+    overflow: hidden;
+  }
+
+  @media (max-width: 1100px) {
+    :global(.site-header__theme-tray--desktop) {
+      display: none;
+    }
+
+    :global(.site-header__theme-tray--mobile) {
+      display: inline-flex;
+    }
+
+    :global(.site-header__mobile-backdrop) {
+      display: block;
+      position: fixed;
+      inset: 0;
+      top: var(--header-height);
+      z-index: 98;
+      background: rgba(26, 24, 22, 0.42);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity var(--transition-slow),
+        visibility var(--transition-slow);
+    }
+
+    :global(.site-header__mobile-backdrop:not([hidden])) {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    :global(.site-header__nav--mobile) {
+      z-index: 99;
+      transform: translateY(-1.25rem);
+      transition:
+        opacity var(--transition-slow),
+        visibility var(--transition-slow),
+        transform var(--transition-slow);
+    }
+
+    :global(.site-header__nav--mobile.is-open) {
+      transform: translateY(0);
+    }
+
+    :global(.site-header__nav--mobile > .site-header__link),
+    :global(.site-header__nav--mobile > .site-header__dropdown),
+    :global(.site-header__nav--mobile > .site-header__theme-tray),
+    :global(.site-header__nav--mobile > .site-header__menu-close) {
+      opacity: 0;
+      transform: translateY(0.75rem);
+      transition:
+        opacity var(--transition-base),
+        transform var(--transition-base);
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown),
+    :global(.site-header__nav--mobile.is-open > .site-header__theme-tray),
+    :global(.site-header__nav--mobile.is-open > .site-header__menu-close) {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(1)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(1)) {
+      transition-delay: 0.04s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(2)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(2)) {
+      transition-delay: 0.08s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(3)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(3)) {
+      transition-delay: 0.12s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(4)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(4)) {
+      transition-delay: 0.16s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(5)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(5)) {
+      transition-delay: 0.2s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__link:nth-child(6)),
+    :global(.site-header__nav--mobile.is-open > .site-header__dropdown:nth-child(6)) {
+      transition-delay: 0.24s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__theme-tray) {
+      transition-delay: 0.28s;
+    }
+
+    :global(.site-header__nav--mobile.is-open > .site-header__menu-close) {
+      transition-delay: 0.32s;
+    }
+  }
+
+  @media (min-width: 1101px) {
+    :global(.site-header__inner) {
+      padding-right: calc(clamp(1rem, 3vw, 2.5rem) + 2.75rem + 0.75rem);
+    }
+
+    :global(.site-header__theme-tray--desktop .site-header__theme-toggle--desktop) {
+      position: static;
+      right: auto;
+      top: auto;
+      transform: none;
+    }
+  }
+</style>

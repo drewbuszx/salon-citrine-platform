@@ -1,43 +1,92 @@
 ---
 import { BUSINESS } from "@saloncitrine/shared";
+
+const { street, city, state, zip } = BUSINESS.address;
 ---
 
-<div class="location-context" aria-label="Salon location">
-  <p class="location-context__label">Location</p>
+<address class="location-context">
+  <span class="location-context__eyebrow">{city}, {state}</span>
   <p class="location-context__name">{BUSINESS.name}</p>
   <p class="location-context__address">
-    {BUSINESS.address.street}, {BUSINESS.address.city}, {BUSINESS.address.state}{" "}
-    {BUSINESS.address.zip}
+    {street}
+    <span class="location-context__sep" aria-hidden="true">·</span>
+    {city}, {state} {zip}
   </p>
-</div>
+</address>
 
 <style>
   .location-context {
-    margin-bottom: 1.5rem;
-    padding: 0.85rem 1rem;
-    background: var(--color-light);
-    border-left: 3px solid var(--color-sage);
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.15rem 1.05rem;
+    border: 1px solid var(--color-stone-200);
+    border-left: 3px solid var(--color-citrine);
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      135deg,
+      var(--color-cream) 0%,
+      var(--color-stone-50) 55%,
+      var(--color-cream-deep) 100%
+    );
+    box-shadow: var(--shadow-sm);
+    font-style: normal;
     text-align: center;
   }
 
-  .location-context__label {
-    margin: 0 0 0.25rem;
-    font-family: var(--font-sans);
-    font-size: 0.65rem;
-    letter-spacing: 0.14em;
+  .location-context__eyebrow {
+    display: block;
+    margin: 0 0 0.35rem;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-widest);
     text-transform: uppercase;
-    color: var(--color-gray);
+    color: var(--color-stone-500);
   }
 
   .location-context__name {
     margin: 0;
-    font-weight: 600;
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 2.5vw, 1.35rem);
+    font-weight: 500;
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-tight);
+    color: var(--color-stone-800);
   }
 
   .location-context__address {
-    margin: 0.25rem 0 0;
-    font-size: 0.9rem;
-    color: var(--color-gray);
+    margin: 0.4rem 0 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-relaxed);
+    color: var(--color-stone-600);
+  }
+
+  .location-context__sep {
+    margin: 0 0.35rem;
+    color: var(--color-citrine);
+    font-weight: 700;
+  }
+
+  [data-theme="dark"] .location-context {
+    border-color: var(--color-stone-300);
+    background: linear-gradient(
+      135deg,
+      var(--color-stone-100) 0%,
+      var(--color-stone-50) 55%,
+      var(--color-cream) 100%
+    );
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+  }
+
+  [data-theme="dark"] .location-context__eyebrow {
+    color: var(--color-stone-500);
+  }
+
+  [data-theme="dark"] .location-context__name {
+    color: var(--color-stone-800);
+  }
+
+  [data-theme="dark"] .location-context__address {
+    color: var(--color-stone-600);
   }
 </style>
