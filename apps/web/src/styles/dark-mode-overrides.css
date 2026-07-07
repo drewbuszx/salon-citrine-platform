@@ -16,6 +16,35 @@
   color-scheme: dark;
 }
 
+/* Pill CTAs — consistent across booking steps */
+.booking-shell .sc-button,
+.booking-shell .btn-primary {
+  border-radius: var(--radius-pill);
+}
+
+/* Step indicator */
+[data-theme="dark"] .steps {
+  background: var(--color-stone-100);
+  border-color: var(--color-stone-300);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .steps__item {
+  border-color: var(--color-stone-300);
+  background: var(--color-stone-50);
+}
+
+[data-theme="dark"] .steps__connector {
+  background: var(--color-stone-300);
+}
+
+/* Prefill banner (service step) */
+[data-theme="dark"] .prefill {
+  background: var(--color-stone-100);
+  border-color: var(--color-stone-300);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
 /* Shared notices */
 [data-theme="dark"] .notice--error {
   color: #f5a8a8;
@@ -35,6 +64,27 @@
   background: var(--color-stone-100);
 }
 
+/* Stone trays — details, confirm, cart-adjacent surfaces */
+[data-theme="dark"] .stone-tray,
+[data-theme="dark"] .appointment-summary,
+[data-theme="dark"] .confirm__details {
+  background: var(--color-stone-100);
+  border-color: var(--color-stone-300);
+}
+
+[data-theme="dark"] .intake-welcome {
+  background: color-mix(in srgb, var(--color-citrine) 14%, var(--color-stone-100));
+}
+
+[data-theme="dark"] .intake-welcome--returning {
+  background: color-mix(in srgb, var(--color-sage) 14%, var(--color-stone-100));
+}
+
+[data-theme="dark"] .reservation-hold {
+  background: color-mix(in srgb, var(--color-citrine) 16%, var(--color-stone-100));
+  border-color: var(--color-citrine);
+}
+
 /* Booking content surfaces */
 [data-theme="dark"] .booking-content {
   background: var(--color-booking-panel-bg);
@@ -50,6 +100,32 @@
 [data-theme="dark"] .booking-shell--embed .booking-content {
   border-color: var(--color-stone-300);
   background: var(--color-stone-100);
+}
+
+/* Datetime — calendar & time trays */
+[data-theme="dark"] .calendar__tray,
+[data-theme="dark"] .time-section__empty,
+[data-theme="dark"] .time-grid-tray,
+[data-theme="dark"] .time-skeleton__grid {
+  background: var(--color-stone-100);
+  border-color: var(--color-stone-300);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .calendar__nav-btn {
+  background: var(--color-stone-50);
+  border-color: var(--color-stone-300);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .calendar__nav-btn:hover:not(:disabled),
+[data-theme="dark"] .calendar__nav-btn:focus-visible {
+  box-shadow: none;
+}
+
+[data-theme="dark"] .empty {
+  background: var(--color-stone-100);
+  border: 1px solid var(--color-stone-300);
 }
 
 /* Calendar day buttons */
@@ -69,12 +145,19 @@
 
 /* Time slot pills */
 [data-theme="dark"] .time-slot,
+[data-theme="dark"] .time-option__pill,
 [data-theme="dark"] .time-option span {
   border-color: var(--color-stone-300);
-  background: var(--color-stone-100);
+  background: var(--color-stone-50);
   color: var(--color-text);
 }
 
+[data-theme="dark"] .time-option--recommended .time-option__pill {
+  border-color: var(--color-citrine);
+  background: color-mix(in srgb, var(--color-citrine) 18%, var(--color-stone-100));
+}
+
+[data-theme="dark"] .time-option input:checked + .time-option__pill,
 [data-theme="dark"] .time-option input:checked + span,
 [data-theme="dark"] .time-slot.is-selected,
 [data-theme="dark"] .time-slot--selected {
@@ -84,6 +167,7 @@
 }
 
 [data-theme="dark"] .time-slot:hover:not(.is-selected):not(.time-slot--selected),
+[data-theme="dark"] .time-option__pill:hover,
 [data-theme="dark"] .time-option span:hover {
   border-color: var(--color-citrine);
 }
@@ -92,4 +176,45 @@
 [data-theme="dark"] .waitlist-offer {
   border-color: var(--color-stone-300);
   background: var(--color-stone-100);
+}
+
+/* Booking step indicator — secondary labels need readable contrast */
+[data-theme="dark"] .steps__item:not(.steps__item--current) {
+  color: var(--color-stone-500);
+}
+
+[data-theme="dark"] .steps__item--complete {
+  color: var(--color-sage);
+}
+
+/* Datetime time section subheadings */
+[data-theme="dark"] .time-recommended__heading,
+[data-theme="dark"] .time-grid-tray__heading {
+  color: var(--color-stone-600);
+}
+
+[data-theme="dark"] .time-option--recommended .time-option__badge {
+  color: var(--color-citrine-dark);
+}
+
+[data-theme="dark"] .time-option input:checked + .time-option__pill .time-option__badge {
+  color: var(--color-black);
+}
+
+[data-theme="dark"] .waitlist-offer__form {
+  background: var(--color-stone-50);
+  border-color: var(--color-stone-300);
+}
+
+/* Stylist badges */
+[data-theme="dark"] .stylist-card__badge {
+  background: color-mix(in srgb, var(--color-citrine) 22%, var(--color-stone-100));
+  color: var(--color-citrine);
+  border: 1px solid color-mix(in srgb, var(--color-citrine) 35%, transparent);
+}
+
+/* Confirm recap */
+[data-theme="dark"] .confirm__recap {
+  background: color-mix(in srgb, var(--color-citrine) 12%, var(--color-stone-100));
+  border-left-color: var(--color-citrine);
 }
