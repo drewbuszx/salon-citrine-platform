@@ -11,6 +11,10 @@
     "test": "node --experimental-strip-types scripts/test-report-range.mjs",
     "test:report-range": "node --experimental-strip-types scripts/test-report-range.mjs",
     "qa:mobile-viewport": "node scripts/mobile-viewport-qa.mjs",
+    "qa:desktop-sidebar": "node scripts/desktop-sidebar-qa.mjs",
+    "qa:mobile-a11y": "node scripts/mobile-a11y-qa.mjs",
+    "qa:mobile": "node scripts/mobile-viewport-qa.mjs && node scripts/mobile-a11y-qa.mjs",
+    "test:calendar-grid": "node scripts/test-calendar-grid.mjs",
     "deploy": "wrangler deploy"
   },
   "dependencies": {

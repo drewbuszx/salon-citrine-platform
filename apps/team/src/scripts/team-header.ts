@@ -1,3 +1,5 @@
+import { initNetworkStatus } from "../lib/network-status";
+
 /**
  * Team header — mobile drawer, desktop profile menu, nav scroll fades, compact title on scroll.
  */
@@ -183,16 +185,18 @@ function initCompactPageTitle() {
   if (!shell || !titleEl || shell.dataset.compactTitleReady === "1") return;
   shell.dataset.compactTitleReady = "1";
 
+  const MOBILE_MQ = window.matchMedia("(max-width: 1100px)");
   const threshold = 56;
   let ticking = false;
 
   function update() {
     ticking = false;
-    const scrolled = window.scrollY > threshold;
-    shell.classList.toggle("is-page-scrolled", scrolled);
-    titleEl.hidden = !scrolled;
+    const useCompactTitle = MOBILE_MQ.matches && window.scrollY > threshold;
+    shell.classList.toggle("is-page-scrolled", useCompactTitle);
+    titleEl.hidden = !useCompactTitle;
   }
 
+  MOBILE_MQ.addEventListener("change", update);
   window.addEventListener(
     "scroll",
     () => {
@@ -207,6 +211,7 @@ function initCompactPageTitle() {
 }
 
 export function initTeamHeader() {
+  initNetworkStatus();
   document.querySelectorAll<HTMLElement>(".team-bar__nav-wrap").forEach(initNavScrollFade);
   initMobileDrawer();
   initDesktopProfileMenu();

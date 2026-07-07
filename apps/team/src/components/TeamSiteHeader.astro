@@ -237,7 +237,7 @@ const initials = staff ? staffInitials(staff.name) : "";
                   )}
                 <p class="team-bar__drawer-name">{staff?.name}</p>
               </div>
-              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close>
+              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close aria-label="Close menu">
                 Done
               </button>
             </header>
@@ -345,8 +345,10 @@ const initials = staff ? staffInitials(staff.name) : "";
     display: none;
   }
 
-  :global(.team-shell.is-page-scrolled) .team-bar__page-title:not([hidden]) {
-    display: block;
+  @media (max-width: 1100px) {
+    :global(.team-shell.is-page-scrolled) .team-bar__page-title:not([hidden]) {
+      display: block;
+    }
   }
 
   .team-bar__logo {

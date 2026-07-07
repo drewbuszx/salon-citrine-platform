@@ -14,6 +14,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WIDTHS = [320, 360, 390, 412, 430];
+const ZOOM_LEVELS = (process.env.TEAM_QA_ZOOM ?? "1,2")
+  .split(",")
+  .map((value) => Number(value.trim()))
+  .filter((value) => value > 0);
 const ROUTES = [
   "/login",
   "/",
@@ -45,9 +49,14 @@ function overflowPx(pageWidth, scrollWidth) {
   return Math.max(0, scrollWidth - pageWidth);
 }
 
-async function checkRoute(page, url, width) {
+async function checkRoute(page, url, width, zoom = 1) {
   await page.setViewportSize({ width, height: 800 });
   const response = await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+  if (zoom !== 1) {
+    await page.evaluate((z) => {
+      document.documentElement.style.zoom = String(z);
+    }, zoom);
+  }
   const metrics = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
@@ -59,6 +68,7 @@ async function checkRoute(page, url, width) {
   return {
     url,
     width,
+    zoom,
     status: response?.status() ?? 0,
     finalPath: metrics.path,
     title: metrics.title,
@@ -80,17 +90,24 @@ async function main() {
   console.log(`Mobile viewport QA — ${BASE_URL}`);
   if (STORAGE_STATE) console.log(`Using storage state: ${STORAGE_STATE}`);
   else console.log("Tip: set TEAM_QA_STORAGE_STATE for authenticated routes.");
+  if (ZOOM_LEVELS.some((z) => z > 1)) {
+    console.log(`Zoom levels: ${ZOOM_LEVELS.join(", ")} (200% reflow check — Fix #40)`);
+  }
 
   for (const route of ROUTES) {
     const url = `${BASE_URL}${route}`;
     for (const width of WIDTHS) {
-      const result = await checkRoute(page, url, width);
-      results.push(result);
-      const mark = result.ok ? "OK" : "FAIL";
-      if (!result.ok) failures += 1;
-      console.log(
-        `[${mark}] ${width}px ${route} → overflow ${result.overflow}px (${result.finalPath}, ${result.status})`,
-      );
+      const zooms = width === 390 ? ZOOM_LEVELS : [1];
+      for (const zoom of zooms) {
+        const result = await checkRoute(page, url, width, zoom);
+        results.push(result);
+        const mark = result.ok ? "OK" : "FAIL";
+        if (!result.ok) failures += 1;
+        const zoomLabel = zoom === 1 ? "" : ` @${zoom}x`;
+        console.log(
+          `[${mark}] ${width}px${zoomLabel} ${route} → overflow ${result.overflow}px (${result.finalPath}, ${result.status})`,
+        );
+      }
     }
   }
 

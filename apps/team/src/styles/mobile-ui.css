@@ -524,3 +524,128 @@ html.team-drawer-open {
   visibility: visible;
   pointer-events: auto;
 }
+
+/* ── Skeleton loading — Fix #48 ── */
+.ui-skeleton-grid {
+  display: grid;
+  gap: var(--mobile-space-sm);
+}
+
+.ui-skeleton {
+  display: grid;
+  gap: 0.45rem;
+  padding: var(--mobile-space-sm) 0;
+}
+
+.ui-skeleton--task {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--color-stone-100);
+}
+
+.ui-skeleton--card {
+  padding: var(--mobile-space-md);
+  border: 1px solid var(--color-stone-200);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.ui-skeleton__line,
+.ui-skeleton__block {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-stone-100) 25%,
+    var(--color-stone-50) 37%,
+    var(--color-stone-100) 63%
+  );
+  background-size: 400% 100%;
+  animation: ui-skeleton-shimmer 1.4s ease infinite;
+}
+
+.ui-skeleton__line {
+  height: 0.75rem;
+}
+
+.ui-skeleton__line--wide {
+  width: 72%;
+}
+
+.ui-skeleton__line--medium {
+  width: 52%;
+}
+
+.ui-skeleton__line--short {
+  width: 34%;
+}
+
+.ui-skeleton__block {
+  height: 3.5rem;
+}
+
+@keyframes ui-skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton__line,
+  .ui-skeleton__block {
+    animation: none;
+  }
+}
+
+/* ── Error recovery panel — Fix #49 ── */
+.ui-error-panel {
+  display: grid;
+  gap: var(--mobile-space-sm);
+  margin: 0;
+  padding: var(--mobile-space-lg) var(--mobile-space-md);
+  border: 1px solid rgba(180, 35, 24, 0.25);
+  border-radius: var(--radius-md);
+  background: var(--color-error-muted);
+  text-align: center;
+}
+
+.ui-error-panel--compact {
+  padding: var(--mobile-space-md);
+}
+
+.ui-error-panel__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-stone-800);
+}
+
+.ui-error-panel__hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-stone-600);
+}
+
+.ui-error-panel__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--mobile-space-sm);
+  margin-top: 0.15rem;
+}
+
+/* ── Global interactive focus (supplement) — Fix #39 ── */
+:where(
+  .team-bar__tab,
+  .team-list-layout__sidebar-nav-btn,
+  .reports-tabs__btn,
+  .tasks-tabs__btn,
+  .stock-toolbar__view-btn,
+  .ui-segmented__item
+):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}

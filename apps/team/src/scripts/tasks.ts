@@ -1,4 +1,6 @@
 import { showToast, friendlyError } from "../lib/toast";
+import { tasksSkeletonHtml, errorPanelHtml } from "../lib/ui-states";
+import { runGuardedSubmit } from "../lib/submit-guard";
 
 type TaskAssignee = {
   staffId: string;
@@ -402,7 +404,8 @@ async function apiFetch(path: string, init?: RequestInit) {
 async function loadTasks() {
   if (!listEl) return;
   clearError();
-  listEl.innerHTML = '<p class="tasks-loading">Loading tasks…</p>';
+  listEl.innerHTML = tasksSkeletonHtml(4);
+  listEl.setAttribute("aria-busy", "true");
 
   try {
     const data = await apiFetch(`?view=${encodeURIComponent(currentView)}`);
@@ -418,9 +421,19 @@ async function loadTasks() {
     listEl.innerHTML = tasks.map(renderTaskCard).join("");
     bindTaskActions();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load tasks";
-    listEl.innerHTML = `<p class="tasks-loading tasks-loading--error">${escapeHtml(message)}</p>`;
+    const message = friendlyError(error, "Couldn't load tasks");
+    listEl.innerHTML = errorPanelHtml({
+      title: "Couldn't load tasks",
+      hint: message,
+      actionLabel: "Try again",
+      actionAttr: "data-retry-load",
+    });
+    listEl.querySelector<HTMLButtonElement>("[data-retry-load]")?.addEventListener("click", () => {
+      void loadTasks();
+    });
     showError(message);
+  } finally {
+    listEl.removeAttribute("aria-busy");
   }
 }
 
@@ -508,6 +521,7 @@ async function submitTaskForm(event: Event) {
   event.preventDefault();
   if (!taskForm) return;
 
+  const submitBtn = taskForm.querySelector<HTMLButtonElement>('button[type="submit"]');
   const formData = new FormData(taskForm);
   const assignmentType = String(formData.get("assignment_type") ?? "open");
   const assigneeIds = formData
@@ -526,26 +540,29 @@ async function submitTaskForm(event: Event) {
   };
 
   const wasEditing = Boolean(editingTaskId);
-  try {
-    if (editingTaskId) {
-      await apiFetch(`/${editingTaskId}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-    } else {
-      await apiFetch("", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-    }
+  await runGuardedSubmit(async () => {
+    try {
+      if (editingTaskId) {
+        await apiFetch(`/${editingTaskId}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch("", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
 
-    taskModal?.close();
-    resetTaskForm();
-    showToast(wasEditing ? "Task updated." : "Task added to the list.", "success");
-    await loadTasks();
-  } catch (error) {
-    showError(friendlyError(error, "Failed to save task"));
-  }
+      taskModal?.close();
+      resetTaskForm();
+      showToast(wasEditing ? "Task updated." : "Task added to the list.", "success");
+      await loadTasks();
+    } catch (error) {
+      showError(friendlyError(error, "Failed to save task"));
+      showToast(friendlyError(error, "Failed to save task"), "error");
+    }
+  }, { button: submitBtn, busyLabel: wasEditing ? "Saving…" : "Adding…" });
 }
 
 function openCompleteModal(taskId: string, title: string) {

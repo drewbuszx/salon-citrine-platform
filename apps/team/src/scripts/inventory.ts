@@ -386,7 +386,7 @@ function initInventory(root: HTMLElement) {
 
   function renderStatusPill(product: Product) {
     const meta = statusMeta(product);
-    return `<span class="stock-status stock-status--${meta.cls}">${meta.short}</span>`;
+    return `<span class="stock-status stock-status--${meta.cls}" aria-label="${escapeAttr(meta.label)}">${meta.short}</span>`;
   }
 
   function renderReorder(product: Product) {
