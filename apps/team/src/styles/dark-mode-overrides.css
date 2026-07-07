@@ -51,6 +51,10 @@
   border-bottom-color: var(--color-border);
 }
 
+[data-theme="dark"] .team-manage-layout__main {
+  background: var(--color-bg);
+}
+
 [data-theme="dark"] .team-list-layout__sidebar-link.is-active,
 [data-theme="dark"] .team-list-layout__sidebar-nav-btn.is-active,
 [data-theme="dark"] .team-manage-layout__nav-link.is-active {
