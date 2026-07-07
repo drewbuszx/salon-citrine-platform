@@ -413,12 +413,14 @@ const calendarConfig = {
               const hourLabel = formatSlotHourLabel(minutes);
               const minuteLabel = formatSlotMinuteLabel(minutes);
               const isHour = minutes % 60 === 0;
+              const isHalf = minutes % 60 === 30;
               return (
                 <div
                   class:list={[
                     "day-cal__time-label",
                     isHour && "day-cal__time-label--hour",
-                    minuteLabel && "day-cal__time-label--minute",
+                    isHalf && "day-cal__time-label--half",
+                    minuteLabel && !isHalf && "day-cal__time-label--minute",
                   ]}
                   style={`height: ${CALENDAR_ROW_HEIGHT_REM}rem`}
                 >
@@ -531,11 +533,15 @@ const calendarConfig = {
                           memberSchedules,
                           dayParam,
                         );
+                      const isHour = minutes % 60 === 0;
+                      const isHalf = minutes % 60 === 30;
                       return (
                         <button
                           type="button"
                           class:list={[
                             "day-cal__slot",
+                            isHour && "day-cal__slot--hour",
+                            isHalf && "day-cal__slot--half",
                             salonClosed && "day-cal__slot--salon-closed",
                             !salonClosed && inShift && "day-cal__slot--shift",
                             !salonClosed && !inShift && "day-cal__slot--off",
@@ -544,6 +550,7 @@ const calendarConfig = {
                           data-staff-id={member.id}
                           data-starts-at={slotStartsAtIso(selectedDay, minutes)}
                           data-slot-minutes={CALENDAR_SLOT_MINUTES}
+                          data-slot-time={formatSlotTimeLabel(minutes)}
                           aria-label={`${inShift ? "Book" : "Unavailable"} · ${member.name} · ${formatSlotTimeLabel(minutes)}`}
                         />
                       );
@@ -754,6 +761,20 @@ const calendarConfig = {
         </div>
       </div>
     </div>
+    {
+      isToday && nowLineTop !== null && (
+        <button
+          type="button"
+          class="day-cal__jump-now"
+          data-jump-now
+          data-now-top={nowLineTop}
+          hidden
+        >
+          <span class="day-cal__jump-now-dot" aria-hidden="true" />
+          Jump to now
+        </button>
+      )
+    }
   </div>
 
   <div class="day-cal__sheet" id="day-cal-selection" hidden aria-hidden="true">
@@ -946,6 +967,35 @@ const calendarConfig = {
   <script>
     import "../scripts/day-calendar-mobile.ts";
     import "../scripts/day-calendar-shortcuts.ts";
+
+    // "Jump to now" — reveal a compact control whenever today's current-time
+    // line is scrolled outside the calendar viewport, and smooth-scroll it back
+    // into view on click. Self-contained; no dependency on the main IIFE.
+    (() => {
+      const viewport = document.querySelector<HTMLElement>(
+        "[data-calendar-viewport]",
+      );
+      const btn = document.querySelector<HTMLButtonElement>("[data-jump-now]");
+      if (!viewport || !btn) return;
+      const remPx =
+        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const nowTopPx = Number(btn.dataset.nowTop || 0) * remPx;
+      const sync = () => {
+        const top = viewport.scrollTop;
+        const bottom = top + viewport.clientHeight;
+        const inView = nowTopPx >= top + 48 && nowTopPx <= bottom - 48;
+        btn.hidden = inView;
+      };
+      btn.addEventListener("click", () => {
+        viewport.scrollTo({
+          top: Math.max(0, nowTopPx - viewport.clientHeight * 0.35),
+          behavior: "smooth",
+        });
+      });
+      viewport.addEventListener("scroll", sync, { passive: true });
+      window.addEventListener("resize", sync, { passive: true });
+      sync();
+    })();
   </script>
   <script is:inline>
     (function () {
@@ -4162,6 +4212,52 @@ const calendarConfig = {
     background: var(--color-bg);
     overflow: hidden;
     width: 100%;
+    position: relative;
+  }
+
+  /* Compact control that appears only when "now" is scrolled off-screen on the
+     current day — a single, unambiguous way back to the current-time line so we
+     never mispin the line outside the viewport. */
+  .day-cal__jump-now {
+    position: absolute;
+    left: 50%;
+    bottom: 0.9rem;
+    transform: translateX(-50%);
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: var(--color-charcoal, #2a2a2a);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.22);
+    transition: box-shadow 0.12s ease;
+  }
+
+  .day-cal__jump-now[hidden] {
+    display: none;
+  }
+
+  .day-cal__jump-now:hover,
+  .day-cal__jump-now:focus-visible {
+    outline: none;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  .day-cal__jump-now-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #c44;
+    flex: 0 0 auto;
   }
 
   .day-cal__schedule {
@@ -4203,7 +4299,9 @@ const calendarConfig = {
     position: sticky;
     left: 0;
     z-index: 35;
-    border-right: 1px solid var(--day-divider);
+    /* Stronger seam between the time rail and the first staff lane than the
+       inter-lane dividers, so the rail reads as a distinct fixed gutter. */
+    border-right: 1.5px solid var(--day-divider-strong);
     background: var(--color-bg);
   }
 
@@ -4273,6 +4371,16 @@ const calendarConfig = {
     font-weight: 600;
     color: var(--color-text);
     border-bottom-color: var(--color-border);
+  }
+
+  /* Half-hour: medium weight, sits between the strong hour label and the light
+     quarter-hour ticks. */
+  .day-cal__time-label--half {
+    font-size: 0.56rem;
+    font-weight: 500;
+    color: var(--color-gray);
+    opacity: 0.95;
+    border-bottom-color: var(--color-border-subtle);
   }
 
   .day-cal__time-label--minute {
@@ -4491,33 +4599,66 @@ const calendarConfig = {
     outline: none;
   }
 
+  /* Staff off / outside-shift: quiet diagonal hatch over a faint neutral tint.
+     Lower stripe contrast than before so the pattern reads as "not bookable"
+     without competing with appointment content. */
   .day-cal__slot--off {
-    background: repeating-linear-gradient(
+    background-color: rgba(0, 0, 0, 0.018);
+    background-image: repeating-linear-gradient(
       -45deg,
-      var(--color-bg),
-      var(--color-bg) 4px,
-      rgba(0, 0, 0, 0.04) 4px,
-      rgba(0, 0, 0, 0.04) 8px
+      transparent,
+      transparent 5px,
+      rgba(0, 0, 0, 0.028) 5px,
+      rgba(0, 0, 0, 0.028) 10px
     );
     cursor: not-allowed;
-    opacity: 0.72;
   }
 
+  /* Salon closed: a flatter, cooler tint so it is distinguishable from a
+     staff-off lane (which still uses the diagonal hatch). */
   .day-cal__slot--salon-closed {
-    background: repeating-linear-gradient(
+    background-color: rgba(0, 0, 0, 0.035);
+    background-image: repeating-linear-gradient(
       90deg,
-      rgba(0, 0, 0, 0.03),
-      rgba(0, 0, 0, 0.03) 6px,
-      transparent 6px,
-      transparent 12px
+      rgba(0, 0, 0, 0.02),
+      rgba(0, 0, 0, 0.02) 7px,
+      transparent 7px,
+      transparent 14px
     );
     cursor: not-allowed;
-    opacity: 0.55;
   }
 
-  /* Clearer top-of-hour gridlines (every 4th 15-min slot starts on the hour). */
-  .day-cal__slot:nth-child(4n + 1) {
+  [data-theme="dark"] .day-cal__slot--off {
+    background-color: rgba(255, 255, 255, 0.02);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 5px,
+      rgba(255, 255, 255, 0.04) 5px,
+      rgba(255, 255, 255, 0.04) 10px
+    );
+  }
+
+  [data-theme="dark"] .day-cal__slot--salon-closed {
+    background-color: rgba(255, 255, 255, 0.045);
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03),
+      rgba(255, 255, 255, 0.03) 7px,
+      transparent 7px,
+      transparent 14px
+    );
+  }
+
+  /* Three-tier horizontal rhythm mirroring the time rail:
+     quarter ticks are the default subtle bottom border, the half-hour gets a
+     slightly firmer line, and the top-of-hour gets the strongest divider. */
+  .day-cal__slot--half {
     border-top: 1px solid var(--day-divider);
+  }
+
+  .day-cal__slot--hour {
+    border-top: 1px solid var(--day-divider-strong);
   }
 
   /* Stronger boundary where the unavailable region meets the bookable grid. */
@@ -4554,9 +4695,51 @@ const calendarConfig = {
     outline: none;
   }
 
-  .day-cal__slot:not(.day-cal__slot--available):hover,
-  .day-cal__slot:not(.day-cal__slot--available):focus-visible {
-    background: rgba(141, 158, 136, 0.12);
+  /* Unavailable lanes get no bookable hover feedback — the not-allowed cursor
+     and the quiet hatch already communicate that the time can't be booked. */
+  .day-cal__slot--off,
+  .day-cal__slot--salon-closed {
+    cursor: not-allowed;
+  }
+
+  /* Bookable-slot hover affordance: subtle accent lift plus a floating chip
+     that names the time the click would target. Scoped to in-shift slots only. */
+  .day-cal__slot--shift::after {
+    content: attr(data-slot-time);
+    position: absolute;
+    top: 0.06rem;
+    left: 0.28rem;
+    z-index: 5;
+    padding: 0 0.28rem;
+    border-radius: 0.2rem;
+    font-family: var(--font-sans);
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.35;
+    white-space: nowrap;
+    color: var(--color-black, #1a1a1a);
+    background: color-mix(
+      in srgb,
+      var(--staff-accent, var(--color-citrine)) 62%,
+      #fff
+    );
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    transform: translateY(-1px);
+    pointer-events: none;
+    transition: opacity 0.1s ease;
+  }
+
+  .day-cal__slot--shift:hover::after,
+  .day-cal__slot--shift:focus-visible::after {
+    opacity: 1;
+  }
+
+  /* During an active drag-select the per-slot chip would flicker under the
+     cursor, so suppress it and let the selection preview lead. */
+  .day-cal--selecting .day-cal__slot--shift::after {
+    display: none;
   }
 
   .day-cal--selecting .day-cal__slot:hover,
