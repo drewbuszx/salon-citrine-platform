@@ -18,11 +18,19 @@ function initWaitlistOffer() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (errorEl) errorEl.hidden = true;
-    if (successEl) successEl.hidden = true;
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
+    if (successEl) {
+      successEl.hidden = true;
+      successEl.textContent = "";
+    }
 
     const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
     submitBtn?.setAttribute("disabled", "true");
+    form.setAttribute("aria-busy", "true");
+    root.setAttribute("aria-busy", "true");
 
     try {
       const res = await fetch(apiUrl, {
@@ -60,6 +68,8 @@ function initWaitlistOffer() {
       }
     } finally {
       submitBtn?.removeAttribute("disabled");
+      form.removeAttribute("aria-busy");
+      root.removeAttribute("aria-busy");
     }
   });
 }
