@@ -32,6 +32,7 @@ import {
   shiftDay,
   slotStartsAtIso,
   staffEventsForDay,
+  layoutOverlappingEvents,
   findNextOpenGap,
 } from "../lib/calendar";
 import {
@@ -495,6 +496,7 @@ const calendarConfig = {
               );
               const accent = staffAccentColor(member.id);
               const memberSchedules = staffSchedules[member.id] ?? [];
+              const eventLayouts = layoutOverlappingEvents(events);
 
               return (
                 <div
@@ -535,7 +537,7 @@ const calendarConfig = {
                   }
 
                   {
-                    events.map((event) => {
+                    events.map((event, eventIndex) => {
                       const style = eventBlockStyle(event.startsAt, event.endsAt);
                       const isBlocked = event.kind === "blocked";
                       const apptStatus =
@@ -565,6 +567,24 @@ const calendarConfig = {
                           60000,
                       );
 
+                      const layout = eventLayouts[eventIndex] ?? {
+                        columnIndex: 0,
+                        columnCount: 1,
+                      };
+                      const hasConflict = layout.columnCount > 1;
+                      const overlapInsetStyle = hasConflict
+                        ? (() => {
+                            const leftRem = 0.3;
+                            const rightRem = 0.42;
+                            const gapRem = 0.14;
+                            const { columnCount: count, columnIndex: index } = layout;
+                            const available = `(100% - ${leftRem}rem - ${rightRem}rem - ${gapRem * (count - 1)}rem)`;
+                            const width = `calc(${available} / ${count})`;
+                            const left = `calc(${leftRem}rem + (${available} / ${count} + ${gapRem}rem) * ${index})`;
+                            return `; left: ${left}; width: ${width}`;
+                          })()
+                        : "";
+
                       return (
                         <button
                           type="button"
@@ -574,8 +594,9 @@ const calendarConfig = {
                             isBlocked && "day-cal__block--blocked",
                             !isBlocked && (managerView || member.id === currentStaffId) && "day-cal__appt-card--draggable",
                             apptStatus && `day-cal__appt-card--${apptStatus}`,
+                            hasConflict && "day-cal__appt-card--conflict",
                           ]}
-                          style={`${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join("; ")}${blockAccent ? `; --block-accent: ${blockAccent}` : ""}`}
+                          style={`${Object.entries(style).map(([k, v]) => `${k}: ${v}`).join("; ")}${blockAccent ? `; --block-accent: ${blockAccent}` : ""}${overlapInsetStyle}`}
                           data-kind={event.kind}
                           data-id={event.id}
                           data-staff-id={event.staffId}
@@ -585,7 +606,7 @@ const calendarConfig = {
                           aria-label={
                             isBlocked
                               ? `${event.label}, ${timeRange}`
-                              : `${event.clientFullName}, ${serviceDisplay ?? "appointment"}, ${statusMeta?.label ?? apptStatus}, ${timeRange}`
+                              : `${event.clientFullName}, ${serviceDisplay ?? "appointment"}, ${statusMeta?.label ?? apptStatus}, ${timeRange}${hasConflict ? ", overlaps another appointment" : ""}`
                           }
                         >
                           {
@@ -616,6 +637,17 @@ const calendarConfig = {
                                       </span>
                                     ) : null
                                   }
+                                  <span
+                                    class="day-cal__appt-card-menu-btn"
+                                    data-appt-menu-btn
+                                    data-id={event.id}
+                                    role="button"
+                                    tabindex="0"
+                                    aria-label={`More options for ${event.clientFullName}`}
+                                    aria-haspopup="menu"
+                                  >
+                                    <span aria-hidden="true">⋮</span>
+                                  </span>
                                 </div>
                                 <span class="day-cal__appt-card-client">
                                   {event.clientFullName}
@@ -644,6 +676,17 @@ const calendarConfig = {
                                     event.hasNotes ? (
                                       <span class="day-cal__appt-indicator" title="Has internal note" aria-label="Has note">
                                         note
+                                      </span>
+                                    ) : null
+                                  }
+                                  {
+                                    hasConflict ? (
+                                      <span
+                                        class="day-cal__appt-indicator day-cal__appt-indicator--conflict"
+                                        title="Overlaps another appointment"
+                                        aria-label="Overlaps another appointment"
+                                      >
+                                        ⚠ conflict
                                       </span>
                                     ) : null
                                   }
@@ -736,6 +779,25 @@ const calendarConfig = {
           Cancel
         </button>
       </div>
+    </div>
+  </div>
+
+  <div class="day-cal__sheet" id="day-cal-appt-menu" hidden aria-hidden="true">
+    <div class="day-cal__sheet-backdrop" data-close-appt-menu tabindex="-1"></div>
+    <div
+      class="day-cal__sheet-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="day-cal-appt-menu-title"
+    >
+      <header class="day-cal__sheet-header">
+        <h3 class="day-cal__sheet-title" id="day-cal-appt-menu-title">Appointment</h3>
+      </header>
+      <div
+        class="day-cal__sheet-body day-cal__sheet-actions"
+        role="menu"
+        id="day-cal-appt-menu-body"
+      ></div>
     </div>
   </div>
 
@@ -3728,8 +3790,10 @@ const calendarConfig = {
     z-index: 36;
     display: grid;
     grid-template-columns: var(--day-columns-template);
+    /* Solid, seamless shelf — no rounding, no gaps — reads as part of the grid structure, not a control. */
     background: var(--day-header-bg);
     border-bottom: 1px solid var(--day-divider-strong);
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.05);
     isolation: isolate;
   }
 
