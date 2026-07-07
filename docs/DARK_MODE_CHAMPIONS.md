@@ -94,3 +94,63 @@ Toggle dark mode on Dashboard, Tasks, Reports, Clients — top bar stays dark; n
 - Build: `npm run build --workspace apps/team`
 - Commit: `Dark mode: cross-page contrast and token fixes`
 - Push `master` → Workers Builds redeploy team worker
+
+---
+
+## Round 2 — Manage & Tasks
+
+**Agent:** Dark Mode Expert 3 (QA coordinator)  
+**Date:** 2026-07-07  
+**Scope:** `/team/manage`, `/team/tasks`, `dark-mode-overrides.css`, `global.css`
+
+### Upstream commits (other agents)
+
+| Commit | Agent focus | Status |
+|--------|-------------|--------|
+| `fe3412a` | Tasks notebook paper ink palette (`tasks.astro`) | ✅ Merged |
+| `9562533` | Cross-page `dark-mode-overrides.css` (manage subheader, list chrome) | ✅ Merged — **import was missing** |
+| `f837e95` | Restore white primary wordmark on team bar (both themes) | ✅ Merged |
+
+### Root cause (Round 2)
+
+Champion 3 added `dark-mode-overrides.css` but never wired it into `global.css`, so manage subheader/main fixes and all cross-page dark overrides were dead code at runtime. Manage hub rows also used `--color-bg` (`#181818`) on a `--color-cream` (`#141414`) body — a visible lighter panel behind the bordered hub card.
+
+### Fixes applied (this pass)
+
+1. **`apps/team/src/styles/global.css`** — `@import "./dark-mode-overrides.css"` so Champion 3 overrides actually load.
+2. **`apps/team/src/styles/dark-mode-overrides.css`** — Manage hub card polish:
+   - Layout + main + subheader use `--color-cream` (match body shell)
+   - Hub list/rows use `--color-stone-100` elevated surface with token borders
+   - Hub title/desc/icon colors aligned to `--color-text` / stone scale
+3. **`apps/team/src/pages/tasks.astro`** — No changes (Champion 2 ink palette verified complete).
+
+### Build / deploy
+
+- Build: `npm run build:alt --workspace apps/team` ✅
+- Commit: `Dark mode: wire overrides + manage hub card contrast`
+- Push `master` → Workers Builds redeploy `salon-citrine-team`
+- URL: https://salon-citrine-team.dbuszx.workers.dev/team/
+
+### Verify checklist
+
+**Manage (`/team/manage`)**
+
+- [ ] Toggle dark mode (profile menu → theme)
+- [ ] Page shell is uniform dark cream — no lighter gray rectangle behind hub card
+- [ ] Hub list border + rows readable; titles `--color-text`, descriptions muted stone
+- [ ] Disabled “Soon” rows slightly dimmer (`stone-50`) vs active rows
+- [ ] Sidebar active link citrine left border + readable label
+- [ ] Subheader “Manage” title readable on dark cream
+
+**Tasks (`/team/tasks`)**
+
+- [ ] Notebook paper stays warm cream island (`#e8e0d2`) on dark shell
+- [ ] Task titles, descriptions, meta use dark ink on paper (not pale gold)
+- [ ] Badges (AVAILABLE, HIGH, Overdue, due chips) readable on cream
+- [ ] Row actions (CLAIM, EDIT, CANCEL) contrast OK on paper
+- [ ] Mobile pill tabs + sidebar nav on dark shell unchanged
+
+**Header (logo restore)**
+
+- [ ] White primary wordmark on dark team bar in both light and dark mode
+- [ ] No Horiz wordmark swap on theme toggle

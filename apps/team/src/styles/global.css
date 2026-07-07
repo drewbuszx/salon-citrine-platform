@@ -4,6 +4,7 @@
 @import "./mobile-ui.css";
 @import "./login.css";
 @import "./team-list-sidebar.css";
+@import "./dark-mode-overrides.css";
 
 :root {
   --team-max-width: 960px;

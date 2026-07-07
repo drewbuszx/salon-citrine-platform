@@ -45,14 +45,49 @@
   color: var(--color-text);
 }
 
-[data-theme="dark"] .team-list-layout__subheader,
-[data-theme="dark"] .team-manage-layout__subheader {
+[data-theme="dark"] .team-list-layout__subheader {
   background: var(--color-bg);
   border-bottom-color: var(--color-border);
 }
 
+[data-theme="dark"] .team-manage-layout__subheader {
+  background: var(--color-cream);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .team-manage-layout {
+  background: var(--color-cream);
+}
+
 [data-theme="dark"] .team-manage-layout__main {
-  background: var(--color-bg);
+  background: var(--color-cream);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-list {
+  border-color: var(--color-border);
+  background: var(--color-stone-100);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-row {
+  background: var(--color-stone-100);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-row--disabled {
+  background: var(--color-stone-50);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-title {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-desc {
+  color: var(--color-stone-500);
+}
+
+[data-theme="dark"] .team-manage-layout__hub-icon {
+  background: var(--color-stone-200);
+  color: var(--color-stone-500);
 }
 
 [data-theme="dark"] .team-list-layout__sidebar-link.is-active,
