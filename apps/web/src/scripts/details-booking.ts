@@ -1,4 +1,4 @@
-import { loadStripe, type Stripe, type StripeElements } from "@stripe/stripe-js";
+import { loadStripe, type Stripe, type StripeElements, type StripeError } from "@stripe/stripe-js";
 import { appendEmbedIfActive } from "../lib/booking-flow";
 import {
   fetchCartExpiry,
@@ -30,6 +30,8 @@ const confirmUrl = form?.dataset.confirmUrl ?? "";
 const clientLookupUrl = form?.dataset.clientLookupUrl ?? "";
 const cartApiUrl = form?.dataset.cartApiUrl ?? "";
 const cartId = form?.dataset.cartId ?? "";
+const depositRequiredCents = Number(form?.dataset.depositRequiredCents ?? "0");
+const requiresCardOnFile = form?.dataset.requiresCardOnFile === "true";
 
 let stripe: Stripe | null = null;
 let elements: StripeElements | null = null;
@@ -44,8 +46,18 @@ let submitting = false;
 let lookupInFlight = false;
 let reservationTimer: ReturnType<typeof setInterval> | null = null;
 
-const SUBMIT_LABEL_DEFAULT = "Review policy & book";
-const SUBMIT_LABEL_LOADING = "Booking your appointment…";
+const SUBMIT_LABEL_DEFAULT =
+  depositRequiredCents > 0 ? "Review policy & pay" : "Review policy & book";
+const SUBMIT_LABEL_LOADING =
+  depositRequiredCents > 0 ? "Processing payment…" : "Booking your appointment…";
+
+const SETUP_INTENT_RECREATE_CODES = new Set([
+  "setup_intent_authentication_failure",
+  "setup_intent_unexpected_state",
+  "setup_intent_invalid_parameter",
+  "setup_intent_mandate_invalid",
+  "payment_intent_authentication_failure",
+]);
 
 function isDarkMode(): boolean {
   return document.documentElement.getAttribute("data-theme") === "dark";
@@ -90,18 +102,84 @@ function stripeAppearance() {
   } as const;
 }
 
-function setSubmitLoading(loading: boolean) {
+function formatStripeConfirmError(error: StripeError): string {
+  const code = error.decline_code ?? error.code;
+
+  switch (code) {
+    case "card_declined":
+    case "generic_decline":
+      return "Your card was declined. Try another card or contact your bank.";
+    case "insufficient_funds":
+      return "Insufficient funds. Try another card or contact your bank.";
+    case "expired_card":
+      return "This card has expired. Use a different card.";
+    case "incorrect_cvc":
+      return "The security code (CVC) is incorrect. Check and try again.";
+    case "incorrect_number":
+      return "The card number is incorrect. Check and try again.";
+    case "invalid_expiry_month":
+    case "invalid_expiry_year":
+      return "The expiration date is invalid. Check and try again.";
+    case "processing_error":
+      return "We couldn't process your card right now. Wait a moment and try again.";
+    case "authentication_required":
+      return "Your bank requires additional verification. Follow the prompt and try again.";
+    default:
+      if (error.type === "validation_error") {
+        return error.message ?? "Check your card details and try again.";
+      }
+      return error.message ?? "Card verification failed. Check your details and try again.";
+  }
+}
+
+function shouldRecreateSetupIntent(error: StripeError): boolean {
+  return SETUP_INTENT_RECREATE_CODES.has(error.code ?? "");
+}
+
+function syncStripeAppearance() {
+  if (!elements) return;
+  elements.update({ appearance: stripeAppearance() });
+}
+
+function setPolicyTriggersDisabled(disabled: boolean) {
+  for (const btn of document.querySelectorAll<HTMLButtonElement>(
+    "[data-open-policy-modal], [data-open-policy-link]",
+  )) {
+    if (disabled) {
+      btn.setAttribute("disabled", "true");
+    } else {
+      btn.removeAttribute("disabled");
+    }
+  }
+}
+
+function updateSubmitButtonState() {
   if (!submitBtn) return;
-  if (loading) {
+
+  const busy = submitting || initializing;
+  if (busy) {
     submitBtn.setAttribute("disabled", "true");
-    submitBtn.setAttribute("aria-busy", "true");
+    submitBtn.setAttribute("aria-busy", submitting ? "true" : "false");
   } else {
     submitBtn.removeAttribute("disabled");
     submitBtn.setAttribute("aria-busy", "false");
   }
+
+  setPolicyTriggersDisabled(busy);
+
   if (submitLabelEl) {
-    submitLabelEl.textContent = loading ? SUBMIT_LABEL_LOADING : SUBMIT_LABEL_DEFAULT;
+    submitLabelEl.textContent = submitting ? SUBMIT_LABEL_LOADING : SUBMIT_LABEL_DEFAULT;
   }
+}
+
+function setSubmitLoading(loading: boolean) {
+  submitting = loading;
+  updateSubmitButtonState();
+}
+
+function setPaymentInitializing(loading: boolean) {
+  initializing = loading;
+  updateSubmitButtonState();
 }
 
 function showError(message: string) {
@@ -190,13 +268,19 @@ function showPaymentStatus(message: string) {
   paymentMount.appendChild(status);
 }
 
-function showPaymentError(message: string) {
+function showPaymentError(message: string, retryable = false) {
   if (!paymentMount) return;
   paymentMount.replaceChildren();
   if (!message) return;
   const error = document.createElement("p");
   error.className = "payment-element__error";
   error.textContent = message;
+  if (retryable) {
+    error.setAttribute("role", "button");
+    error.tabIndex = 0;
+    error.style.cursor = "pointer";
+    error.setAttribute("data-payment-retry", "");
+  }
   paymentMount.appendChild(error);
 }
 
@@ -307,7 +391,7 @@ function resetStripeElements() {
 async function ensureStripeElements(forceRecreate = false) {
   const email = formValue("email");
   if (!email) {
-    showPaymentStatus("Enter your email above to load the card form.");
+    showPaymentStatus("Enter your email to securely load the card form.");
     return;
   }
 
@@ -319,6 +403,11 @@ async function ensureStripeElements(forceRecreate = false) {
   }
 
   if (elements) return;
+
+  if (!requiresCardOnFile && depositRequiredCents <= 0) {
+    showPaymentStatus("No card needed for this booking.");
+    return;
+  }
 
   if (!stripePublishableKey) {
     const message = "Card collection is not configured. Please contact the salon.";
@@ -332,6 +421,7 @@ async function ensureStripeElements(forceRecreate = false) {
   showError("");
   showPaymentStatus("Loading secure card form…");
   setPaymentBusy(true);
+  setPaymentInitializing(true);
 
   try {
     const response = await fetch(setupIntentUrl, {
@@ -346,11 +436,11 @@ async function ensureStripeElements(forceRecreate = false) {
 
     const payload = await readJsonResponse(response);
     if (!response.ok) {
-      throw new Error(payload.error ?? "Could not initialize card form");
+      throw new Error(payload.error ?? "We couldn't load the card form. Please try again.");
     }
 
     if (!("clientSecret" in payload) || typeof payload.clientSecret !== "string") {
-      throw new Error("Could not initialize card form");
+      throw new Error("We couldn't load the card form. Please try again.");
     }
 
     stripe = await loadStripe(stripePublishableKey);
@@ -369,18 +459,53 @@ async function ensureStripeElements(forceRecreate = false) {
     setupIntentEmail = email;
     setPaymentBusy(false);
   } catch (error) {
-    const message = formatBookingError(error, "Could not load card form");
+    const message = formatBookingError(error, "We couldn't load the card form. Please try again.");
     logBookingError("setup-intent", error);
     showError(message);
-    showPaymentError(message);
+    showPaymentError(`${message} Tap to try again.`, true);
     setPaymentBusy(false);
   } finally {
     initializing = false;
+    setPaymentInitializing(false);
   }
 }
 
 paymentMount?.addEventListener("focusin", () => {
   ensureStripeElements();
+});
+
+paymentMount?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.hasAttribute("data-payment-retry") || target.closest("[data-payment-retry]"))
+  ) {
+    void ensureStripeElements(true);
+    return;
+  }
+  if (!elements && !initializing && formValue("email")) {
+    void ensureStripeElements();
+  }
+});
+
+paymentMount?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const target = event.target;
+  if (
+    target instanceof HTMLElement &&
+    (target.hasAttribute("data-payment-retry") || target.closest("[data-payment-retry]"))
+  ) {
+    event.preventDefault();
+    void ensureStripeElements(true);
+  }
+});
+
+const themeObserver = new MutationObserver(() => {
+  syncStripeAppearance();
+});
+themeObserver.observe(document.documentElement, {
+  attributes: true,
+  attributeFilter: ["data-theme"],
 });
 
 form?.querySelector('input[name="email"]')?.addEventListener("blur", () => {
@@ -514,7 +639,7 @@ async function startReservationCountdown() {
     const label = formatReservationCountdown(expiresAt);
     if (reservationCountdownEl) reservationCountdownEl.textContent = label;
     if (label === "Expired") {
-      showError("Your time hold expired. Please choose a new time.");
+      showError("Your reserved time has expired. Head back to choose a new time.");
       if (reservationTimer) clearInterval(reservationTimer);
     }
   }
@@ -525,11 +650,56 @@ async function startReservationCountdown() {
 
 void startReservationCountdown();
 
+const MOBILE_SUBMIT_BAR_MQ = window.matchMedia("(max-width: 639px)");
+
+function keyboardInset(): number {
+  const vv = window.visualViewport;
+  if (!vv) return 0;
+  return Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+}
+
+function updateMobileSubmitBar() {
+  const submitBar = document.querySelector<HTMLElement>(".submit-bar");
+  if (!submitBar) return;
+
+  if (!MOBILE_SUBMIT_BAR_MQ.matches) {
+    submitBar.style.removeProperty("transform");
+    return;
+  }
+
+  const inset = keyboardInset();
+  submitBar.style.transform = inset > 0 ? `translateY(-${inset}px)` : "";
+}
+
+function setupMobileSubmitBar() {
+  const submitBar = document.querySelector<HTMLElement>(".submit-bar");
+  if (!submitBar) return;
+
+  const vv = window.visualViewport;
+  vv?.addEventListener("resize", updateMobileSubmitBar);
+  vv?.addEventListener("scroll", updateMobileSubmitBar);
+  MOBILE_SUBMIT_BAR_MQ.addEventListener("change", updateMobileSubmitBar);
+  updateMobileSubmitBar();
+
+  form?.addEventListener("focusin", (event) => {
+    if (!MOBILE_SUBMIT_BAR_MQ.matches) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (!target.matches("input, textarea, select")) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ block: "center", behavior: "smooth" });
+      updateMobileSubmitBar();
+    });
+  });
+}
+
+setupMobileSubmitBar();
+
 form?.querySelector('input[name="email"]')?.addEventListener("input", () => {
   const email = formValue("email");
   if (setupIntentEmail && email !== setupIntentEmail) {
     resetStripeElements();
-    showPaymentStatus("Enter your email above to load the card form.");
+    showPaymentStatus("Enter your email to securely load the card form.");
   }
   const field = form?.querySelector<HTMLElement>('input[name="email"]')?.closest(".field");
   field?.classList.remove("field--invalid");
@@ -589,20 +759,23 @@ async function completeBooking() {
   }
 
   if (!policyAcknowledged()) {
-    showError("Please review and acknowledge the booking policy.");
+    showError("Please read and accept the booking policy to continue.");
     return;
   }
 
   if (!stripe || !elements || !setupIntentId || setupIntentEmail !== email) {
     await ensureStripeElements(setupIntentEmail !== null && setupIntentEmail !== email);
     if (!stripe || !elements || !setupIntentId) {
-      showError("Enter your details and card information to continue.");
+      if (!requiresCardOnFile && depositRequiredCents <= 0) {
+        showError("Complete your details to continue.");
+      } else {
+        showError("Enter your details and card information to continue.");
+      }
       return;
     }
   }
 
   showError("");
-  submitting = true;
   setSubmitLoading(true);
 
   try {
@@ -627,9 +800,19 @@ async function completeBooking() {
         logBookingError("confirmSetup", confirmError, {
           type: confirmError.type,
           code: confirmError.code,
+          declineCode: confirmError.decline_code,
           setupIntentId,
         });
-        throw new Error(confirmError.message ?? "Card verification failed");
+
+        const message = formatStripeConfirmError(confirmError);
+        showError(message);
+
+        if (shouldRecreateSetupIntent(confirmError)) {
+          resetStripeElements();
+          await ensureStripeElements(true);
+        }
+
+        throw new Error(message);
       }
 
       if (!setupIntent || setupIntent.status !== "succeeded") {
@@ -683,11 +866,16 @@ async function completeBooking() {
         status: response.status,
         bookingBody,
       });
-      throw new Error(payload.error ?? "Could not save your appointment");
+      throw new Error(
+        payload.error ??
+          "We couldn't complete your booking. Your card was not charged again — please try again.",
+      );
     }
 
     if (!payload.id) {
-      throw new Error("Could not save your appointment");
+      throw new Error(
+        "We couldn't save your appointment. Please try again or call the salon.",
+      );
     }
 
     const params = new URLSearchParams({ appointment: payload.id });
@@ -696,9 +884,13 @@ async function completeBooking() {
     window.location.href = `${confirmUrl}?${params.toString()}`;
   } catch (error) {
     logBookingError("completeBooking", error);
-    showError(formatBookingError(error, "Booking failed"));
+    showError(
+      formatBookingError(
+        error,
+        "We couldn't complete your booking. Please try again or call the salon.",
+      ),
+    );
     setSubmitLoading(false);
-    submitting = false;
   }
 }
 

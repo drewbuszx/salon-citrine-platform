@@ -185,18 +185,18 @@ function formatStaffRole(role: string): string {
     durationLabel={formatDuration(primaryService.durationMinutes)}
     priceLabel={formatPrice(primaryService)}
     continueHref={bookBase}
-    chooseStylistHref={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}
+    chooseStylistHref={cartBackHref}
   />
 
   <NotAcceptingNewClientsModal
     stylistFirstName=""
     stylistSlug=""
     continueHref={bookBase}
-    chooseStylistHref={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}
+    chooseStylistHref={cartBackHref}
   />
 
   <p class="back">
-    <a href={`${withBase("cart/")}?services=${resolvedServiceIds.join(",")}`}>
+    <a href={cartBackHref}>
       ← Back to cart
     </a>
   </p>
