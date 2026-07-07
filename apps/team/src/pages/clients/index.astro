@@ -6,7 +6,7 @@ import { teamUrl } from "../../lib/supabase-server";
 
 const { staff, supabase } = Astro.locals;
 if (!staff) {
-  return Astro.redirect(`${import.meta.env.BASE_URL}login?error=unlinked`);
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
 }
 
 const initialQuery = Astro.url.searchParams.get("q") ?? "";

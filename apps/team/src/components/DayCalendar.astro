@@ -945,6 +945,7 @@ const calendarConfig = {
     set:html={JSON.stringify(calendarConfig).replace(/</g, "\\u003c")}></script>
   <script>
     import "../scripts/day-calendar-mobile.ts";
+    import "../scripts/day-calendar-shortcuts.ts";
   </script>
   <script is:inline>
     (function () {
@@ -1185,12 +1186,13 @@ const calendarConfig = {
         );
 
         apptMenuBody.innerHTML = items.join("");
+        stampScopeTree(apptMenuBody);
         openSheet(apptMenu);
       }
 
       // Astro scopes this component's styles with a data-astro-cid-* attribute,
-      // but drawer content is injected at runtime and misses it. Stamp the
-      // attribute on injected nodes so drawer form styles actually apply.
+      // but drawer/sheet content is injected at runtime and misses it. Stamp the
+      // attribute on injected nodes so scoped form and menu styles apply.
       const scopeAttr = Array.from(root.attributes)
         .map((attr) => attr.name)
         .find((name) => name.startsWith("data-astro-cid-"));
@@ -1201,17 +1203,28 @@ const calendarConfig = {
         node.querySelectorAll("*").forEach((el) => el.setAttribute(scopeAttr, ""));
       }
 
-      new MutationObserver((records) => {
+      function stampScopeTree(rootNode) {
+        if (!(rootNode instanceof Element)) return;
+        stampScopeAttr(rootNode);
+        rootNode.querySelectorAll("*").forEach((el) => stampScopeAttr(el));
+      }
+
+      const scopeObserver = new MutationObserver((records) => {
         for (const record of records) {
           record.addedNodes.forEach((node) => stampScopeAttr(node));
         }
-      }).observe(drawerBody, { childList: true, subtree: true });
+      });
+      scopeObserver.observe(drawerBody, { childList: true, subtree: true });
+      if (apptMenuBody instanceof HTMLElement) {
+        scopeObserver.observe(apptMenuBody, { childList: true, subtree: true });
+      }
 
       function openDrawer(title, subtitle, html) {
         drawerTitle.textContent = title;
         drawerSubtitle.textContent = subtitle || "";
         drawerSubtitle.hidden = !subtitle;
         drawerBody.innerHTML = html;
+        stampScopeTree(drawerBody);
         drawer.hidden = false;
         drawer.setAttribute("aria-hidden", "false");
         root.classList.add("day-cal--drawer-open");
@@ -3298,10 +3311,10 @@ const calendarConfig = {
         });
       }
 
-      window.__teamDayCalShortcuts?.(root, {
+      root.__teamDayCalShortcutHandlers = {
         closeModals,
         openNewAppointment: triggerNewAppointment,
-      });
+      };
 
       root.querySelector("[data-new-appointment]")?.addEventListener("click", triggerNewAppointment);
 
@@ -3591,7 +3604,7 @@ const calendarConfig = {
       });
 
       applyStaffFilterFromStorage();
-      root.dispatchEvent(new CustomEvent("team:day-cal-ready"));
+      root.dispatchEvent(new CustomEvent("team:day-cal-ready", { bubbles: true }));
       }
 
       if (document.readyState === "loading") {
@@ -4153,7 +4166,7 @@ const calendarConfig = {
     align-self: flex-start;
     position: sticky;
     left: 0;
-    z-index: 5;
+    z-index: 35;
     border-right: 1px solid var(--day-divider);
     background: var(--color-bg);
   }
@@ -4165,7 +4178,7 @@ const calendarConfig = {
     background: var(--day-header-bg);
     position: sticky;
     top: 0;
-    z-index: 6;
+    z-index: 37;
     display: flex;
     align-items: flex-end;
     padding: 0 0.15rem 0.2rem;

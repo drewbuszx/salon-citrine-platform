@@ -421,14 +421,36 @@ function initCheckout(root: HTMLElement) {
     });
   });
 
-  tipCustom?.addEventListener("input", () => {
+  const MIN_CUSTOM_TIP_CENTS = 100;
+
+  function applyCustomTipFromInput() {
     tipPresets?.querySelectorAll(".team-filter-pill--active").forEach((el) => {
       el.classList.remove("team-filter-pill--active");
     });
-    tipCents = Math.round(Number(tipCustom.value || 0) * 100);
+    const raw = tipCustom?.value.trim() ?? "";
+    if (!raw) {
+      tipCents = 0;
+      updateTotalsUI();
+      scheduleSave();
+      return;
+    }
+    let dollars = Number(raw);
+    if (!Number.isFinite(dollars) || dollars < 0) {
+      showError("Enter a valid tip amount.");
+      return;
+    }
+    if (dollars > 0 && dollars < MIN_CUSTOM_TIP_CENTS / 100) {
+      dollars = MIN_CUSTOM_TIP_CENTS / 100;
+      if (tipCustom) tipCustom.value = dollars.toFixed(2);
+      showError("Custom tips must be at least $1.00.");
+    }
+    tipCents = Math.round(dollars * 100);
     updateTotalsUI();
     scheduleSave();
-  });
+  }
+
+  tipCustom?.addEventListener("input", applyCustomTipFromInput);
+  tipCustom?.addEventListener("blur", applyCustomTipFromInput);
 
   addProductBtn?.addEventListener("click", () => {
     if (products.length === 0) {
