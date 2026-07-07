@@ -6,13 +6,13 @@ _Coordinator: QA Agent 5 · Updated: 2026-07-07 · Repo: `salon-citrine-platform
 
 | Agent | Focus | Findings doc |
 | --- | --- | --- |
-| Agent 1 | Visual / route probe | _Section not received — synthesized from `VISUAL_QA_REPORT.md`_ |
+| Agent 1 | Book & Calendar | ✅ `docs/QA_SWARM_FINDINGS.md` |
 | Agent 2 | Mobile / day-cal | _Section not received — synthesized from `MOBILE_DESIGN_SYSTEM.md`, code review_ |
 | Agent 3 | Booking / checkout flows | _Section not received — synthesized from `BOOK_AGENT_BACKLOG.md`, `UX_INTELLIGENCE_FEED.md`_ |
 | Agent 4 | Team list pages / shell | _Section not received — synthesized from `UX_AUDIT.md`, `TEAM_SIDEBAR_DECISION.md`_ |
 | Agent 5 | Coordinator + ship pass | This document |
 
-> **Note:** `docs/QA_SWARM_FINDINGS.md` was not present after polling. Consensus below merges existing audit docs, book backlog, and Agent 5 full-app code review.
+> **Note:** Only Agent 1 findings arrived before ship. Agents 2–4 sections were synthesized from existing audit docs and Agent 5 code review.
 
 ---
 
@@ -26,6 +26,7 @@ _Coordinator: QA Agent 5 · Updated: 2026-07-07 · Repo: `salon-citrine-platform
 | P0-2 | Authenticated visual QA blocked without staff credentials | QA process | Open — run locally or provide test login |
 | P0-3 | Collect card at checkout when client has no card on file | Checkout | Open |
 | P0-4 | Sticky day-cal corner z-index bleed on scroll | `/team/book` `.day-cal` | **Fixed this pass** |
+| P0-5 | Keyboard shortcuts inert (`?`, `T`, `N`, arrows) | `.day-cal` | **Fixed this pass** (Agent 1) |
 
 ### P1 — competitive parity / off-brand
 
@@ -36,7 +37,7 @@ _Coordinator: QA Agent 5 · Updated: 2026-07-07 · Repo: `salon-citrine-platform
 | P1-3 | Soft double-book warning + manager override | Booking API | Open (B2) |
 | P1-4 | Quick client add inline in booking drawer | `.day-cal` drawer | Open (B4) |
 | P1-5 | Recommended times / Precision-lite in slot picker | Booking | Open (B5) |
-| P1-6 | Week view interaction parity vs day view | `/week` | Open beta (B7) |
+| P1-6 | Week view interaction parity vs day view | `/week` | Open beta (B7) — Agent 1: no PTO bands, read-only cards |
 | P1-7 | Embeddable guest book `?embed=1` on marketing site | `apps/web` | Open |
 | P1-8 | Returning-client OTP instead of password wall | `apps/web` | Open |
 | P1-9 | Sidebar active state regression on list pages | TeamListLayout | Verify with auth — fix shipped in 3926b84 |
@@ -113,8 +114,16 @@ All perspectives agree on the following:
 | --- | --- | --- |
 | Scoped styles on injected appt quick-menu + immediate drawer stamp | `DayCalendar.astro` | P1 |
 | Sticky time-axis corner z-index (no scroll bleed under staff header) | `DayCalendar.astro` | P0 |
+| Tablet staff-row z-index restored to 36 (iPad scroll stack) | `DayCalendar.astro` | P1 |
+| Keyboard shortcuts bootstrap on `team:day-cal-ready` | `day-calendar-shortcuts.ts`, `DayCalendar.astro` | P0 |
 | Custom tip min $1.00 + 25% preset + hint copy | `checkout.ts`, `checkout/[appointmentId].astro` | P1 |
 | Consistent auth redirects via `teamUrl()` | `waitlist.astro`, `clients/index.astro`, `clients/[id].astro` | P2 |
+
+**Deploy:** `salon-citrine-team` · Version `65df37b9-2818-47d8-926c-b30b7bdbfda5`  
+**URL:** https://salon-citrine-team.dbuszx.workers.dev/team/  
+**Build:** `npm run build:alt --workspace apps/team` — pass (exit 0)
+
+**Commits:** `6ac0d2f`, `bc10d83`
 
 ### Remaining after this pass
 
@@ -131,4 +140,4 @@ All perspectives agree on the following:
 
 The staff team app presents as a cohesive, on-brand operations product. Day calendar, dashboard, waitlist, and checkout are demo-ready for authenticated users. Caveats: public guest booking is not verified on production, several competitive-parity features remain backlog, and this swarm could not run browser-authenticated route QA without credentials.
 
-**Deploy target:** `salon-citrine-team` Worker · `https://salon-citrine-platform.dbuszx.workers.dev/team/` (see deploy section below after build)
+**Deploy target:** `salon-citrine-team` Worker · https://salon-citrine-team.dbuszx.workers.dev/team/ (deployed 2026-07-07, version `65df37b9`)
