@@ -400,13 +400,7 @@ const calendarConfig = {
   <div class="day-cal__frame">
     <div class="day-cal__viewport" data-calendar-viewport>
       <div class="day-cal__time-axis" aria-hidden="true">
-        <div class="day-cal__time-spacer">
-          {
-            nowLabel ? (
-              <span class="day-cal__now-label day-cal__now-label--rail">{nowLabel}</span>
-            ) : null
-          }
-        </div>
+        <div class="day-cal__time-spacer"></div>
         <div class="day-cal__time-rail" style={`height: ${gridHeight}rem`}>
           {
             timeSlots.map((minutes) => {
@@ -434,8 +428,18 @@ const calendarConfig = {
               <div
                 class="day-cal__now-marker"
                 style={`top: ${nowLineTop}rem`}
+                data-now-marker
                 aria-hidden="true"
-              />
+              >
+                {nowLabel ? (
+                  <span
+                    class="day-cal__now-label day-cal__now-label--marker"
+                    data-now-label
+                  >
+                    {nowLabel}
+                  </span>
+                ) : null}
+              </div>
             ) : null
           }
         </div>
@@ -490,6 +494,7 @@ const calendarConfig = {
               <div
                 class="day-cal__now-line"
                 style={`top: ${nowLineTop}rem`}
+                data-now-line
                 aria-hidden="true"
               />
             ) : null
@@ -967,34 +972,73 @@ const calendarConfig = {
   <script>
     import "../scripts/day-calendar-mobile.ts";
     import "../scripts/day-calendar-shortcuts.ts";
+    import { currentTimeLineTopRem, formatNowLabel } from "../lib/calendar";
 
-    // "Jump to now" — reveal a compact control whenever today's current-time
-    // line is scrolled outside the calendar viewport, and smooth-scroll it back
-    // into view on click. Self-contained; no dependency on the main IIFE.
+    // Current-time indicator + "Jump to now". The initial position is rendered
+    // server-side; this keeps the marker, in-grid line, and the "Now h:mm" label
+    // anchored to the *actual* salon-time position — recomputing every minute and
+    // after layout/orientation/zoom/visibility changes so the line never drifts
+    // and the label rides the line (it is no longer pinned to the top of the
+    // gutter). The indicator hides outside operating hours. Self-contained.
     (() => {
       const viewport = document.querySelector<HTMLElement>(
         "[data-calendar-viewport]",
       );
+      const marker = document.querySelector<HTMLElement>("[data-now-marker]");
+      const line = document.querySelector<HTMLElement>("[data-now-line]");
+      const label = document.querySelector<HTMLElement>("[data-now-label]");
       const btn = document.querySelector<HTMLButtonElement>("[data-jump-now]");
-      if (!viewport || !btn) return;
-      const remPx =
+      if (!viewport || (!marker && !line)) return;
+
+      const remPx = () =>
         parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const nowTopPx = Number(btn.dataset.nowTop || 0) * remPx;
-      const sync = () => {
+      let nowTopRem = Number(btn?.dataset.nowTop ?? 0);
+
+      const reposition = () => {
+        const topRem = currentTimeLineTopRem(new Date());
+        if (marker) marker.hidden = topRem === null;
+        if (line) line.hidden = topRem === null;
+        if (topRem === null) {
+          if (btn) btn.hidden = true;
+          return;
+        }
+        nowTopRem = topRem;
+        const top = `${nowTopRem}rem`;
+        if (marker) marker.style.top = top;
+        if (line) line.style.top = top;
+        if (label) label.textContent = formatNowLabel(new Date());
+        if (btn) btn.dataset.nowTop = String(nowTopRem);
+      };
+
+      const syncJump = () => {
+        if (!btn || btn.hidden === undefined) return;
+        const nowTopPx = nowTopRem * remPx();
         const top = viewport.scrollTop;
         const bottom = top + viewport.clientHeight;
-        const inView = nowTopPx >= top + 48 && nowTopPx <= bottom - 48;
-        btn.hidden = inView;
+        btn.hidden = nowTopPx >= top + 48 && nowTopPx <= bottom - 48;
       };
-      btn.addEventListener("click", () => {
+
+      btn?.addEventListener("click", () => {
         viewport.scrollTo({
-          top: Math.max(0, nowTopPx - viewport.clientHeight * 0.35),
+          top: Math.max(0, nowTopRem * remPx() - viewport.clientHeight * 0.35),
           behavior: "smooth",
         });
       });
-      viewport.addEventListener("scroll", sync, { passive: true });
-      window.addEventListener("resize", sync, { passive: true });
-      sync();
+
+      const onLayout = () => {
+        reposition();
+        syncJump();
+      };
+
+      viewport.addEventListener("scroll", syncJump, { passive: true });
+      window.addEventListener("resize", onLayout, { passive: true });
+      window.addEventListener("orientationchange", onLayout);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") onLayout();
+      });
+      window.setInterval(onLayout, 60_000);
+
+      onLayout();
     })();
   </script>
   <script is:inline>
@@ -4329,6 +4373,20 @@ const calendarConfig = {
     letter-spacing: 0.02em;
     color: #c44;
     white-space: nowrap;
+  }
+
+  /* Anchor the "Now h:mm" readout to the marker line at its real vertical
+     position (sits just above the line, right-aligned to the time gutter)
+     instead of pinning it to the top spacer beside the morning rows. */
+  .day-cal__now-label--marker {
+    position: absolute;
+    right: 0.2rem;
+    bottom: calc(100% + 1px);
+    padding: 0 0.18rem;
+    border-radius: 0.2rem;
+    background: var(--color-bg);
+    line-height: 1.2;
+    pointer-events: none;
   }
 
   .day-cal__now-marker {
