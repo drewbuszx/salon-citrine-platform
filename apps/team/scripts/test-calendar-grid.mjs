@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 
 const TIMEZONE = "America/Indiana/Indianapolis";
 const CALENDAR_START_HOUR = 4;
+const CALENDAR_END_HOUR = 24;
 const CALENDAR_SLOT_MINUTES = 15;
 const CALENDAR_ROW_HEIGHT_REM = 1.25;
 
@@ -28,11 +29,17 @@ function minutesFromDayStart(iso) {
 
 function eventBlockStyle(startsAt, endsAt) {
   const gridStart = CALENDAR_START_HOUR * 60;
-  const startMin = minutesFromDayStart(startsAt);
-  const endMin = minutesFromDayStart(endsAt);
+  const gridEnd = CALENDAR_END_HOUR * 60;
+  const rawStart = minutesFromDayStart(startsAt);
+  let rawEnd = minutesFromDayStart(endsAt);
+  if (rawEnd <= rawStart) {
+    rawEnd = gridEnd;
+  }
+  const startMin = Math.min(Math.max(rawStart, gridStart), gridEnd);
+  const clampedEnd = Math.min(Math.max(rawEnd, gridStart), gridEnd);
+  const endMin = Math.max(clampedEnd, startMin + CALENDAR_SLOT_MINUTES);
   const slotOffset = (startMin - gridStart) / CALENDAR_SLOT_MINUTES;
-  const slotSpan =
-    (Math.max(endMin, startMin + CALENDAR_SLOT_MINUTES) - startMin) / CALENDAR_SLOT_MINUTES;
+  const slotSpan = (endMin - startMin) / CALENDAR_SLOT_MINUTES;
   const top = Math.round(slotOffset * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
   const height = Math.round(Math.max(slotSpan, 1) * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
   return {
@@ -73,5 +80,17 @@ assert.equal(twoHour.height, expectedHeight(10, 0, 12, 0));
 
 const short = eventBlockStyle(TEN_AM, TEN_OH_FIVE);
 assert.equal(short.height, `${CALENDAR_ROW_HEIGHT_REM}rem`);
+
+// All-day / midnight-crossing band (e.g. clamped time off) must span the full
+// grid, not collapse to a stub pinned at the top. Local midnight -> next
+// local midnight (EDT = UTC-4 in July).
+const LOCAL_MIDNIGHT = "2026-07-07T04:00:00.000Z";
+const NEXT_LOCAL_MIDNIGHT = "2026-07-08T04:00:00.000Z";
+const fullGridSpanRem =
+  ((CALENDAR_END_HOUR - CALENDAR_START_HOUR) * 60 / CALENDAR_SLOT_MINUTES) *
+  CALENDAR_ROW_HEIGHT_REM;
+const allDay = eventBlockStyle(LOCAL_MIDNIGHT, NEXT_LOCAL_MIDNIGHT);
+assert.equal(allDay.top, "0rem");
+assert.equal(allDay.height, `${fullGridSpanRem}rem`);
 
 console.log("Calendar grid alignment tests passed.");

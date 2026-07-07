@@ -254,12 +254,24 @@ export function calendarGridHeightRem() {
 
 export function eventBlockStyle(startsAt: string, endsAt: string) {
   const gridStart = CALENDAR_START_HOUR * 60;
-  const startMin = minutesFromDayStart(startsAt);
-  const endMin = minutesFromDayStart(endsAt);
+  const gridEnd = CALENDAR_END_HOUR * 60;
+  const rawStart = minutesFromDayStart(startsAt);
+  let rawEnd = minutesFromDayStart(endsAt);
+  // Midnight (and end-of-day boundaries) map to 0 via minutesFromDayStart. An
+  // event whose end lands at/before its start therefore ends at midnight or
+  // later — treat it as running to the end of the calendar day so all-day and
+  // multi-day bands (e.g. time off) span the full grid instead of collapsing.
+  if (rawEnd <= rawStart) {
+    rawEnd = gridEnd;
+  }
+  // Clip the event to the visible calendar window. Without this, an event that
+  // starts before the grid's first hour (top < 0, clamped to 0) combined with a
+  // degenerate span renders as a stub pinned to the top of the column.
+  const startMin = Math.min(Math.max(rawStart, gridStart), gridEnd);
+  const clampedEnd = Math.min(Math.max(rawEnd, gridStart), gridEnd);
+  const endMin = Math.max(clampedEnd, startMin + CALENDAR_SLOT_MINUTES);
   const slotOffset = (startMin - gridStart) / CALENDAR_SLOT_MINUTES;
-  const slotSpan =
-    (Math.max(endMin, startMin + CALENDAR_SLOT_MINUTES) - startMin) /
-    CALENDAR_SLOT_MINUTES;
+  const slotSpan = (endMin - startMin) / CALENDAR_SLOT_MINUTES;
   const top = Math.round(slotOffset * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
   const height = Math.round(Math.max(slotSpan, 1) * CALENDAR_ROW_HEIGHT_REM * 1000) / 1000;
   return {
