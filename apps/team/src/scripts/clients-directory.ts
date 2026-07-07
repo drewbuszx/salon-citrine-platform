@@ -91,6 +91,9 @@ class ClientsDirectory {
   private perPage = 25;
   private lastFocus: HTMLElement | null = null;
   private openMenu: HTMLElement | null = null;
+  private menuTrigger: HTMLElement | null = null;
+  private repositionHandler: (() => void) | null = null;
+  private summaryFilter: "upcoming" | "noUpcoming" | null = null;
   private visibleColumns = getVisibleColumns();
   private pendingForceCreate = false;
 
@@ -189,7 +192,7 @@ class ClientsDirectory {
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         if (this.openMenu) {
-          this.closeRowMenu();
+          this.closeRowMenu(true);
           return;
         }
         const drawer = this.qs<HTMLElement>("[data-preview-drawer]");
@@ -246,6 +249,21 @@ class ClientsDirectory {
       });
     });
 
+    this.root.querySelectorAll<HTMLButtonElement>("[data-summary-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const filter = btn.dataset.summaryFilter as "upcoming" | "noUpcoming" | undefined;
+        if (filter !== "upcoming" && filter !== "noUpcoming") return;
+        this.summaryFilter = this.summaryFilter === filter ? null : filter;
+        this.page = 1;
+        this.syncSummaryPressed();
+        this.scheduleLoad();
+      });
+    });
+
+    this.qs<HTMLButtonElement>("[data-empty-clear]")?.addEventListener("click", () => {
+      this.clearAllFilters();
+    });
+
     if (initialQuery.trim().length === 1) {
       this.showStatus("Type at least 2 characters to search.");
     } else if (initialClients.length > 0) {
@@ -274,9 +292,18 @@ class ClientsDirectory {
     )) {
       checkbox.checked = false;
     }
+    this.summaryFilter = null;
+    this.syncSummaryPressed();
     this.page = 1;
     this.renderFilterChips([]);
     this.scheduleLoad();
+  }
+
+  private syncSummaryPressed() {
+    this.root.querySelectorAll<HTMLButtonElement>("[data-summary-filter]").forEach((btn) => {
+      const active = btn.dataset.summaryFilter === this.summaryFilter;
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   private syncColumnToggles() {
@@ -344,17 +371,15 @@ class ClientsDirectory {
   }
 
   private renderFilterChips(chips: Array<{ label: string; clear: () => void }>) {
+    const bar = this.qs<HTMLElement>("[data-filter-bar]");
     const wrap = this.qs<HTMLElement>("[data-active-filters]");
-    const clearAll = this.qs<HTMLButtonElement>("[data-filter-clear-all]");
     if (!wrap) return;
     wrap.innerHTML = "";
     if (chips.length === 0) {
-      wrap.hidden = true;
-      if (clearAll) clearAll.hidden = true;
+      if (bar) bar.hidden = true;
       return;
     }
-    wrap.hidden = false;
-    if (clearAll) clearAll.hidden = false;
+    if (bar) bar.hidden = false;
     for (const chip of chips) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -439,6 +464,23 @@ class ClientsDirectory {
         },
       });
     }
+    if (this.summaryFilter === "upcoming") {
+      chips.push({
+        label: "Upcoming appointment",
+        clear: () => {
+          this.summaryFilter = null;
+          this.syncSummaryPressed();
+        },
+      });
+    } else if (this.summaryFilter === "noUpcoming") {
+      chips.push({
+        label: "No future appointment",
+        clear: () => {
+          this.summaryFilter = null;
+          this.syncSummaryPressed();
+        },
+      });
+    }
     return chips;
   }
 
@@ -452,8 +494,11 @@ class ClientsDirectory {
   ) {
     const countEl = this.qs<HTMLElement>("[data-client-count]");
     if (countEl && summary) {
-      countEl.textContent =
-        summary.total === 1 ? "1 client" : `${summary.total.toLocaleString("en-US")} clients`;
+      countEl.textContent = summary.total.toLocaleString("en-US");
+      countEl.setAttribute(
+        "aria-label",
+        summary.total === 1 ? "1 client" : `${summary.total.toLocaleString("en-US")} clients`,
+      );
     }
     const set = (sel: string, value: number) => {
       const el = this.qs<HTMLElement>(sel);
@@ -475,16 +520,24 @@ class ClientsDirectory {
     rangeEnd: number;
     filteredTotal: number;
   }) {
-    const wrap = this.qs<HTMLElement>("[data-pagination]");
-    if (!wrap) return;
-    const hide = meta.filteredTotal <= meta.perPage;
-    wrap.hidden = hide;
-    if (hide) return;
+    const footer = this.qs<HTMLElement>("[data-footer]");
+    if (!footer) return;
+
+    // Footer is shown whenever there are results (range + rows per page).
+    if (meta.filteredTotal <= 0) {
+      footer.hidden = true;
+      return;
+    }
+    footer.hidden = false;
 
     const range = this.qs<HTMLElement>("[data-page-range]");
     if (range) {
       range.textContent = `${meta.rangeStart}–${meta.rangeEnd} of ${meta.filteredTotal}`;
     }
+
+    const multiPage = meta.totalPages > 1;
+    const buttons = this.qs<HTMLElement>("[data-page-buttons]");
+    if (buttons) buttons.hidden = !multiPage;
     const prev = this.qs<HTMLButtonElement>("[data-pagination-prev]");
     const next = this.qs<HTMLButtonElement>("[data-pagination-next]");
     if (prev) prev.disabled = meta.page <= 1;
@@ -518,17 +571,31 @@ class ClientsDirectory {
     const email = client.emailDisplay;
     const tel = phoneHref(client.phone);
     const mail = emailHref(client.email);
-    const phoneMarkup = phone
+
+    const phoneInner = phone
       ? tel
-        ? `<a class="clients-table__contact-link" href="${tel}">${escapeHtml(phone)}</a>`
-        : escapeHtml(phone)
+        ? `<a class="clients-table__contact-link" href="${tel}" aria-label="Call ${escapeHtml(client.fullName)}">${escapeHtml(phone)}</a>`
+        : `<span class="clients-table__contact-value">${escapeHtml(phone)}</span>`
       : `<span class="clients-table__muted">${emptyContactLabel("phone")}</span>`;
-    const emailMarkup = email
+    const emailInner = email
       ? mail
-        ? `<a class="clients-table__contact-link" href="${mail}">${escapeHtml(email)}</a>`
-        : escapeHtml(email)
+        ? `<a class="clients-table__contact-link" href="${mail}" aria-label="Email ${escapeHtml(client.fullName)}">${escapeHtml(email)}</a>`
+        : `<span class="clients-table__contact-value">${escapeHtml(email)}</span>`
       : `<span class="clients-table__muted">${emptyContactLabel("email")}</span>`;
-    return `<div class="clients-table__contact">${phoneMarkup}<span class="clients-table__contact-sep" aria-hidden="true">·</span>${emailMarkup}</div>`;
+
+    return `
+      <div class="clients-table__contact">
+        <span class="clients-table__contact-line">
+          <span class="clients-table__contact-icon" aria-hidden="true">☎</span>
+          <span class="clients-page__sr-only">Phone:</span>
+          ${phoneInner}
+        </span>
+        <span class="clients-table__contact-line">
+          <span class="clients-table__contact-icon" aria-hidden="true">✉</span>
+          <span class="clients-page__sr-only">Email:</span>
+          ${emailInner}
+        </span>
+      </div>`;
   }
 
   private renderRowActions(client: ClientListItem) {
@@ -550,29 +617,95 @@ class ClientsDirectory {
   private bindRowMenu(tr: HTMLTableRowElement) {
     const menuBtn = tr.querySelector<HTMLButtonElement>("[data-menu-open]");
     const panel = tr.querySelector<HTMLElement>("[data-menu-panel]");
-    menuBtn?.addEventListener("click", (event) => {
+    if (!menuBtn || !panel) return;
+
+    menuBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      if (this.openMenu && this.openMenu !== panel) this.closeRowMenu();
-      if (!panel || !menuBtn) return;
-      const open = panel.hidden;
-      panel.hidden = !open;
-      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
-      this.openMenu = open ? panel : null;
+      if (this.openMenu === panel) {
+        this.closeRowMenu();
+        return;
+      }
+      if (this.openMenu) this.closeRowMenu();
+      this.openRowMenu(panel, menuBtn);
     });
-    panel?.querySelectorAll("a").forEach((link) => {
+    menuBtn.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" && this.openMenu === panel) {
+        event.preventDefault();
+        panel.querySelector<HTMLAnchorElement>("a")?.focus();
+      }
+    });
+    panel.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", (event) => event.stopPropagation());
     });
   }
 
-  private closeRowMenu() {
+  private openRowMenu(panel: HTMLElement, trigger: HTMLElement) {
+    this.menuTrigger = trigger;
+    panel.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    this.openMenu = panel;
+    this.positionRowMenu();
+    this.repositionHandler = () => this.positionRowMenu();
+    window.addEventListener("scroll", this.repositionHandler, true);
+    window.addEventListener("resize", this.repositionHandler);
+  }
+
+  private positionRowMenu() {
+    const panel = this.openMenu;
+    const trigger = this.menuTrigger;
+    if (!panel || !trigger) return;
+
+    // Measure with panel visible but off-screen influence removed.
+    const triggerRect = trigger.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const margin = 6;
+    const viewportH = window.innerHeight;
+    const viewportW = window.innerWidth;
+
+    // Prefer right-aligned to the trigger, below it.
+    let left = triggerRect.right - panelRect.width;
+    if (left < margin) left = margin;
+    if (left + panelRect.width > viewportW - margin) {
+      left = viewportW - margin - panelRect.width;
+    }
+
+    const spaceBelow = viewportH - triggerRect.bottom;
+    let top: number;
+    if (spaceBelow >= panelRect.height + margin || spaceBelow >= triggerRect.top) {
+      top = triggerRect.bottom + 4;
+      if (top + panelRect.height > viewportH - margin) {
+        top = Math.max(margin, viewportH - margin - panelRect.height);
+      }
+    } else {
+      // Flip above the trigger.
+      top = triggerRect.top - panelRect.height - 4;
+      if (top < margin) top = margin;
+    }
+
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.top = `${Math.round(top)}px`;
+  }
+
+  private closeRowMenu(restoreFocus = false) {
     if (!this.openMenu) return;
     const menu = this.openMenu;
+    const trigger = this.menuTrigger;
     menu.hidden = true;
-    menu.closest("[data-row-menu]")?.querySelector("[data-menu-open]")?.setAttribute("aria-expanded", "false");
+    menu.style.left = "";
+    menu.style.top = "";
+    trigger?.setAttribute("aria-expanded", "false");
+    if (this.repositionHandler) {
+      window.removeEventListener("scroll", this.repositionHandler, true);
+      window.removeEventListener("resize", this.repositionHandler);
+      this.repositionHandler = null;
+    }
+    this.menuTrigger = null;
     this.openMenu = null;
+    if (restoreFocus) trigger?.focus();
   }
 
   private openClient(client: ClientListItem, row: HTMLElement) {
+    this.closeRowMenu();
     if (DRAWER_MQ.matches) {
       this.lastFocus = row;
       void this.openDrawer(client.id);
@@ -689,22 +822,34 @@ class ClientsDirectory {
       emptyState.hidden = false;
       resultsWrap?.classList.add("clients-page__results--empty");
       const filters = this.getFilters();
-      const hasFilters =
-        filters.provider || filters.tag || filters.referral || filters.purchased || filters.hasVisits;
+      const hasFilters = Boolean(
+        filters.provider ||
+          filters.tag ||
+          filters.referral ||
+          filters.purchased ||
+          filters.hasVisits ||
+          this.summaryFilter,
+      );
       const term = this.getSearchTerm();
-      if (emptyTitle) {
-        emptyTitle.textContent = hasFilters
-          ? "No clients match filters"
-          : term.length >= 2
-            ? "No clients match search"
-            : "No clients yet";
-      }
-      if (emptyHint) {
-        emptyHint.textContent = hasFilters
-          ? "Try clearing a filter or broadening your search."
-          : term.length >= 2
-            ? "Check spelling or search by phone or email."
-            : "Add your first client with Add client.";
+      const directoryEmpty = meta.total === 0;
+      const clearBtn = this.qs<HTMLButtonElement>("[data-empty-clear]");
+
+      if (directoryEmpty && !hasFilters && term.length < 2) {
+        if (emptyTitle) emptyTitle.textContent = "No clients yet";
+        if (emptyHint) emptyHint.textContent = "Add your first client to start building the directory.";
+        if (clearBtn) clearBtn.hidden = true;
+      } else if (hasFilters) {
+        if (emptyTitle) emptyTitle.textContent = "No clients match the selected filters";
+        if (emptyHint) emptyHint.textContent = "Adjust or clear the filters to see more clients.";
+        if (clearBtn) clearBtn.hidden = false;
+      } else if (term.length >= 2) {
+        if (emptyTitle) emptyTitle.textContent = "No clients match your search";
+        if (emptyHint) emptyHint.textContent = "Check spelling, or search by phone or email.";
+        if (clearBtn) clearBtn.hidden = true;
+      } else {
+        if (emptyTitle) emptyTitle.textContent = "No clients found";
+        if (emptyHint) emptyHint.textContent = "Try a different search or clear filters.";
+        if (clearBtn) clearBtn.hidden = !hasFilters;
       }
       return;
     }
@@ -724,12 +869,22 @@ class ClientsDirectory {
 
     for (const client of clients) {
       const tr = document.createElement("tr");
+      const providerCell = client.providerName
+        ? escapeHtml(client.providerName)
+        : `<span class="clients-table__soft">No provider yet</span>`;
+      const lastVisitCell = client.lastVisitLabel
+        ? escapeHtml(client.lastVisitLabel)
+        : `<span class="clients-table__soft">No visits yet</span>`;
+      const nextApptCell = client.upcomingLabel
+        ? escapeHtml(client.upcomingLabel)
+        : `<span class="clients-table__soft">None scheduled</span>`;
+
       tr.innerHTML = `
         <td data-col="client">${this.renderClientCell(client)}</td>
         <td data-col="contact">${this.renderContactCell(client)}</td>
-        <td data-col="provider" class="clients-table__text">${escapeHtml(client.providerName ?? "—")}</td>
-        <td data-col="lastVisit" class="clients-table__text">${escapeHtml(client.lastVisitLabel ?? "—")}</td>
-        <td data-col="nextAppt" class="clients-table__text">${escapeHtml(client.upcomingLabel ?? "—")}</td>
+        <td data-col="provider" class="clients-table__text">${providerCell}</td>
+        <td data-col="lastVisit" class="clients-table__text">${lastVisitCell}</td>
+        <td data-col="nextAppt" class="clients-table__text">${nextApptCell}</td>
         <td data-col="visits" class="clients-table__num">${client.visitCount}</td>
         <td data-col="ltv" class="clients-table__num clients-table__ltv" title="${escapeHtml(client.ltvTitle)}">${escapeHtml(client.ltvLabel)}</td>
         <td data-col="actions" class="clients-table__actions-col">${this.renderRowActions(client)}</td>
@@ -802,6 +957,8 @@ class ClientsDirectory {
     if (filters.referral) params.set("referral", filters.referral);
     if (filters.purchased) params.set("purchased", "1");
     if (filters.hasVisits) params.set("hasVisits", "1");
+    if (this.summaryFilter === "upcoming") params.set("upcoming", "1");
+    if (this.summaryFilter === "noUpcoming") params.set("noUpcoming", "1");
     params.set("sort", this.sort);
     params.set("page", String(this.page));
     params.set("perPage", String(this.perPage));

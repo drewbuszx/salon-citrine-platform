@@ -235,6 +235,8 @@ export const GET: APIRoute = async (context) => {
   const providerId = String(params.get("provider") ?? "").trim();
   const purchased = params.get("purchased") === "1";
   const hasVisits = params.get("hasVisits") === "1";
+  const upcomingOnly = params.get("upcoming") === "1";
+  const noUpcomingOnly = params.get("noUpcoming") === "1";
   const sortParam = String(params.get("sort") ?? "name") as ClientSortKey;
   const sort: ClientSortKey = SORT_KEYS.includes(sortParam) ? sortParam : "name";
   const page = Math.max(1, Number.parseInt(params.get("page") ?? "1", 10) || 1);
@@ -363,6 +365,12 @@ export const GET: APIRoute = async (context) => {
 
   let clients = rows.map((row) => mapClientRow(row, appointmentMeta.get(row.id)));
 
+  if (upcomingOnly) {
+    clients = clients.filter((client) => Boolean(client.upcomingAt));
+  } else if (noUpcomingOnly) {
+    clients = clients.filter((client) => !client.upcomingAt);
+  }
+
   if (sort === "next_appointment" || sort === "name") {
     clients = sortClients(clients, sort);
   }
@@ -381,6 +389,8 @@ export const GET: APIRoute = async (context) => {
   if (providerId) filtersApplied += 1;
   if (purchased) filtersApplied += 1;
   if (hasVisits) filtersApplied += 1;
+  if (upcomingOnly) filtersApplied += 1;
+  if (noUpcomingOnly) filtersApplied += 1;
 
   return jsonOk({
     clients: pageClients,

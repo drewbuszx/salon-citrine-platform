@@ -128,12 +128,14 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
       <Fragment slot="toolbar">
         <div class="clients-page__toolbar">
           <div class="clients-page__toolbar-main">
-            <p class="clients-page__heading">
-              <span class="clients-page__heading-label">Your Clients</span>
-              <span class="clients-page__heading-count" data-client-count>
-                {initialTotal === null ? "—" : initialTotal === 1 ? "1 client" : `${initialTotal} clients`}
-              </span>
-            </p>
+            <h2 class="clients-page__heading">
+              <span class="clients-page__heading-title">Your Clients</span>
+              <span
+                class="clients-page__heading-count"
+                data-client-count
+                aria-label={initialTotal === 1 ? "1 client" : `${initialTotal ?? 0} clients`}
+              >{initialTotal ?? "—"}</span>
+            </h2>
             <div class="clients-page__search-block">
               <label class="clients-page__search" data-search-wrap>
                 <span class="clients-page__search-label">Search by name, phone, or email</span>
@@ -160,19 +162,26 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
             </div>
           </div>
           <div class="clients-page__toolbar-actions">
-            <label class="clients-page__sort">
-              <span class="clients-page__sort-label">Sort</span>
-              <select class="clients-page__sort-select" data-sort-select aria-label="Sort clients">
-                <option value="name">Name</option>
-                <option value="recently_added">Recently added</option>
-                <option value="last_visit">Last visit</option>
-                <option value="next_appointment">Next appointment</option>
-                <option value="visits">Most visits</option>
-                <option value="ltv">Highest lifetime value</option>
-              </select>
-            </label>
+            <div class="clients-page__sort">
+              <label class="clients-page__sort-inline">
+                <span class="clients-page__sort-prefix">Sort:</span>
+                <select class="clients-page__sort-select" data-sort-select aria-label="Sort clients by">
+                  <option value="name">Name (A–Z)</option>
+                  <option value="recently_added">Recently added</option>
+                  <option value="last_visit">Last visit</option>
+                  <option value="next_appointment">Next appointment</option>
+                  <option value="visits">Most visits</option>
+                  <option value="ltv">Highest lifetime value</option>
+                </select>
+              </label>
+            </div>
             <details class="clients-page__columns">
-              <summary class="clients-page__columns-trigger">Columns</summary>
+              <summary class="clients-page__columns-trigger" aria-label="Choose columns">
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                  <path d="M4 5h16M4 12h16M4 19h16" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+                </svg>
+                <span>Columns</span>
+              </summary>
               <div class="clients-page__columns-panel">
                 <label class="clients-page__columns-option"><input type="checkbox" data-column-toggle="client" checked /> Client</label>
                 <label class="clients-page__columns-option"><input type="checkbox" data-column-toggle="contact" checked /> Contact</label>
@@ -188,28 +197,33 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
         </div>
       </Fragment>
 
-      <div slot="stats" class="clients-page__summary" data-summary-strip>
-        <button type="button" class="clients-page__summary-item" data-summary-filter="total" disabled>
+      <div slot="stats" class="clients-page__summary" data-summary-strip role="group" aria-label="Client directory summary">
+        <div class="clients-page__summary-item clients-page__summary-item--static">
           <span class="clients-page__summary-value" data-summary-total>{initialTotal ?? "—"}</span>
-          <span class="clients-page__summary-label">Total</span>
-        </button>
-        <button type="button" class="clients-page__summary-item" disabled>
+          <span class="clients-page__summary-label">Total clients</span>
+        </div>
+        <div class="clients-page__summary-item clients-page__summary-item--static">
           <span class="clients-page__summary-value" data-summary-new>—</span>
           <span class="clients-page__summary-label">New this month</span>
-        </button>
-        <button type="button" class="clients-page__summary-item" disabled>
+        </div>
+        <button
+          type="button"
+          class="clients-page__summary-item clients-page__summary-item--action"
+          data-summary-filter="upcoming"
+          aria-pressed="false"
+        >
           <span class="clients-page__summary-value" data-summary-upcoming>—</span>
-          <span class="clients-page__summary-label">Upcoming appts</span>
+          <span class="clients-page__summary-label">Upcoming appointments</span>
         </button>
-        <button type="button" class="clients-page__summary-item" disabled>
+        <button
+          type="button"
+          class="clients-page__summary-item clients-page__summary-item--action"
+          data-summary-filter="noUpcoming"
+          aria-pressed="false"
+        >
           <span class="clients-page__summary-value" data-summary-no-booking>—</span>
-          <span class="clients-page__summary-label">No future booking</span>
+          <span class="clients-page__summary-label">No future appointment</span>
         </button>
-      </div>
-
-      <div slot="mainLead" class="clients-page__filter-bar">
-        <div class="clients-page__active-filters" data-active-filters hidden></div>
-        <button class="clients-page__clear-filters" type="button" data-filter-clear-all hidden>Clear all</button>
       </div>
 
       <TeamListFilter slot="sidebarFilters" label="Saved audiences" open={false}>
@@ -236,8 +250,8 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
         {
           providers.length > 0 ? (
             <div class="clients-page__provider-filter">
-              <p class="clients-page__filter-hint">Clients with any appointment with this provider.</p>
-              <div class="team-list-layout__filter-options team-list-layout__filter-options--scroll clients-page__provider-list">
+              <p class="clients-page__filter-hint">Matches clients with any appointment (past or upcoming) with this provider.</p>
+              <div class="team-list-layout__filter-options clients-page__provider-list">
                 <label class="team-list-layout__filter-option clients-page__filter-option">
                   <input type="radio" name="client-provider" value="" data-filter-provider checked />
                   <span>All providers</span>
@@ -304,6 +318,12 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
         }
       </TeamListFilter>
 
+      <div class="clients-page__filter-bar" data-filter-bar hidden>
+        <span class="clients-page__filter-bar-label">Filters:</span>
+        <div class="clients-page__active-filters" data-active-filters></div>
+        <button class="clients-page__clear-filters" type="button" data-filter-clear-all>Clear all</button>
+      </div>
+
       <p class="clients-page__notice" data-status hidden aria-live="polite"></p>
       <p class="clients-page__sr-live" data-sr-live aria-live="polite" aria-atomic="true"></p>
 
@@ -313,7 +333,7 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
             <tr>
               <th scope="col" data-col="client">Client</th>
               <th scope="col" data-col="contact">Contact</th>
-              <th scope="col" data-col="provider">Provider</th>
+              <th scope="col" data-col="provider">Recent provider</th>
               <th scope="col" data-col="lastVisit">Last visit</th>
               <th scope="col" data-col="nextAppt">Next appointment</th>
               <th scope="col" data-col="visits" class="clients-table__num">Visits</th>
@@ -328,27 +348,32 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
         <ul class="clients-page__cards" data-card-results aria-label="Clients"></ul>
 
-        <p class="clients-page__empty" data-empty hidden>
+        <div class="clients-page__empty" data-empty hidden>
           <span class="clients-page__empty-icon" aria-hidden="true">👤</span>
           <strong data-empty-title>No clients found</strong>
           <span class="clients-page__empty-hint" data-empty-hint>Try a different search or clear filters.</span>
-        </p>
+          <button type="button" class="clients-page__btn-secondary clients-page__empty-action" data-empty-clear hidden>
+            Clear filters
+          </button>
+        </div>
 
-        <nav class="clients-page__pagination" data-pagination hidden aria-label="Client list pagination">
-          <span class="clients-page__page-range" data-page-range></span>
+        <footer class="clients-page__footer" data-footer hidden>
+          <span class="clients-page__footer-range" data-page-range aria-live="polite"></span>
+          <span class="clients-page__footer-sep" data-footer-sep aria-hidden="true">·</span>
           <label class="clients-page__per-page">
-            <span>Rows</span>
+            <span>Rows per page:</span>
             <select data-per-page aria-label="Rows per page">
               <option value="25" selected>25</option>
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
           </label>
-          <div class="clients-page__page-buttons">
-            <button type="button" class="clients-page__btn-secondary" data-pagination-prev>Previous</button>
-            <button type="button" class="clients-page__btn-secondary" data-pagination-next>Next</button>
+          <div class="clients-page__page-buttons" data-page-buttons hidden>
+            <span class="clients-page__footer-sep" aria-hidden="true">·</span>
+            <button type="button" class="clients-page__page-btn" data-pagination-prev>Previous</button>
+            <button type="button" class="clients-page__page-btn" data-pagination-next>Next</button>
           </div>
-        </nav>
+        </footer>
       </div>
     </TeamListLayout>
   </div>
@@ -385,7 +410,8 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 <script src="../../scripts/clients-directory.ts"></script>
 
 <style>
-  .clients-page__sr-only {
+  .clients-page__sr-only,
+  .clients-page :global(.clients-page__sr-only) {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -409,21 +435,31 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     border: 0;
   }
 
+  /* Guard: page-scoped display rules must not override the hidden attribute. */
+  .clients-page [hidden] {
+    display: none !important;
+  }
+
   .clients-page :global(.clients-list-layout .team-list-layout__main-title) {
     display: none;
   }
 
   .clients-page :global(.clients-list-layout .team-list-layout__main) {
-    max-width: 96rem;
-    padding: var(--space-4) var(--space-5) var(--space-6);
+    max-width: 92rem;
+    padding: var(--space-3) var(--space-5) var(--space-6);
   }
 
   .clients-page :global(.clients-list-layout .team-list-layout__subheader) {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.15rem;
+    padding-block: 0.35rem;
   }
 
   .clients-page :global(.clients-list-layout .team-list-layout__stats) {
-    margin-bottom: 0.65rem;
+    margin: 0 0 0.5rem;
+  }
+
+  .clients-page :global(.clients-list-layout .team-list-layout__main-lead) {
+    margin: 0;
   }
 
   .clients-page :global(.clients-list-layout .team-list-layout__toolbar) {
@@ -453,8 +489,10 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     }
   }
 
+  /* Provider clipping fix (approach A): the option group grows naturally and
+     the sidebar filters column owns the single scroll. No nested scrollbox. */
   .clients-page__provider-list {
-    max-height: min(16rem, 40vh);
+    padding-bottom: 0.25rem;
   }
 
   .clients-page__filter-hint {
@@ -515,21 +553,32 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   .clients-page__heading {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem 0.65rem;
+    align-items: center;
+    gap: 0.5rem;
     margin: 0;
   }
 
-  .clients-page__heading-label {
-    font-family: var(--font-body);
-    font-size: var(--text-base);
+  .clients-page__heading-title {
+    font-family: var(--font-display, var(--font-body));
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--color-stone-800);
+    letter-spacing: var(--tracking-tight, normal);
   }
 
   .clients-page__heading-count {
-    font-size: var(--text-sm);
-    color: var(--color-stone-500);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6rem;
+    height: 1.4rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: var(--color-stone-100);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-stone-600);
   }
 
   .clients-page__search-block {
@@ -623,29 +672,34 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     gap: 0.5rem;
   }
 
-  .clients-page__sort {
-    display: grid;
-    gap: 0.15rem;
-  }
-
-  .clients-page__sort-label,
-  .clients-page__columns-trigger {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
-    color: var(--color-stone-500);
-  }
-
-  .clients-page__sort-select {
+  .clients-page__sort-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     min-height: var(--touch-target-min, 2.75rem);
-    padding: 0.4rem 0.55rem;
+    padding: 0 0.6rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
+  }
+
+  .clients-page__sort-prefix {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-stone-500);
+    white-space: nowrap;
+  }
+
+  .clients-page__sort-select {
+    border: none;
+    background: transparent;
     font-family: var(--font-body);
     font-size: var(--text-sm);
+    font-weight: 500;
     color: var(--color-stone-800);
+    cursor: pointer;
+    padding: 0.35rem 0.15rem;
+    outline: none;
   }
 
   .clients-page__columns {
@@ -658,10 +712,25 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     min-height: var(--touch-target-min, 2.75rem);
     display: inline-flex;
     align-items: center;
-    padding: 0 0.55rem;
+    gap: 0.35rem;
+    padding: 0 0.65rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-stone-600);
+  }
+
+  .clients-page__columns-trigger svg {
+    color: var(--color-stone-400);
+  }
+
+  .clients-page__columns-trigger:hover,
+  .clients-page__columns[open] .clients-page__columns-trigger {
+    border-color: var(--color-stone-300);
+    color: var(--color-stone-800);
   }
 
   .clients-page__columns-trigger::-webkit-details-marker {
@@ -741,33 +810,58 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   }
 
   .clients-page__summary {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(8rem, 1fr));
     gap: 0.5rem;
     margin: 0;
+    max-width: 46rem;
   }
 
   .clients-page__summary-item {
     display: grid;
-    gap: 0.1rem;
-    padding: 0.45rem 0.7rem;
+    gap: 0.15rem;
+    align-content: start;
+    padding: 0.55rem 0.8rem;
     border: 1px solid var(--color-stone-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-stone-50);
-    min-width: 6.5rem;
     text-align: left;
+  }
+
+  .clients-page__summary-item--static {
     cursor: default;
   }
 
+  .clients-page__summary-item--action {
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+  }
+
+  .clients-page__summary-item--action:hover,
+  .clients-page__summary-item--action:focus-visible {
+    border-color: var(--color-stone-300);
+    background: var(--color-bg);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+
+  .clients-page__summary-item--action[aria-pressed="true"] {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    box-shadow: inset 0 0 0 1px var(--color-citrine);
+  }
+
   .clients-page__summary-value {
-    font-size: var(--text-base);
-    font-weight: 600;
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
+    line-height: 1.1;
     color: var(--color-stone-800);
   }
 
   .clients-page__summary-label {
     font-size: var(--text-xs);
+    line-height: var(--leading-snug, 1.3);
     color: var(--color-stone-500);
   }
 
@@ -775,8 +869,16 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem 0.5rem;
     margin: 0 0 0.65rem;
+  }
+
+  .clients-page__filter-bar-label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-500);
   }
 
   .clients-page__active-filters {
@@ -825,6 +927,10 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
   .clients-page__table-wrap {
     min-width: 0;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-bg);
   }
 
   .clients-table {
@@ -836,10 +942,14 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
   .clients-table th,
   .clients-table td {
-    padding: 0.65rem 0.75rem;
+    padding: 0.7rem 0.85rem;
     border-bottom: 1px solid var(--color-stone-200);
     vertical-align: middle;
     text-align: left;
+  }
+
+  .clients-table tbody tr:last-child td {
+    border-bottom: none;
   }
 
   .clients-table th.clients-table__num,
@@ -851,9 +961,10 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
   .clients-table th.clients-table__actions-head,
   .clients-table td.clients-table__actions-col {
-    width: 2.5rem;
+    width: 3rem;
+    min-width: 3rem;
     text-align: right;
-    padding-right: 0.35rem;
+    padding-right: 0.6rem;
   }
 
   .clients-table th {
@@ -939,33 +1050,36 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
   .clients-page :global(.clients-table__contact) {
     display: grid;
-    gap: 0.15rem;
+    gap: 0.2rem;
     min-width: 0;
   }
 
-  .clients-page :global(.clients-table__contact-sep) {
-    display: none;
+  .clients-page :global(.clients-table__contact-line) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
   }
 
-  @media (min-width: 1100px) {
-    .clients-page :global(.clients-table__contact) {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .clients-page :global(.clients-table__contact-sep) {
-      display: inline;
-      color: var(--color-stone-300);
-    }
+  .clients-page :global(.clients-table__contact-icon) {
+    flex-shrink: 0;
+    width: 0.9rem;
+    color: var(--color-stone-400);
+    font-size: 0.72rem;
+    text-align: center;
   }
 
   .clients-page :global(.clients-table__contact-link) {
-    color: inherit;
+    color: var(--color-stone-700);
+    text-decoration: none;
+    word-break: break-word;
+  }
+
+  .clients-page :global(.clients-table__contact-link:hover),
+  .clients-page :global(.clients-table__contact-link:focus-visible) {
     text-decoration: underline;
     text-underline-offset: 2px;
-    word-break: break-word;
+    color: var(--color-stone-900);
   }
 
   .clients-page :global(.clients-table__muted) {
@@ -976,6 +1090,10 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   .clients-page :global(.clients-table__ltv) {
     font-weight: 600;
     color: var(--color-stone-700);
+  }
+
+  .clients-page :global(.clients-table__soft) {
+    color: var(--color-stone-400);
   }
 
   .clients-page :global(.clients-table__actions) {
@@ -999,27 +1117,29 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   .clients-page :global(.clients-table__menu-btn:hover),
   .clients-page :global(.clients-table__menu-btn:focus-visible) {
     background: var(--color-stone-100);
+    color: var(--color-stone-800);
     outline: none;
     box-shadow: 0 0 0 3px var(--color-focus-ring);
   }
 
+  /* Row action menu is positioned via fixed coordinates by JS (popover). */
   .clients-page :global(.clients-table__menu) {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    z-index: 15;
-    min-width: 10.5rem;
+    position: fixed;
+    z-index: 320;
+    min-width: 11rem;
+    max-width: 15rem;
     padding: 0.35rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg);
     display: grid;
+    gap: 0.05rem;
   }
 
   .clients-page :global(.clients-table__menu a) {
     display: block;
-    padding: 0.45rem 0.55rem;
+    padding: 0.5rem 0.6rem;
     border-radius: var(--radius-sm);
     color: var(--color-stone-700);
     text-decoration: none;
@@ -1029,6 +1149,7 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   .clients-page :global(.clients-table__menu a:hover),
   .clients-page :global(.clients-table__menu a:focus-visible) {
     background: var(--color-citrine-muted);
+    color: var(--color-stone-900);
     outline: none;
   }
 
@@ -1097,37 +1218,91 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
 
   .clients-page__empty {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.4rem;
     justify-items: center;
     margin: 0;
-    padding: 2rem 1.25rem;
-    border: 1px dashed var(--color-stone-200);
-    border-radius: var(--radius-md);
-    background: var(--color-stone-50);
+    padding: 2.5rem 1.25rem;
     text-align: center;
     font-size: var(--text-sm);
     color: var(--color-stone-500);
   }
 
-  .clients-page__results--empty .clients-page__table,
-  .clients-page__results--empty .clients-page__cards {
+  .clients-page__empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: var(--color-stone-100);
+    font-size: 1.35rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .clients-page__empty strong {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-stone-700);
+  }
+
+  .clients-page__empty-action {
+    margin-top: 0.5rem;
+  }
+
+  .clients-page__results--empty .clients-table,
+  .clients-page__results--empty .clients-page__cards,
+  .clients-page__results--empty .clients-page__footer {
     display: none;
   }
 
-  .clients-page__pagination {
+  /* Cohesive table footer inside the table container. */
+  .clients-page__footer {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.85rem;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border-top: 1px solid var(--color-stone-200);
+    background: var(--color-stone-50);
     font-size: var(--text-sm);
     color: var(--color-stone-600);
   }
 
+  .clients-page__footer-range {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .clients-page__footer-sep {
+    color: var(--color-stone-300);
+    user-select: none;
+  }
+
   .clients-page__page-buttons {
-    display: flex;
+    display: inline-flex;
+    align-items: center;
     gap: 0.5rem;
+  }
+
+  .clients-page__page-btn {
+    border: none;
+    background: none;
+    padding: 0.2rem 0.35rem;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-link);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+
+  .clients-page__page-btn:hover:not(:disabled),
+  .clients-page__page-btn:focus-visible:not(:disabled) {
+    text-decoration: underline;
+    outline: none;
+  }
+
+  .clients-page__page-btn:disabled {
+    color: var(--color-stone-400);
+    cursor: not-allowed;
   }
 
   .clients-page__per-page {
@@ -1137,11 +1312,12 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
   }
 
   .clients-page__per-page select {
-    min-height: 2.25rem;
-    padding: 0.2rem 0.45rem;
+    min-height: 2rem;
+    padding: 0.15rem 0.4rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
+    font-size: var(--text-sm);
   }
 
   .clients-modal[hidden],
@@ -1447,7 +1623,34 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     background: rgba(231, 172, 70, 0.12);
   }
 
+  @media (max-width: 900px) {
+    .clients-page__summary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      max-width: none;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .clients-page__toolbar {
+      align-items: stretch;
+    }
+
+    .clients-page__toolbar-main {
+      max-width: none;
+      flex-basis: 100%;
+    }
+
+    .clients-page__toolbar-actions {
+      justify-content: flex-start;
+    }
+  }
+
   @media (max-width: 640px) {
+    .clients-page__table-wrap {
+      border: none;
+      background: transparent;
+    }
+
     .clients-page__table {
       display: none;
     }
@@ -1457,8 +1660,14 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     }
 
     .clients-page__columns,
-    .clients-page__toolbar-actions .clients-page__sort {
+    .clients-page__sort {
       display: none;
+    }
+
+    .clients-page__footer {
+      border: 1px solid var(--color-stone-200);
+      border-radius: var(--radius-md);
+      margin-top: 0.75rem;
     }
 
     .clients-modal__row {

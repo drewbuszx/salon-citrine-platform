@@ -27,34 +27,30 @@ export type LtvDisplay = {
   kind: "value" | "zero" | "none";
 };
 
+/**
+ * Central lifetime-value definition: LTV is the sum of completed sales
+ * (`lifetime_value_cents`). Keep display/query/report consistent by reusing
+ * this helper. The currency column always renders a numeric value ($0 when
+ * there are no completed sales) — never prose — with the reason in `title`.
+ */
 export function formatLtvDisplay(
   cents: number | null | undefined,
   visitCount = 0,
 ): LtvDisplay {
   const value = (cents ?? 0) / 100;
+  const label = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(Math.max(0, value));
+
   if (value > 0) {
-    return {
-      label: new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0,
-      }).format(value),
-      title: "Lifetime value from completed sales",
-      kind: "value",
-    };
+    return { label, title: "Lifetime value from completed sales", kind: "value" };
   }
   if (visitCount > 0) {
-    return {
-      label: "$0",
-      title: "Visits on record but no completed retail sales yet",
-      kind: "zero",
-    };
+    return { label, title: "Visits on record, but no completed sales yet", kind: "zero" };
   }
-  return {
-    label: "No sales yet",
-    title: "No completed sales on record",
-    kind: "none",
-  };
+  return { label, title: "No completed sales", kind: "none" };
 }
 
 export function clientInitials(firstName: string, lastName: string): string {
