@@ -107,9 +107,12 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
       </div>
     </header>
 
-    <TeamPulse metrics={pulseMetrics} />
+    <div class="dashboard__pulse">
+      <TeamPulse metrics={pulseMetrics} />
+    </div>
 
     <nav class="dashboard__actions" aria-label="Quick actions">
+      <p class="dashboard__actions-title" aria-hidden="true">Quick actions</p>
       <a class="dashboard__action dashboard__action--primary" href={teamUrl("/book")}>
         <span class="dashboard__action-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
@@ -354,6 +357,11 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-3);
     margin-bottom: var(--space-8);
+  }
+
+  /* Panel heading is desktop-only; hidden in the approved mobile layout. */
+  .dashboard__actions-title {
+    display: none;
   }
 
   .dashboard__action {
@@ -710,5 +718,153 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
 
   :global([data-theme="dark"]) .dashboard__empty-copy {
     color: var(--color-stone-500);
+  }
+
+  /* ============================================================= */
+  /* DESKTOP ENHANCED LAYOUT (>= 1100px). Mobile/tablet untouched.  */
+  /* ============================================================= */
+  @media (min-width: 1100px) {
+    /* Allow the app shell to breathe into a wide, centered content
+       column. Only loaded on this page, so other routes are unaffected. */
+    :global(.team-main) {
+      --team-max-width: 1320px;
+    }
+
+    .dashboard {
+      max-width: 1240px;
+      padding-top: var(--space-4);
+      padding-bottom: var(--space-8);
+      display: grid;
+      grid-template-columns: minmax(0, 2.15fr) minmax(0, 1fr);
+      grid-template-areas:
+        "hero     hero"
+        "pulse    actions"
+        "upcoming actions";
+      column-gap: 2rem;
+      row-gap: 1.75rem;
+      align-items: start;
+    }
+
+    /* --- Compact horizontal profile header --- */
+    .dashboard__hero {
+      grid-area: hero;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        "avatar name"
+        "avatar salon"
+        "avatar booking";
+      column-gap: 1.5rem;
+      row-gap: 0.2rem;
+      align-items: center;
+      justify-items: start;
+      text-align: left;
+      padding: 0.25rem 0 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .dashboard__avatar-wrap {
+      grid-area: avatar;
+      align-self: center;
+      margin-bottom: 0;
+    }
+
+    .dashboard__name {
+      grid-area: name;
+      align-self: end;
+      margin: 0;
+      font-size: var(--text-3xl, 1.9rem);
+    }
+
+    .dashboard__salon {
+      grid-area: salon;
+      margin: 0.1rem 0 0.5rem;
+    }
+
+    .dashboard__booking-row {
+      grid-area: booking;
+      align-self: start;
+      justify-content: flex-start;
+    }
+
+    /* --- Grid area assignments --- */
+    .dashboard__pulse {
+      grid-area: pulse;
+    }
+
+    .dashboard__actions {
+      grid-area: actions;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 0;
+      align-self: start;
+      padding: 1rem;
+      border: 1px solid var(--color-stone-200);
+      border-radius: var(--radius-lg);
+      background: var(--color-stone-50);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .dashboard__actions-title {
+      display: block;
+      margin: 0 0 0.25rem;
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-stone-700);
+    }
+
+    /* Compact horizontal action rows — consistent, not tall. */
+    .dashboard__action {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      min-height: 0;
+      padding: 0.85rem 1rem;
+      text-align: left;
+    }
+
+    .dashboard__upcoming {
+      grid-area: upcoming;
+    }
+
+    /* Tighter empty state — no reserved blank slab. */
+    .dashboard__empty {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0.35rem 1rem;
+      padding: 1rem 1.25rem;
+      text-align: left;
+    }
+
+    .dashboard__empty-icon {
+      margin-bottom: 0;
+    }
+
+    .dashboard__empty-title {
+      flex: 0 0 auto;
+    }
+
+    .dashboard__empty-copy {
+      flex: 1 1 14rem;
+      max-width: none;
+    }
+
+    .dashboard__empty-cta {
+      margin-top: 0;
+      margin-left: auto;
+    }
+  }
+
+  /* Wider desktop: keep the shell centered, not edge-to-edge. */
+  @media (min-width: 1500px) {
+    .dashboard {
+      max-width: 1280px;
+    }
   }
 </style>
