@@ -69,8 +69,27 @@ function loadingSkeletonHtml() {
     </li>`).join("");
 }
 
+function formatRelativeTime(iso: string) {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+
+  const diffSec = Math.round((Date.now() - then) / 1000);
+  if (diffSec < 45) return "Just now";
+  if (diffSec < 3600) {
+    const mins = Math.max(1, Math.round(diffSec / 60));
+    return `${mins}m ago`;
+  }
+  if (diffSec < 86400) {
+    const hours = Math.max(1, Math.round(diffSec / 3600));
+    return `${hours}h ago`;
+  }
+  const days = Math.max(1, Math.round(diffSec / 86400));
+  return `${days}d ago`;
+}
+
 function alertRowHtml(alert: TeamAlert, teamBase: string) {
   const href = resolveHref(alert.href, teamBase);
+  const time = formatRelativeTime(alert.generatedAt);
   return `
     <li class="team-alerts__item" role="none">
       <a
@@ -85,6 +104,7 @@ function alertRowHtml(alert: TeamAlert, teamBase: string) {
         <span class="team-alerts__copy">
           <span class="team-alerts__row-title">${escapeHtml(alert.title)}</span>
           <span class="team-alerts__row-body">${escapeHtml(alert.message)}</span>
+          ${time ? `<span class="team-alerts__row-time">${escapeHtml(time)}</span>` : ""}
         </span>
         <span class="team-alerts__chevron" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
