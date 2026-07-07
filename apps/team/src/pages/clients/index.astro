@@ -1122,7 +1122,14 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     box-shadow: 0 0 0 3px var(--color-focus-ring);
   }
 
-  /* Row action menu is positioned via fixed coordinates by JS (popover). */
+  /* Row action menu is positioned via fixed coordinates by JS (popover).
+     The hidden guard MUST be :global — the menu is injected by JS and never
+     carries the Astro scope hash, so a scoped [hidden] guard would not match
+     it and the display:grid below would keep it permanently visible. */
+  .clients-page :global(.clients-table__menu[hidden]) {
+    display: none !important;
+  }
+
   .clients-page :global(.clients-table__menu) {
     position: fixed;
     z-index: 320;

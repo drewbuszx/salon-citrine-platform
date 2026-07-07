@@ -601,17 +601,29 @@ class ClientsDirectory {
   private renderRowActions(client: ClientListItem) {
     const profileUrl = `${config().clientsBase}/${client.id}`;
     const bookUrl = config().bookUrl;
+    const menuId = `clients-menu-${client.id}`;
     return `
       <div class="clients-table__actions" data-row-menu>
-        <button type="button" class="clients-table__menu-btn" data-menu-open aria-haspopup="true" aria-expanded="false" aria-label="Actions for ${escapeHtml(client.fullName)}">⋯</button>
-        <div class="clients-table__menu" data-menu-panel hidden role="menu">
-          <a role="menuitem" href="${profileUrl}">View profile</a>
-          <a role="menuitem" href="${bookUrl}">Book appointment</a>
-          <a role="menuitem" href="${profileUrl}">Edit profile</a>
-          <a role="menuitem" href="${profileUrl}#client-notes-timeline">Add note</a>
-          <a role="menuitem" href="${profileUrl}#client-notes">Add tag</a>
+        <button type="button" class="clients-table__menu-btn" data-menu-open aria-haspopup="menu" aria-expanded="false" aria-controls="${menuId}" aria-label="Actions for ${escapeHtml(client.fullName)}">⋯</button>
+        <div class="clients-table__menu" id="${menuId}" data-menu-panel hidden role="menu" aria-label="Actions for ${escapeHtml(client.fullName)}">
+          <a role="menuitem" tabindex="-1" href="${profileUrl}">View profile</a>
+          <a role="menuitem" tabindex="-1" href="${bookUrl}">Book appointment</a>
+          <a role="menuitem" tabindex="-1" href="${profileUrl}">Edit profile</a>
+          <a role="menuitem" tabindex="-1" href="${profileUrl}#client-notes-timeline">Add note</a>
+          <a role="menuitem" tabindex="-1" href="${profileUrl}#client-notes">Add tag</a>
         </div>
       </div>`;
+  }
+
+  private menuItems(panel: HTMLElement) {
+    return Array.from(panel.querySelectorAll<HTMLAnchorElement>('a[role="menuitem"]'));
+  }
+
+  private focusMenuItem(panel: HTMLElement, index: number) {
+    const items = this.menuItems(panel);
+    if (items.length === 0) return;
+    const wrapped = (index + items.length) % items.length;
+    items[wrapped]?.focus();
   }
 
   private bindRowMenu(tr: HTMLTableRowElement) {
@@ -622,20 +634,57 @@ class ClientsDirectory {
     menuBtn.addEventListener("click", (event) => {
       event.stopPropagation();
       if (this.openMenu === panel) {
-        this.closeRowMenu();
+        this.closeRowMenu(true);
         return;
       }
       if (this.openMenu) this.closeRowMenu();
       this.openRowMenu(panel, menuBtn);
     });
     menuBtn.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown" && this.openMenu === panel) {
+      if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        panel.querySelector<HTMLAnchorElement>("a")?.focus();
+        if (this.openMenu !== panel) this.openRowMenu(panel, menuBtn);
+        this.focusMenuItem(panel, 0);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (this.openMenu !== panel) this.openRowMenu(panel, menuBtn);
+        this.focusMenuItem(panel, -1);
+      }
+    });
+
+    const items = this.menuItems(panel);
+    panel.addEventListener("keydown", (event) => {
+      const current = items.indexOf(document.activeElement as HTMLAnchorElement);
+      switch (event.key) {
+        case "ArrowDown":
+          event.preventDefault();
+          this.focusMenuItem(panel, current + 1);
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          this.focusMenuItem(panel, current - 1);
+          break;
+        case "Home":
+          event.preventDefault();
+          this.focusMenuItem(panel, 0);
+          break;
+        case "End":
+          event.preventDefault();
+          this.focusMenuItem(panel, items.length - 1);
+          break;
+        case "Escape":
+          event.preventDefault();
+          this.closeRowMenu(true);
+          break;
+        case "Tab":
+          this.closeRowMenu(false);
+          break;
+        default:
+          break;
       }
     });
     panel.querySelectorAll("a").forEach((link) => {
-      link.addEventListener("click", (event) => event.stopPropagation());
+      link.addEventListener("click", () => this.closeRowMenu());
     });
   }
 
@@ -927,6 +976,9 @@ class ClientsDirectory {
   }
 
   async loadClients(term: string, options: { announce?: boolean } = {}) {
+    // Any open row menu references a row that is about to be re-rendered;
+    // close it (and detach scroll/resize listeners) before rebuilding rows.
+    this.closeRowMenu();
     const query = term.trim();
     if (query.length === 1) {
       this.setSearchLoading(false);
