@@ -1,4 +1,4 @@
-﻿// @ts-check
+// @ts-check
 import cloudflare from "@astrojs/cloudflare";
 import { defineConfig } from "astro/config";
 
@@ -30,11 +30,16 @@ export default defineConfig({
     optimizeDeps: {
       exclude: [
         "@cloudflare/unenv-preset",
-        "@cloudflare/unenv-preset/node/process",
-        "astro/compiler-runtime",
         "@cloudflare/vite-plugin",
         "unenv",
       ],
+      include: [
+        "@cloudflare/unenv-preset/node/process",
+        "@cloudflare/unenv-preset/node/console",
+        "@cloudflare/unenv-preset/polyfill/performance",
+        "astro/compiler-runtime",
+      ],
+      ignoreOutdatedRequests: true,
     },
     server: {
       // Fail fast when 4322 is taken (e.g. marketing site preview) instead of
