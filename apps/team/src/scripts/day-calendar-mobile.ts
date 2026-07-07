@@ -1,6 +1,9 @@
 type StaffMember = { id: string; name: string };
 
 const MOBILE_MQ = "(max-width: 48rem)";
+const TABLET_MQ = "(min-width: 48rem) and (max-width: 64rem)";
+const TABLET_LANDSCAPE_MQ =
+  "(min-width: 48rem) and (max-width: 64rem) and (orientation: landscape)";
 const STORAGE_KEY = "team-book-mobile-staff";
 
 export function initDayCalendarMobile(
@@ -12,6 +15,7 @@ export function initDayCalendarMobile(
   let mobileIndex = 0;
   let touchStartX = 0;
   let touchStartY = 0;
+  let gridScrollSyncLock = false;
 
   const bar = root.querySelector<HTMLElement>("[data-mobile-staff-bar]");
   const select = root.querySelector<HTMLSelectElement>("[data-mobile-staff-select]");
@@ -22,21 +26,124 @@ export function initDayCalendarMobile(
   const compactDate = root.querySelector<HTMLElement>("[data-compact-date]");
   const viewport = root.querySelector<HTMLElement>("[data-calendar-viewport]");
   const header = root.querySelector<HTMLElement>("[data-sticky-header]");
+  const staffFilter = root.querySelector<HTMLElement>("[data-staff-filter]");
+  const schedule = root.querySelector<HTMLElement>("[data-staff-columns]");
   const mq = window.matchMedia(MOBILE_MQ);
+  const tabletMq = window.matchMedia(TABLET_MQ);
+  const tabletLandscapeMq = window.matchMedia(TABLET_LANDSCAPE_MQ);
 
-  if (!bar || !select || !viewport) {
+  if (!viewport) {
     return { refreshMobileStaff: () => {} };
   }
 
   if (compactDate) compactDate.textContent = compactDateLabel;
 
-  if (select.options.length === 0) {
+  if (select && select.options.length === 0) {
     for (const member of staff) {
       const opt = document.createElement("option");
       opt.value = member.id;
       opt.textContent = member.name;
       select.appendChild(opt);
     }
+  }
+
+  function usesCompactToolbar(): boolean {
+    return mq.matches || tabletLandscapeMq.matches;
+  }
+
+  function usesMultiColumnGrid(): boolean {
+    return !mq.matches;
+  }
+
+  function scrollStaffChipIntoView(staffId: string, behavior: ScrollBehavior = "smooth") {
+    const chip = root.querySelector<HTMLElement>(`[data-staff-filter-id="${staffId}"]`);
+    chip?.scrollIntoView({ behavior, inline: "center", block: "nearest" });
+  }
+
+  function scrollGridToStaffColumn(staffId: string, behavior: ScrollBehavior = "smooth") {
+    const column = root.querySelector<HTMLElement>(
+      `[data-staff-column="${staffId}"]:not([hidden])`,
+    );
+    if (!(column instanceof HTMLElement) || !(schedule instanceof HTMLElement)) return;
+
+    const timeAxis = root.querySelector<HTMLElement>(".day-cal__time-axis");
+    const axisWidth = timeAxis?.getBoundingClientRect().width ?? 0;
+    const scheduleLeft = schedule.getBoundingClientRect().left - viewport.getBoundingClientRect().left;
+    const targetLeft = column.offsetLeft + scheduleLeft - axisWidth - 4;
+
+    gridScrollSyncLock = true;
+    viewport.scrollTo({ left: Math.max(0, targetLeft), behavior });
+    window.setTimeout(() => {
+      gridScrollSyncLock = false;
+    }, behavior === "smooth" ? 320 : 0);
+  }
+
+  function syncStaffChipFromGridScroll() {
+    if (gridScrollSyncLock || !usesMultiColumnGrid() || !(staffFilter instanceof HTMLElement)) {
+      return;
+    }
+
+    const columns = visibleColumns();
+    if (columns.length <= 1) return;
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const axisWidth =
+      root.querySelector<HTMLElement>(".day-cal__time-axis")?.getBoundingClientRect().width ??
+      0;
+    const scanLeft = viewportRect.left + axisWidth + 8;
+
+    let leadColumn = columns[0];
+    for (const column of columns) {
+      const rect = column.getBoundingClientRect();
+      if (rect.right > scanLeft) {
+        leadColumn = column;
+        break;
+      }
+    }
+
+    const staffId = leadColumn.dataset.staffColumn ?? "";
+    if (!staffId) return;
+
+    root.querySelectorAll<HTMLElement>("[data-staff-filter-id]").forEach((chip) => {
+      chip.classList.toggle(
+        "day-cal__staff-chip--in-view",
+        chip.dataset.staffFilterId === staffId,
+      );
+    });
+
+    scrollStaffChipIntoView(staffId, "auto");
+  }
+
+  function initGridChipScrollSync() {
+    if (!(staffFilter instanceof HTMLElement)) return;
+
+    viewport.addEventListener(
+      "scroll",
+      () => {
+        syncStaffChipFromGridScroll();
+      },
+      { passive: true },
+    );
+
+    root.querySelectorAll<HTMLElement>("[data-staff-filter-id]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        if (!usesMultiColumnGrid()) return;
+        const staffId = chip.dataset.staffFilterId ?? "";
+        if (!staffId || chip.getAttribute("aria-pressed") === "false") return;
+        window.requestAnimationFrame(() => scrollGridToStaffColumn(staffId));
+      });
+    });
+
+    root.querySelector<HTMLElement>("[data-staff-filter-all]")?.addEventListener("click", () => {
+      if (!usesMultiColumnGrid()) return;
+      window.requestAnimationFrame(() => {
+        gridScrollSyncLock = true;
+        viewport.scrollTo({ left: 0, behavior: "smooth" });
+        window.setTimeout(() => {
+          gridScrollSyncLock = false;
+        }, 320);
+      });
+    });
   }
 
   function visibleColumns(): HTMLElement[] {
@@ -69,9 +176,10 @@ export function initDayCalendarMobile(
           col.classList.remove("is-mobile-active");
         });
       root.classList.remove("day-cal--mobile-single");
-      bar.hidden = true;
+      if (bar) bar.hidden = true;
       compactSubbar?.classList.remove("is-visible");
       header?.classList.remove("is-compact");
+      root.classList.remove("day-cal--compact-toolbar");
       return;
     }
 
@@ -93,7 +201,7 @@ export function initDayCalendarMobile(
         headerCol.classList.toggle("is-mobile-active", headerId === activeId);
       });
 
-    if (select.value !== activeId) select.value = activeId;
+    if (select && select.value !== activeId) select.value = activeId;
     const member = staff.find((s) => s.id === activeId);
     if (compactStaff) compactStaff.textContent = member?.name ?? "";
     try {
@@ -102,7 +210,7 @@ export function initDayCalendarMobile(
       /* ignore */
     }
     setMobileColumnCount();
-    bar.hidden = cols.length <= 1;
+    if (bar) bar.hidden = cols.length <= 1;
   }
 
   function resolveInitialIndex(): number {
@@ -135,7 +243,7 @@ export function initDayCalendarMobile(
     applyMobileStaffIndex(idx);
   }
 
-  select.addEventListener("change", () => {
+  select?.addEventListener("change", () => {
     const idx = visibleStaffIds().indexOf(select.value);
     if (idx >= 0) applyMobileStaffIndex(idx);
   });
@@ -170,22 +278,36 @@ export function initDayCalendarMobile(
   viewport.addEventListener(
     "scroll",
     () => {
-      if (!mq.matches) {
+      if (!usesCompactToolbar()) {
         compactSubbar?.classList.remove("is-visible");
         header?.classList.remove("is-compact");
+        root.classList.remove("day-cal--compact-toolbar");
         return;
       }
       const scrolled = viewport.scrollTop > compactThreshold;
       compactSubbar?.classList.toggle("is-visible", scrolled);
       header?.classList.toggle("is-compact", scrolled);
+      root.classList.toggle("day-cal--compact-toolbar", scrolled);
     },
     { passive: true },
   );
 
-  mq.addEventListener("change", refreshMobileStaff);
-  refreshMobileStaff();
+  function refreshResponsiveLayout() {
+    refreshMobileStaff();
+    root.classList.toggle("day-cal--tablet", tabletMq.matches);
+    root.classList.toggle("day-cal--tablet-landscape", tabletLandscapeMq.matches);
+    if (usesMultiColumnGrid()) {
+      syncStaffChipFromGridScroll();
+    }
+  }
 
-  return { refreshMobileStaff };
+  initGridChipScrollSync();
+  mq.addEventListener("change", refreshResponsiveLayout);
+  tabletMq.addEventListener("change", refreshResponsiveLayout);
+  tabletLandscapeMq.addEventListener("change", refreshResponsiveLayout);
+  refreshResponsiveLayout();
+
+  return { refreshMobileStaff: refreshResponsiveLayout };
 }
 
 function attachMobileApi(root: HTMLElement) {

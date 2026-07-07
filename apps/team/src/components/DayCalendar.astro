@@ -3094,6 +3094,9 @@ const calendarConfig = {
     --day-divider-strong: rgba(0, 0, 0, 0.18);
     /* Solid surface for the schedule header bar (distinct from the chip row). */
     --day-header-bg: var(--color-light);
+    /* Recessed "tray" for the staff filter chips — light, floating controls, never confused with the structural header. */
+    --day-filter-tray-bg: rgba(0, 0, 0, 0.035);
+    --day-filter-chip-bg: var(--color-bg);
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -3106,6 +3109,8 @@ const calendarConfig = {
   [data-theme="dark"] .day-cal {
     --day-divider: rgba(255, 255, 255, 0.14);
     --day-divider-strong: rgba(255, 255, 255, 0.22);
+    --day-filter-tray-bg: rgba(255, 255, 255, 0.06);
+    --day-filter-chip-bg: var(--color-light);
   }
 
   .visually-hidden {
@@ -3363,9 +3368,14 @@ const calendarConfig = {
   .day-cal__staff-filter {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.3rem;
     flex: 1 1 auto;
     min-width: 0;
+    padding: 0.25rem;
+    /* Recessed tray reads as a floating control strip, never as a structural grid row. */
+    background: var(--day-filter-tray-bg);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 999px;
     overflow-x: auto;
     scrollbar-width: none;
     scroll-snap-type: x proximity;
@@ -3379,6 +3389,18 @@ const calendarConfig = {
     display: none;
   }
 
+  .day-cal__staff-filter-label {
+    flex: 0 0 auto;
+    padding: 0 0.15rem 0 0.4rem;
+    font-family: var(--font-sans);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-gray);
+    white-space: nowrap;
+  }
+
   .day-cal__staff-chip {
     display: inline-flex;
     align-items: center;
@@ -3386,11 +3408,25 @@ const calendarConfig = {
     padding: 0.2rem 0.55rem 0.2rem 0.2rem;
     border: 1px solid var(--color-border);
     border-radius: 999px;
-    background: var(--color-light);
+    /* Raised "light control" pill sitting inside the tray — opposite treatment of the flat, bordered header row below. */
+    background: var(--day-filter-chip-bg);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
     cursor: pointer;
     flex: 0 0 auto;
     scroll-snap-align: start;
     touch-action: manipulation;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+
+  .day-cal__staff-chip:hover,
+  .day-cal__staff-chip:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    outline: none;
+  }
+
+  .day-cal__staff-chip:active {
+    transform: scale(0.96);
   }
 
   .day-cal__staff-chip--in-view:not(.day-cal__staff-chip--off) {
@@ -3412,6 +3448,7 @@ const calendarConfig = {
   .day-cal__staff-chip--off {
     opacity: 0.42;
     filter: grayscale(0.35);
+    box-shadow: none;
   }
 
   .day-cal__staff-chip--all {
