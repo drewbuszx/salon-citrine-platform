@@ -5,7 +5,6 @@ import BookingLayout from "../layouts/BookingLayout.astro";
 import LocationContext from "../components/LocationContext.astro";
 import ReturningClientsModal from "../components/ReturningClientsModal.astro";
 import NotAcceptingNewClientsModal from "../components/NotAcceptingNewClientsModal.astro";
-import Button from "@saloncitrine/theme/components/Button.astro";
 import {
   estimateCartPrice,
   EXISTING_CLIENT_ACK_PARAM,
@@ -215,54 +214,90 @@ const bookBase = withBase();
     </p>
   </header>
 
-  <section class="cart" data-service-cart aria-live="polite">
-    <div class="cart__primary">
-      <h2 class="cart__heading">In your cart</h2>
-      <ul class="cart__items" data-cart-items></ul>
-    </div>
+  <div
+    class="cart-page"
+    data-service-cart
+    data-cart-json={cartJson}
+    data-suggestions-json={suggestionsJson}
+    data-stylist-slug={stylistSlug ?? ""}
+    data-primary-service-id={primaryServiceId}
+    data-existing-ack={existingAck ? "true" : "false"}
+    data-existing-client-ack-param={EXISTING_CLIENT_ACK_PARAM}
+    data-continue-url={continueTargetUrl}
+    aria-live="polite"
+  >
+    <section class="cart">
+      <div class="cart__primary cart__tray">
+        <h2 class="cart__heading">In your cart</h2>
+        <ul class="cart__items" data-cart-items></ul>
+      </div>
 
-    {
-      sections.length > 0 && (
-        <div class="cart__suggestions" data-suggestions>
-          {sections.map((section) => (
-            <section class="suggestion-section" data-section={section.key}>
-              <header class="suggestion-section__header">
-                <h3>{section.title}</h3>
-                {section.description && <p>{section.description}</p>}
-              </header>
-              <ul class="suggestion-list" data-section-list={section.key} />
-            </section>
-          ))}
+      {
+        sections.length > 0 && (
+          <div class="cart__suggestions cart__tray" data-suggestions>
+            {sections.map((section) => (
+              <section
+                class:list={[
+                  "suggestion-section",
+                  section.required && "suggestion-section--required",
+                ]}
+                data-section={section.key}
+              >
+                <header class="suggestion-section__header">
+                  <h3>{section.title}</h3>
+                  {section.description && <p>{section.description}</p>}
+                </header>
+                <ul class="suggestion-list" data-section-list={section.key} />
+              </section>
+            ))}
+          </div>
+        )
+      }
+
+      <footer class="cart__footer cart__footer--desktop">
+        <div class="cart__totals" data-cart-totals>
+          <p class="cart__duration">
+            Total time: <strong data-total-duration>{formatDuration(totalMinutes)}</strong>
+          </p>
+          <p
+            class="cart__price"
+            data-total-price-row
+            hidden={!estimatedPrice}
+          >
+            Estimated: <strong data-total-price>{estimatedPrice ?? ""}</strong>
+          </p>
         </div>
-      )
-    }
 
-    <footer class="cart__footer">
-      <div class="cart__totals" data-cart-totals>
-        <p class="cart__duration">
-          Total time: <strong data-total-duration>{formatDuration(totalMinutes)}</strong>
-        </p>
-        {
-          estimatedPrice && (
-            <p class="cart__price">
-              Estimated: <strong data-total-price>{estimatedPrice}</strong>
-            </p>
-          )
-        }
-      </div>
+        <div class="cart__actions">
+          <button type="button" class="cart-cta" data-continue-btn>
+            {continueLabel}
+          </button>
+        </div>
+      </footer>
+    </section>
 
-      <div class="cart__actions">
-        <Button
-          type="button"
-          variant="primary"
-          data-continue-btn
-          data-continue-url={continueTargetUrl}
-        >
+    <aside class="cart-sticky" aria-label="Appointment summary">
+      <div class="cart-sticky__inner">
+        <div class="cart-sticky__totals">
+          <p class="cart-sticky__duration">
+            <span class="cart-sticky__label">Time</span>
+            <strong data-total-duration>{formatDuration(totalMinutes)}</strong>
+          </p>
+          <p
+            class="cart-sticky__price"
+            data-total-price-row
+            hidden={!estimatedPrice}
+          >
+            <span class="cart-sticky__label">Est.</span>
+            <strong data-total-price>{estimatedPrice ?? ""}</strong>
+          </p>
+        </div>
+        <button type="button" class="cart-sticky__cta" data-continue-btn>
           {continueLabel}
-        </Button>
+        </button>
       </div>
-    </footer>
-  </section>
+    </aside>
+  </div>
 
   <p class="back">
     <a href={stylist ? `${bookBase}?stylist=${stylist.slug}` : bookBase}>
@@ -271,225 +306,7 @@ const bookBase = withBase();
   </p>
 </BookingLayout>
 
-<script
-  define:vars={{
-    cartJson,
-    suggestionsJson,
-    stylistSlug: stylistSlug ?? "",
-    showStylistStep,
-    primaryServiceId,
-    existingAck,
-    existingClientAckParam: EXISTING_CLIENT_ACK_PARAM,
-  }}
->
-  /** @type {{ id: string; name: string; durationMinutes: number; priceLabel: string; isPrimary?: boolean }[]} */
-  let cart = JSON.parse(cartJson);
-  /** @type {{ key: string; title: string; description?: string; required?: boolean; services: { id: string; name: string; description?: string | null; durationMinutes: number; priceLabel: string }[] }[]} */
-  const suggestionSections = JSON.parse(suggestionsJson);
-
-  const root = document.querySelector("[data-service-cart]");
-  const itemsEl = root?.querySelector("[data-cart-items]");
-  const continueBtn = root?.querySelector("[data-continue-btn]");
-  const durationEl = root?.querySelector("[data-total-duration]");
-  const priceEl = root?.querySelector("[data-total-price]");
-
-  function formatDurationClient(totalMinutes) {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours === 0) return `${minutes} min`;
-    if (minutes === 0) return hours === 1 ? "1 hr" : `${hours} hr`;
-    const hrLabel = hours === 1 ? "1 hr" : `${hours} hr`;
-    return `${hrLabel} ${minutes} min`;
-  }
-
-  function estimatePriceClient(items) {
-    let totalCents = 0;
-    let hasNull = false;
-    let hasVaries = false;
-
-    for (const item of items) {
-      const match = item.priceLabel.match(/^\$(\d+(?:\.\d+)?)/);
-      if (!match) {
-        if (item.priceLabel === "Complimentary") hasNull = true;
-        continue;
-      }
-      totalCents += Math.round(parseFloat(match[1]) * 100);
-      if (item.priceLabel.endsWith("+")) hasVaries = true;
-    }
-
-    if (totalCents === 0 && hasNull) return null;
-    const dollars = totalCents / 100;
-    const base = `$${Number.isInteger(dollars) ? dollars : dollars.toFixed(2)}`;
-    if (hasVaries || hasNull) return `${base}+`;
-    return base;
-  }
-
-  function cartHas(id) {
-    return cart.some((item) => item.id === id);
-  }
-
-  function addToCart(service) {
-    if (cartHas(service.id)) return;
-    cart.push({ ...service, isPrimary: service.id === primaryServiceId });
-    render();
-  }
-
-  function removeFromCart(id) {
-    if (id === primaryServiceId) return;
-    cart = cart.filter((item) => item.id !== id);
-    render();
-  }
-
-  function renderCartItems() {
-    if (!itemsEl) return;
-    itemsEl.innerHTML = "";
-
-    for (const item of cart) {
-      const li = document.createElement("li");
-      li.className = "cart-item";
-      li.dataset.cartItem = item.id;
-
-      const body = document.createElement("div");
-      body.className = "cart-item__body";
-
-      const name = document.createElement("h3");
-      name.className = "cart-item__name";
-      name.textContent = item.name;
-      body.appendChild(name);
-
-      const meta = document.createElement("p");
-      meta.className = "cart-item__meta";
-      meta.textContent = `${item.priceLabel} · ${item.durationMinutes} min`;
-      body.appendChild(meta);
-
-      li.appendChild(body);
-
-      if (!item.isPrimary && item.id !== primaryServiceId) {
-        const removeBtn = document.createElement("button");
-        removeBtn.type = "button";
-        removeBtn.className = "cart-item__remove";
-        removeBtn.textContent = "Remove";
-        removeBtn.addEventListener("click", () => removeFromCart(item.id));
-        li.appendChild(removeBtn);
-      } else {
-        const badge = document.createElement("span");
-        badge.className = "cart-item__badge";
-        badge.textContent = "Primary";
-        li.appendChild(badge);
-      }
-
-      itemsEl.appendChild(li);
-    }
-  }
-
-  function renderSuggestions() {
-    for (const section of suggestionSections) {
-      const list = root?.querySelector(
-        `[data-section-list="${section.key}"]`,
-      );
-      if (!list) continue;
-      list.innerHTML = "";
-
-      for (const service of section.services) {
-        const inCart = cartHas(service.id);
-        const li = document.createElement("li");
-        li.className = "suggestion-card";
-
-        const body = document.createElement("div");
-        body.className = "suggestion-card__body";
-
-        const name = document.createElement("h4");
-        name.className = "suggestion-card__name";
-        name.textContent = service.name;
-        body.appendChild(name);
-
-        if (service.description) {
-          const desc = document.createElement("p");
-          desc.className = "suggestion-card__description";
-          desc.textContent = service.description;
-          body.appendChild(desc);
-        }
-
-        const meta = document.createElement("p");
-        meta.className = "suggestion-card__meta";
-        meta.textContent = `${service.priceLabel} · ${service.durationMinutes} min`;
-        body.appendChild(meta);
-
-        li.appendChild(body);
-
-        const action = document.createElement("button");
-        action.type = "button";
-        action.className = inCart
-          ? "suggestion-card__action suggestion-card__action--added"
-          : "suggestion-card__action";
-        action.textContent = inCart ? "Added" : "Add";
-        action.disabled = inCart;
-        action.addEventListener("click", () => addToCart(service));
-        li.appendChild(action);
-
-        list.appendChild(li);
-      }
-    }
-  }
-
-  function renderTotals() {
-    const totalMinutes = cart.reduce(
-      (sum, item) => sum + item.durationMinutes,
-      0,
-    );
-    if (durationEl) durationEl.textContent = formatDurationClient(totalMinutes);
-
-    const estimated = estimatePriceClient(cart);
-    if (priceEl) {
-      if (estimated) {
-        priceEl.textContent = estimated;
-        priceEl.parentElement.hidden = false;
-      } else {
-        priceEl.parentElement.hidden = true;
-      }
-    }
-  }
-
-  function syncUrl() {
-    const params = new URLSearchParams();
-    params.set("services", cart.map((item) => item.id).join(","));
-    if (stylistSlug) params.set("stylist", stylistSlug);
-    if (existingAck) params.set(existingClientAckParam, "1");
-    window.history.replaceState({}, "", `?${params.toString()}`);
-  }
-
-  function render() {
-    renderCartItems();
-    renderSuggestions();
-    renderTotals();
-    syncUrl();
-  }
-
-  continueBtn?.addEventListener("click", () => {
-    const requiredSection = suggestionSections.find((section) => section.required);
-    if (requiredSection) {
-      const hasRequired = requiredSection.services.some((service) => cartHas(service.id));
-      if (!hasRequired) {
-        root?.querySelector('[data-section="required"]')?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-        return;
-      }
-    }
-
-    const base = continueBtn.dataset.continueUrl ?? "";
-    const params = new URLSearchParams();
-    params.set("services", cart.map((item) => item.id).join(","));
-    if (stylistSlug) params.set("stylist", stylistSlug);
-    if (existingAck) params.set(existingClientAckParam, "1");
-    const separator = base.includes("?") ? "&" : "?";
-    window.location.href = `${base}${separator}${params.toString()}`;
-  });
-
-  renderSuggestions();
-  renderCartItems();
-</script>
+<script src="../scripts/booking-cart-client.ts"></script>
 
 <style>
   .cart-page__header {
@@ -511,9 +328,37 @@ const bookBase = withBase();
     color: var(--color-gray);
   }
 
+  .cart-page {
+    position: relative;
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .cart {
     display: grid;
-    gap: 2rem;
+    gap: 1.75rem;
+  }
+
+  .cart__tray {
+    padding: clamp(1rem, 3vw, 1.35rem);
+    background: var(--color-stone-100);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-lg);
+  }
+
+  .cart--busy .cart__items,
+  .cart--busy .cart__suggestions {
+    opacity: 0.72;
+    transition: opacity var(--transition-fast);
+  }
+
+  .cart-page[aria-busy="true"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--color-stone-100) 35%, transparent);
+    border-radius: var(--radius-lg);
   }
 
   .cart__heading {
@@ -523,6 +368,7 @@ const bookBase = withBase();
     letter-spacing: 0.12em;
     text-transform: uppercase;
     font-weight: 600;
+    color: var(--color-stone-600);
   }
 
   .cart__items {
@@ -541,6 +387,11 @@ const bookBase = withBase();
     padding: 1rem 1.15rem;
     background: var(--color-booking-card-bg);
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--transition-base),
+      box-shadow var(--transition-base);
   }
 
   :global(.cart-item__name) {
@@ -552,23 +403,32 @@ const bookBase = withBase();
   :global(.cart-item__meta) {
     margin: 0;
     font-family: var(--font-sans);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-charcoal);
+    color: var(--color-stone-600);
+  }
+
+  :global(.cart-item__price) {
+    font-weight: 600;
+    color: var(--color-text);
   }
 
   :global(.cart-item__remove) {
-    padding: 0.55rem 1rem;
-    border: 1px solid var(--color-border);
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-pill);
     background: transparent;
     color: var(--color-text);
     font-family: var(--font-sans);
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease;
+    transition:
+      border-color var(--transition-base),
+      color var(--transition-base),
+      background var(--transition-base);
   }
 
   :global(.cart-item__remove:hover),
@@ -583,28 +443,36 @@ const bookBase = withBase();
     font-size: 0.62rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: 0.35rem 0.65rem;
-    background: var(--color-sage);
-    color: var(--color-white);
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-citrine-muted);
+    color: var(--color-citrine-dark);
+    border: 1px solid color-mix(in srgb, var(--color-citrine) 35%, transparent);
   }
 
   .cart__suggestions {
     display: grid;
-    gap: 1.75rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border-subtle);
+    gap: 1.5rem;
+  }
+
+  .suggestion-section--required {
+    padding: 0.85rem;
+    border-radius: var(--radius-md);
+    border: 1px solid color-mix(in srgb, var(--color-citrine) 35%, var(--color-stone-200));
+    background: color-mix(in srgb, var(--color-citrine) 6%, var(--color-stone-100));
   }
 
   .suggestion-section__header h3 {
     margin: 0 0 0.35rem;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
   }
 
   .suggestion-section__header p {
     margin: 0 0 1rem;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     color: var(--color-gray);
+    line-height: 1.45;
   }
 
   .suggestion-list {
@@ -615,12 +483,89 @@ const bookBase = withBase();
     gap: 0.75rem;
   }
 
+  :global(.suggestion-list--pills) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  :global(.suggestion-pill-wrap) {
+    list-style: none;
+  }
+
+  :global(.suggestion-pill) {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.55rem;
+    padding: 0.65rem 0.95rem;
+    border: 1px solid var(--color-stone-300);
+    border-radius: var(--radius-pill);
+    background: var(--color-booking-card-bg);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--transition-base),
+      background var(--transition-base),
+      box-shadow var(--transition-base);
+  }
+
+  :global(.suggestion-pill:hover:not(:disabled)),
+  :global(.suggestion-pill:focus-visible:not(:disabled)) {
+    border-color: var(--color-citrine);
+    box-shadow: var(--shadow-card-hover);
+    outline: none;
+  }
+
+  :global(.suggestion-pill--selected),
+  :global(.suggestion-pill:disabled) {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    cursor: default;
+    opacity: 0.85;
+  }
+
+  :global(.suggestion-pill__name) {
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+
+  :global(.suggestion-pill__price) {
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-citrine-dark);
+  }
+
+  :global(.suggestion-pill__duration) {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
   :global(.suggestion-card) {
     display: grid;
     gap: 1rem;
     padding: 1rem 1.15rem;
-    background: var(--color-light);
+    background: var(--color-booking-card-bg);
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--transition-base),
+      box-shadow var(--transition-base);
+  }
+
+  :global(.suggestion-card--selected) {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
   }
 
   @media (min-width: 640px) {
@@ -649,42 +594,50 @@ const bookBase = withBase();
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--color-charcoal);
+    color: var(--color-stone-600);
+  }
+
+  :global(.suggestion-card__price) {
+    font-weight: 600;
+    color: var(--color-text);
   }
 
   :global(.suggestion-card__action) {
-    padding: 0.65rem 1.25rem;
-    border: 1px solid var(--color-text);
-    background: var(--color-text);
-    color: var(--color-bg);
+    padding: 0.6rem 1.15rem;
+    border: 1px solid var(--color-citrine);
+    border-radius: var(--radius-pill);
+    background: var(--color-citrine);
+    color: var(--color-black);
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    letter-spacing: 0.12em;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
+    font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition:
+      background var(--transition-base),
+      border-color var(--transition-base);
   }
 
   :global(.suggestion-card__action:hover:not(:disabled)),
   :global(.suggestion-card__action:focus-visible:not(:disabled)) {
-    background: var(--color-bg);
-    color: var(--color-text);
+    background: var(--color-citrine-hover);
+    border-color: var(--color-citrine-hover);
     outline: none;
   }
 
   :global(.suggestion-card__action--added),
   :global(.suggestion-card__action:disabled) {
-    opacity: 0.55;
+    opacity: 0.65;
     cursor: default;
-    background: var(--color-light);
-    color: var(--color-gray);
-    border-color: var(--color-border);
+    background: var(--color-stone-200);
+    color: var(--color-stone-600);
+    border-color: var(--color-stone-300);
   }
 
   .cart__footer {
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border-subtle);
+    padding-top: 0.5rem;
     display: grid;
     gap: 1.25rem;
   }
@@ -700,8 +653,198 @@ const bookBase = withBase();
     font-size: 1rem;
   }
 
+  .cart-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.85rem 1.75rem;
+    border: 1px solid var(--color-citrine);
+    border-radius: var(--radius-pill);
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition:
+      background var(--transition-base),
+      border-color var(--transition-base);
+  }
+
+  .cart-cta:hover,
+  .cart-cta:focus-visible {
+    background: var(--color-citrine-hover);
+    border-color: var(--color-citrine-hover);
+    outline: none;
+  }
+
+  .cart-sticky {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    padding: 0.75rem clamp(1rem, 4vw, 1.5rem)
+      calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--color-booking-panel-bg) 92%, transparent);
+    border-top: 1px solid var(--color-stone-200);
+    box-shadow: 0 -8px 32px var(--color-card-shadow);
+    backdrop-filter: blur(12px);
+  }
+
+  .cart-sticky__inner {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.85rem;
+    max-width: var(--max-width);
+    margin: 0 auto;
+  }
+
+  .cart-sticky__totals {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .cart-sticky__duration,
+  .cart-sticky__price {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    font-size: 0.92rem;
+  }
+
+  .cart-sticky__label {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+    flex-shrink: 0;
+  }
+
+  .cart-sticky__cta {
+    flex-shrink: 0;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--color-citrine);
+    border-radius: var(--radius-pill);
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background var(--transition-base),
+      border-color var(--transition-base);
+  }
+
+  .cart-sticky__cta:hover,
+  .cart-sticky__cta:focus-visible {
+    background: var(--color-citrine-hover);
+    border-color: var(--color-citrine-hover);
+    outline: none;
+  }
+
   .back {
     margin-top: 1.5rem;
     text-align: center;
+  }
+
+  @media (min-width: 768px) {
+    .cart-page {
+      padding-bottom: 0;
+    }
+
+    .cart-sticky {
+      display: none;
+    }
+
+    .cart__footer--desktop {
+      display: grid;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--color-stone-200);
+    }
+
+    .cart-cta {
+      width: auto;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .cart__footer--desktop {
+      display: none;
+    }
+  }
+
+  /* Dark mode */
+  :global([data-theme="dark"]) .cart__tray {
+    background: var(--color-stone-100);
+    border-color: var(--color-stone-300);
+  }
+
+  :global([data-theme="dark"]) .cart-page[aria-busy="true"]::before {
+    background: color-mix(in srgb, var(--color-stone-200) 45%, transparent);
+  }
+
+  :global([data-theme="dark"]) .cart__heading {
+    color: var(--color-stone-500);
+  }
+
+  :global([data-theme="dark"]) :global(.cart-item) {
+    border-color: var(--color-stone-300);
+    box-shadow: 0 4px 16px var(--color-card-shadow);
+  }
+
+  :global([data-theme="dark"]) :global(.cart-item__badge) {
+    color: var(--color-citrine);
+    background: color-mix(in srgb, var(--color-citrine) 18%, transparent);
+  }
+
+  :global([data-theme="dark"]) .suggestion-section--required {
+    border-color: color-mix(in srgb, var(--color-citrine) 45%, var(--color-stone-300));
+    background: color-mix(in srgb, var(--color-citrine) 10%, var(--color-stone-100));
+  }
+
+  :global([data-theme="dark"]) :global(.suggestion-pill) {
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-50);
+  }
+
+  :global([data-theme="dark"]) :global(.suggestion-pill--selected) {
+    background: color-mix(in srgb, var(--color-citrine) 22%, var(--color-stone-100));
+  }
+
+  :global([data-theme="dark"]) :global(.suggestion-card) {
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-50);
+  }
+
+  :global([data-theme="dark"]) :global(.suggestion-card--selected) {
+    background: color-mix(in srgb, var(--color-citrine) 18%, var(--color-stone-100));
+  }
+
+  :global([data-theme="dark"]) :global(.suggestion-card__action--added),
+  :global([data-theme="dark"]) :global(.suggestion-card__action:disabled) {
+    background: var(--color-stone-200);
+    color: var(--color-stone-500);
+    border-color: var(--color-stone-300);
+  }
+
+  :global([data-theme="dark"]) .cart-sticky {
+    background: color-mix(in srgb, var(--color-booking-panel-bg) 95%, transparent);
+    border-color: var(--color-stone-300);
+  }
+
+  :global([data-theme="dark"]) .cart__footer--desktop {
+    border-color: var(--color-stone-300);
   }
 </style>
