@@ -145,3 +145,17 @@ export function initDayCalendarShortcuts(
     }
   });
 }
+
+type DayCalRoot = HTMLElement & {
+  __teamDayCalShortcutHandlers?: DayCalendarShortcutHandlers;
+};
+
+function attachShortcuts(root: DayCalRoot) {
+  const handlers = root.__teamDayCalShortcutHandlers;
+  if (handlers) initDayCalendarShortcuts(root, handlers);
+}
+
+document.addEventListener("team:day-cal-ready", () => {
+  const root = document.querySelector<DayCalRoot>(".day-cal");
+  if (root) attachShortcuts(root);
+});
