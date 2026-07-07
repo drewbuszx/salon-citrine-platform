@@ -1,4 +1,4 @@
-// @ts-check
+﻿// @ts-check
 import cloudflare from "@astrojs/cloudflare";
 import { defineConfig } from "astro/config";
 
@@ -27,6 +27,15 @@ export default defineConfig({
   },
   vite: {
     envDir: "../../",
+    optimizeDeps: {
+      exclude: [
+        "@cloudflare/unenv-preset",
+        "@cloudflare/unenv-preset/node/process",
+        "astro/compiler-runtime",
+        "@cloudflare/vite-plugin",
+        "unenv",
+      ],
+    },
     server: {
       // Fail fast when 4322 is taken (e.g. marketing site preview) instead of
       // silently binding another port and serving /team/* from the wrong app.
