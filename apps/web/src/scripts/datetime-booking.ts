@@ -12,7 +12,23 @@ export type TimeSlot = {
 
 type TimeOfDay = "morning" | "afternoon" | "evening";
 
-const TZ = "America/Indiana/Indianapolis";
+export const SALON_TIMEZONE = "America/Indiana/Indianapolis";
+
+const TZ = SALON_TIMEZONE;
+
+function compareSlotsByTime(a: TimeSlot, b: TimeSlot): number {
+  return a.startsAt.localeCompare(b.startsAt);
+}
+
+/** Human-readable salon timezone for guest-facing labels. */
+export function salonTimezoneLabel(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    timeZoneName: "short",
+  }).formatToParts(new Date());
+  const short = parts.find((part) => part.type === "timeZoneName")?.value;
+  return short ? `${short} · ${TZ}` : TZ;
+}
 
 function formValue(form: HTMLFormElement, name: string): string {
   const el = form.elements.namedItem(name);
@@ -40,7 +56,8 @@ export function getTimeOfDay(startsAt: string): TimeOfDay {
 /** Precision-lite: spread morning/afternoon/evening when possible, else earliest three. */
 export function rankRecommendedSlots(slots: TimeSlot[]): TimeSlot[] {
   if (slots.length === 0) return [];
-  if (slots.length <= 3) return [...slots];
+  const sorted = [...slots].sort(compareSlotsByTime);
+  if (sorted.length <= 3) return sorted;
 
   const buckets: Record<TimeOfDay, TimeSlot[]> = {
     morning: [],
@@ -48,7 +65,7 @@ export function rankRecommendedSlots(slots: TimeSlot[]): TimeSlot[] {
     evening: [],
   };
 
-  for (const slot of slots) {
+  for (const slot of sorted) {
     buckets[getTimeOfDay(slot.startsAt)].push(slot);
   }
 
@@ -63,7 +80,7 @@ export function rankRecommendedSlots(slots: TimeSlot[]): TimeSlot[] {
 
   if (picked.length < 3) {
     const pickedStarts = new Set(picked.map((slot) => slot.startsAt));
-    for (const slot of slots) {
+    for (const slot of sorted) {
       if (picked.length >= 3) break;
       if (!pickedStarts.has(slot.startsAt)) {
         picked.push(slot);
@@ -72,7 +89,7 @@ export function rankRecommendedSlots(slots: TimeSlot[]): TimeSlot[] {
     }
   }
 
-  return picked.slice(0, 3);
+  return picked.sort(compareSlotsByTime).slice(0, 3);
 }
 
 function monthParam(year: number, month: number): string {
@@ -156,6 +173,9 @@ function syncUrl(root: HTMLElement, selectedDate: string) {
   params.set("services", root.dataset.servicesParam ?? "");
   params.set("stylist", root.dataset.stylistSlug ?? "");
   if (root.dataset.flow) params.set("flow", root.dataset.flow);
+  if (root.dataset.existingAck === "1") {
+    params.set(EXISTING_CLIENT_ACK_PARAM, "1");
+  }
   params.set(
     "month",
     monthParam(Number(root.dataset.year), Number(root.dataset.month)),
@@ -165,6 +185,7 @@ function syncUrl(root: HTMLElement, selectedDate: string) {
   } else {
     params.delete("date");
   }
+  appendEmbedIfActive(params);
   const next = `${root.dataset.datetimeUrl}?${params.toString()}`;
   window.history.replaceState({}, "", next);
 }
@@ -255,6 +276,36 @@ function buildHiddenFields(
   return fragment;
 }
 
+export function renderTimeSlotError(
+  panel: HTMLElement,
+  message: string,
+  onRetry?: () => void,
+): void {
+  panel.innerHTML = "";
+  panel.removeAttribute("aria-busy");
+
+  const wrap = document.createElement("div");
+  wrap.className = "time-section__error";
+  wrap.dataset.slotError = "";
+
+  const notice = document.createElement("p");
+  notice.className = "notice notice--error";
+  notice.setAttribute("role", "alert");
+  notice.textContent = message;
+  wrap.appendChild(notice);
+
+  if (onRetry) {
+    const retryBtn = document.createElement("button");
+    retryBtn.type = "button";
+    retryBtn.className = "sc-button sc-button--secondary time-section__retry";
+    retryBtn.textContent = "Try again";
+    retryBtn.addEventListener("click", onRetry);
+    wrap.appendChild(retryBtn);
+  }
+
+  panel.appendChild(wrap);
+}
+
 export function renderTimeSkeleton(panel: HTMLElement): void {
   panel.innerHTML = "";
   panel.setAttribute("aria-busy", "true");
@@ -275,6 +326,17 @@ export function renderTimeSkeleton(panel: HTMLElement): void {
   panel.appendChild(skeleton);
 }
 
+function announceSlotStatus(panel: HTMLElement, message: string): void {
+  let status = panel.querySelector<HTMLElement>("[data-slot-status]");
+  if (!status) {
+    status = document.createElement("p");
+    status.className = "visually-hidden";
+    status.dataset.slotStatus = "";
+    panel.prepend(status);
+  }
+  status.textContent = message;
+}
+
 export function renderTimePanel(
   panel: HTMLElement,
   selectedDate: string,
@@ -293,8 +355,9 @@ export function renderTimePanel(
     const empty = document.createElement("p");
     empty.className = "time-section__empty";
     empty.dataset.timeEmpty = "";
-    empty.textContent = "Select a date to see available times.";
+    empty.textContent = "Pick a date on the calendar to see open times.";
     panel.appendChild(empty);
+    announceSlotStatus(panel, "Pick a date on the calendar to see open times.");
     return;
   }
 
@@ -302,10 +365,16 @@ export function renderTimePanel(
     const empty = document.createElement("p");
     empty.className = "time-section__empty";
     empty.dataset.timeEmpty = "";
-    empty.textContent = "No times left on this day.";
+    empty.textContent = "Fully booked on this day — try another date.";
     panel.appendChild(empty);
+    announceSlotStatus(panel, "Fully booked on this day.");
     return;
   }
+
+  announceSlotStatus(
+    panel,
+    `${slots.length} available time${slots.length === 1 ? "" : "s"}.`,
+  );
 
   const recommended = rankRecommendedSlots(slots);
 
@@ -444,11 +513,33 @@ function renderCalendar(
   }
 }
 
+const SLOT_FETCH_DEBOUNCE_MS = 200;
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+function updateCalendarSelection(root: HTMLElement, selectedDate: string) {
+  for (const btn of root.querySelectorAll<HTMLButtonElement>(
+    "[data-cal-grid] [data-date]",
+  )) {
+    const isSelected = btn.dataset.date === selectedDate;
+    btn.classList.toggle("calendar__day--selected", isSelected);
+    btn.setAttribute("aria-selected", String(isSelected));
+  }
+}
+
 async function fetchMonthAvailability(
   root: HTMLElement,
   year: number,
   month: number,
+  cache: Map<string, string[]>,
+  signal?: AbortSignal,
 ): Promise<string[]> {
+  const cacheKey = monthParam(year, month);
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   const today = root.dataset.today ?? "";
   const horizonEnd = root.dataset.horizonEnd ?? "";
   const { start, end } = calendarGridBounds(year, month);
@@ -464,19 +555,29 @@ async function fetchMonthAvailability(
     end: queryEnd,
   });
 
-  const response = await fetch(`${root.dataset.datesApi}?${params.toString()}`);
+  const response = await fetch(`${root.dataset.datesApi}?${params.toString()}`, {
+    signal,
+  });
   if (!response.ok) throw new Error("Failed to load dates");
   const payload = await response.json();
-  return payload.dates ?? [];
+  const dates: string[] = payload.dates ?? [];
+  cache.set(cacheKey, dates);
+  return dates;
 }
 
-async function fetchSlots(root: HTMLElement, date: string): Promise<TimeSlot[]> {
+async function fetchSlots(
+  root: HTMLElement,
+  date: string,
+  signal?: AbortSignal,
+): Promise<TimeSlot[]> {
   const params = new URLSearchParams({
     staff: root.dataset.staffId ?? "",
     services: root.dataset.serviceIds ?? root.dataset.servicesParam ?? "",
     date,
   });
-  const response = await fetch(`${root.dataset.slotsApi}?${params.toString()}`);
+  const response = await fetch(`${root.dataset.slotsApi}?${params.toString()}`, {
+    signal,
+  });
   if (!response.ok) throw new Error("Failed to load slots");
   const payload = await response.json();
   return payload.slots ?? [];
@@ -488,6 +589,11 @@ function initDatetimeCalendar() {
 
   let selectedDate = root.dataset.selectedDate || "";
   let loadingMonth = false;
+  let slotDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let slotsAbort: AbortController | null = null;
+  let slotRequestId = 0;
+  let monthAbort: AbortController | null = null;
+  const monthAvailabilityCache = new Map<string, string[]>();
 
   const panel = root.querySelector<HTMLElement>("[data-time-panel]");
   const detailsUrl = root.dataset.detailsUrl ?? "";
@@ -499,20 +605,22 @@ function initDatetimeCalendar() {
 
   document.querySelectorAll<HTMLFormElement>("[data-time-form]").forEach(wireTimeForm);
 
-  async function selectDate(date: string) {
-    selectedDate = date;
-    root.dataset.selectedDate = date;
-    syncUrl(root, selectedDate);
-
-    const year = Number(root.dataset.year);
-    const month = Number(root.dataset.month);
-    const availableDates = await fetchMonthAvailability(root, year, month);
-    renderCalendar(root, year, month, availableDates, selectedDate);
-
+  async function loadSlotsForDate(
+    date: string,
+    errorMessage?: string,
+  ): Promise<void> {
     if (!panel) return;
+
+    slotsAbort?.abort();
+    slotsAbort = new AbortController();
+    const requestId = ++slotRequestId;
+    const { signal } = slotsAbort;
+
     renderTimeSkeleton(panel);
     try {
-      const slots = await fetchSlots(root, date);
+      const slots = await fetchSlots(root, date, signal);
+      if (requestId !== slotRequestId) return;
+
       renderTimePanel(
         panel,
         date,
@@ -524,19 +632,51 @@ function initDatetimeCalendar() {
         existingAck,
         embed,
       );
-    } catch {
-      renderTimePanel(
+      if (errorMessage) {
+        let errEl = panel.querySelector<HTMLElement>("[data-reserve-error]");
+        if (!errEl) {
+          errEl = document.createElement("p");
+          errEl.className = "notice notice--error";
+          errEl.dataset.reserveError = "";
+          errEl.setAttribute("role", "alert");
+          panel.prepend(errEl);
+        }
+        errEl.textContent = errorMessage;
+      }
+    } catch (error) {
+      if (isAbortError(error) || requestId !== slotRequestId) return;
+      renderTimeSlotError(
         panel,
-        date,
-        [],
-        detailsUrl,
-        servicesParam,
-        stylistSlug,
-        flow,
-        existingAck,
-        embed,
+        "We couldn't load times for this day. Check your connection and try again.",
+        () => {
+          void loadSlotsForDate(date);
+        },
       );
     }
+  }
+
+  function scheduleSlotFetch(date: string) {
+    if (slotDebounceTimer) clearTimeout(slotDebounceTimer);
+    if (panel) renderTimeSkeleton(panel);
+    slotDebounceTimer = setTimeout(() => {
+      slotDebounceTimer = null;
+      void loadSlotsForDate(date);
+    }, SLOT_FETCH_DEBOUNCE_MS);
+  }
+
+  function selectDate(date: string) {
+    if (
+      date === selectedDate &&
+      panel?.querySelector("[data-time-form], [data-time-skeleton]")
+    ) {
+      return;
+    }
+
+    selectedDate = date;
+    root.dataset.selectedDate = date;
+    syncUrl(root, selectedDate);
+    updateCalendarSelection(root, selectedDate);
+    scheduleSlotFetch(date);
   }
 
   async function changeMonth(delta: number) {
@@ -552,14 +692,20 @@ function initDatetimeCalendar() {
 
     loadingMonth = true;
     root.setAttribute("aria-busy", "true");
+    monthAbort?.abort();
+    monthAbort = new AbortController();
     try {
       const availableDates = await fetchMonthAvailability(
         root,
         next.year,
         next.month,
+        monthAvailabilityCache,
+        monthAbort.signal,
       );
       renderCalendar(root, next.year, next.month, availableDates, selectedDate);
       syncUrl(root, selectedDate);
+    } catch (error) {
+      if (!isAbortError(error)) throw error;
     } finally {
       loadingMonth = false;
       root.removeAttribute("aria-busy");
@@ -582,11 +728,6 @@ function initDatetimeCalendar() {
     if (button.disabled || button.dataset.available !== "true") return;
     selectDate(button.dataset.date ?? "");
   });
-}
-
-function initDatetimePicker() {
-  const root = document.querySelector<HTMLElement>("[data-datetime-picker]");
-  if (!root) return;
 
   root.addEventListener(
     "submit",
@@ -599,11 +740,8 @@ function initDatetimePicker() {
       const startsAt = formValue(form, "startsAt");
       if (!startsAt) return;
 
-      const servicesParam =
-        root.dataset.servicesParam ?? root.dataset.serviceIds ?? "";
       const serviceIds = servicesParam.split(",").filter(Boolean);
-      const staffSlug = root.dataset.stylistSlug ?? "";
-      if (!staffSlug || serviceIds.length === 0) return;
+      if (!stylistSlug || serviceIds.length === 0) return;
 
       const submitBtn = form.querySelector<HTMLButtonElement>(
         'button[type="submit"]',
@@ -630,21 +768,32 @@ function initDatetimePicker() {
         params.set("cartId", cartId);
         params.delete("time");
         appendEmbedIfActive(params);
-        const detailsUrl = root.dataset.detailsUrl ?? "";
         window.location.href = `${detailsUrl}?${params.toString()}`;
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Could not hold this time";
-        const panel = root.querySelector<HTMLElement>("[data-time-panel]");
-        let errEl = panel?.querySelector<HTMLElement>("[data-reserve-error]");
-        if (!errEl && panel) {
-          errEl = document.createElement("p");
-          errEl.className = "notice notice--error";
-          errEl.dataset.reserveError = "";
-          errEl.setAttribute("role", "alert");
-          panel.prepend(errEl);
+          error instanceof Error
+            ? error.message
+            : "That time was just taken. Please pick another slot.";
+        const date =
+          formValue(form, "date") || root.dataset.selectedDate || "";
+        if (date) {
+          await loadSlotsForDate(
+            date,
+            message.includes("Pick another")
+              ? message
+              : `${message} Pick another time and try again.`,
+          );
+        } else if (panel) {
+          let errEl = panel.querySelector<HTMLElement>("[data-reserve-error]");
+          if (!errEl) {
+            errEl = document.createElement("p");
+            errEl.className = "notice notice--error";
+            errEl.dataset.reserveError = "";
+            errEl.setAttribute("role", "alert");
+            panel.prepend(errEl);
+          }
+          errEl.textContent = message;
         }
-        if (errEl) errEl.textContent = message;
         submitBtn?.removeAttribute("disabled");
         form.removeAttribute("aria-busy");
       }
@@ -655,7 +804,6 @@ function initDatetimePicker() {
 
 function init() {
   initDatetimeCalendar();
-  initDatetimePicker();
 }
 
 if (typeof document !== "undefined") {

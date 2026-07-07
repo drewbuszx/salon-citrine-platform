@@ -66,6 +66,58 @@ export type BookingCatalog = {
   staffServiceReturningOnly: Record<string, boolean>;
 };
 
+/** Slim catalog for client-side service filtering (no bios, photos, or server-only fields). */
+export type ServiceBookingClientCatalog = {
+  staff: Pick<Staff, "id" | "slug" | "name" | "role">[];
+  services: Pick<
+    Service,
+    | "id"
+    | "category"
+    | "name"
+    | "description"
+    | "basePriceCents"
+    | "durationMinutes"
+    | "priceVaries"
+    | "requiresConsultation"
+  >[];
+  staffServiceIds: BookingCatalog["staffServiceIds"];
+};
+
+export function toServiceBookingClientCatalog(
+  catalog: BookingCatalog,
+): ServiceBookingClientCatalog {
+  return {
+    staff: catalog.staff.map(({ id, slug, name, role }) => ({
+      id,
+      slug,
+      name,
+      role,
+    })),
+    services: catalog.services.map(
+      ({
+        id,
+        category,
+        name,
+        description,
+        basePriceCents,
+        durationMinutes,
+        priceVaries,
+        requiresConsultation,
+      }) => ({
+        id,
+        category,
+        name,
+        description,
+        basePriceCents,
+        durationMinutes,
+        priceVaries,
+        requiresConsultation,
+      }),
+    ),
+    staffServiceIds: catalog.staffServiceIds,
+  };
+}
+
 export function staffServiceKey(staffId: string, serviceId: string): string {
   return `${staffId}:${serviceId}`;
 }

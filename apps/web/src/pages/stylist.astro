@@ -17,7 +17,7 @@ import {
   parseServiceIdsFromParams,
   staffFirstName,
 } from "../lib/booking-data";
-import { datetimeUrl, bookingFlagsFromUrl } from "../lib/booking-flow";
+import { datetimeUrl, bookingFlagsFromUrl, cartUrl, sessionFlagsFromUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -56,6 +56,8 @@ if (preselectedStylist) {
 }
 
 const staff = await fetchStaffForService(primaryService.id);
+const sessionFlags = sessionFlagsFromUrl(Astro.url);
+const cartBackHref = cartUrl(resolvedServiceIds, null, sessionFlags);
 const bookBase = withBase();
 const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
 
@@ -135,6 +137,7 @@ function formatStaffRole(role: string): string {
                     height="120"
                     loading="lazy"
                     decoding="async"
+                    fetchpriority="low"
                   />
                 ) : (
                   <span class="stylist-card__avatar" aria-hidden="true">
@@ -487,9 +490,10 @@ function formatStaffRole(role: string): string {
     font-size: 0.62rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    background: rgba(255, 210, 80, 0.35);
-    color: var(--color-charcoal);
-    border-radius: var(--radius-sm, 0.35rem);
+    background: var(--color-citrine-muted);
+    color: var(--color-citrine-dark);
+    border: 1px solid color-mix(in srgb, var(--color-citrine) 35%, transparent);
+    border-radius: var(--radius-pill);
   }
 
   .stylist-card__bio {
@@ -539,7 +543,8 @@ function formatStaffRole(role: string): string {
   .empty {
     padding: 1.5rem;
     text-align: center;
-    background: var(--color-light);
+    background: var(--color-stone-50);
+    border: 1px solid var(--color-stone-200);
     color: var(--color-gray);
     border-radius: var(--radius-md, 0.75rem);
   }
@@ -583,11 +588,6 @@ function formatStaffRole(role: string): string {
       rgba(174, 148, 143, 0.2)
     );
     color: var(--color-citrine);
-  }
-
-  [data-theme="dark"] .stylist-card__badge {
-    background: rgba(231, 172, 70, 0.22);
-    color: var(--color-text);
   }
 
   [data-theme="dark"] .empty {
