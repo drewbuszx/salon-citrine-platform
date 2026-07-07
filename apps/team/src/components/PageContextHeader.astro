@@ -1,0 +1,73 @@
+---
+/**
+ * Contextual page header — lives inside the main content pane, not a full-width band.
+ * Desktop: title/subtitle left, primary action right, aligned with content below.
+ * Mobile: compact stacking, touch-friendly actions.
+ */
+interface Props {
+  title: string;
+  subtitle?: string;
+  eyebrow?: string;
+  status?: string;
+  density?: "compact" | "standard";
+  headingLevel?: 1 | 2;
+  class?: string;
+}
+
+const {
+  title,
+  subtitle = "",
+  eyebrow = "",
+  status = "",
+  density = "standard",
+  headingLevel = 1,
+  class: className = "",
+} = Astro.props;
+
+const hasPrimaryAction = Astro.slots.has("primaryAction");
+const hasSecondaryActions = Astro.slots.has("secondaryActions");
+const hasBreadcrumbs = Astro.slots.has("breadcrumbs");
+const HeadingTag = `h${headingLevel}` as "h1" | "h2";
+---
+
+<header
+  class:list={[
+    "page-context-header",
+    density === "compact" && "page-context-header--compact",
+    subtitle && "page-context-header--with-subtitle",
+    className,
+  ]}
+  data-page-context-header
+>
+  <div class="page-context-header__copy">
+    {
+      hasBreadcrumbs ? (
+        <nav class="page-context-header__breadcrumbs" aria-label="Breadcrumb">
+          <slot name="breadcrumbs" />
+        </nav>
+      ) : null
+    }
+    {eyebrow ? <p class="page-context-header__eyebrow">{eyebrow}</p> : null}
+    <div class="page-context-header__title-row">
+      <HeadingTag class="page-context-header__title">{title}</HeadingTag>
+      {status ? <span class="page-context-header__status">{status}</span> : null}
+    </div>
+    {subtitle ? <p class="page-context-header__subtitle">{subtitle}</p> : null}
+  </div>
+
+  {
+    hasPrimaryAction || hasSecondaryActions ? (
+      <div class="page-context-header__actions">
+        {hasPrimaryAction ? <slot name="primaryAction" /> : null}
+      </div>
+    ) : null
+  }
+
+  {
+    hasSecondaryActions ? (
+      <div class="page-context-header__actions page-context-header__actions--secondary">
+        <slot name="secondaryActions" />
+      </div>
+    ) : null
+  }
+</header>

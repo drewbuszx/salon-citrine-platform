@@ -1,0 +1,48 @@
+/**
+ * Shared vertical rhythm and content-width tokens for the team app shell.
+ */
+:root {
+  --shell-gap-below-nav: 0;
+  --shell-header-gap: var(--space-3);
+  --shell-header-subtitle-gap: var(--space-1);
+  --shell-header-toolbar-gap: var(--space-4);
+  --shell-toolbar-content-gap: var(--space-4);
+  --shell-section-gap: var(--space-6);
+  --shell-sidebar-section-gap: var(--space-3);
+
+  --shell-main-padding-x: var(--space-6);
+  --shell-main-padding-top: var(--space-4);
+  --shell-main-padding-bottom: var(--space-8);
+
+  --shell-main-padding-x-compact: var(--space-4);
+  --shell-main-padding-top-compact: var(--space-3);
+
+  --shell-content-max-reading: 48rem;
+  --shell-content-max-operational: none;
+
+  /* Sticky scroll targets: global nav + in-pane toolbar (reports, etc.) */
+  --shell-sticky-scroll-extra: 5rem;
+}
+
+.team-main--content-reading {
+  max-width: var(--shell-content-max-reading);
+}
+
+.team-list-layout__main--operational {
+  max-width: var(--shell-content-max-operational);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --shell-header-toolbar-gap: var(--space-3);
+    --shell-main-padding-x: var(--shell-main-padding-x-compact);
+    --shell-main-padding-top: var(--shell-main-padding-top-compact);
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --shell-header-gap: var(--space-2);
+    --shell-sticky-scroll-extra: 4.5rem;
+  }
+}

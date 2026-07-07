@@ -4,6 +4,8 @@
 @import "./mobile-ui.css";
 @import "./login.css";
 @import "./team-list-sidebar.css";
+@import "./shell-spacing.css";
+@import "./page-context-header.css";
 @import "./dark-mode-overrides.css";
 
 :root {
@@ -1423,8 +1425,8 @@ textarea {
   }
 
   .team-bar__inner,
-  .team-list-layout__subheader,
-  .team-list-layout__main {
+  .team-list-layout__main,
+  .page-context-header {
     min-width: 0;
   }
 }
