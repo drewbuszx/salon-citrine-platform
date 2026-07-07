@@ -3,6 +3,7 @@ import TeamLayout from "../../layouts/TeamLayout.astro";
 import TeamManageLayout from "../../components/TeamManageLayout.astro";
 import { isSalonManager } from "../../lib/auth";
 import { MANAGE_HUB_ITEMS, type ManageHubItem } from "../../lib/manage-nav";
+import { PAGE_CONTEXT } from "../../lib/page-context";
 import { teamUrl } from "../../lib/supabase-server";
 
 const { staff } = Astro.locals;
@@ -32,7 +33,14 @@ const hubIcons: Record<string, string> = {
 ---
 
 <TeamLayout title="Manage" activeNav="manage" plain wide fullBleed>
-  <TeamManageLayout title="Manage" activeSection="hub" managerView={managerView}>
+  <TeamManageLayout
+    title={PAGE_CONTEXT.manage.nav}
+    contextTitle={PAGE_CONTEXT.manage.title}
+    contextSubtitle={PAGE_CONTEXT.manage.subtitle}
+    activeSection="hub"
+    managerView={managerView}
+    contentWidth="reading"
+  >
     <div class="team-manage-layout__hub-list">
       {
         hubItems.map((item) => (

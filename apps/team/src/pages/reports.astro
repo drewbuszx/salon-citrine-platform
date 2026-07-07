@@ -3,6 +3,7 @@ import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import UiScrollRow from "../components/ui/UiScrollRow.astro";
 import { isSalonManager } from "../lib/auth";
+import { PAGE_CONTEXT } from "../lib/page-context";
 import { teamUrl } from "../lib/supabase-server";
 import { defaultReportRangeDates } from "../lib/report-range";
 import { reportNavGroups } from "../lib/report-metrics";
@@ -47,7 +48,14 @@ const COMPARE_OPTIONS = [
     data-from={fromDate}
     data-to={toDate}
   >
-    <TeamListLayout title="Reports" mainTitle="Business summaries" sidebarTitle="Sections">
+    <TeamListLayout
+      title={PAGE_CONTEXT.reports.nav}
+      contextTitle={PAGE_CONTEXT.reports.title}
+      contextSubtitle={PAGE_CONTEXT.reports.subtitle}
+      mainTitle="Overview"
+      sidebarTitle="Sections"
+      contentWidth="operational"
+    >
       <nav slot="sidebarExtra" class="team-list-layout__sidebar-nav reports-nav" aria-label="Report sections">
         {
           navGroups.map((group) => (
@@ -66,8 +74,6 @@ const COMPARE_OPTIONS = [
           ))
         }
       </nav>
-
-      <Fragment slot="mainLead">Live salon data. Pick a range to update every section.</Fragment>
 
       <div class="reports-tabs" data-reports-tabs>
         <UiScrollRow label="Report sections">
@@ -290,13 +296,21 @@ const COMPARE_OPTIONS = [
     max-width: 92rem;
   }
 
+  .reports-page .team-list-layout__main-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--color-stone-600);
+    margin-bottom: var(--space-3);
+  }
+
   /* Sticky toolbar beneath global nav ------------------------------------ */
   .reports-page .team-list-layout__toolbar {
     position: sticky;
     top: var(--team-bar-height, 3.25rem);
     z-index: 12;
-    margin: 0 calc(-1 * var(--space-6)) 1rem;
-    padding: 0.75rem var(--space-6);
+    margin: 0 calc(-1 * var(--shell-main-padding-x)) var(--shell-toolbar-content-gap);
+    padding: 0.75rem var(--shell-main-padding-x);
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-stone-200);
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
@@ -513,7 +527,7 @@ const COMPARE_OPTIONS = [
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-md);
     background: var(--color-bg);
-    scroll-margin-top: calc(var(--team-bar-height, 3.25rem) + 7rem);
+    scroll-margin-top: calc(var(--team-bar-height, 3.25rem) + var(--shell-sticky-scroll-extra, 5rem));
   }
 
   .reports-section__head {
@@ -1109,10 +1123,6 @@ const COMPARE_OPTIONS = [
     }
 
     .reports-page .team-list-layout__sidebar {
-      display: none;
-    }
-
-    .reports-page .team-list-layout__main-lead {
       display: none;
     }
 

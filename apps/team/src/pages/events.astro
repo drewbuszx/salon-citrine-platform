@@ -3,6 +3,7 @@ import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
+import { PAGE_CONTEXT } from "../lib/page-context";
 import { teamUrl } from "../lib/supabase-server";
 import { staffAccentColor } from "../lib/staff-colors";
 
@@ -40,11 +41,13 @@ const typeFilters: { type: string; label: string }[] = [
     data-current-staff-id={staff.id}
   >
     <TeamListLayout
-      title="Events"
-      mainTitle="Team calendar"
+      title={PAGE_CONTEXT.events.nav}
+      contextTitle={PAGE_CONTEXT.events.title}
+      contextSubtitle={PAGE_CONTEXT.events.subtitle}
       sidebarTitle="Filters"
       filterKey="events"
       rootClass="events-list-layout"
+      contentWidth="operational"
     >
       <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-event-create>
         {managerView ? "Add event" : "Request time off"}
@@ -106,10 +109,6 @@ const typeFilters: { type: string; label: string }[] = [
           Reset filters
         </button>
       </div>
-
-      <Fragment slot="mainLead">
-        Birthdays, time off, closures, and salon announcements — not the appointment book.
-      </Fragment>
 
       <div slot="toolbar" class="events-toolbar" aria-label="Calendar controls">
         <div class="events-toolbar__chips" data-events-active-filters hidden />
