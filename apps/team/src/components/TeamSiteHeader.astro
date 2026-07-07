@@ -30,9 +30,8 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** White wordmark on dark bar (light theme); Horiz.png swap in dark theme */
-const logoLightSrc = withBase("images/salon-citrine-primary-white.png");
-const logoDarkSrc = withBase("assets/salon-citrine-logo-horiz-dark.png");
+/** White wordmark on dark team bar; compact PNG is invert-filter fallback */
+const logoPrimarySrc = withBase("images/salon-citrine-primary-white.png");
 const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
 const profileMenuId = "team-profile-menu";
 
@@ -63,17 +62,8 @@ const initials = staff ? staffInitials(staff.name) : "";
     <div class="team-bar__brand">
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
-          class="team-bar__logo-img team-bar__logo-img--light-theme"
-          src={logoLightSrc}
-          data-fallback-src={logoFallbackSrc}
-          alt=""
-          width="200"
-          height="40"
-          loading="eager"
-        />
-        <img
-          class="team-bar__logo-img team-bar__logo-img--dark-theme"
-          src={logoDarkSrc}
+          class="team-bar__logo-img"
+          src={logoPrimarySrc}
           data-fallback-src={logoFallbackSrc}
           alt=""
           width="200"
@@ -349,22 +339,6 @@ const initials = staff ? staffInitials(staff.name) : "";
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--team-bar-text, rgba(255, 255, 255, 0.92));
-  }
-
-  .team-bar__logo-img--dark-theme {
-    display: none;
-  }
-
-  :global([data-theme="dark"]) .team-bar__logo-img--light-theme {
-    display: none;
-  }
-
-  :global([data-theme="dark"]) .team-bar__logo-img--dark-theme {
-    display: block;
-  }
-
-  :global([data-theme="dark"]) .team-bar__logo.is-wordmark .team-bar__logo-img--dark-theme {
-    display: none;
   }
 
   .team-bar__page-title[hidden] {
@@ -885,8 +859,7 @@ const initials = staff ? staffInitials(staff.name) : "";
       visibility: visible;
     }
 
-    :global(.team-shell.is-page-scrolled) .team-bar__logo-img--light-theme,
-    :global(.team-shell.is-page-scrolled) .team-bar__logo-img--dark-theme,
+    :global(.team-shell.is-page-scrolled) .team-bar__logo-img,
     :global(.team-shell.is-page-scrolled) .team-bar__logo-wordmark {
       display: none;
     }
