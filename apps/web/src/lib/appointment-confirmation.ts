@@ -23,6 +23,7 @@ export type ConfirmationDetails = {
     slug: string;
   };
   services: Array<{
+    id: string;
     name: string;
     priceCents: number | null;
     durationMinutes: number;
@@ -48,8 +49,9 @@ export async function fetchAppointmentConfirmation(
       clients(first_name, last_name, email, phone),
       staff(name, slug),
       appointment_services(
+        service_id,
         price_cents,
-        services(name, duration_minutes, base_price_cents)
+        services(id, name, duration_minutes, base_price_cents)
       )
     `,
     )
@@ -88,10 +90,21 @@ export async function fetchAppointmentConfirmation(
   if (!client || !staff) return null;
 
   const serviceRows = (data.appointment_services ?? []) as Array<{
+    service_id: string;
     price_cents: number | null;
     services:
-      | { name: string; duration_minutes: number; base_price_cents: number | null }
-      | Array<{ name: string; duration_minutes: number; base_price_cents: number | null }>
+      | {
+          id: string;
+          name: string;
+          duration_minutes: number;
+          base_price_cents: number | null;
+        }
+      | Array<{
+          id: string;
+          name: string;
+          duration_minutes: number;
+          base_price_cents: number | null;
+        }>
       | null;
   }>;
 
@@ -101,6 +114,7 @@ export async function fetchAppointmentConfirmation(
       const svc = Array.isArray(raw) ? raw[0] : raw;
       if (!svc) return null;
       return {
+        id: row.service_id || svc.id,
         name: svc.name,
         priceCents: row.price_cents ?? svc.base_price_cents,
         durationMinutes: svc.duration_minutes,

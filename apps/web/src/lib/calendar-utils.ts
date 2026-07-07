@@ -123,28 +123,40 @@ export type IcsAppointmentInput = {
   description?: string;
   location?: string;
   organizerEmail?: string;
+  url?: string;
 };
 
-const VTIMEZONE_INDIANAPOLIS = [
-  "BEGIN:VTIMEZONE",
-  "TZID:America/Indiana/Indianapolis",
-  "X-LIC-LOCATION:America/Indiana/Indianapolis",
-  "BEGIN:DAYLIGHT",
-  "TZOFFSETFROM:-0500",
-  "TZOFFSETTO:-0400",
-  "TZNAME:EDT",
-  "DTSTART:19700308T020000",
-  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
-  "END:DAYLIGHT",
-  "BEGIN:STANDARD",
-  "TZOFFSETFROM:-0400",
-  "TZOFFSETTO:-0500",
-  "TZNAME:EST",
-  "DTSTART:19701101T020000",
-  "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
-  "END:STANDARD",
-  "END:VTIMEZONE",
-].join("\r\n");
+function buildVtimezone(timeZone: string): string {
+  if (timeZone !== "America/Indiana/Indianapolis") {
+    return [
+      "BEGIN:VTIMEZONE",
+      `TZID:${timeZone}`,
+      `X-LIC-LOCATION:${timeZone}`,
+      "END:VTIMEZONE",
+    ].join("\r\n");
+  }
+
+  return [
+    "BEGIN:VTIMEZONE",
+    "TZID:America/Indiana/Indianapolis",
+    "X-LIC-LOCATION:America/Indiana/Indianapolis",
+    "BEGIN:DAYLIGHT",
+    "TZOFFSETFROM:-0500",
+    "TZOFFSETTO:-0400",
+    "TZNAME:EDT",
+    "DTSTART:19700308T020000",
+    "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+    "END:DAYLIGHT",
+    "BEGIN:STANDARD",
+    "TZOFFSETFROM:-0400",
+    "TZOFFSETTO:-0500",
+    "TZNAME:EST",
+    "DTSTART:19701101T020000",
+    "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
+    "END:STANDARD",
+    "END:VTIMEZONE",
+  ].join("\r\n");
+}
 
 function icsEscape(text: string): string {
   return text
@@ -152,6 +164,19 @@ function icsEscape(text: string): string {
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\n/g, "\\n");
+}
+
+/** RFC 5545 line folding — max 75 octets per line. */
+function foldIcsLine(line: string): string {
+  if (line.length <= 75) return line;
+
+  const chunks = [line.slice(0, 75)];
+  let rest = line.slice(75);
+  while (rest.length > 0) {
+    chunks.push(` ${rest.slice(0, 74)}`);
+    rest = rest.slice(74);
+  }
+  return chunks.join("\r\n");
 }
 
 function formatIcsUtcTimestamp(date: Date): string {
@@ -187,16 +212,18 @@ export function generateIcsFile(
   appointment: IcsAppointmentInput,
   timeZone: string = TIMEZONE,
 ): string {
+  const now = formatIcsUtcTimestamp(new Date());
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Salon Citrine//Guest Booking//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    VTIMEZONE_INDIANAPOLIS,
+    buildVtimezone(timeZone),
     "BEGIN:VEVENT",
     `UID:${icsEscape(appointment.uid)}`,
-    `DTSTAMP:${formatIcsUtcTimestamp(new Date())}`,
+    `DTSTAMP:${now}`,
+    `CREATED:${now}`,
     `DTSTART;TZID=${timeZone}:${formatIcsLocalTimestamp(appointment.startsAt, timeZone)}`,
     `DTEND;TZID=${timeZone}:${formatIcsLocalTimestamp(appointment.endsAt, timeZone)}`,
     `SUMMARY:${icsEscape(appointment.summary)}`,
@@ -208,12 +235,15 @@ export function generateIcsFile(
   if (appointment.location) {
     lines.push(`LOCATION:${icsEscape(appointment.location)}`);
   }
+  if (appointment.url) {
+    lines.push(`URL:${icsEscape(appointment.url)}`);
+  }
   if (appointment.organizerEmail) {
     lines.push(
       `ORGANIZER;CN=Salon Citrine:mailto:${icsEscape(appointment.organizerEmail)}`,
     );
   }
 
-  lines.push("STATUS:CONFIRMED", "END:VEVENT", "END:VCALENDAR");
-  return lines.join("\r\n");
+  lines.push("STATUS:CONFIRMED", "TRANSP:OPAQUE", "END:VEVENT", "END:VCALENDAR");
+  return lines.map(foldIcsLine).join("\r\n");
 }

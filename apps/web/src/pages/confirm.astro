@@ -7,6 +7,7 @@ import {
   BUSINESS,
   DEFAULT_BOOKING_POLICY,
   formatBookingPolicySummary,
+  TIMEZONE,
   type BookingPolicy,
 } from "@saloncitrine/shared";
 import {
@@ -21,7 +22,7 @@ import {
 } from "../lib/appointment-confirmation";
 import { generateIcsFile } from "../lib/calendar-utils";
 import { withBase } from "../lib/paths";
-import { appendFlowFlags, bookingFlagsFromUrl } from "../lib/booking-flow";
+import { bookingFlagsFromUrl, rebookUrl } from "../lib/booking-flow";
 
 const appointmentId = Astro.url.searchParams.get("appointment");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
@@ -37,7 +38,7 @@ if (!appointment) {
 }
 
 const servicesForEstimate = appointment.services.map((svc) => ({
-  id: "",
+  id: svc.id,
   category: "",
   name: svc.name,
   description: null,
@@ -56,6 +57,13 @@ const serviceSummary =
 const priceEstimate = estimateCartPrice(servicesForEstimate);
 const totalDuration = sumServiceDuration(servicesForEstimate);
 const whenLabel = formatConfirmationWhen(appointment.startsAt);
+const timezoneLabel =
+  new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    timeZoneName: "shortGeneric",
+  })
+    .formatToParts(new Date(appointment.startsAt))
+    .find((part) => part.type === "timeZoneName")?.value ?? "local time";
 const shortId = appointment.id.slice(0, 8).toUpperCase();
 const policy = {
   ...DEFAULT_BOOKING_POLICY,
@@ -66,21 +74,23 @@ const depositLabel =
   appointment.depositChargedCents > 0
     ? `$${(appointment.depositChargedCents / 100).toFixed(
         appointment.depositChargedCents % 100 === 0 ? 0 : 2,
-      )} charged`
+      )} paid today`
     : appointment.depositRequiredCents > 0
       ? `$${(appointment.depositRequiredCents / 100).toFixed(
           appointment.depositRequiredCents % 100 === 0 ? 0 : 2,
-        )} required`
+        )} secured at booking`
       : null;
 
 const businessAddress = `${BUSINESS.address.street}, ${BUSINESS.address.city}, ${BUSINESS.address.state} ${BUSINESS.address.zip}`;
 const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(businessAddress)}`;
+const confirmPageUrl = Astro.url.href.split("#")[0];
 
 const icsSummary = `${appointment.services.map((svc) => svc.name).join(", ")} with ${appointment.staff.name}`;
 const icsDescription = [
   `Confirmation #${shortId}`,
   `Guest: ${appointment.client.firstName} ${appointment.client.lastName}`,
   policySummary,
+  confirmPageUrl,
 ].join("\n");
 const icsContent = generateIcsFile({
   uid: `${appointment.id}@${BUSINESS.domain}`,
@@ -90,13 +100,24 @@ const icsContent = generateIcsFile({
   description: icsDescription,
   location: businessAddress,
   organizerEmail: BUSINESS.bookingEmail,
+  url: confirmPageUrl,
 });
 const icsFilename = `salon-citrine-${shortId.toLowerCase()}.ics`;
-const icsDataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+const icsContentBase64 = Buffer.from(icsContent, "utf-8").toString("base64");
 
-const rebookParams = new URLSearchParams({ stylist: appointment.staff.slug });
-appendFlowFlags(rebookParams, { ...flowFlags, showStylistStep });
-const rebookHref = `${withBase()}?${rebookParams.toString()}`;
+const serviceIds = appointment.services.map((svc) => svc.id).filter(Boolean);
+const rebookHref = rebookUrl(serviceIds, appointment.staff.slug, {
+  ...flowFlags,
+  showStylistStep,
+});
+
+const shareTitle = `Booking confirmed at ${BUSINESS.name}`;
+const shareText = [
+  `Confirmation #${shortId}`,
+  `${whenLabel} (${timezoneLabel}) with ${appointment.staff.name}`,
+  serviceSummary,
+  businessAddress,
+].join("\n");
 ---
 
 <BookingLayout
@@ -105,7 +126,15 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
   showStylistStep={showStylistStep}
   embed={flowFlags.embed}
 >
-  <div class="confirm">
+  <div
+    class="confirm"
+    data-confirm-root
+    data-share-title={shareTitle}
+    data-share-text={shareText}
+    data-share-url={confirmPageUrl}
+    data-ics-filename={icsFilename}
+    data-ics-content-b64={icsContentBase64}
+  >
     <header class="confirm__hero">
       <span class="confirm__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
@@ -119,20 +148,41 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
           />
         </svg>
       </span>
-      <p class="confirm__kicker">You're booked!</p>
+      <p class="confirm__kicker">You're all set</p>
       <h1 class="confirm__title">Confirmation #{shortId}</h1>
       <p class="confirm__subtitle">
-        {whenLabel} with {appointment.staff.name}
+        {whenLabel} ({timezoneLabel}) with {appointment.staff.name}. We look forward to seeing you.
       </p>
     </header>
 
-    <dl class="confirm__details">
+    <dl class="confirm__details confirm__print-summary">
       <div>
         <dt>Services</dt>
         <dd>
-          {serviceSummary}
-          {priceEstimate && ` · ${priceEstimate}`}
-          {appointment.services.length > 1 && ` · ${formatDuration(totalDuration)}`}
+          {
+            appointment.services.length === 1 ? (
+              <>
+                {serviceSummary}
+                {priceEstimate && ` · ${priceEstimate}`}
+              </>
+            ) : (
+              <ul class="confirm__service-list">
+                {appointment.services.map((svc) => (
+                  <li>
+                    {svc.name}
+                    {svc.durationMinutes > 0 && ` · ${formatDuration(svc.durationMinutes)}`}
+                  </li>
+                ))}
+              </ul>
+            )
+          }
+          {
+            appointment.services.length > 1 && priceEstimate && (
+              <span class="confirm__service-total">
+                {priceEstimate} · {formatDuration(totalDuration)} total
+              </span>
+            )
+          }
         </dd>
       </div>
       <div>
@@ -141,7 +191,10 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
       </div>
       <div>
         <dt>When</dt>
-        <dd>{whenLabel}</dd>
+        <dd>
+          {whenLabel}
+          <span class="confirm__timezone"> ({timezoneLabel})</span>
+        </dd>
       </div>
       <div>
         <dt>Location</dt>
@@ -181,17 +234,29 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
         )
       }
       <p class="confirm__recap-note">
-        A confirmation email and text reminder will be sent shortly.
+        A confirmation email is on its way. If you opted in, we'll also text a reminder before your appointment.
+      </p>
+      <p class="confirm__recap-reassure">
+        Need to make a change? Reply to your confirmation email or call the salon — we're happy to help.
       </p>
     </section>
 
-    <div class="confirm__actions">
+    <div class="confirm__actions confirm__screen-actions">
       <Button href={rebookHref} variant="primary">
-        Book again
+        Book again with {appointment.staff.name.split(" ")[0]}
       </Button>
-      <a class="confirm__utility-link" href={icsDataUrl} download={icsFilename}>
-        Add to calendar
-      </a>
+      <div class="confirm__utility-row">
+        <button class="confirm__utility-link" type="button" data-confirm-calendar>
+          Add to calendar
+        </button>
+        <button class="confirm__utility-link" type="button" data-confirm-share>
+          Share details
+        </button>
+        <button class="confirm__utility-link" type="button" data-confirm-print>
+          Print summary
+        </button>
+      </div>
+      <p class="confirm__share-status" data-confirm-share-status hidden role="status" aria-live="polite" />
       <Button href={directionsUrl} variant="secondary" target="_blank" rel="noopener noreferrer">
         Get directions
       </Button>
@@ -207,14 +272,21 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
         )
       }
     </div>
+
+    <p class="confirm__print-footer confirm__print-only">
+      {BUSINESS.name} · {BUSINESS.phone} · {confirmPageUrl}
+    </p>
   </div>
 </BookingLayout>
+
+<script src="../scripts/confirm-actions.ts"></script>
 
 <style>
   .confirm {
     max-width: 34rem;
     margin: 0 auto;
     text-align: center;
+    padding-bottom: var(--safe-area-bottom, env(safe-area-inset-bottom, 0px));
   }
 
   .confirm__hero {
@@ -292,6 +364,27 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
     line-height: var(--leading-normal);
   }
 
+  .confirm__service-list {
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  .confirm__service-list li + li {
+    margin-top: 0.25rem;
+  }
+
+  .confirm__service-total {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.88rem;
+    color: var(--color-gray);
+  }
+
+  .confirm__timezone {
+    font-weight: 400;
+    color: var(--color-gray);
+  }
+
   .confirm__directions {
     display: inline-block;
     margin-top: 0.35rem;
@@ -329,7 +422,8 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
 
   .confirm__recap-policy,
   .confirm__recap-deposit,
-  .confirm__recap-note {
+  .confirm__recap-note,
+  .confirm__recap-reassure {
     margin: 0;
     font-size: 0.9rem;
     color: var(--color-gray);
@@ -357,6 +451,11 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
     font-size: 0.85rem;
   }
 
+  .confirm__recap-reassure {
+    margin-top: var(--space-2);
+    font-size: 0.85rem;
+  }
+
   .confirm__actions {
     display: flex;
     flex-direction: column;
@@ -364,9 +463,19 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
     gap: var(--space-3);
   }
 
+  .confirm__utility-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2) var(--space-4);
+  }
+
   .confirm__utility-link {
     display: inline-block;
-    padding: 0.65rem 1.25rem;
+    padding: 0.65rem 0.35rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
     font-family: var(--font-sans);
     font-size: 0.75rem;
     font-weight: 600;
@@ -375,6 +484,16 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
     text-decoration: underline;
     text-underline-offset: 0.18em;
     color: var(--color-text);
+  }
+
+  .confirm__share-status {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-gray);
+  }
+
+  .confirm__print-only {
+    display: none;
   }
 
   .confirm__utility-link:hover,
@@ -415,5 +534,48 @@ const rebookHref = `${withBase()}?${rebookParams.toString()}`;
 
   [data-theme="dark"] .confirm__utility-link {
     color: var(--color-citrine);
+  }
+
+  @media print {
+    :global(.booking-steps-wrap),
+    :global(.site-header),
+    :global(.booking-footer),
+    .confirm__screen-actions,
+    .confirm__directions,
+    .confirm__recap {
+      display: none !important;
+    }
+
+    .confirm {
+      max-width: none;
+      text-align: left;
+      color: #111;
+    }
+
+    .confirm__hero {
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .confirm__icon {
+      display: none;
+    }
+
+    .confirm__details {
+      border: 1px solid #ddd;
+      background: #fff;
+      break-inside: avoid;
+    }
+
+    .confirm__print-only {
+      display: block;
+      margin-top: 1.25rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #ddd;
+      font-size: 0.75rem;
+      color: #555;
+      word-break: break-all;
+    }
   }
 </style>
