@@ -4,6 +4,7 @@ import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamSidebarNav from "../components/TeamSidebarNav.astro";
 import UiScrollRow from "../components/ui/UiScrollRow.astro";
 import { isSalonManager } from "../lib/auth";
+import { PAGE_CONTEXT } from "../lib/page-context";
 import { teamUrl } from "../lib/supabase-server";
 
 const { supabase, staff } = Astro.locals;
@@ -31,7 +32,13 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamListLayout title="Tasks" sidebarTitle="Views">
+    <TeamListLayout
+      title={PAGE_CONTEXT.tasks.nav}
+      contextTitle={PAGE_CONTEXT.tasks.title}
+      contextSubtitle={PAGE_CONTEXT.tasks.subtitle}
+      sidebarTitle="Views"
+      contentWidth="operational"
+    >
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-task-create>
@@ -110,8 +117,6 @@ const staffOptions = staffRows ?? [];
         </button>
       </TeamSidebarNav>
       </div>
-
-      <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
 
       <div class="tasks-page__content">
         <div class="tasks-page__primary">
@@ -1020,10 +1025,11 @@ const staffOptions = staffRows ?? [];
     display: none;
   }
 
-  /* Keep the subtitle centred on the same column as the notebook sheet. */
-  .tasks-page :global(.team-list-layout__main-lead) {
+  /* Context header aligns with notebook column */
+  .tasks-page :global(.page-context-header) {
     max-width: var(--tasks-content-max);
     margin-inline: auto;
+    width: 100%;
   }
 
   .tasks-page :global(.team-list-layout__toolbar) {
@@ -1521,10 +1527,6 @@ const staffOptions = staffRows ?? [];
     .tasks-page :global(.team-list-layout__mobile-filter-bar) {
       display: none;
     }
-
-    .tasks-page :global(.team-list-layout__main-lead) {
-      display: none;
-    }
   }
 
   @media (max-width: 640px) {
@@ -1533,25 +1535,13 @@ const staffOptions = staffRows ?? [];
       --notebook-margin: 1.65rem;
     }
 
-    .tasks-page :global(.team-list-layout__subheader) {
-      padding-inline: var(--space-3);
-    }
-
     .tasks-page :global(.team-list-layout__main) {
-      padding-inline: var(--space-3);
-      padding-top: var(--space-3);
+      padding-inline: var(--shell-main-padding-x-compact);
+      padding-top: var(--shell-main-padding-top-compact);
       padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
     }
 
-    .tasks-page :global(.team-list-layout__main-lead) {
-      margin-bottom: 0.65rem;
-    }
-
-    .tasks-page :global(.team-list-layout__header-actions) {
-      width: 100%;
-    }
-
-    .tasks-page :global(.team-list-layout__header-actions .team-list-layout__btn-primary) {
+    .tasks-page :global(.page-context-header__actions .team-list-layout__btn-primary) {
       flex: 1;
       min-height: 2.75rem;
     }

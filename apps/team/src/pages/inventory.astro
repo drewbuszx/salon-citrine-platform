@@ -4,6 +4,7 @@ import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamListFilter from "../components/TeamListFilter.astro";
 import { formatCategoryLabel } from "@saloncitrine/shared";
 import { isSalonManager } from "../lib/auth";
+import { PAGE_CONTEXT } from "../lib/page-context";
 import { teamUrl } from "../lib/supabase-server";
 
 const { staff, supabase } = Astro.locals;
@@ -32,7 +33,14 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     data-inventory-root
     data-is-manager={isManager ? "1" : "0"}
   >
-    <TeamListLayout title="Stock" mainTitle="Your Products" sidebarTitle="Filter Products">
+    <TeamListLayout
+      title={PAGE_CONTEXT.stock.nav}
+      contextTitle={PAGE_CONTEXT.stock.title}
+      contextSubtitle={PAGE_CONTEXT.stock.subtitle}
+      mainTitle="Your Products"
+      sidebarTitle="Filter Products"
+      contentWidth="operational"
+    >
       {
         isManager ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-add-open>

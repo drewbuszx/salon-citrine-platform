@@ -3,6 +3,7 @@ import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamSidebarNav from "../components/TeamSidebarNav.astro";
 import { isSalonManager } from "../lib/auth";
+import { PAGE_CONTEXT } from "../lib/page-context";
 import { teamUrl } from "../lib/supabase-server";
 
 const { staff } = Astro.locals;
@@ -21,11 +22,17 @@ const managerView = isSalonManager(staff);
     data-api-base={teamUrl("/api/documents")}
     data-manager={managerView ? "1" : "0"}
   >
-    <TeamListLayout title="Docs" mainTitle="Your documents" sidebarTitle="Categories">
+    <TeamListLayout
+      title={PAGE_CONTEXT.docs.nav}
+      contextTitle={PAGE_CONTEXT.docs.title}
+      contextSubtitle={PAGE_CONTEXT.docs.subtitle}
+      sidebarTitle="Categories"
+      contentWidth="reading"
+    >
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-doc-upload-open>
-            Upload
+            Upload document
           </button>
         ) : null
       }
@@ -37,8 +44,6 @@ const managerView = isSalonManager(staff);
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="forms">Forms</button>
         <button class="team-list-layout__sidebar-nav-btn" type="button" data-doc-category="other">Other</button>
       </TeamSidebarNav>
-
-      <Fragment slot="mainLead">Employee handbook, procedures, and salon resources.</Fragment>
 
       <label slot="searchBar" class="team-list-layout__search">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none">

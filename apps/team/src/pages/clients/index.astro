@@ -4,6 +4,7 @@ import TeamListLayout from "../../components/TeamListLayout.astro";
 import TeamListFilter from "../../components/TeamListFilter.astro";
 import ClientsAddModal from "../../components/clients/ClientsAddModal.astro";
 import ClientsPreviewDrawer from "../../components/clients/ClientsPreviewDrawer.astro";
+import { PAGE_CONTEXT } from "../../lib/page-context";
 import { teamUrl } from "../../lib/supabase-server";
 import {
   clientInitials,
@@ -119,17 +120,23 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     data-client-api={teamUrl("/api/clients/:id")}
   >
     <TeamListLayout
-      title="Clients"
-      mainTitle="Your Clients"
+      title={PAGE_CONTEXT.clients.nav}
+      contextTitle={PAGE_CONTEXT.clients.title}
+      contextSubtitle={PAGE_CONTEXT.clients.subtitle}
       sidebarTitle="Refine your search"
       rootClass="clients-list-layout"
       filterKey="clients"
+      contentWidth="operational"
     >
+      <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-add-open>
+        Add client
+      </button>
+
       <Fragment slot="toolbar">
         <div class="clients-page__toolbar">
           <div class="clients-page__toolbar-main">
             <h2 class="clients-page__heading">
-              <span class="clients-page__heading-title">Your Clients</span>
+              <span class="clients-page__heading-title">Client list</span>
               <span
                 class="clients-page__heading-count"
                 data-client-count
@@ -192,7 +199,6 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
                 <label class="clients-page__columns-option"><input type="checkbox" data-column-toggle="ltv" checked /> Lifetime value</label>
               </div>
             </details>
-            <button class="clients-page__btn-primary" type="button" data-add-open>Add client</button>
           </div>
         </div>
       </Fragment>
@@ -440,18 +446,9 @@ const initialTotal = countError ? null : (totalCount ?? initialClients.length);
     display: none !important;
   }
 
-  .clients-page :global(.clients-list-layout .team-list-layout__main-title) {
-    display: none;
-  }
-
   .clients-page :global(.clients-list-layout .team-list-layout__main) {
     max-width: 92rem;
-    padding: var(--space-3) var(--space-5) var(--space-6);
-  }
-
-  .clients-page :global(.clients-list-layout .team-list-layout__subheader) {
-    margin-bottom: 0.15rem;
-    padding-block: 0.35rem;
+    padding: var(--shell-main-padding-top) var(--shell-main-padding-x) var(--shell-main-padding-bottom);
   }
 
   .clients-page :global(.clients-list-layout .team-list-layout__stats) {
