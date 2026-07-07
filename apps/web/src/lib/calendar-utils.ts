@@ -114,3 +114,106 @@ export function isWithinBookingHorizon(
   const end = bookingHorizonEnd(start, daysAhead);
   return dateStr >= start && dateStr <= end;
 }
+
+export type IcsAppointmentInput = {
+  uid: string;
+  startsAt: string;
+  endsAt: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  organizerEmail?: string;
+};
+
+const VTIMEZONE_INDIANAPOLIS = [
+  "BEGIN:VTIMEZONE",
+  "TZID:America/Indiana/Indianapolis",
+  "X-LIC-LOCATION:America/Indiana/Indianapolis",
+  "BEGIN:DAYLIGHT",
+  "TZOFFSETFROM:-0500",
+  "TZOFFSETTO:-0400",
+  "TZNAME:EDT",
+  "DTSTART:19700308T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+  "END:DAYLIGHT",
+  "BEGIN:STANDARD",
+  "TZOFFSETFROM:-0400",
+  "TZOFFSETTO:-0500",
+  "TZNAME:EST",
+  "DTSTART:19701101T020000",
+  "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
+  "END:STANDARD",
+  "END:VTIMEZONE",
+].join("\r\n");
+
+function icsEscape(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
+function formatIcsUtcTimestamp(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+/** Format an ISO instant as local wall time for ICS DTSTART/DTEND (YYYYMMDDTHHMMSS). */
+export function formatIcsLocalTimestamp(
+  iso: string,
+  timeZone: string = TIMEZONE,
+): string {
+  const date = new Date(iso);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  const hour = parts.hour === "24" ? "00" : parts.hour;
+  return `${parts.year}${parts.month}${parts.day}T${hour}${parts.minute}${parts.second}`;
+}
+
+/** Build a downloadable .ics file for a confirmed salon appointment. */
+export function generateIcsFile(
+  appointment: IcsAppointmentInput,
+  timeZone: string = TIMEZONE,
+): string {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Salon Citrine//Guest Booking//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    VTIMEZONE_INDIANAPOLIS,
+    "BEGIN:VEVENT",
+    `UID:${icsEscape(appointment.uid)}`,
+    `DTSTAMP:${formatIcsUtcTimestamp(new Date())}`,
+    `DTSTART;TZID=${timeZone}:${formatIcsLocalTimestamp(appointment.startsAt, timeZone)}`,
+    `DTEND;TZID=${timeZone}:${formatIcsLocalTimestamp(appointment.endsAt, timeZone)}`,
+    `SUMMARY:${icsEscape(appointment.summary)}`,
+  ];
+
+  if (appointment.description) {
+    lines.push(`DESCRIPTION:${icsEscape(appointment.description)}`);
+  }
+  if (appointment.location) {
+    lines.push(`LOCATION:${icsEscape(appointment.location)}`);
+  }
+  if (appointment.organizerEmail) {
+    lines.push(
+      `ORGANIZER;CN=Salon Citrine:mailto:${icsEscape(appointment.organizerEmail)}`,
+    );
+  }
+
+  lines.push("STATUS:CONFIRMED", "END:VEVENT", "END:VCALENDAR");
+  return lines.join("\r\n");
+}

@@ -19,8 +19,9 @@ import {
   fetchAppointmentConfirmation,
   formatConfirmationWhen,
 } from "../lib/appointment-confirmation";
+import { generateIcsFile } from "../lib/calendar-utils";
 import { withBase } from "../lib/paths";
-import { bookingFlagsFromUrl } from "../lib/booking-flow";
+import { appendFlowFlags, bookingFlagsFromUrl } from "../lib/booking-flow";
 
 const appointmentId = Astro.url.searchParams.get("appointment");
 const showStylistStep = Astro.url.searchParams.get("flow") === "stylist";
@@ -71,6 +72,31 @@ const depositLabel =
           appointment.depositRequiredCents % 100 === 0 ? 0 : 2,
         )} required`
       : null;
+
+const businessAddress = `${BUSINESS.address.street}, ${BUSINESS.address.city}, ${BUSINESS.address.state} ${BUSINESS.address.zip}`;
+const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(businessAddress)}`;
+
+const icsSummary = `${appointment.services.map((svc) => svc.name).join(", ")} with ${appointment.staff.name}`;
+const icsDescription = [
+  `Confirmation #${shortId}`,
+  `Guest: ${appointment.client.firstName} ${appointment.client.lastName}`,
+  policySummary,
+].join("\n");
+const icsContent = generateIcsFile({
+  uid: `${appointment.id}@${BUSINESS.domain}`,
+  startsAt: appointment.startsAt,
+  endsAt: appointment.endsAt,
+  summary: `${BUSINESS.name}: ${icsSummary}`,
+  description: icsDescription,
+  location: businessAddress,
+  organizerEmail: BUSINESS.bookingEmail,
+});
+const icsFilename = `salon-citrine-${shortId.toLowerCase()}.ics`;
+const icsDataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+
+const rebookParams = new URLSearchParams({ stylist: appointment.staff.slug });
+appendFlowFlags(rebookParams, { ...flowFlags, showStylistStep });
+const rebookHref = `${withBase()}?${rebookParams.toString()}`;
 ---
 
 <BookingLayout
@@ -80,8 +106,8 @@ const depositLabel =
   embed={flowFlags.embed}
 >
   <div class="confirm">
-    <div class="confirm__hero" aria-hidden="true">
-      <span class="confirm__icon">
+    <header class="confirm__hero">
+      <span class="confirm__icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="11" stroke="currentColor" stroke-width="1.5" />
           <path
@@ -93,9 +119,12 @@ const depositLabel =
           />
         </svg>
       </span>
-    </div>
-    <p class="confirm__kicker">You're booked!</p>
-    <h1 class="confirm__title">Confirmation #{shortId}</h1>
+      <p class="confirm__kicker">You're booked!</p>
+      <h1 class="confirm__title">Confirmation #{shortId}</h1>
+      <p class="confirm__subtitle">
+        {whenLabel} with {appointment.staff.name}
+      </p>
+    </header>
 
     <dl class="confirm__details">
       <div>
@@ -115,6 +144,15 @@ const depositLabel =
         <dd>{whenLabel}</dd>
       </div>
       <div>
+        <dt>Location</dt>
+        <dd>
+          {businessAddress}
+          <a class="confirm__directions" href={directionsUrl} target="_blank" rel="noopener noreferrer">
+            Get directions
+          </a>
+        </dd>
+      </div>
+      <div>
         <dt>Guest</dt>
         <dd>
           {appointment.client.firstName} {appointment.client.lastName}
@@ -131,11 +169,32 @@ const depositLabel =
       }
     </dl>
 
-    <p class="confirm__note">
-      {policySummary} A confirmation email and text reminder will be sent shortly.
-    </p>
+    <section class="confirm__recap" aria-label="Policy and deposit">
+      <h2 class="confirm__recap-title">Before you arrive</h2>
+      <p class="confirm__recap-policy">{policySummary}</p>
+      {
+        depositLabel && (
+          <p class="confirm__recap-deposit">
+            <span class="confirm__recap-label">Deposit</span>
+            {depositLabel}
+          </p>
+        )
+      }
+      <p class="confirm__recap-note">
+        A confirmation email and text reminder will be sent shortly.
+      </p>
+    </section>
 
     <div class="confirm__actions">
+      <Button href={rebookHref} variant="primary">
+        Book again
+      </Button>
+      <a class="confirm__utility-link" href={icsDataUrl} download={icsFilename}>
+        Add to calendar
+      </a>
+      <Button href={directionsUrl} variant="secondary" target="_blank" rel="noopener noreferrer">
+        Get directions
+      </Button>
       {
         flowFlags.embed ? (
           <Button href="https://saloncitrineindy.com/" variant="secondary">
@@ -159,32 +218,35 @@ const depositLabel =
   }
 
   .confirm__hero {
-    display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
   }
 
   .confirm__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 3.5rem;
-    height: 3.5rem;
-    color: var(--color-sage);
-    background: rgba(141, 158, 136, 0.14);
+    width: 4.25rem;
+    height: 4.25rem;
+    margin-bottom: var(--space-4);
+    color: var(--color-citrine-dark);
+    background: var(--color-citrine-muted);
+    border: 1px solid rgba(231, 172, 70, 0.35);
     border-radius: 50%;
+    box-shadow:
+      0 0 0 6px rgba(231, 172, 70, 0.08),
+      0 12px 28px rgba(231, 172, 70, 0.12);
   }
 
   .confirm__icon svg {
-    width: 2rem;
-    height: 2rem;
+    width: 2.15rem;
+    height: 2.15rem;
   }
 
   .confirm__title {
     font-family: var(--font-display);
     font-size: clamp(1.75rem, 4vw, 2.25rem);
     font-weight: 500;
-    margin-bottom: var(--space-5);
+    margin: 0 0 var(--space-2);
   }
 
   .confirm__kicker {
@@ -192,12 +254,20 @@ const depositLabel =
     font-size: 0.75rem;
     letter-spacing: var(--tracking-widest);
     text-transform: uppercase;
-    color: var(--color-sage);
+    color: var(--color-citrine-dark);
     margin: 0 0 var(--space-2);
   }
 
+  .confirm__subtitle {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--color-gray);
+    line-height: var(--leading-relaxed);
+  }
+
   .confirm__details {
-    margin: 0 0 var(--space-5);
+    margin: 0 0 var(--space-4);
     padding: var(--space-5);
     display: grid;
     gap: var(--space-4);
@@ -222,19 +292,128 @@ const depositLabel =
     line-height: var(--leading-normal);
   }
 
-  .confirm__note {
+  .confirm__directions {
+    display: inline-block;
+    margin-top: 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .confirm__directions:hover,
+  .confirm__directions:focus-visible {
+    color: var(--color-text);
+  }
+
+  .confirm__recap {
     margin: 0 0 var(--space-5);
     padding: var(--space-4);
+    text-align: left;
     background: var(--color-citrine-muted);
     border-left: 3px solid var(--color-citrine);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .confirm__recap-title {
+    margin: 0 0 var(--space-2);
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .confirm__recap-policy,
+  .confirm__recap-deposit,
+  .confirm__recap-note {
+    margin: 0;
     font-size: 0.9rem;
     color: var(--color-gray);
-    text-align: left;
     line-height: var(--leading-relaxed);
+  }
+
+  .confirm__recap-deposit {
+    margin-top: var(--space-3);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .confirm__recap-label {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .confirm__recap-note {
+    margin-top: var(--space-3);
+    font-size: 0.85rem;
   }
 
   .confirm__actions {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .confirm__utility-link {
+    display: inline-block;
+    padding: 0.65rem 1.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    color: var(--color-text);
+  }
+
+  .confirm__utility-link:hover,
+  .confirm__utility-link:focus-visible {
+    color: var(--color-citrine-dark);
+  }
+
+  [data-theme="dark"] .confirm__icon {
+    color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.12);
+    border-color: rgba(231, 172, 70, 0.28);
+    box-shadow:
+      0 0 0 6px rgba(231, 172, 70, 0.05),
+      0 12px 28px rgba(0, 0, 0, 0.25);
+  }
+
+  [data-theme="dark"] .confirm__kicker {
+    color: var(--color-citrine);
+  }
+
+  [data-theme="dark"] .confirm__details {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  [data-theme="dark"] .confirm__recap {
+    background: rgba(231, 172, 70, 0.1);
+    border-left-color: var(--color-citrine);
+  }
+
+  [data-theme="dark"] .confirm__recap-deposit {
+    color: var(--color-text);
+  }
+
+  [data-theme="dark"] .confirm__directions {
+    color: var(--color-citrine);
+  }
+
+  [data-theme="dark"] .confirm__utility-link {
+    color: var(--color-citrine);
   }
 </style>
