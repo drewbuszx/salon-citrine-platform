@@ -1,4 +1,5 @@
 @import "@saloncitrine/theme/tokens.css";
+@import "./dark-mode-overrides.css";
 
 *,
 *::before,
@@ -42,6 +43,32 @@ body {
       var(--color-cream) 100%
     );
   background-attachment: fixed;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--color-cream);
+  background-image:
+    radial-gradient(
+      ellipse 120% 80% at 10% -10%,
+      rgba(231, 172, 70, 0.06) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 90% 70% at 95% 15%,
+      rgba(141, 158, 136, 0.04) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 100% 60% at 50% 100%,
+      rgba(174, 148, 143, 0.05) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      165deg,
+      var(--color-cream) 0%,
+      var(--color-cream-deep) 45%,
+      var(--color-cream) 100%
+    );
 }
 
 h1,

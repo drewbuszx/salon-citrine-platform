@@ -1,0 +1,95 @@
+/*
+ * Guest booking — dark mode contrast fixes.
+ * Prefer token overrides under [data-theme="dark"] over per-page hacks.
+ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-link: #c9a96e;
+  --color-success: #9cb393;
+}
+
+/* Native date/time inputs respect dark surfaces */
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Shared notices */
+[data-theme="dark"] .notice--error {
+  color: #f5a8a8;
+  border-color: rgba(200, 68, 68, 0.45);
+  background: rgba(200, 60, 60, 0.14);
+}
+
+[data-theme="dark"] .notice--success {
+  color: #b5c9ae;
+  border-color: rgba(141, 158, 136, 0.45);
+  background: rgba(141, 158, 136, 0.16);
+}
+
+/* Intake form section */
+[data-theme="dark"] .form-section--intake {
+  border-color: var(--color-stone-300);
+  background: var(--color-stone-100);
+}
+
+/* Booking content surfaces */
+[data-theme="dark"] .booking-content {
+  background: var(--color-booking-panel-bg);
+  border-color: var(--color-border-subtle);
+  box-shadow: 0 8px 40px var(--color-card-shadow);
+}
+
+/* Embed shell */
+[data-theme="dark"] .booking-shell--embed {
+  background: var(--color-cream);
+}
+
+[data-theme="dark"] .booking-shell--embed .booking-content {
+  border-color: var(--color-stone-300);
+  background: var(--color-stone-100);
+}
+
+/* Calendar day buttons */
+[data-theme="dark"] .calendar__day--today:not(.calendar__day--selected) {
+  border-color: var(--color-sage);
+}
+
+[data-theme="dark"] .calendar__day--available:not(.calendar__day--disabled):hover,
+[data-theme="dark"] .calendar__day--available:not(.calendar__day--disabled):focus-visible {
+  background: var(--color-citrine-muted);
+}
+
+[data-theme="dark"] .calendar__day--selected {
+  background: var(--color-citrine);
+  color: var(--color-black);
+}
+
+/* Time slot pills */
+[data-theme="dark"] .time-slot,
+[data-theme="dark"] .time-option span {
+  border-color: var(--color-stone-300);
+  background: var(--color-stone-100);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .time-option input:checked + span,
+[data-theme="dark"] .time-slot.is-selected,
+[data-theme="dark"] .time-slot--selected {
+  border-color: var(--color-citrine);
+  background: var(--color-citrine);
+  color: var(--color-black);
+}
+
+[data-theme="dark"] .time-slot:hover:not(.is-selected):not(.time-slot--selected),
+[data-theme="dark"] .time-option span:hover {
+  border-color: var(--color-citrine);
+}
+
+/* Waitlist offer */
+[data-theme="dark"] .waitlist-offer {
+  border-color: var(--color-stone-300);
+  background: var(--color-stone-100);
+}
