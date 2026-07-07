@@ -30,8 +30,9 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** White wordmark for dark team bar; compact PNG is invert-filter fallback */
-const logoPrimarySrc = withBase("images/salon-citrine-banner-dark.png");
+/** Default bar wordmark (light mode); Horiz.png for dark mode */
+const logoLightSrc = withBase("images/salon-citrine-banner-dark.png");
+const logoDarkSrc = withBase("images/logo-horiz-dark.png");
 const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
 const profileMenuId = "team-profile-menu";
 
@@ -62,8 +63,17 @@ const initials = staff ? staffInitials(staff.name) : "";
     <div class="team-bar__brand">
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
-          class="team-bar__logo-img"
-          src={logoPrimarySrc}
+          class="team-bar__logo-img team-bar__logo-img--light-theme"
+          src={logoLightSrc}
+          data-fallback-src={logoFallbackSrc}
+          alt=""
+          width="200"
+          height="40"
+          loading="eager"
+        />
+        <img
+          class="team-bar__logo-img team-bar__logo-img--dark-theme"
+          src={logoDarkSrc}
           data-fallback-src={logoFallbackSrc}
           alt=""
           width="200"
@@ -308,7 +318,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     right: 0;
     z-index: 120;
     height: var(--team-bar-height, 3.25rem);
-    background: var(--team-bar-bg, var(--color-stone-800));
+    background: var(--team-bar-bg, #2f2a28);
     border-bottom: 1px solid var(--team-bar-border, rgba(255, 255, 255, 0.08));
     color: var(--team-bar-text, rgba(255, 255, 255, 0.92));
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
@@ -338,7 +348,23 @@ const initials = staff ? staffInitials(staff.name) : "";
     font-family: var(--font-body);
     font-size: var(--text-sm);
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.92);
+    color: var(--team-bar-text, rgba(255, 255, 255, 0.92));
+  }
+
+  .team-bar__logo-img--dark-theme {
+    display: none;
+  }
+
+  :global([data-theme="dark"]) .team-bar__logo-img--light-theme {
+    display: none;
+  }
+
+  :global([data-theme="dark"]) .team-bar__logo-img--dark-theme {
+    display: block;
+  }
+
+  :global([data-theme="dark"]) .team-bar__logo.is-wordmark .team-bar__logo-img--dark-theme {
+    display: none;
   }
 
   .team-bar__page-title[hidden] {
@@ -388,7 +414,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     font-weight: 500;
     letter-spacing: 0.02em;
     line-height: 1;
-    color: rgba(255, 255, 255, 0.92);
+    color: var(--team-bar-text, rgba(255, 255, 255, 0.92));
     white-space: nowrap;
   }
 
@@ -463,7 +489,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     letter-spacing: 0.1em;
     text-transform: uppercase;
     white-space: nowrap;
-    color: rgba(255, 255, 255, 0.62);
+    color: var(--team-bar-tab, rgba(255, 255, 255, 0.62));
     transition:
       background var(--transition-fast),
       color var(--transition-fast),
@@ -472,14 +498,14 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__tab:hover,
   .team-bar__tab:focus-visible {
-    color: rgba(255, 255, 255, 0.95);
-    background: rgba(255, 255, 255, 0.06);
+    color: var(--team-bar-tab-hover, rgba(255, 255, 255, 0.95));
+    background: var(--team-bar-tab-hover-bg, rgba(255, 255, 255, 0.06));
     outline: none;
   }
 
   .team-bar__tab--active {
     color: var(--color-citrine);
-    background: rgba(231, 172, 70, 0.1);
+    background: var(--team-bar-tab-active-bg, rgba(231, 172, 70, 0.1));
     box-shadow: inset 0 -2px 0 var(--color-citrine);
   }
 
@@ -501,7 +527,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     border: none;
     border-radius: 0.35rem;
     background: transparent;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--team-bar-utility, rgba(255, 255, 255, 0.8));
     cursor: pointer;
     text-decoration: none;
   }
@@ -515,8 +541,8 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__icon-btn:not(:disabled):hover,
   .team-bar__icon-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+    background: var(--team-bar-utility-hover-bg, rgba(255, 255, 255, 0.1));
+    color: var(--team-bar-text, #fff);
     outline: none;
   }
 
@@ -538,7 +564,7 @@ const initials = staff ? staffInitials(staff.name) : "";
     background: none;
     cursor: pointer;
     border-radius: 999px;
-    color: rgba(255, 255, 255, 0.88);
+    color: var(--team-bar-profile, rgba(255, 255, 255, 0.88));
     transition:
       background var(--transition-fast),
       border-color var(--transition-fast);
@@ -546,8 +572,8 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__profile-btn:hover,
   .team-bar__profile-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--team-bar-profile-hover-bg, rgba(255, 255, 255, 0.1));
+    border-color: var(--team-bar-profile-hover-border, rgba(255, 255, 255, 0.18));
     outline: none;
   }
 
@@ -673,9 +699,9 @@ const initials = staff ? staffInitials(staff.name) : "";
     min-width: var(--touch-target-min, 2.75rem);
     min-height: var(--touch-target-min, 2.75rem);
     padding: 0.12rem;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid var(--team-bar-mobile-btn-border, rgba(255, 255, 255, 0.18));
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--team-bar-mobile-btn-bg, rgba(255, 255, 255, 0.06));
     cursor: pointer;
   }
 

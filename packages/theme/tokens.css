@@ -127,9 +127,20 @@
 
   /* ── Team app chrome ── */
   --team-bar-height: 3.25rem;
-  --team-bar-bg: var(--color-stone-800);
+  --team-bar-bg: #2f2a28;
   --team-bar-border: rgba(255, 255, 255, 0.1);
   --team-bar-text: rgba(255, 255, 255, 0.92);
+  --team-bar-tab: rgba(255, 255, 255, 0.62);
+  --team-bar-tab-hover: rgba(255, 255, 255, 0.95);
+  --team-bar-tab-hover-bg: rgba(255, 255, 255, 0.06);
+  --team-bar-tab-active-bg: rgba(231, 172, 70, 0.1);
+  --team-bar-utility: rgba(255, 255, 255, 0.8);
+  --team-bar-utility-hover-bg: rgba(255, 255, 255, 0.1);
+  --team-bar-profile: rgba(255, 255, 255, 0.88);
+  --team-bar-profile-hover-bg: rgba(255, 255, 255, 0.1);
+  --team-bar-profile-hover-border: rgba(255, 255, 255, 0.18);
+  --team-bar-mobile-btn-border: rgba(255, 255, 255, 0.18);
+  --team-bar-mobile-btn-bg: rgba(255, 255, 255, 0.06);
   --team-sidebar-bg: var(--color-stone-50);
   --team-sidebar-active-bg: var(--color-citrine-muted);
   --team-sidebar-active-border: var(--color-citrine);
@@ -175,6 +186,24 @@
   --color-stone-700: #e3ddd4;
   --color-stone-800: #f3f0ea;
   --color-stone-900: #faf9f7;
+  --color-link: #c9a96e;
+  --color-success: #9cb393;
   --team-sidebar-bg: var(--color-stone-100);
   --color-focus-ring: rgba(231, 172, 70, 0.25);
+
+  /* Team bar stays dark in dark mode — do not inherit inverted stone neutrals */
+  --team-bar-bg: #2f2a28;
+  --team-bar-border: rgba(255, 255, 255, 0.1);
+  --team-bar-text: rgba(255, 255, 255, 0.92);
+  --team-bar-tab: rgba(255, 255, 255, 0.62);
+  --team-bar-tab-hover: rgba(255, 255, 255, 0.95);
+  --team-bar-tab-hover-bg: rgba(255, 255, 255, 0.06);
+  --team-bar-tab-active-bg: rgba(231, 172, 70, 0.1);
+  --team-bar-utility: rgba(255, 255, 255, 0.8);
+  --team-bar-utility-hover-bg: rgba(255, 255, 255, 0.1);
+  --team-bar-profile: rgba(255, 255, 255, 0.88);
+  --team-bar-profile-hover-bg: rgba(255, 255, 255, 0.1);
+  --team-bar-profile-hover-border: rgba(255, 255, 255, 0.18);
+  --team-bar-mobile-btn-border: rgba(255, 255, 255, 0.18);
+  --team-bar-mobile-btn-bg: rgba(255, 255, 255, 0.06);
 }
