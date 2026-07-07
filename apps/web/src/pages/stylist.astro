@@ -58,6 +58,10 @@ if (preselectedStylist) {
 const staff = await fetchStaffForService(primaryService.id);
 const bookBase = withBase();
 const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
+
+function formatStaffRole(role: string): string {
+  return role.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
 ---
 
 <BookingLayout title="Choose a stylist" step="stylist" showStylistStep embed={flowFlags.embed}>
@@ -70,7 +74,29 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     </p>
   </header>
 
-  <ul class="stylist-list" data-stylist-list>
+  <ul class="stylist-grid" data-stylist-list role="list" aria-label="Professionals">
+    <li class="stylist-grid__item">
+      <div
+        class="stylist-card stylist-card--any stylist-card--selected"
+        aria-current="true"
+      >
+        <span class="stylist-card__media">
+          <span class="stylist-card__avatar stylist-card__avatar--any" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        </span>
+        <span class="stylist-card__body">
+          <span class="stylist-card__name">Any Professional</span>
+          <span class="stylist-card__role">No preference</span>
+          <span class="stylist-card__hint">Select a team member below to continue</span>
+        </span>
+      </div>
+    </li>
+
     {
       staff.map((member) => {
         const isReturningRestricted = returningOnlySlugs.has(member.slug);
@@ -79,82 +105,61 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
         const datetimeHref = datetimeUrl(resolvedServiceIds, member.slug, flowFlags);
         const continueHref = `${datetimeHref}${datetimeHref.includes("?") ? "&" : "?"}returning=1`;
         const existingContinueHref = `${datetimeHref}${datetimeHref.includes("?") ? "&" : "?"}${EXISTING_CLIENT_ACK_PARAM}=1`;
+        const cardLabel = isRestricted
+          ? `${member.name}, ${formatStaffRole(member.role)} — requires confirmation`
+          : `Book with ${member.name}, ${formatStaffRole(member.role)}`;
 
         return (
-          <li>
-            {isRestricted ? (
-              <button
-                type="button"
-                class="stylist-card stylist-card--button"
-                data-stylist-select
-                data-stylist-name={member.name}
-                data-stylist-first-name={staffFirstName(member.name)}
-                data-stylist-slug={member.slug}
-                data-continue-href={continueHref}
-                data-existing-continue-href={existingContinueHref}
-                data-returning-restricted={isReturningRestricted ? "1" : ""}
-                data-not-accepting={isNotAcceptingNew ? "1" : ""}
-              >
+          <li class="stylist-grid__item">
+            <button
+              type="button"
+              class="stylist-card"
+              aria-label={cardLabel}
+              data-stylist-select={isRestricted ? "" : undefined}
+              data-stylist-nav={!isRestricted ? datetimeHref : undefined}
+              data-stylist-name={member.name}
+              data-stylist-first-name={staffFirstName(member.name)}
+              data-stylist-slug={member.slug}
+              data-continue-href={continueHref}
+              data-existing-continue-href={existingContinueHref}
+              data-returning-restricted={isReturningRestricted ? "1" : ""}
+              data-not-accepting={isNotAcceptingNew ? "1" : ""}
+            >
+              <span class="stylist-card__media">
                 {member.photoUrl ? (
                   <img
                     class="stylist-card__photo"
                     src={member.photoUrl}
                     alt=""
-                    width="64"
-                    height="64"
+                    width="120"
+                    height="120"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <span class="stylist-card__avatar" aria-hidden="true">
                     {member.name.charAt(0)}
                   </span>
                 )}
-                <span class="stylist-card__body">
-                  <span class="stylist-card__name">{member.name}</span>
-                  <span class="stylist-card__role">
-                    {member.role.replace("_", " ")}
-                  </span>
-                  {
-                    isNotAcceptingNew ? (
-                      <span class="stylist-card__badge">Not accepting new clients</span>
-                    ) : isReturningRestricted ? (
-                      <span class="stylist-card__badge">Returning clients only</span>
-                    ) : null
-                  }
-                  {member.bio && (
-                    <span class="stylist-card__bio">{member.bio}</span>
-                  )}
-                </span>
-                <span class="stylist-card__action">Select</span>
-              </button>
-            ) : (
-              <a class="stylist-card" href={datetimeHref}>
-                {member.photoUrl ? (
-                  <img
-                    class="stylist-card__photo"
-                    src={member.photoUrl}
-                    alt=""
-                    width="64"
-                    height="64"
-                    loading="lazy"
-                  />
-                ) : (
-                  <span class="stylist-card__avatar" aria-hidden="true">
-                    {member.name.charAt(0)}
-                  </span>
+              </span>
+              <span class="stylist-card__body">
+                <span class="stylist-card__name">{member.name}</span>
+                <span class="stylist-card__role">{formatStaffRole(member.role)}</span>
+                {
+                  isNotAcceptingNew ? (
+                    <span class="stylist-card__badge">Not accepting new clients</span>
+                  ) : isReturningRestricted ? (
+                    <span class="stylist-card__badge">Returning clients only</span>
+                  ) : null
+                }
+                {member.bio && (
+                  <span class="stylist-card__bio">{member.bio}</span>
                 )}
-                <span class="stylist-card__body">
-                  <span class="stylist-card__name">{member.name}</span>
-                  <span class="stylist-card__role">
-                    {member.role.replace("_", " ")}
-                  </span>
-                  {member.bio && (
-                    <span class="stylist-card__bio">{member.bio}</span>
-                  )}
-                </span>
+              </span>
+              <span class="stylist-card__footer">
                 <span class="stylist-card__action">Select</span>
-              </a>
-            )}
+              </span>
+            </button>
           </li>
         );
       })
@@ -211,6 +216,21 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
   const newClientsFirstNameEls = newClientsModal?.querySelectorAll(
     ".new-clients-modal__body strong",
   );
+  const anyProCard = document.querySelector(".stylist-card--any");
+  const staffCards = Array.from(
+    document.querySelectorAll(".stylist-card[data-stylist-nav], .stylist-card[data-stylist-select]"),
+  );
+
+  function setSelectedCard(card) {
+    document.querySelectorAll(".stylist-card--selected").forEach((el) => {
+      el.classList.remove("stylist-card--selected");
+    });
+    card?.classList.add("stylist-card--selected");
+  }
+
+  function resetAnyProSelected() {
+    anyProCard?.classList.add("stylist-card--selected");
+  }
 
   function openReturningModal(name, href) {
     if (stylistNameEl) stylistNameEl.textContent = name;
@@ -238,13 +258,46 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     newClientsContinueBtn?.focus();
   }
 
-  document.querySelectorAll("[data-stylist-select]").forEach((button) => {
+  staffCards.forEach((button, index) => {
+    button.addEventListener("focus", () => setSelectedCard(button));
+    button.addEventListener("blur", () => {
+      if (!staffCards.some((card) => card === document.activeElement)) {
+        resetAnyProSelected();
+      }
+    });
+
+    button.addEventListener("keydown", (event) => {
+      if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const columns = window.matchMedia("(min-width: 56rem)").matches
+        ? 3
+        : window.matchMedia("(min-width: 36rem)").matches
+          ? 2
+          : 1;
+      const delta =
+        event.key === "ArrowRight"
+          ? 1
+          : event.key === "ArrowLeft"
+            ? -1
+            : event.key === "ArrowDown"
+              ? columns
+              : -columns;
+      const nextIndex = (index + delta + staffCards.length) % staffCards.length;
+      staffCards[nextIndex]?.focus();
+    });
+
     button.addEventListener("click", () => {
+      setSelectedCard(button);
+
       const name = button.dataset.stylistName ?? "";
       const firstName = button.dataset.stylistFirstName ?? name;
       const slug = button.dataset.stylistSlug ?? "";
       const notAccepting = button.dataset.notAccepting === "1";
       const returningRestricted = button.dataset.returningRestricted === "1";
+      const navigateHref = button.dataset.stylistNav;
 
       if (notAccepting) {
         openNewClientsModal(
@@ -257,6 +310,11 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
 
       if (returningRestricted) {
         openReturningModal(name, button.dataset.continueHref ?? "");
+        return;
+      }
+
+      if (navigateHref) {
+        window.location.href = navigateHref;
       }
     });
   });
@@ -282,64 +340,126 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     margin-bottom: 0;
   }
 
-  .stylist-list {
+  .stylist-grid {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.75rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
-  .stylist-card,
-  .stylist-card--button {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 1rem;
-    align-items: center;
+  @media (min-width: 36rem) {
+    .stylist-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 56rem) {
+    .stylist-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .stylist-grid__item {
+    min-width: 0;
+  }
+
+  .stylist-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
-    padding: 1rem 1.15rem;
+    min-height: 100%;
+    padding: 0;
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-md, 0.75rem);
     background: var(--color-booking-card-bg);
     text-decoration: none;
-    text-align: left;
+    text-align: center;
     color: inherit;
     font: inherit;
-    cursor: pointer;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+    overflow: hidden;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background 0.2s ease;
   }
 
-  .stylist-card:hover,
-  .stylist-card:focus-visible,
-  .stylist-card--button:hover,
-  .stylist-card--button:focus-visible {
+  button.stylist-card {
+    cursor: pointer;
+  }
+
+  .stylist-card--any {
+    pointer-events: none;
+  }
+
+  .stylist-card--selected,
+  button.stylist-card:hover,
+  button.stylist-card:focus-visible {
     border-color: var(--color-citrine);
-    box-shadow: 0 4px 24px rgba(60, 61, 60, 0.06);
+    box-shadow:
+      0 0 0 1px var(--color-citrine),
+      0 8px 28px var(--color-card-shadow, rgba(60, 61, 60, 0.08));
     outline: none;
   }
 
-  .stylist-card__photo,
-  .stylist-card__avatar {
-    flex-shrink: 0;
-    width: 4rem;
-    height: 4rem;
+  .stylist-card--selected {
+    background: var(--color-citrine-muted);
+  }
+
+  .stylist-card__media {
+    position: relative;
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: var(--color-stone-100);
+  }
+
+  .stylist-card__photo {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-radius: 50%;
+    object-position: center top;
+    display: block;
   }
 
   .stylist-card__avatar {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     background: var(--color-dusty-rose);
     color: var(--color-white);
     font-family: var(--font-sans);
+    font-size: 2rem;
     font-weight: 600;
+  }
+
+  .stylist-card__avatar--any {
+    background: linear-gradient(
+      145deg,
+      var(--color-citrine-muted),
+      var(--color-dusty-rose-muted)
+    );
+    color: var(--color-citrine-dark);
+  }
+
+  .stylist-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1rem 0.5rem;
+    flex: 1;
   }
 
   .stylist-card__name {
     display: block;
     font-weight: 600;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
+    line-height: 1.25;
   }
 
   .stylist-card__role {
@@ -351,8 +471,16 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     color: var(--color-gray);
   }
 
+  .stylist-card__hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-gray);
+  }
+
   .stylist-card__badge {
     display: inline-block;
+    align-self: center;
     margin-top: 0.35rem;
     padding: 0.2rem 0.55rem;
     font-family: var(--font-sans);
@@ -361,33 +489,51 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     text-transform: uppercase;
     background: rgba(255, 210, 80, 0.35);
     color: var(--color-charcoal);
+    border-radius: var(--radius-sm, 0.35rem);
   }
 
   .stylist-card__bio {
-    display: block;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
     margin-top: 0.35rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    line-height: 1.45;
     color: var(--color-gray);
   }
 
+  .stylist-card__footer {
+    padding: 0.75rem 1rem 1rem;
+  }
+
   .stylist-card__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    width: 100%;
     font-family: var(--font-sans);
     font-size: 0.72rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     padding: 0.65rem 1.25rem;
     border: 1px solid var(--color-text);
+    border-radius: var(--radius-pill, 999px);
     background: var(--color-text);
     color: var(--color-bg);
-    transition: background 0.2s ease, color 0.2s ease;
+    transition:
+      background 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
   }
 
-  .stylist-card:hover .stylist-card__action,
-  .stylist-card:focus-visible .stylist-card__action,
-  .stylist-card--button:hover .stylist-card__action,
-  .stylist-card--button:focus-visible .stylist-card__action {
-    background: var(--color-bg);
-    color: var(--color-text);
+  button.stylist-card:hover .stylist-card__action,
+  button.stylist-card:focus-visible .stylist-card__action,
+  .stylist-card--selected:not(.stylist-card--any) .stylist-card__action {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
   }
 
   .empty {
@@ -395,10 +541,65 @@ const returningOnlyJson = JSON.stringify([...returningOnlySlugs]);
     text-align: center;
     background: var(--color-light);
     color: var(--color-gray);
+    border-radius: var(--radius-md, 0.75rem);
   }
 
   .back {
     margin-top: 1.5rem;
     text-align: center;
+  }
+
+  [data-theme="dark"] .stylist-card {
+    border-color: var(--color-stone-300);
+    background: var(--color-booking-card-bg);
+  }
+
+  [data-theme="dark"] .stylist-card__media {
+    background: var(--color-stone-200);
+  }
+
+  [data-theme="dark"] .stylist-card--selected,
+  [data-theme="dark"] button.stylist-card:hover,
+  [data-theme="dark"] button.stylist-card:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow:
+      0 0 0 1px var(--color-citrine),
+      0 8px 28px var(--color-card-shadow, rgba(0, 0, 0, 0.35));
+  }
+
+  [data-theme="dark"] .stylist-card--selected {
+    background: var(--color-citrine-muted);
+  }
+
+  [data-theme="dark"] .stylist-card__avatar {
+    background: var(--color-dusty-rose);
+    color: var(--color-white);
+  }
+
+  [data-theme="dark"] .stylist-card__avatar--any {
+    background: linear-gradient(
+      145deg,
+      var(--color-citrine-muted),
+      rgba(174, 148, 143, 0.2)
+    );
+    color: var(--color-citrine);
+  }
+
+  [data-theme="dark"] .stylist-card__badge {
+    background: rgba(231, 172, 70, 0.22);
+    color: var(--color-text);
+  }
+
+  [data-theme="dark"] .empty {
+    background: var(--color-stone-100);
+    border: 1px solid var(--color-stone-300);
+  }
+
+  [data-theme="dark"] button.stylist-card:hover .stylist-card__action,
+  [data-theme="dark"] button.stylist-card:focus-visible .stylist-card__action,
+  [data-theme="dark"] .stylist-card--selected:not(.stylist-card--any) .stylist-card__action {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
   }
 </style>
