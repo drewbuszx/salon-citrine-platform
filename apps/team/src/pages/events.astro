@@ -4,6 +4,7 @@ import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamListFilter from "../components/TeamListFilter.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
+import { staffAccentColor } from "../lib/staff-colors";
 
 const { supabase, staff } = Astro.locals;
 
@@ -19,6 +20,14 @@ const { data: staffRows } = await supabase
   .order("name");
 
 const staffOptions = staffRows ?? [];
+
+const typeFilters: { type: string; label: string }[] = [
+  { type: "closure", label: "Holiday / closure" },
+  { type: "community", label: "Community event" },
+  { type: "announcement", label: "Announcement" },
+  { type: "birthday", label: "Birthday" },
+  { type: "time_off", label: "Time off" },
+];
 ---
 
 <TeamLayout title="Events" activeNav="events" plain wide fullBleed>
@@ -30,110 +39,141 @@ const staffOptions = staffRows ?? [];
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
-    <TeamListLayout title="Events" mainTitle="Team calendar" sidebarTitle="Filters">
+    <TeamListLayout
+      title="Events"
+      mainTitle="Team calendar"
+      sidebarTitle="Filters"
+      filterKey="events"
+      rootClass="events-list-layout"
+    >
       <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-event-create>
         {managerView ? "Add event" : "Request time off"}
       </button>
 
       <TeamListFilter slot="sidebarFilters" label="Event type" open>
         <div class="team-list-layout__filter-options">
-          <label class="team-list-layout__filter-option">
-            <input type="checkbox" data-filter-type="closure" checked />
-            <span>Holiday / closure</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="checkbox" data-filter-type="event" checked />
-            <span>Community event</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="checkbox" data-filter-type="announcement" checked />
-            <span>Announcement</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="checkbox" data-filter-type="birthday" checked />
-            <span>Birthday</span>
-          </label>
-          <label class="team-list-layout__filter-option">
-            <input type="checkbox" data-filter-type="time_off" checked />
-            <span>Time off</span>
-          </label>
+          {
+            typeFilters.map(({ type, label }) => (
+              <label class="team-list-layout__filter-option events-filter-option">
+                <input type="checkbox" data-filter-type={type} checked />
+                <span class="events-filter-option__icon" data-type-icon={type} aria-hidden="true" />
+                <span class="events-filter-option__label">{label}</span>
+              </label>
+            ))
+          }
         </div>
       </TeamListFilter>
 
       {
         managerView ? (
           <TeamListFilter slot="sidebarFilters" label="Staff" count={staffOptions.length} open>
-            <div class="team-list-layout__filter-options team-list-layout__filter-options--scroll">
-              <label class="team-list-layout__filter-option">
-                <input type="radio" name="events-staff" value="" data-filter-staff checked />
-                <span>All staff</span>
-              </label>
-              {
-                staffOptions.map((member) => (
-                  <label class="team-list-layout__filter-option">
-                    <input type="radio" name="events-staff" value={member.id} data-filter-staff />
-                    <span>{member.name}</span>
-                  </label>
-                ))
-              }
+            <div class="events-staff-filter">
+              <div class="events-staff-filter__toolbar">
+                <span class="events-staff-filter__count">
+                  <span data-staff-selected-count>All</span> selected
+                </span>
+                <div class="events-staff-filter__actions">
+                  <button class="events-staff-filter__link" type="button" data-staff-select-all>
+                    All
+                  </button>
+                  <button class="events-staff-filter__link" type="button" data-staff-clear>
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div class="team-list-layout__filter-options team-list-layout__filter-options--scroll events-staff-filter__list">
+                {
+                  staffOptions.map((member) => (
+                    <label class="team-list-layout__filter-option events-staff-option">
+                      <input type="checkbox" value={member.id} data-filter-staff />
+                      <span
+                        class="events-staff-option__swatch"
+                        style={`--ec-accent: ${staffAccentColor(member.id)}`}
+                        aria-hidden="true"
+                      />
+                      <span class="events-staff-option__name">{member.name}</span>
+                    </label>
+                  ))
+                }
+              </div>
             </div>
           </TeamListFilter>
         ) : null
       }
 
-      <div slot="sidebarExtra" class="events-sidebar-nav">
-        <h3 class="team-list-layout__sidebar-title">Month</h3>
-        <div class="team-list-layout__sidebar-shortcuts">
-          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-today>Today</button>
-          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-prev>Previous month</button>
-          <button class="team-list-layout__sidebar-shortcut" type="button" data-month-next>Next month</button>
-        </div>
+      <div slot="sidebarFooter" class="events-sidebar-footer">
+        <button class="team-list-layout__btn-secondary events-reset-btn" type="button" data-events-reset-filters hidden>
+          Reset filters
+        </button>
       </div>
 
       <Fragment slot="mainLead">
         Birthdays, time off, closures, and salon announcements — not the appointment book.
       </Fragment>
 
-      <p class="notice notice--error events-page__error" data-events-error hidden role="alert"></p>
+      <div slot="toolbar" class="events-toolbar" aria-label="Calendar controls">
+        <div class="events-toolbar__chips" data-events-active-filters hidden />
+        <button class="events-toolbar__reset" type="button" data-events-reset-filters hidden>
+          Reset filters
+        </button>
+      </div>
+
+      <p class="notice notice--error events-page__error" data-events-error hidden role="alert" />
 
       <section class="events-calendar-panel" aria-label="Month calendar">
-        <header class="events-calendar-panel__header">
-          <div class="events-calendar-panel__nav">
+        <div class="events-calendar-panel__sticky" data-events-sticky>
+          <header class="events-calendar-panel__header">
+            <div class="events-calendar-panel__nav">
+              <button
+                class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
+                type="button"
+                data-month-prev
+                aria-label="Previous month"
+              >
+                ‹
+              </button>
+              <h3 class="events-calendar-panel__title" data-month-header />
+              <button
+                class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
+                type="button"
+                data-month-next
+                aria-label="Next month"
+              >
+                ›
+              </button>
+            </div>
             <button
-              class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
+              class="events-calendar-panel__today ui-btn ui-btn--secondary ui-btn--compact"
               type="button"
-              data-month-prev
-              aria-label="Previous month"
+              data-month-today
             >
-              ‹
+              Today
             </button>
-            <h3 class="events-calendar-panel__title" data-month-header></h3>
-            <button
-              class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
-              type="button"
-              data-month-next
-              aria-label="Next month"
-            >
-              ›
-            </button>
+          </header>
+          <div class="events-calendar-panel__weekdays" aria-hidden="true">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
           </div>
-          <button class="events-calendar-panel__today ui-btn ui-btn--ghost ui-btn--compact" type="button" data-month-today>
-            Today
-          </button>
-        </header>
-        <div class="events-calendar" data-events-calendar></div>
-        <div class="events-calendar-legend" aria-hidden="true">
-          <span class="events-calendar-legend__item events-calendar-legend__item--closure">Holiday / closure</span>
-          <span class="events-calendar-legend__item events-calendar-legend__item--event">Community</span>
-          <span class="events-calendar-legend__item events-calendar-legend__item--announcement">Announcement</span>
-          <span class="events-calendar-legend__item events-calendar-legend__item--birthday">Birthday</span>
-          <span class="events-calendar-legend__item events-calendar-legend__item--time_off">Time off (staff color)</span>
         </div>
+
+        <div class="events-calendar" data-events-calendar role="grid" aria-label="Calendar days" />
+
+        <div class="events-calendar-legend" data-events-legend aria-label="Event type legend" />
       </section>
 
-      <section class="events-upcoming team-panel">
+      <section class="events-upcoming team-panel" aria-labelledby="events-list-heading">
         <div class="events-upcoming__header">
-          <h3 class="team-panel__title" data-events-list-title>Upcoming</h3>
+          <div class="events-upcoming__title-wrap">
+            <h3 class="team-panel__title" id="events-list-heading" data-events-list-title>
+              Upcoming events
+            </h3>
+            <span class="events-upcoming__count" data-events-list-count />
+          </div>
           <button class="events-upcoming__clear" type="button" data-events-clear-day hidden>
             Show all upcoming
           </button>
@@ -143,6 +183,8 @@ const staffOptions = staffRows ?? [];
         </div>
       </section>
     </TeamListLayout>
+
+    <div class="ec-visually-hidden" aria-live="polite" aria-atomic="true" data-events-sr-status />
   </div>
 
   <dialog class="events-modal" data-event-modal aria-labelledby="event-modal-title">
@@ -156,18 +198,8 @@ const staffOptions = staffRows ?? [];
 
       <div class="form-stack">
         <label class="form-label">
-          Title
-          <input class="form-input" name="title" type="text" maxlength="200" required />
-        </label>
-
-        <label class="form-label">
-          Description (optional)
-          <textarea class="form-input" name="description" rows="3" maxlength="2000"></textarea>
-        </label>
-
-        <label class="form-label">
-          Type
-          <select class="form-input" name="event_type" data-event-type>
+          Event type
+          <select class="form-input" name="event_type" data-event-type required>
             {
               managerView ? (
                 <>
@@ -183,6 +215,11 @@ const staffOptions = staffRows ?? [];
           </select>
         </label>
 
+        <label class="form-label">
+          Title
+          <input class="form-input" name="title" type="text" maxlength="200" required />
+        </label>
+
         <div class="events-modal__staff" data-staff-picker hidden>
           <label class="form-label">
             Team member
@@ -196,22 +233,35 @@ const staffOptions = staffRows ?? [];
               }
             </select>
           </label>
+          <div class="events-modal__color-preview" data-staff-color-preview hidden aria-hidden="true">
+            <span class="events-modal__color-swatch" />
+            <span>Staff color preview</span>
+          </div>
         </div>
 
-        <label class="events-modal__checkbox">
-          <input type="checkbox" name="all_day" data-all-day />
+        <label class="events-modal__checkbox" data-all-day-row>
+          <input type="checkbox" name="all_day" data-all-day checked />
           All day
         </label>
 
         <label class="form-label" data-start-label>
-          Starts
-          <input class="form-input" name="starts_at" type="datetime-local" required />
+          Start date
+          <input class="form-input" name="starts_at" type="date" required />
         </label>
 
         <label class="form-label" data-end-label>
-          Ends (optional)
-          <input class="form-input" name="ends_at" type="datetime-local" />
+          End date (optional)
+          <input class="form-input" name="ends_at" type="date" />
         </label>
+
+        <label class="form-label">
+          Description (optional)
+          <textarea class="form-input" name="description" rows="3" maxlength="2000" />
+        </label>
+
+        <p class="events-modal__privacy" data-time-off-privacy hidden>
+          Time-off notes are visible only to you and managers.
+        </p>
       </div>
 
       <footer class="events-modal__footer">
@@ -237,16 +287,25 @@ const staffOptions = staffRows ?? [];
 <script src="../scripts/events.ts"></script>
 
 <style>
+  /* ── Page shell (scoped to .events-page only) ─────────────────────────── */
   .events-page {
-    --event-color-closure: var(--color-error);
-    --event-color-event: var(--color-stone-600);
-    --event-color-announcement: var(--color-stone-600);
-    --event-color-time-off: var(--color-dusty-rose);
-    --event-color-birthday: #d4a017;
-    --event-marker-size: 0.5rem;
-    --event-marker-gap: 0.2rem;
+    --ec-cell-pad: 0.35rem;
+    --ec-lane-h: 1.35rem;
+    --ec-accent: var(--color-sage);
     min-width: 0;
     overflow-x: clip;
+  }
+
+  .events-page :global(.ec-visually-hidden) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .events-page [data-event-create].team-list-layout__btn-primary {
@@ -262,15 +321,188 @@ const staffOptions = staffRows ?? [];
     box-shadow: var(--shadow-sm);
   }
 
-  .events-sidebar-nav {
-    border-top: 1px solid var(--color-stone-200);
-    padding-top: 0.35rem;
+  /* Tighter sidebar↔main gap on desktop (page-scoped only). */
+  .events-page :global(.events-list-layout .team-list-layout__body) {
+    grid-template-columns: minmax(240px, 260px) minmax(0, 1fr);
   }
 
-  @media (max-width: 900px) {
-    .events-sidebar-nav {
-      display: none;
+  .events-page :global(.events-list-layout .team-list-layout__main) {
+    padding: var(--space-4) var(--space-5) var(--space-8);
+  }
+
+  @media (min-width: 901px) {
+    .events-page :global(.events-list-layout .team-list-layout__sidebar) {
+      position: sticky;
+      top: var(--team-bar-height, 3.25rem);
+      align-self: start;
+      max-height: calc(100vh - var(--team-bar-height, 3.25rem));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
+
+    .events-page :global(.events-list-layout .team-list-layout__filters) {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+
+  /* ── Sidebar filters ─────────────────────────────────────────────────── */
+  .events-staff-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
+  }
+
+  .events-staff-filter__toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0 0.15rem 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
+  }
+
+  .events-staff-filter__actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .events-staff-filter__link {
+    border: none;
+    background: none;
+    padding: 0.35rem 0.25rem;
+    min-height: var(--touch-target-min, 2.75rem);
+    font: inherit;
+    font-size: var(--text-xs);
+    color: var(--color-link);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .events-staff-filter__list {
+    max-height: min(16rem, 40vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .events-page :global(.events-staff-option) {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .events-page :global(.events-staff-option__swatch) {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: var(--ec-accent);
+    flex-shrink: 0;
+  }
+
+  .events-page :global(.events-staff-option__name) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .events-page :global(.events-filter-option) {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .events-page :global(.events-filter-option__icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    color: var(--ec-accent, var(--color-stone-500));
+  }
+
+  .events-page :global(.events-filter-option__icon .ec-filter__icon) {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .events-sidebar-footer {
+    padding: 0.5rem var(--team-sidebar-inset-x) 0;
+  }
+
+  .events-reset-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ── Toolbar chips ───────────────────────────────────────────────────── */
+  .events-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .events-toolbar__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .events-toolbar__reset {
+    border: none;
+    background: none;
+    padding: 0.35rem 0.5rem;
+    font: inherit;
+    font-size: var(--text-xs);
+    color: var(--color-link);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .events-page :global(.ec-chip) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid color-mix(in srgb, var(--ec-accent, var(--color-stone-400)) 45%, var(--color-border-subtle));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ec-accent, var(--color-stone-400)) 10%, var(--color-bg));
+    font-size: var(--text-xs);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .events-page :global(.ec-chip--info) {
+    cursor: default;
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-50);
+  }
+
+  .events-page :global(.ec-chip__icon) {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .events-page :global(.ec-chip__x) {
+    opacity: 0.7;
+    font-weight: 700;
+  }
+
+  /* ── Calendar panel ──────────────────────────────────────────────────── */
+  .events-page__error {
+    margin: 0 0 1rem;
   }
 
   .events-loading {
@@ -280,85 +512,21 @@ const staffOptions = staffRows ?? [];
     color: var(--color-stone-500);
   }
 
-  .events-loading--error {
-    color: var(--color-error, #b42318);
-  }
-
-  .events-page :global(.events-empty.ui-empty) {
-    margin: 0;
-    border: none;
-    background: transparent;
-    padding: var(--mobile-space-md);
-    text-align: left;
-    justify-items: start;
-  }
-
-  .events-page :global(.events-empty .ui-empty__title) {
-    font-size: var(--text-sm);
-  }
-
-  .events-page :global(.events-empty .ui-empty__hint) {
-    font-size: var(--text-xs);
-    max-width: none;
-  }
-
-  .events-page :global(.event-row--skeleton) {
-    pointer-events: none;
-  }
-
-  .events-page :global(.event-row__skeleton-title) {
-    display: block;
-    width: 50%;
-    height: 0.85rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .events-page :global(.event-row__skeleton-meta) {
-    display: block;
-    width: 70%;
-    height: 0.65rem;
-    margin-top: 0.25rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .events-page__toolbar {
-    display: none;
-  }
-
-  .events-page__nav-btn {
-    min-width: 2.25rem;
-    padding-inline: 0.65rem;
-    font-size: 1.1rem;
-    line-height: 1;
-  }
-
-  .events-page__month {
-    margin: 0;
-    flex: 1;
-    min-width: 10rem;
-    text-align: center;
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-
-  .events-page__today {
-    margin-left: auto;
-  }
-
-  .events-page__error {
-    margin-top: 0;
-    margin-bottom: 1rem;
-  }
-
   .events-calendar-panel {
     margin-bottom: 1rem;
     border: 1px solid var(--color-border-subtle);
     border-radius: 10px;
     background: var(--color-bg);
     box-shadow: 0 2px 16px color-mix(in srgb, var(--color-charcoal) 6%, transparent);
-    overflow: hidden;
+  }
+
+  .events-calendar-panel__sticky {
+    position: sticky;
+    top: var(--team-bar-height, 3.25rem);
+    z-index: 20;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border-subtle);
+    border-radius: 10px 10px 0 0;
   }
 
   .events-calendar-panel__header {
@@ -367,9 +535,7 @@ const staffOptions = staffRows ?? [];
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem 0.75rem;
-    padding: 0.75rem 1rem 0.5rem;
-    border-bottom: 1px solid var(--color-border-subtle);
-    background: color-mix(in srgb, var(--color-cream) 45%, var(--color-bg));
+    padding: 0.65rem 0.85rem 0.45rem;
   }
 
   .events-calendar-panel__nav {
@@ -381,301 +547,307 @@ const staffOptions = staffRows ?? [];
     min-width: 0;
   }
 
-  .events-calendar-panel__nav-btn {
-    flex-shrink: 0;
-  }
-
-  .events-calendar-panel__today {
-    flex-shrink: 0;
-  }
-
   .events-calendar-panel__title {
     margin: 0;
+    min-width: 9rem;
+    text-align: center;
     font-family: var(--font-sans);
     font-size: 0.95rem;
     font-weight: 600;
     letter-spacing: 0.02em;
-    text-align: center;
     color: var(--color-text);
   }
 
-  .events-calendar {
+  .events-calendar-panel__weekdays {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 0;
-    background: var(--color-border-subtle);
+    padding: 0.35rem 0 0.45rem;
+    border-top: 1px solid var(--color-border-subtle);
+    background: color-mix(in srgb, var(--color-cream) 55%, var(--color-bg));
   }
 
-  .events-page :global(.events-calendar__head),
-  .events-page :global(.events-calendar__cell) {
-    background: var(--color-bg);
-    font-family: var(--font-sans);
-  }
-
-  .events-page :global(.events-calendar__head) {
-    padding: 0.55rem 0.25rem;
+  .events-calendar-panel__weekdays span {
     text-align: center;
+    font-family: var(--font-sans);
     font-size: 0.625rem;
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-gray);
-    background: color-mix(in srgb, var(--color-cream) 65%, var(--color-bg));
-    border-bottom: 1px solid var(--color-border-subtle);
   }
 
-  .events-page :global(.events-calendar__cell) {
+  .events-calendar {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 0.25rem;
-    min-height: 5rem;
-    padding: 0.4rem 0.45rem 0.35rem;
-    margin: 0;
-    border: none;
+    background: var(--color-border-subtle);
+    overflow: hidden;
+    border-radius: 0 0 10px 10px;
+  }
+
+  /* ── Week row + cells ──────────────────────────────────────────────────── */
+  .events-page :global(.ec-week) {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0;
+    min-height: 5.5rem;
+  }
+
+  .events-page :global(.ec-cell) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-height: 5.5rem;
+    padding: var(--ec-cell-pad);
     border-right: 1px solid var(--color-border-subtle);
     border-bottom: 1px solid var(--color-border-subtle);
-    cursor: pointer;
+    background: var(--color-bg);
+    cursor: default;
     text-align: left;
     font: inherit;
     color: inherit;
-    transition:
-      background 0.15s ease,
-      box-shadow 0.15s ease;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
   }
 
-  .events-page :global(.events-calendar__cell:nth-child(7n)) {
+  .events-page :global(.ec-cell:nth-child(7n)) {
     border-right: none;
   }
 
-  .events-page :global(.events-calendar__cell:hover:not(.events-calendar__cell--pad)) {
-    background: color-mix(in srgb, var(--color-sage) 8%, var(--color-bg));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sage) 35%, transparent);
-    z-index: 1;
+  .events-page :global(.ec-cell--outside) {
+    background: color-mix(in srgb, var(--color-cream) 50%, var(--color-bg));
+    opacity: 0.55;
   }
 
-  @media (hover: none) {
-    .events-page :global(.events-calendar__cell:hover:not(.events-calendar__cell--pad)) {
-      background: var(--color-bg);
-      box-shadow: none;
-    }
+  .events-page :global(.ec-cell--weekend:not(.ec-cell--outside)) {
+    background: color-mix(in srgb, var(--color-cream) 28%, var(--color-bg));
   }
 
-  .events-page :global(.events-calendar__cell:focus-visible) {
+  .events-page :global(.ec-cell--pride:not(.ec-cell--outside)) {
+    background: var(--pride-bg, transparent);
+  }
+
+  .events-page :global(.ec-cell--holiday:not(.ec-cell--outside)) {
+    background-image: var(--holiday-image, none);
+    background-repeat: no-repeat;
+    background-position: bottom 0.15rem right 0.15rem;
+    background-size: 1.75rem 1.75rem;
+    background-color: color-mix(in srgb, var(--holiday-bg, transparent) 72%, var(--color-bg));
+  }
+
+  .events-page :global(.ec-cell--today:not(.ec-cell--selected)) {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-dusty-rose) 50%, transparent);
+  }
+
+  .events-page :global(.ec-cell--selected) {
+    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
+    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
+  }
+
+  .events-page :global(.ec-cell:focus-visible) {
     outline: 2px solid var(--color-selection-border, var(--color-sage));
     outline-offset: -2px;
     z-index: 2;
   }
 
-  .events-page :global(.events-calendar__cell--pad) {
-    background: color-mix(in srgb, var(--color-cream) 50%, var(--color-bg));
-    opacity: 0.55;
-    cursor: default;
-  }
-
-  .events-page :global(.events-calendar__cell--weekend:not(.events-calendar__cell--pad)) {
-    background: color-mix(in srgb, var(--color-cream) 28%, var(--color-bg));
-  }
-
-  .events-page :global(.events-calendar__cell--pride:not(.events-calendar__cell--pad)) {
-    background: var(--pride-bg, transparent);
-  }
-
-  .events-page :global(.events-calendar__cell--holiday:not(.events-calendar__cell--pad)) {
-    background-image: var(--holiday-image, none);
-    background-repeat: no-repeat;
-    background-position: bottom 0.2rem right 0.2rem;
-    background-size: 2rem 2rem;
-    background-color: color-mix(in srgb, var(--holiday-bg, transparent) 72%, var(--color-bg));
-  }
-
-  .events-page :global(.events-calendar__cell--pride.events-calendar__cell--holiday:not(.events-calendar__cell--pad)) {
-    background-image: var(--holiday-image, none), var(--pride-bg, none);
-    background-repeat: no-repeat, no-repeat;
-    background-position: bottom 0.2rem right 0.2rem, center;
-    background-size: 2rem 2rem, cover;
-    background-color: color-mix(in srgb, var(--holiday-bg, transparent) 68%, var(--color-bg));
-  }
-
-  .events-page :global(.events-calendar__cell--today:not(.events-calendar__cell--holiday):not(.events-calendar__cell--pride)) {
-    background: color-mix(in srgb, var(--color-dusty-rose) 6%, var(--color-bg));
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-dusty-rose) 45%, transparent);
-  }
-
-  .events-page :global(.events-calendar__cell--today.events-calendar__cell--holiday:not(.events-calendar__cell--pad)),
-  .events-page :global(.events-calendar__cell--today.events-calendar__cell--pride:not(.events-calendar__cell--pad)) {
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-dusty-rose) 45%, transparent);
-  }
-
-  .events-page :global(.events-calendar__cell--today:hover) {
-    background: color-mix(in srgb, var(--color-dusty-rose) 10%, var(--color-bg));
-  }
-
-  .events-page :global(.events-calendar__cell--today.events-calendar__cell--holiday:hover:not(.events-calendar__cell--pad)),
-  .events-page :global(.events-calendar__cell--today.events-calendar__cell--pride:hover:not(.events-calendar__cell--pad)) {
-    filter: brightness(0.98);
-  }
-
-  .events-page :global(.events-calendar__cell--selected) {
-    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
-    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
-  }
-
-  .events-page :global(.events-calendar__cell--selected.events-calendar__cell--today) {
-    background: color-mix(in srgb, var(--color-selection-bg, rgba(141, 158, 136, 0.12)) 75%, color-mix(in srgb, var(--color-dusty-rose) 6%, var(--color-bg)));
-    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
-  }
-
-  .events-page :global(.events-calendar__cell--today .events-calendar__day) {
-    display: inline-flex;
+  .events-page :global(.ec-cell__head) {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    min-width: 1.45rem;
-    height: 1.45rem;
-    padding: 0 0.2rem;
-    border-radius: 999px;
-    background: var(--color-dusty-rose);
-    color: #fff;
-    font-weight: 700;
+    justify-content: space-between;
+    gap: 0.15rem;
+    min-height: 1.1rem;
   }
 
-  .events-page :global(.events-calendar__day) {
+  .events-page :global(.ec-cell__day) {
     font-size: 0.78rem;
     font-weight: 600;
     line-height: 1;
     color: var(--color-text);
   }
 
-  .events-page :global(.events-calendar__cell--pad .events-calendar__day) {
+  .events-page :global(.ec-cell--today .ec-cell__day) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    padding: 0 0.15rem;
+    border-radius: 999px;
+    background: var(--color-dusty-rose);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .events-page :global(.ec-cell__today) {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .events-page :global(.ec-cell__lanes) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+    margin-top: auto;
+    min-height: calc(var(--ec-lane-h) * 3 + 0.24rem);
+  }
+
+  .events-page :global(.ec-lane) {
+    display: block;
+    min-height: var(--ec-lane-h);
+    max-height: var(--ec-lane-h);
+    overflow: hidden;
+  }
+
+  .events-page :global(.ec-lane--empty) {
     visibility: hidden;
   }
 
-  .events-page :global(.events-calendar__markers) {
+  /* ── Event segments (pills + multi-day bars) ─────────────────────────── */
+  .events-page :global(.ec-seg) {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--event-marker-gap);
     align-items: center;
-    align-content: flex-start;
-    margin-top: auto;
-    min-height: var(--event-marker-size);
-    padding-top: 0.1rem;
+    gap: 0.2rem;
     width: 100%;
-  }
-
-  .events-page :global(.events-calendar__marker) {
-    display: block;
-    width: var(--event-marker-size);
-    height: var(--event-marker-size);
-    flex-shrink: 0;
-    border-radius: 2px;
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-stone-300) 55%, transparent);
-  }
-
-  .events-page :global(.events-calendar__marker--closure) {
-    border-radius: 2px;
-    background: var(--event-color-closure);
-  }
-
-  .events-page :global(.events-calendar__marker--event) {
-    border-radius: 2px;
-    background: var(--event-color-event);
-  }
-
-  .events-page :global(.events-calendar__marker--announcement) {
-    border-radius: 2px;
-    background: var(--event-color-announcement);
-  }
-
-  .events-page :global(.events-calendar__marker--time_off) {
-    border-radius: 999px;
-    background: var(--event-staff-color, var(--event-color-time-off));
-  }
-
-  .events-page :global(.events-calendar__marker--birthday) {
-    border-radius: 999px;
-    background: linear-gradient(145deg, #e8b84a 0%, #f5d078 100%);
-    box-shadow: 0 0 0 1px color-mix(in srgb, #c9952e 45%, transparent);
-    position: relative;
-  }
-
-  .events-page :global(.events-calendar__marker--birthday::after) {
-    content: "🎂";
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.45rem;
-    line-height: 1;
-  }
-
-  .events-page :global(.events-calendar__more) {
-    font-size: var(--text-xs);
+    height: 100%;
+    max-height: var(--ec-lane-h);
+    padding: 0 0.28rem;
+    border: none;
+    border-left: 3px solid var(--ec-accent);
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--ec-accent) 14%, var(--color-bg));
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.625rem;
     font-weight: 600;
-    letter-spacing: 0.03em;
-    color: var(--color-stone-500);
-    line-height: 1;
+    line-height: 1.1;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
+  .events-page :global(.ec-seg--bar) {
+    border-radius: 0;
+  }
+
+  .events-page :global(.ec-seg--start) {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+
+  .events-page :global(.ec-seg--end) {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+
+  .events-page :global(.ec-seg--bleed-left) {
+    border-left-color: transparent;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: calc(-1 * var(--ec-cell-pad));
+    padding-left: calc(0.28rem + var(--ec-cell-pad));
+  }
+
+  .events-page :global(.ec-seg--bleed-right) {
+    margin-right: calc(-1 * var(--ec-cell-pad));
+    padding-right: calc(0.28rem + var(--ec-cell-pad));
+  }
+
+  .events-page :global(.ec-seg--birthday) {
+    border-left-color: var(--ec-accent);
+    background: color-mix(in srgb, var(--ec-accent) 18%, var(--color-bg));
+  }
+
+  .events-page :global(.ec-seg__icon) {
+    width: 0.7rem;
+    height: 0.7rem;
+    flex-shrink: 0;
+    color: var(--ec-accent);
+  }
+
+  .events-page :global(.ec-seg__title) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .events-page :global(.ec-more) {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--color-stone-500);
+    padding-left: 0.15rem;
+  }
+
+  /* ── Legend ──────────────────────────────────────────────────────────── */
   .events-calendar-legend {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-5);
+    gap: var(--space-2) var(--space-4);
     padding: var(--space-2) var(--space-4);
     border-top: 1px solid var(--color-stone-200);
     background: var(--color-stone-50);
   }
 
-  .events-calendar-legend__item {
+  .events-page :global(.ec-legend__item) {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.35rem;
+    padding: 0.25rem 0.35rem;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
     font-family: var(--font-body);
     font-size: var(--text-xs);
     font-weight: 500;
-    letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
-    color: var(--color-stone-500);
+    color: var(--color-stone-600);
+    cursor: pointer;
   }
 
-  .events-calendar-legend__item::before {
-    content: "";
-    width: var(--event-marker-size);
-    height: var(--event-marker-size);
-    flex-shrink: 0;
+  .events-page :global(.ec-legend__item:hover),
+  .events-page :global(.ec-legend__item:focus-visible) {
+    background: color-mix(in srgb, var(--color-sage) 10%, var(--color-bg));
+    outline: none;
   }
 
-  .events-calendar-legend__item--closure::before {
-    border-radius: 2px;
-    background: var(--event-color-closure);
+  .events-page :global(.ec-legend__swatch) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--ec-accent) 22%, var(--color-bg));
+    border: 1px solid color-mix(in srgb, var(--ec-accent) 45%, transparent);
+    color: var(--ec-accent);
   }
 
-  .events-calendar-legend__item--event::before {
-    border-radius: 2px;
-    background: var(--event-color-event);
-  }
-
-  .events-calendar-legend__item--announcement::before {
-    border-radius: 2px;
-    background: var(--event-color-announcement);
-  }
-
-  .events-calendar-legend__item--time_off::before {
+  .events-page :global(.ec-legend__swatch--circle) {
     border-radius: 999px;
-    background: var(--event-color-time-off);
   }
 
-  .events-calendar-legend__item--birthday::before {
+  .events-page :global(.ec-legend__swatch--staff) {
     border-radius: 999px;
-    background: linear-gradient(145deg, #e8b84a 0%, #f5d078 100%);
-    box-shadow: 0 0 0 1px color-mix(in srgb, #c9952e 45%, transparent);
+    background: linear-gradient(
+      135deg,
+      #e7ac46 0%,
+      #8d9e88 33%,
+      #d4a5a5 66%,
+      #9cb4d4 100%
+    );
+    border: 1px solid var(--color-stone-300);
+    color: var(--color-text);
   }
 
-  .events-upcoming {
-    margin-top: 0;
+  .events-page :global(.ec-legend__icon) {
+    width: 0.75rem;
+    height: 0.75rem;
   }
 
+  /* ── Upcoming list ───────────────────────────────────────────────────── */
   .events-upcoming__header {
     display: flex;
     align-items: center;
@@ -684,11 +856,24 @@ const staffOptions = staffRows ?? [];
     margin-bottom: var(--space-2);
   }
 
+  .events-upcoming__title-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.6rem;
+    min-width: 0;
+  }
+
   .events-upcoming .team-panel__title {
+    margin: 0;
     font-size: var(--text-xs);
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
-    margin: 0;
+  }
+
+  .events-upcoming__count {
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
   }
 
   .events-upcoming__clear {
@@ -696,48 +881,44 @@ const staffOptions = staffRows ?? [];
     background: none;
     padding: 0.5rem 0.25rem;
     min-height: var(--touch-target-min);
-    font-family: var(--font-body);
+    font: inherit;
     font-size: var(--text-xs);
     font-weight: 500;
-    letter-spacing: normal;
-    text-transform: none;
     color: var(--color-link);
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 2px;
   }
 
-  .events-upcoming__clear:hover {
-    color: var(--color-link-hover);
-  }
-
-  .events-upcoming__clear:focus-visible {
-    outline: 2px solid var(--color-citrine);
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-
   .events-list {
     display: flex;
     flex-direction: column;
+    gap: 0;
     border: 1px solid var(--color-border-subtle);
     border-radius: 8px;
     overflow: hidden;
     background: var(--color-bg);
   }
 
-  .events-page :global(.event-row) {
+  .events-page :global(.events-group__label) {
+    margin: 0;
+    padding: 0.45rem 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+    background: color-mix(in srgb, var(--color-cream) 40%, var(--color-bg));
+    border-bottom: 1px solid var(--color-stone-200);
+  }
+
+  .events-page :global(.event-card) {
     display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "dot title badge"
-      "dot meta meta";
-    align-items: center;
-    column-gap: var(--space-2);
-    row-gap: 0.05rem;
+    grid-template-columns: auto 1fr;
+    gap: 0.65rem;
     width: 100%;
-    padding: var(--space-2) var(--space-3);
+    padding: 0.75rem 0.85rem;
     border: none;
     border-bottom: 1px solid var(--color-stone-200);
     background: var(--color-bg);
@@ -748,145 +929,108 @@ const staffOptions = staffRows ?? [];
     transition: background var(--transition-fast);
   }
 
-  .events-page :global(.event-row:nth-child(even)) {
-    background: var(--color-stone-50);
-  }
-
-  .events-page :global(.event-row:last-child) {
+  .events-page :global(.event-card:last-child) {
     border-bottom: none;
   }
 
-  .events-page :global(.event-row:hover),
-  .events-page :global(.event-row:focus-visible) {
+  .events-page :global(.event-card:hover),
+  .events-page :global(.event-card:focus-visible) {
     background: color-mix(in srgb, var(--color-sage) 10%, var(--color-bg));
     outline: none;
   }
 
-  .events-page :global(.event-row) {
-    min-height: var(--touch-target-comfortable, 3.5rem);
-  }
-
-  .events-page :global(.event-row__dot) {
-    grid-area: dot;
-    align-self: center;
-    width: var(--event-marker-size);
-    height: var(--event-marker-size);
-    flex-shrink: 0;
-  }
-
-  .events-page :global(.event-row--closure .event-row__dot) {
-    border-radius: 2px;
-    background: var(--event-color-closure);
-  }
-
-  .events-page :global(.event-row--event .event-row__dot) {
-    border-radius: 2px;
-    background: var(--event-color-event);
-  }
-
-  .events-page :global(.event-row--announcement .event-row__dot) {
-    border-radius: 2px;
-    background: var(--event-color-announcement);
-  }
-
-  .events-page :global(.event-row--time_off .event-row__dot) {
-    border-radius: 999px;
-    background: var(--event-staff-color, var(--event-color-time-off));
-  }
-
-  .events-page :global(.event-row--birthday .event-row__dot) {
-    border-radius: 999px;
-    background: linear-gradient(145deg, #e8b84a 0%, #f5d078 100%);
-    box-shadow: 0 0 0 1px color-mix(in srgb, #c9952e 45%, transparent);
-  }
-
-  .events-page :global(.event-row--static) {
+  .events-page :global(.event-card--static) {
     cursor: default;
   }
 
-  .events-page :global(.event-row--static:hover) {
-    background: var(--color-bg);
+  .events-page :global(.event-card__icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ec-accent) 16%, var(--color-bg));
+    border: 1px solid color-mix(in srgb, var(--ec-accent) 40%, transparent);
+    color: var(--ec-accent);
+    flex-shrink: 0;
   }
 
-  .events-page :global(.event-row--static:nth-child(even):hover) {
-    background: var(--color-stone-50);
+  .events-page :global(.event-card__icon-svg) {
+    width: 0.95rem;
+    height: 0.95rem;
   }
 
-  .events-page :global(.event-row__title) {
-    grid-area: title;
+  .events-page :global(.event-card__body) {
+    min-width: 0;
+  }
+
+  .events-page :global(.event-card__title-row) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .events-page :global(.event-card__title) {
     min-width: 0;
     font-size: var(--text-sm);
     font-weight: 600;
     line-height: 1.25;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .events-page :global(.event-row__meta) {
-    grid-area: meta;
-    font-family: var(--font-body);
+  .events-page :global(.event-card__meta) {
+    display: block;
+    margin-top: 0.15rem;
     font-size: var(--text-xs);
-    line-height: 1.2;
     color: var(--color-stone-500);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.3;
   }
 
-  .events-page :global(.event-row .event-badge) {
-    grid-area: badge;
-    justify-self: end;
-    align-self: center;
-    padding: 0.08rem 0.38rem;
-    font-size: 0.5625rem;
-    letter-spacing: var(--tracking-wide);
+  .events-page :global(.event-card__notes) {
+    margin: 0.35rem 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-stone-600);
+    line-height: 1.35;
+  }
+
+  .events-page :global(.event-card__private-tag) {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-stone-500);
   }
 
   .events-page :global(.event-badge) {
     display: inline-flex;
     align-items: center;
-    padding: 0.12rem 0.45rem;
-    border: 1px solid var(--color-stone-300);
+    padding: 0.08rem 0.38rem;
+    border: 1px solid color-mix(in srgb, var(--ec-accent) 45%, var(--color-stone-300));
     border-radius: 999px;
-    font-family: var(--font-body);
-    font-size: var(--text-xs);
+    font-size: 0.5625rem;
     font-weight: 600;
     letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
     white-space: nowrap;
-  }
-
-  .events-page :global(.event-badge--time_off) {
-    border-color: color-mix(in srgb, var(--event-staff-color, var(--event-color-time-off)) 55%, var(--color-stone-300));
+    background: color-mix(in srgb, var(--ec-accent) 10%, transparent);
     color: var(--color-text);
-    background: color-mix(in srgb, var(--event-staff-color, var(--event-color-time-off)) 12%, transparent);
+    flex-shrink: 0;
   }
 
-  .events-page :global(.event-badge--birthday) {
-    border-color: color-mix(in srgb, var(--event-color-birthday) 55%, var(--color-stone-300));
-    color: color-mix(in srgb, var(--event-color-birthday) 85%, var(--color-text));
-    background: color-mix(in srgb, var(--event-color-birthday) 14%, transparent);
+  .events-page :global(.events-empty.ui-empty) {
+    margin: 0;
+    border: none;
+    background: transparent;
+    padding: var(--mobile-space-md);
+    text-align: left;
+    justify-items: start;
   }
 
-  .events-page :global(.event-badge--closure) {
-    border-color: var(--event-color-closure);
-    color: var(--event-color-closure);
-    background: var(--color-error-muted);
-  }
-
-  .events-page :global(.event-badge--announcement) {
-    border-color: var(--event-color-announcement);
-    color: var(--event-color-announcement);
-    background: color-mix(in srgb, var(--event-color-announcement) 10%, transparent);
-  }
-
-  .events-page :global(.event-badge--event) {
-    border-color: var(--event-color-event);
-    color: var(--color-stone-700);
-    background: var(--color-stone-100);
-  }
-
+  /* ── Modal ───────────────────────────────────────────────────────────── */
   .events-modal {
     width: min(32rem, calc(100vw - 2rem));
     max-height: calc(100vh - 2rem);
@@ -903,9 +1047,8 @@ const staffOptions = staffRows ?? [];
 
   .events-modal__form {
     display: grid;
-    gap: 0;
-    padding: 0;
     margin: 0;
+    padding: 0;
   }
 
   .events-modal__form .form-stack {
@@ -933,32 +1076,6 @@ const staffOptions = staffRows ?? [];
     color: var(--color-text);
   }
 
-  .events-modal__close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: none;
-    font-size: 1.35rem;
-    line-height: 1;
-    color: var(--color-stone-500);
-    cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
-  }
-
-  .events-modal__close:hover {
-    background: var(--color-stone-100);
-    color: var(--color-text);
-  }
-
-  .events-modal__close:focus-visible {
-    outline: 2px solid var(--color-citrine);
-    outline-offset: 2px;
-  }
-
   .events-modal__checkbox {
     display: flex;
     align-items: center;
@@ -967,6 +1084,33 @@ const staffOptions = staffRows ?? [];
     text-transform: none;
     letter-spacing: normal;
     cursor: pointer;
+  }
+
+  .events-modal__color-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
+  }
+
+  .events-modal__color-swatch {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    background: var(--ec-accent, var(--color-dusty-rose));
+    border: 1px solid var(--color-stone-300);
+  }
+
+  .events-modal__privacy {
+    margin: 0;
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+    border: 1px solid var(--color-stone-200);
+    font-size: var(--text-xs);
+    color: var(--color-stone-600);
   }
 
   .events-modal__footer {
@@ -985,10 +1129,6 @@ const staffOptions = staffRows ?? [];
     color: var(--color-error);
   }
 
-  .events-modal__footer [data-event-delete]:hover {
-    background: var(--color-error-muted);
-  }
-
   .events-modal__delete-hint {
     flex: 1 1 100%;
     margin: 0 0 0.25rem;
@@ -1000,7 +1140,27 @@ const staffOptions = staffRows ?? [];
     display: none;
   }
 
+  /* ── Dark mode (page-scoped compound selectors only) ─────────────────── */
+  :global([data-theme="dark"]) .events-page .events-calendar-panel__sticky {
+    background: var(--color-bg);
+    border-bottom-color: var(--color-stone-200);
+  }
+
+  :global([data-theme="dark"]) .events-page .events-calendar-panel__weekdays {
+    background: color-mix(in srgb, var(--color-cream) 35%, var(--color-bg));
+  }
+
+  :global([data-theme="dark"]) .events-page .events-calendar-legend {
+    background: var(--color-stone-100);
+    border-top-color: var(--color-stone-200);
+  }
+
+  /* ── Responsive ──────────────────────────────────────────────────────── */
   @media (max-width: 900px) {
+    .events-calendar-legend {
+      display: none;
+    }
+
     .events-modal {
       width: 100%;
       max-width: none;
@@ -1012,71 +1172,49 @@ const staffOptions = staffRows ?? [];
     .events-modal__footer {
       padding-bottom: calc(var(--space-4) + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
     }
-
-    .events-calendar-legend {
-      display: none;
-    }
   }
 
   @media (max-width: 640px) {
-    .events-page :global(.events-calendar__cell) {
-      min-height: 3.75rem;
-      padding: 0.28rem 0.22rem 0.22rem;
+    .events-page {
+      --ec-lane-h: 0.45rem;
     }
 
-    .events-page :global(.events-calendar__day) {
+    .events-page :global(.ec-week) {
+      min-height: 3.5rem;
+    }
+
+    .events-page :global(.ec-cell) {
+      min-height: 3.5rem;
+      padding: 0.22rem;
+    }
+
+    .events-page :global(.ec-cell__day) {
       font-size: 0.68rem;
     }
 
-    .events-page :global(.events-calendar__cell--today .events-calendar__day) {
-      min-width: 1.25rem;
-      height: 1.25rem;
-    }
-
-    .events-page :global(.events-calendar__marker) {
-      width: 0.5rem;
-      height: 0.5rem;
-    }
-
-    .events-page {
-      --event-marker-size: 0.5rem;
-    }
-
-    .events-calendar__head {
-      font-size: 0.5625rem;
-      padding: 0.35rem 0.1rem;
-    }
-
-    .events-calendar-panel__header {
-      padding: 0.55rem 0.75rem 0.4rem;
-    }
-
-    .events-calendar-panel__title {
-      font-size: 0.85rem;
-    }
-
-    .events-calendar-legend {
-      gap: 0.4rem 0.75rem;
-      padding: 0.4rem 0.6rem;
-    }
-
-    .events-calendar-legend__item {
-      font-size: 0.625rem;
-      text-transform: none;
-      letter-spacing: normal;
-    }
-
-    .events-page :global(.event-row .event-badge) {
+    .events-page :global(.ec-seg__title),
+    .events-page :global(.ec-seg__icon) {
       display: none;
     }
 
-    .events-page :global(.event-row__title) {
-      font-size: var(--text-sm);
-      white-space: normal;
+    .events-page :global(.ec-seg) {
+      min-height: 0.45rem;
+      max-height: 0.45rem;
+      padding: 0;
+      border-left-width: 0;
+      border-radius: 999px;
+      background: var(--ec-accent);
     }
 
-    .events-page :global(.event-row__meta) {
-      font-size: var(--text-xs);
+    .events-page :global(.ec-cell__today) {
+      display: none;
+    }
+
+    .events-calendar-panel__header {
+      padding: 0.55rem 0.65rem 0.35rem;
+    }
+
+    .events-page :global(.event-card__title) {
       white-space: normal;
     }
   }
