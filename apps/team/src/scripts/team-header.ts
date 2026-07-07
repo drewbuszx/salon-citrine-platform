@@ -1,4 +1,5 @@
 import { initNetworkStatus } from "../lib/network-status";
+import { closeTeamAlertsDropdown } from "./team-alerts";
 
 /**
  * Team header — mobile drawer, desktop profile menu, nav scroll fades, compact title on scroll.
@@ -146,6 +147,7 @@ function initDesktopProfileMenu() {
 
   function openProfileMenu(focusFirst = true) {
     if (!DESKTOP_MQ.matches) return;
+    closeTeamAlertsDropdown();
     profileDropdown.classList.add("is-open");
     profileTrigger.setAttribute("aria-expanded", "true");
     profileMenu.removeAttribute("hidden");

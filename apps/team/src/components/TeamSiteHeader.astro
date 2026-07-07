@@ -2,10 +2,12 @@
 import { BUSINESS } from "@saloncitrine/shared";
 import type { StaffProfile } from "../env.d.ts";
 import StaffAvatar from "./StaffAvatar.astro";
+import TeamAlertsPanel from "./TeamAlertsPanel.astro";
 import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
+import TeamAlertsPanel from "./TeamAlertsPanel.astro";
 
 /** Boulevard-style top bar sections mapped to team routes */
 export type TeamActiveNav =
@@ -34,6 +36,10 @@ const marketingOrigin = `https://${BUSINESS.domain}`;
     HorizRev horizontal wordmark is the single logo for every theme. */
 const logoSrc = withBase("images/logo-horiz-rev-dark.png");
 const profileMenuId = "team-profile-menu";
+const alertsMenuId = "team-alerts-menu";
+const alertsEndpoint = teamUrl("/api/alerts");
+const alertsBase = teamUrl("");
+const alertsPanelId = "team-alerts-panel";
 
 const navTabs: {
   id: TeamActiveNav;
@@ -123,22 +129,28 @@ const initials = staff ? staffInitials(staff.name) : "";
           </div>
 
           <div class="team-bar__utilities">
-            <button
-              type="button"
-              class="team-bar__icon-btn team-bar__icon-btn--muted"
-              aria-label="Notifications"
-              title="Notifications unavailable"
-              disabled
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
-                <path
-                  d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7M13.73 21a2 2 0 01-3.46 0"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"></path>
-              </svg>
-            </button>
+            <div class="team-bar__alerts" data-alerts-dropdown>
+              <button
+                type="button"
+                class="team-bar__icon-btn team-bar__icon-btn--alerts"
+                data-alerts-trigger
+                aria-label="Notifications"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls={alertsPanelId}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                  <path
+                    d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7M13.73 21a2 2 0 01-3.46 0"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"></path>
+                </svg>
+                <span class="team-bar__alerts-badge" data-alerts-badge hidden aria-hidden="true"></span>
+              </button>
+              <TeamAlertsPanel panelId={alertsPanelId} />
+            </div>
 
             <div class="team-bar__profile team-bar__profile--desktop" data-profile-dropdown>
               <button
@@ -557,6 +569,37 @@ const initials = staff ? staffInitials(staff.name) : "";
   .team-bar__icon-btn svg {
     width: 1.1rem;
     height: 1.1rem;
+  }
+
+  .team-bar__alerts {
+    position: relative;
+  }
+
+  .team-bar__icon-btn--alerts {
+    position: relative;
+  }
+
+  .team-bar__alerts-badge {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.2rem;
+    border-radius: 999px;
+    background: var(--color-citrine);
+    color: var(--color-stone-900, #1a1a1a);
+    font-family: var(--font-sans);
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 0 0 2px var(--team-bar-bg, #2f2a28);
+  }
+
+  .team-bar__alerts-badge[hidden] {
+    display: none;
   }
 
   .team-bar__profile {

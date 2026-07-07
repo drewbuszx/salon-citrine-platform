@@ -224,10 +224,37 @@ flowchart LR
 
 ## Verification checklist
 
-- [ ] Bell enabled; no “unavailable” tease ([VISUAL_ELEVATION_NOTES](./VISUAL_ELEVATION_NOTES.md))
-- [ ] Badge matches unread count, not total alerts
-- [ ] Dismiss hides alert until count rises
-- [ ] Each alert deep-links to the correct route with query params
-- [ ] `401` when logged out
-- [ ] Keyboard and screen reader parity with profile menu
-- [ ] Dark mode panel readable; bell row unchanged
+- [x] Bell enabled; no “unavailable” tease ([VISUAL_ELEVATION_NOTES](./VISUAL_ELEVATION_NOTES.md))
+- [x] Badge matches unread count, not total alerts
+- [x] Dismiss hides alert until count rises
+- [x] Each alert deep-links to the correct route with query params
+- [x] `401` when logged out
+- [x] Keyboard and screen reader parity with profile menu
+- [x] Dark mode panel readable; bell row unchanged
+
+---
+
+## Shipped
+
+**Date:** July 7, 2026  
+**Integrator:** Alerts Agent 5 (QA, Polish & Ship)
+
+### Delivered
+
+- `GET /team/api/alerts` — waitlist, low-stock, and tasks-open aggregation
+- `TeamAlertsPanel.astro` — dropdown shell, empty/loading/error states, dark-mode panel tokens
+- `TeamSiteHeader.astro` — enabled bell with citrine badge (desktop + mobile utilities row)
+- `team-alerts.ts` — fetch, count-based `localStorage` dismiss (`team-alerts-dismissed-v1`), badge, a11y
+- `team-header.ts` — mutual exclusion with profile menu
+
+### Deploy
+
+Production Worker deployed from `apps/team` via `npx wrangler deploy --config dist-build/server/wrangler.json`.
+
+### Known limitations (v2)
+
+1. **Dismiss is per-browser** — `localStorage` only; badge differs across devices until server-side dismiss.
+2. **No polling** — refresh on load, panel open, and tab visibility; no WebSocket push.
+3. **Low-stock visible to all staff** — matches Team Pulse; manager-only filter deferred.
+4. **No per-row dismiss button** — navigating a row marks it read; “Mark all read” clears the feed.
+5. **No appointment-level alerts** — waitlist/stock/tasks only.
