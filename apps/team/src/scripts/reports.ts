@@ -8,6 +8,7 @@ import {
   salonLocalDate,
   SALON_TIME_ZONE,
 } from "../lib/report-range";
+import { showToast } from "../lib/toast";
 
 type ReportsPayload = {
   range: {
@@ -56,6 +57,34 @@ type ReportsPayload = {
       reorderThreshold: number;
     }>;
   };
+};
+
+type ReportSectionId =
+  | "reports-overview"
+  | "reports-appointments"
+  | "reports-cancellations"
+  | "reports-status"
+  | "reports-inventory";
+
+type ExportSection = "revenue" | "appointments" | "cancellations" | "inventory" | "all";
+
+const REVENUE_DEFINITION =
+  "Revenue = completed service and product sales before tips and tax. Tips and tax are shown separately.";
+
+const EXPORT_LABELS: Record<ExportSection, string> = {
+  revenue: "Export revenue CSV",
+  appointments: "Export appointments CSV",
+  cancellations: "Export cancellations CSV",
+  inventory: "Export inventory CSV",
+  all: "Export full report CSV",
+};
+
+const EXPORT_TOAST: Record<ExportSection, string> = {
+  revenue: "Revenue CSV downloaded.",
+  appointments: "Appointments CSV downloaded.",
+  cancellations: "Cancellations CSV downloaded.",
+  inventory: "Inventory CSV downloaded.",
+  all: "Full report CSV downloaded.",
 };
 
 type PresetValue =
@@ -111,16 +140,43 @@ function computePresetRange(
   }
 }
 
-function stateMarkup(kind: "loading" | "empty" | "not-configured" | "error", title: string, hint?: string) {
+function stateMarkup(kind: "loading" | "empty" | "not-configured" | "error" | "permission", title: string, hint?: string) {
+  if (kind === "loading") {
+    return `
+      <div class="reports-state ui-empty ui-empty--compact" aria-busy="true">
+        <p class="ui-empty__title">${escapeHtml(title)}</p>
+      </div>`;
+  }
+  const errorClass = kind === "error" || kind === "permission" ? " ui-empty--error" : "";
   return `
-    <div class="reports-state reports-state--${kind}">
-      <p class="reports-state__title">${escapeHtml(title)}</p>
-      ${hint ? `<p class="reports-state__hint">${escapeHtml(hint)}</p>` : ""}
+    <div class="reports-state ui-empty ui-empty--compact${errorClass}">
+      <p class="ui-empty__title">${escapeHtml(title)}</p>
+      ${hint ? `<p class="ui-empty__hint">${escapeHtml(hint)}</p>` : ""}
     </div>`;
 }
 
 function info(label: string) {
   return `<span class="reports-info" role="img" tabindex="0" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">i</span>`;
+}
+
+function sectionHasExportData(section: ExportSection, payload: ReportsPayload): boolean {
+  switch (section) {
+    case "revenue":
+      return payload.revenue.orderCount > 0 || payload.revenue.totalCents > 0;
+    case "appointments":
+      return payload.appointmentsByStaff.length > 0;
+    case "cancellations":
+      return payload.cancellations.scheduledTotal > 0 || payload.appointmentStatus.total > 0;
+    case "inventory":
+      return payload.inventory.lowStockCount > 0;
+    case "all":
+      return (
+        sectionHasExportData("revenue", payload) ||
+        sectionHasExportData("appointments", payload) ||
+        sectionHasExportData("cancellations", payload) ||
+        sectionHasExportData("inventory", payload)
+      );
+  }
 }
 
 function initReports(root: HTMLElement) {
@@ -133,9 +189,7 @@ function initReports(root: HTMLElement) {
   const presetBtns = Array.from(
     root.querySelectorAll<HTMLButtonElement>("[data-preset]"),
   );
-  const exportWrap = root.querySelector<HTMLElement>("[data-export]");
-  const exportTrigger = root.querySelector<HTMLButtonElement>("[data-export-trigger]");
-  const exportMenu = root.querySelector<HTMLElement>("[data-export-menu]");
+  const exportBtn = root.querySelector<HTMLButtonElement>("[data-export-btn]");
   const errorEl = root.querySelector<HTMLElement>("[data-reports-error]");
   const rangeLabel = root.querySelector<HTMLElement>("[data-range-label]");
   const refreshedLabel = root.querySelector<HTMLElement>("[data-refreshed-label]");
@@ -147,8 +201,17 @@ function initReports(root: HTMLElement) {
   const navLinks = Array.from(
     root.querySelectorAll<HTMLAnchorElement>("[data-nav-link]"),
   );
+  const tabBtns = Array.from(
+    root.querySelectorAll<HTMLButtonElement>("[data-report-tab]"),
+  );
+  const reportSections = Array.from(
+    root.querySelectorAll<HTMLElement>(".reports-section"),
+  );
 
   let lastPayload: ReportsPayload | null = null;
+  let activeSectionId: ReportSectionId = "reports-overview";
+  let activeExportKey: ExportSection = "revenue";
+  const mobileMq = window.matchMedia("(max-width: 900px)");
 
   function currentRange() {
     const from = fromInput?.value || root.dataset.from || "";
@@ -165,12 +228,49 @@ function initReports(root: HTMLElement) {
 
   function setActivePreset(value: PresetValue | null) {
     for (const btn of presetBtns) {
-      btn.setAttribute(
-        "aria-pressed",
-        btn.dataset.preset === value ? "true" : "false",
-      );
+      const pressed = btn.dataset.preset === value;
+      btn.setAttribute("aria-pressed", pressed ? "true" : "false");
+      btn.classList.toggle("is-active", pressed);
     }
     if (customWrap) customWrap.hidden = value !== "custom";
+  }
+
+  function setActiveSection(id: ReportSectionId, exportKey?: ExportSection) {
+    activeSectionId = id;
+    if (exportKey) activeExportKey = exportKey;
+
+    for (const link of navLinks) {
+      link.classList.toggle("is-active", link.dataset.navLink === id);
+    }
+    for (const btn of tabBtns) {
+      const selected = btn.dataset.reportTab === id;
+      btn.classList.toggle("is-active", selected);
+      btn.setAttribute("aria-selected", selected ? "true" : "false");
+    }
+
+    if (mobileMq.matches) {
+      for (const section of reportSections) {
+        section.classList.toggle("is-mobile-hidden", section.id !== id);
+      }
+    } else {
+      for (const section of reportSections) {
+        section.classList.remove("is-mobile-hidden");
+      }
+    }
+
+    updateExportButton();
+  }
+
+  function updateExportButton() {
+    if (!exportBtn) return;
+    const hasData = lastPayload ? sectionHasExportData(activeExportKey, lastPayload) : false;
+    exportBtn.disabled = !hasData;
+    exportBtn.textContent = hasData
+      ? EXPORT_LABELS[activeExportKey]
+      : "Nothing to export";
+    exportBtn.title = hasData
+      ? `Download ${activeExportKey} data for the selected date range as CSV.`
+      : "No rows to export for this report and date range.";
   }
 
   function showLoading() {
@@ -187,14 +287,18 @@ function initReports(root: HTMLElement) {
       errorEl.textContent = message;
       errorEl.hidden = false;
     }
+    const isPermission = /unauthorized|403|permission|manager/i.test(message);
     const err = stateMarkup(
-      "error",
-      "Couldn’t load this section",
-      "Check your connection and try Refresh.",
+      isPermission ? "permission" : "error",
+      isPermission ? "Reports are manager-only" : "Couldn't load reports",
+      isPermission
+        ? "Ask your salon owner for access."
+        : "Check your connection and try Refresh.",
     );
     for (const el of [revenueEl, staffTable, cancelEl, statusEl, inventoryEl]) {
       if (el) el.innerHTML = err;
     }
+    updateExportButton();
   }
 
   function renderRevenue(revenue: ReportsPayload["revenue"]) {
@@ -202,23 +306,24 @@ function initReports(root: HTMLElement) {
     if (revenue.orderCount === 0 && revenue.totalCents === 0) {
       revenueEl.innerHTML = stateMarkup(
         "empty",
-        "No completed checkouts in this range",
-        "Revenue appears here once a checkout is completed.",
+        "No activity for this period",
+        "$0 revenue recorded — completed checkouts in this range, not a loading error.",
       );
       return;
     }
     revenueEl.innerHTML = `
+      <p class="reports-revenue-def">${escapeHtml(REVENUE_DEFINITION)}</p>
       <article class="reports-metric">
         <p class="reports-metric__label">Completed checkouts ${info("Checkouts marked complete within this date range.")}</p>
         <p class="reports-metric__value">${revenue.orderCount}</p>
       </article>
       <article class="reports-metric">
-        <p class="reports-metric__label">Revenue ${info("Total collected from completed checkouts in this range.")}</p>
+        <p class="reports-metric__label">Revenue ${info("Service and product sales from completed checkouts. Excludes tips, tax, gift cards, refunds, and deposits.")}</p>
         <p class="reports-metric__value">${escapeHtml(revenue.formattedTotal)}</p>
-        <p class="reports-metric__meta">Tips ${escapeHtml(revenue.formattedTips)}</p>
+        <p class="reports-metric__meta">Tips ${escapeHtml(revenue.formattedTips)} · shown separately from revenue</p>
       </article>
       <article class="reports-metric">
-        <p class="reports-metric__label">Average ticket ${info("Revenue divided by the number of completed checkouts.")}</p>
+        <p class="reports-metric__label">Average ticket ${info("Revenue divided by the number of completed checkouts in this range.")}</p>
         <p class="reports-metric__value">${escapeHtml(revenue.formattedAverage)}</p>
       </article>`;
   }
@@ -228,8 +333,8 @@ function initReports(root: HTMLElement) {
     if (rows.length === 0) {
       staffTable.innerHTML = stateMarkup(
         "empty",
-        "No appointments in this range",
-        "Booked, completed, and cancelled appointments will appear here.",
+        "No activity for this period",
+        "Booked, completed, and cancelled appointments will appear here. Try a wider range.",
       );
       return;
     }
@@ -267,7 +372,7 @@ function initReports(root: HTMLElement) {
     if (stats.scheduledTotal === 0) {
       cancelEl.innerHTML = stateMarkup(
         "empty",
-        "No appointments scheduled in this range",
+        "No activity for this period",
         "Cancellation and no-show rates appear once appointments are booked.",
       );
       return;
@@ -296,7 +401,7 @@ function initReports(root: HTMLElement) {
     if (stats.total === 0) {
       statusEl.innerHTML = stateMarkup(
         "empty",
-        "No appointments in this range",
+        "No activity for this period",
         "The status breakdown appears once appointments are booked.",
       );
       return;
@@ -330,7 +435,7 @@ function initReports(root: HTMLElement) {
     if (inventory.totalProducts === 0) {
       inventoryEl.innerHTML = stateMarkup(
         "not-configured",
-        "Inventory isn’t set up yet",
+        "Inventory isn't set up yet",
         "Add products in Stock to track low-stock alerts here.",
       );
       return;
@@ -339,7 +444,7 @@ function initReports(root: HTMLElement) {
       inventoryEl.innerHTML = stateMarkup(
         "empty",
         "Everything is stocked",
-        "No products are at or below their reorder threshold.",
+        "No products are at or below their reorder threshold for this salon.",
       );
       return;
     }
@@ -406,6 +511,7 @@ function initReports(root: HTMLElement) {
       renderStatus(reports.appointmentStatus);
       renderInventory(reports.inventory);
       setRefreshed();
+      updateExportButton();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Failed to load reports");
     }
@@ -417,10 +523,11 @@ function initReports(root: HTMLElement) {
     return /[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s;
   }
 
-  function sectionCsv(section: string, p: ReportsPayload): string {
+  function sectionCsv(section: ExportSection, p: ReportsPayload): string {
     const lines: string[] = [];
     lines.push("Salon Citrine Team Reports");
     lines.push(`Period,${p.range.fromDate},${p.range.toDate}`);
+    lines.push(`Note,"${REVENUE_DEFINITION.replaceAll('"', '""')}"`);
     lines.push("");
 
     const revenue = () => {
@@ -479,7 +586,7 @@ function initReports(root: HTMLElement) {
     return lines.join("\n");
   }
 
-  function downloadCsv(section: string) {
+  function downloadCsv(section: ExportSection) {
     if (!lastPayload) return;
     const suffix = reportRangeFilenameSuffix({
       fromDate: lastPayload.range.fromDate,
@@ -497,11 +604,7 @@ function initReports(root: HTMLElement) {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-  }
-
-  function closeExportMenu() {
-    if (exportMenu) exportMenu.hidden = true;
-    exportTrigger?.setAttribute("aria-expanded", "false");
+    showToast(EXPORT_TOAST[section], "success");
   }
 
   // --- scroll-spy nav ------------------------------------------------------
@@ -514,9 +617,9 @@ function initReports(root: HTMLElement) {
     const visible = new Set<string>();
 
     const setActive = (id: string) => {
-      for (const link of navLinks) {
-        link.classList.toggle("is-active", link.dataset.navLink === id);
-      }
+      const tab = tabBtns.find((btn) => btn.dataset.reportTab === id);
+      const exportKey = (tab?.dataset.exportKey ?? "revenue") as ExportSection;
+      setActiveSection(id as ReportSectionId, exportKey);
     };
 
     const observer = new IntersectionObserver(
@@ -535,9 +638,23 @@ function initReports(root: HTMLElement) {
     setActive(sections[0]!.id);
 
     for (const link of navLinks) {
-      link.addEventListener("click", () => setActive(link.dataset.navLink ?? ""));
+      link.addEventListener("click", () => {
+        setActive(link.dataset.navLink ?? "");
+      });
     }
   }
+
+  for (const btn of tabBtns) {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.reportTab ?? "reports-overview";
+      const exportKey = (btn.dataset.exportKey ?? "revenue") as ExportSection;
+      setActiveSection(id as ReportSectionId, exportKey);
+    });
+  }
+
+  mobileMq.addEventListener("change", () => {
+    setActiveSection(activeSectionId, activeExportKey);
+  });
 
   // --- wire up -------------------------------------------------------------
   for (const btn of presetBtns) {
@@ -559,34 +676,13 @@ function initReports(root: HTMLElement) {
 
   applyBtn?.addEventListener("click", () => void loadReports());
 
-  exportTrigger?.addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (!exportMenu) return;
-    const willOpen = exportMenu.hidden;
-    exportMenu.hidden = !willOpen;
-    exportTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
-  });
-
-  exportMenu?.addEventListener("click", (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-export-section]");
-    if (!target) return;
-    const section = target.dataset.exportSection ?? "all";
-    if (section === "all" && !lastPayload) {
-      window.location.href = buildUrl("csv");
-    } else {
-      downloadCsv(section);
-    }
-    closeExportMenu();
-  });
-
-  document.addEventListener("click", (event) => {
-    if (exportWrap && !exportWrap.contains(event.target as Node)) closeExportMenu();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeExportMenu();
+  exportBtn?.addEventListener("click", () => {
+    if (!lastPayload || exportBtn.disabled) return;
+    downloadCsv(activeExportKey);
   });
 
   setupScrollSpy();
+  setActiveSection("reports-overview", "revenue");
   void loadReports();
 }
 

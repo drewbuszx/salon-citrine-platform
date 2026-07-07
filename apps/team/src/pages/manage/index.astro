@@ -1,7 +1,30 @@
 ---
 import TeamLayout from "../../layouts/TeamLayout.astro";
 import TeamManageLayout from "../../components/TeamManageLayout.astro";
-import { MANAGE_HUB_ITEMS } from "../../lib/manage-nav";
+import { isSalonManager } from "../../lib/auth";
+import { MANAGE_HUB_ITEMS, type ManageHubItem } from "../../lib/manage-nav";
+import { teamUrl } from "../../lib/supabase-server";
+
+const { staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const managerView = isSalonManager(staff);
+
+const SOON_NOTES: Record<string, string> = {
+  staff: "Employee profiles and schedules are on the way.",
+  business: "Business details editing is on the way.",
+};
+
+const MANAGER_ONLY = new Set(["services", "booking-policy"]);
+
+const hubItems: ManageHubItem[] = MANAGE_HUB_ITEMS.filter((item) => {
+  if (item.disabled) return true;
+  if (MANAGER_ONLY.has(item.id) && !managerView) return false;
+  return true;
+});
 
 const hubIcons: Record<string, string> = {
   services: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>`,
@@ -14,29 +37,32 @@ const hubIcons: Record<string, string> = {
 ---
 
 <TeamLayout title="Manage" activeNav="manage" plain wide fullBleed>
-  <TeamManageLayout title="Manage" activeSection="hub">
+  <TeamManageLayout title="Manage" activeSection="hub" managerView={managerView}>
     <div class="team-manage-layout__hub-list">
       {
-        MANAGE_HUB_ITEMS.map((item) => (
+        hubItems.map((item) => (
           <article
             class:list={[
               "team-manage-layout__hub-row",
               { "team-manage-layout__hub-row--disabled": item.disabled },
             ]}
             id={item.id}
+            aria-disabled={item.disabled ? "true" : undefined}
           >
             <div class="team-manage-layout__hub-icon" set:html={hubIcons[item.id] ?? hubIcons.services} />
             <div class="team-manage-layout__hub-copy">
               <h2 class="team-manage-layout__hub-title">{item.title}</h2>
-              <p class="team-manage-layout__hub-desc">{item.description}</p>
+              <p class="team-manage-layout__hub-desc">
+                {item.disabled ? (SOON_NOTES[item.id] ?? item.description) : item.description}
+              </p>
             </div>
             {
               item.disabled ? (
-                <span class="team-manage-layout__soon-badge" aria-label={`${item.title} — coming soon`}>
+                <span class="ui-badge ui-badge--info team-manage-layout__soon-badge" aria-label={`${item.title} — coming soon`}>
                   Soon
                 </span>
               ) : (
-                <a class="team-list-layout__btn-secondary" href={item.href}>
+                <a class="ui-btn ui-btn--secondary ui-btn--compact" href={item.href}>
                   {item.actionLabel ?? "Open"}
                 </a>
               )
