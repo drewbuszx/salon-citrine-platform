@@ -1,0 +1,118 @@
+/*
+ * Champion 3 — cross-page dark mode contrast fixes.
+ * Prefer token overrides under [data-theme="dark"] over per-page hacks.
+ */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-link: #c9a96e;
+  --color-success: #9cb393;
+}
+
+/* Native date/time inputs respect dark surfaces */
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Shared notices & badges */
+[data-theme="dark"] .notice--error {
+  color: #f5a8a8;
+  border-color: rgba(200, 68, 68, 0.45);
+  background: rgba(200, 60, 60, 0.14);
+}
+
+[data-theme="dark"] .team-badge--warn {
+  color: #f5a8a8;
+  border-color: rgba(200, 68, 68, 0.45);
+  background: rgba(200, 60, 60, 0.14);
+}
+
+[data-theme="dark"] .team-badge--ok {
+  color: #b5c9ae;
+  border-color: rgba(141, 158, 136, 0.45);
+  background: rgba(141, 158, 136, 0.16);
+}
+
+[data-theme="dark"] .team-toast--error {
+  color: #f5a8a8;
+}
+
+/* List / manage page chrome */
+[data-theme="dark"] .team-list-layout__title,
+[data-theme="dark"] .team-manage-layout__title {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .team-list-layout__subheader,
+[data-theme="dark"] .team-manage-layout__subheader {
+  background: var(--color-bg);
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .team-list-layout__sidebar-link.is-active,
+[data-theme="dark"] .team-list-layout__sidebar-nav-btn.is-active,
+[data-theme="dark"] .team-manage-layout__nav-link.is-active {
+  color: var(--color-text);
+}
+
+/* Reports toolbar & date presets */
+[data-theme="dark"] .reports-preset[aria-pressed="true"] {
+  background: var(--color-stone-100);
+  color: var(--color-text);
+  box-shadow: inset 0 0 0 2px var(--color-sage);
+}
+
+[data-theme="dark"] .reports-metric__value,
+[data-theme="dark"] .reports-cancel-cell__value {
+  color: var(--color-text);
+}
+
+/* Day calendar — sticky header bar must stay opaque on dark bg */
+[data-theme="dark"] .day-cal {
+  --day-header-bg: var(--color-stone-100);
+}
+
+[data-theme="dark"] .day-cal__header {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .day-cal__time-spacer,
+[data-theme="dark"] .day-cal__staff-row {
+  background: var(--day-header-bg);
+}
+
+/* Inventory modals & forms (global class names from inventory.astro) */
+[data-theme="dark"] .inventory-modal__backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .inventory-scanner__manual {
+  border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] .inventory-scanner__error {
+  color: #f5a8a8;
+}
+
+[data-theme="dark"] .stock-status--in {
+  color: #b5c9ae;
+}
+
+[data-theme="dark"] .stock-status--low {
+  color: #e8cdc8;
+}
+
+/* Login form borders */
+[data-theme="dark"] .team-shell.team-shell--login,
+[data-theme="dark"] .login-split__panel,
+[data-theme="dark"] body.body--login {
+  --login-border: var(--color-border);
+  --login-border-strong: var(--color-stone-300);
+}
+
+[data-theme="dark"] body.body--login {
+  background: var(--color-cream);
+  background-image: none;
+}

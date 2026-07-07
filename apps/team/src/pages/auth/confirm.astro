@@ -40,15 +40,25 @@ if (tokenHash && type === "recovery") {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>Confirming sign-in · Salon Citrine Team</title>
+    <script is:inline>
+      (function () {
+        var storageKey = "theme";
+        var stored = localStorage.getItem(storageKey);
+        var theme = stored === "dark" || stored === "light" ? stored : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
     <style>
+      @import "@saloncitrine/theme/tokens.css";
+
       body {
         margin: 0;
         min-height: 100dvh;
         display: grid;
         place-items: center;
-        font-family: system-ui, sans-serif;
-        background: #f3ede3;
-        color: #3d3832;
+        font-family: var(--font-body, system-ui, sans-serif);
+        background: var(--color-cream, #f3ede3);
+        color: var(--color-text, #3d3832);
       }
 
       .confirm-card {
@@ -63,11 +73,16 @@ if (tokenHash && type === "recovery") {
       }
 
       .confirm-card a {
-        color: #8a6f2c;
+        color: var(--color-link, #8a6f2c);
       }
 
       [data-confirm-status="error"] {
         display: none;
+      }
+
+      [data-theme="dark"] body {
+        background: var(--color-cream);
+        color: var(--color-text);
       }
     </style>
   </head>

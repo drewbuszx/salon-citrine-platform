@@ -888,13 +888,13 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   }
 
   .stock-status--in {
-    background: var(--color-sage-muted, #e7ede4);
-    color: #4a5c43;
+    background: var(--color-sage-muted);
+    color: var(--color-success);
   }
 
   .stock-status--low {
-    background: rgba(174, 148, 143, 0.2);
-    color: #8a5148;
+    background: var(--color-dusty-rose-muted);
+    color: var(--color-dusty-rose);
   }
 
   .stock-status--out {
@@ -1193,8 +1193,8 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     max-width: calc(100vw - 2rem);
     padding: 0.65rem 1.1rem;
     border-radius: var(--radius-md);
-    background: var(--color-stone-800);
-    color: #fff;
+    background: var(--color-text);
+    color: var(--color-bg);
     font-family: var(--font-body);
     font-size: 0.8125rem;
     font-weight: 500;
@@ -1235,9 +1235,10 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     max-height: 90vh;
     overflow: auto;
     padding: 1.25rem;
-    background: #fff;
+    background: var(--color-bg);
+    color: var(--color-text);
     border-radius: 0.35rem 0.35rem 0 0;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 16px 48px var(--color-card-shadow);
   }
 
   .inventory-modal__panel--narrow {
@@ -1272,7 +1273,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     background: none;
     font-size: 1.5rem;
     line-height: 1;
-    color: #6b7280;
+    color: var(--color-stone-500);
     cursor: pointer;
   }
 
@@ -1280,21 +1281,21 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     width: 100%;
     aspect-ratio: 4 / 3;
     object-fit: cover;
-    background: #111;
-    border: 1px solid #e5e7eb;
+    background: var(--color-stone-900);
+    border: 1px solid var(--color-border);
     border-radius: 0.25rem;
   }
 
   .inventory-scanner__hint {
     margin: 0.65rem 0 0;
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--color-stone-500);
   }
 
   .inventory-scanner__error {
     margin: 0.5rem 0 0;
     font-size: 0.8125rem;
-    color: #b91c1c;
+    color: var(--color-error);
   }
 
   .inventory-scanner__error:empty {
@@ -1306,7 +1307,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     gap: 0.65rem;
     margin-top: 1rem;
     padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--color-border);
   }
 
   .inventory-form-label {
@@ -1315,16 +1316,17 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
     font-family: var(--font-sans);
     font-size: 0.75rem;
     font-weight: 500;
-    color: #374151;
+    color: var(--color-stone-600);
   }
 
   .inventory-form-input {
     padding: 0.55rem 0.65rem;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--color-border);
     border-radius: 0.25rem;
     font-family: var(--font-sans);
     font-size: 0.875rem;
-    color: #111827;
+    color: var(--color-text);
+    background: var(--color-bg);
   }
 
   .inventory-form-input:focus-visible {
@@ -1341,7 +1343,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   .inventory-form-hint {
     font-weight: 400;
     font-size: 0.75rem;
-    color: #9ca3af;
+    color: var(--color-stone-400);
     line-height: 1.35;
   }
 
