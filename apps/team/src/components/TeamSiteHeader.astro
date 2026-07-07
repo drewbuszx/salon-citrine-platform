@@ -428,11 +428,14 @@ const initials = staff ? staffInitials(staff.name) : "";
     max-width: 14rem;
   }
 
-  [data-theme="dark"] .team-bar__logo-img--light {
+  /* :global() is required: [data-theme="dark"] lives on <html>, which is
+     outside this component's scope. A bare selector gets the component's
+     data-astro-cid appended to the ancestor and never matches <html>. */
+  :global([data-theme="dark"]) .team-bar__logo-img--light {
     display: none;
   }
 
-  [data-theme="dark"] .team-bar__logo-img--dark {
+  :global([data-theme="dark"]) .team-bar__logo-img--dark {
     display: block;
   }
 
