@@ -3,6 +3,7 @@
  * Stakeholder demo: embed booking in an iframe (same pattern as saloncitrineindy.com).
  * Live at /book/embed-demo after book Worker deploy.
  */
+import "@saloncitrine/theme/tokens.css";
 import { BUSINESS } from "@saloncitrine/shared";
 
 const bookBase =
@@ -10,6 +11,28 @@ const bookBase =
   `${Astro.url.origin}${import.meta.env.BASE_URL}`.replace(/\/$/, "");
 
 const embedSrc = `${bookBase}?embed=1`;
+
+const iframeSnippet = `<!-- Salon Citrine booking embed — paste on saloncitrineindy.com -->
+<iframe
+  id="booking-embed"
+  src="${embedSrc}"
+  title="Book an appointment at ${BUSINESS.name}"
+  style="width:100%;min-height:720px;border:0;border-radius:8px;background:var(--color-cream,#f7f2ea);"
+  loading="lazy"
+  allow="payment *"
+></iframe>
+
+<!-- Optional: auto-resize iframe when booking posts height hints -->
+<script>
+  window.addEventListener("message", function (event) {
+    if (event.data && event.data.type === "saloncitrine:embed-height") {
+      var iframe = document.getElementById("booking-embed");
+      if (iframe && typeof event.data.height === "number") {
+        iframe.style.height = event.data.height + "px";
+      }
+    }
+  });
+</script>`;
 ---
 
 <!doctype html>
@@ -20,9 +43,9 @@ const embedSrc = `${bookBase}?embed=1`;
     <title>Embed demo · {BUSINESS.name}</title>
     <style>
       :root {
-        font-family: "DM Sans", system-ui, sans-serif;
-        color: #3c3835;
-        background: #f7f2ea;
+        font-family: var(--font-body);
+        color: var(--color-stone-700);
+        background: var(--color-cream);
       }
       body {
         margin: 0;
@@ -31,54 +54,67 @@ const embedSrc = `${bookBase}?embed=1`;
       .demo {
         max-width: 52rem;
         margin: 0 auto;
-        padding: 2rem 1.25rem 3rem;
+        padding: var(--space-8) var(--space-5) var(--space-12);
       }
       .demo__kicker {
-        margin: 0 0 0.5rem;
-        font-size: 0.68rem;
+        margin: 0 0 var(--space-2);
+        font-size: var(--text-xs);
         font-weight: 600;
-        letter-spacing: 0.14em;
+        letter-spacing: var(--tracking-widest);
         text-transform: uppercase;
-        color: #787068;
+        color: var(--color-stone-500);
       }
       .demo__title {
-        margin: 0 0 0.75rem;
-        font-family: "Cormorant Garamond", Georgia, serif;
+        margin: 0 0 var(--space-3);
+        font-family: var(--font-serif);
         font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-weight: 500;
-        line-height: 1.2;
+        line-height: var(--leading-tight);
+        color: var(--color-text);
       }
       .demo__lead {
-        margin: 0 0 1.5rem;
-        font-size: 0.95rem;
-        line-height: 1.6;
-        color: #787068;
+        margin: 0 0 var(--space-6);
+        font-size: var(--text-sm);
+        line-height: var(--leading-relaxed);
+        color: var(--color-stone-500);
         max-width: 38rem;
       }
       .demo__frame-wrap {
-        border: 1px solid #e8e4dc;
-        border-radius: 12px;
+        border: 1px solid var(--color-stone-200);
+        border-radius: var(--radius-xl);
         overflow: hidden;
-        box-shadow: 0 12px 40px rgba(47, 42, 40, 0.08);
-        background: #f7f2ea;
+        box-shadow: var(--shadow-lg);
+        background: var(--color-cream);
       }
       .demo__frame {
         display: block;
         width: 100%;
         min-height: 720px;
         border: 0;
-        background: #f7f2ea;
+        background: var(--color-cream);
+      }
+      .demo__notes {
+        margin-top: var(--space-5);
+        font-size: var(--text-sm);
+        line-height: var(--leading-relaxed);
+        color: var(--color-stone-500);
+      }
+      .demo__notes p {
+        margin: 0 0 var(--space-3);
       }
       .demo__code {
-        margin-top: 1.25rem;
-        padding: 1rem;
-        border-radius: 8px;
-        background: #efe6d8;
-        font-size: 0.75rem;
-        line-height: 1.5;
+        margin-top: var(--space-5);
+        padding: var(--space-4);
+        border-radius: var(--radius-md);
+        background: var(--color-cream-deep);
+        border: 1px solid var(--color-stone-200);
+        font-family: ui-monospace, "Cascadia Code", "Source Code Pro", monospace;
+        font-size: var(--text-xs);
+        line-height: var(--leading-normal);
         overflow-x: auto;
         white-space: pre-wrap;
         word-break: break-all;
+        color: var(--color-stone-700);
       }
     </style>
   </head>
@@ -92,6 +128,7 @@ const embedSrc = `${bookBase}?embed=1`;
       </p>
       <div class="demo__frame-wrap">
         <iframe
+          id="booking-embed"
           class="demo__frame"
           src={embedSrc}
           title={`Book an appointment at ${BUSINESS.name}`}
@@ -99,13 +136,19 @@ const embedSrc = `${bookBase}?embed=1`;
           allow="payment *"
         ></iframe>
       </div>
-      <pre class="demo__code" aria-label="iframe snippet">&lt;iframe
-  src="{embedSrc}"
-  title="Book an appointment at {BUSINESS.name}"
-  style="width:100%;min-height:720px;border:0;border-radius:8px;background:#f7f2ea;"
-  loading="lazy"
-  allow="payment *"
-&gt;&lt;/iframe&gt;</pre>
+      <div class="demo__notes">
+        <p>
+          <strong>Integration notes:</strong> Include <code>allow="payment *"</code> so Stripe
+          deposit checkout works inside the iframe. Match the iframe background to
+          <code>var(--color-cream)</code> for a seamless edge blend on the marketing site.
+        </p>
+        <p>
+          <strong>Optional height sync:</strong> The booking app may post resize hints to the parent
+          page. Listen for <code>saloncitrine:embed-height</code> messages (Wave 2) to avoid a
+          fixed min-height on long funnel steps.
+        </p>
+      </div>
+      <pre class="demo__code" aria-label="iframe snippet">{iframeSnippet}</pre>
     </div>
   </body>
 </html>
