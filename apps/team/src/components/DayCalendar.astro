@@ -1188,6 +1188,25 @@ const calendarConfig = {
         openSheet(apptMenu);
       }
 
+      // Astro scopes this component's styles with a data-astro-cid-* attribute,
+      // but drawer content is injected at runtime and misses it. Stamp the
+      // attribute on injected nodes so drawer form styles actually apply.
+      const scopeAttr = Array.from(root.attributes)
+        .map((attr) => attr.name)
+        .find((name) => name.startsWith("data-astro-cid-"));
+
+      function stampScopeAttr(node) {
+        if (!scopeAttr || !(node instanceof Element)) return;
+        node.setAttribute(scopeAttr, "");
+        node.querySelectorAll("*").forEach((el) => el.setAttribute(scopeAttr, ""));
+      }
+
+      new MutationObserver((records) => {
+        for (const record of records) {
+          record.addedNodes.forEach((node) => stampScopeAttr(node));
+        }
+      }).observe(drawerBody, { childList: true, subtree: true });
+
       function openDrawer(title, subtitle, html) {
         drawerTitle.textContent = title;
         drawerSubtitle.textContent = subtitle || "";
