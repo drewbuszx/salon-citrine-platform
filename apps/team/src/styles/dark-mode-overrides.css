@@ -111,6 +111,9 @@
 /* Day calendar — sticky header bar must stay opaque on dark bg */
 [data-theme="dark"] .day-cal {
   --day-header-bg: var(--color-stone-100);
+  /* Book staff filter: recessed tray + raised chips (mirrors light-mode hierarchy) */
+  --day-filter-tray-bg: rgba(0, 0, 0, 0.32);
+  --day-filter-chip-bg: var(--color-stone-200);
 }
 
 [data-theme="dark"] .day-cal__header {
@@ -120,6 +123,23 @@
 [data-theme="dark"] .day-cal__time-spacer,
 [data-theme="dark"] .day-cal__staff-row {
   background: var(--day-header-bg);
+}
+
+/* Book — staff filter chip tray (scoped to .day-cal toolbar, not frozen sidebar) */
+[data-theme="dark"] .day-cal__staff-filter-label {
+  color: var(--color-stone-500);
+}
+
+[data-theme="dark"] .day-cal__staff-chip {
+  color: var(--color-text);
+  border-color: var(--color-stone-300);
+}
+
+[data-theme="dark"] .day-cal__staff-chip.is-active,
+[data-theme="dark"] .day-cal__staff-chip--all.is-active {
+  background: color-mix(in srgb, var(--color-citrine) 22%, var(--day-filter-chip-bg));
+  border-color: var(--color-citrine);
+  color: var(--color-text);
 }
 
 /* Inventory modals & forms (global class names from inventory.astro) */

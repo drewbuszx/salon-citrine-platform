@@ -3641,8 +3641,9 @@ const calendarConfig = {
   [data-theme="dark"] .day-cal {
     --day-divider: rgba(255, 255, 255, 0.14);
     --day-divider-strong: rgba(255, 255, 255, 0.22);
-    --day-filter-tray-bg: rgba(255, 255, 255, 0.06);
-    --day-filter-chip-bg: var(--color-light);
+    /* Recessed tray darker than page bg; raised chips lighter than tray (mirrors light mode hierarchy). */
+    --day-filter-tray-bg: rgba(0, 0, 0, 0.32);
+    --day-filter-chip-bg: var(--color-stone-200);
     --day-header-bg: var(--color-stone-100);
   }
 
@@ -3943,6 +3944,7 @@ const calendarConfig = {
     border-radius: 999px;
     /* Raised "light control" pill sitting inside the tray — opposite treatment of the flat, bordered header row below. */
     background: var(--day-filter-chip-bg);
+    color: var(--color-text);
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
     cursor: pointer;
     flex: 0 0 auto;
@@ -4000,6 +4002,39 @@ const calendarConfig = {
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    color: inherit;
+  }
+
+  [data-theme="dark"] .day-cal__staff-filter-label {
+    color: var(--color-stone-500);
+  }
+
+  [data-theme="dark"] .day-cal__staff-chip {
+    border-color: var(--color-stone-300);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+
+  [data-theme="dark"] .day-cal__staff-chip:hover,
+  [data-theme="dark"] .day-cal__staff-chip:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  [data-theme="dark"] .day-cal__staff-chip.is-active,
+  [data-theme="dark"] .day-cal__staff-chip--all.is-active {
+    background: color-mix(in srgb, var(--color-citrine) 22%, var(--day-filter-chip-bg));
+    border-color: var(--color-citrine);
+    color: var(--color-text);
+    box-shadow: inset 0 0 0 1px rgba(231, 172, 70, 0.45);
+  }
+
+  [data-theme="dark"] .day-cal__staff-chip--in-view:not(.day-cal__staff-chip--off) {
+    border-color: var(--color-sage);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sage) 55%, transparent);
+  }
+
+  [data-theme="dark"] .day-cal__staff-chip--off {
+    color: var(--color-stone-500);
   }
 
   .day-cal__subbar-actions {
