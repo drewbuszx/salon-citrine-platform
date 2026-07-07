@@ -1,0 +1,124 @@
+---
+import { createSupabaseServerClient, teamUrl } from "../../lib/supabase-server";
+
+const tokenHash = Astro.url.searchParams.get("token_hash");
+const type = Astro.url.searchParams.get("type");
+const code = Astro.url.searchParams.get("code");
+
+if (code) {
+  try {
+    const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      return Astro.redirect(teamUrl("/reset-password"));
+    }
+  } catch {
+    // fall through to client hash handler / error state
+  }
+}
+
+if (tokenHash && type === "recovery") {
+  try {
+    const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "recovery",
+    });
+    if (!error) {
+      return Astro.redirect(teamUrl("/reset-password"));
+    }
+  } catch {
+    // fall through to client hash handler / error state
+  }
+}
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Confirming sign-in · Salon Citrine Team</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #f3ede3;
+        color: #3d3832;
+      }
+
+      .confirm-card {
+        max-width: 24rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+
+      .confirm-card p {
+        margin: 0 0 0.75rem;
+        line-height: 1.5;
+      }
+
+      .confirm-card a {
+        color: #8a6f2c;
+      }
+
+      [data-confirm-status="error"] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="confirm-card">
+      <p data-confirm-status="loading">Confirming your reset link…</p>
+      <p data-confirm-status="error">
+        This reset link is invalid or has expired.
+        <a href={teamUrl("/forgot-password")}>Request a new link</a>
+        or <a href={teamUrl("/login")}>return to sign in</a>.
+      </p>
+    </div>
+
+    <script define:vars={{ exchangeUrl: teamUrl("/api/auth/exchange"), resetUrl: teamUrl("/reset-password") }}>
+      async function finishRecovery() {
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        const type = hash.get("type");
+
+        if (!accessToken || !refreshToken || type !== "recovery") {
+          showError();
+          return;
+        }
+
+        const response = await fetch(exchangeUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          }),
+        });
+
+        if (!response.ok) {
+          showError();
+          return;
+        }
+
+        window.location.replace(resetUrl);
+      }
+
+      function showError() {
+        document.querySelector('[data-confirm-status="loading"]')?.remove();
+        const errorEl = document.querySelector('[data-confirm-status="error"]');
+        if (errorEl instanceof HTMLElement) {
+          errorEl.style.display = "block";
+        }
+      }
+
+      finishRecovery().catch(showError);
+    </script>
+  </body>
+</html>

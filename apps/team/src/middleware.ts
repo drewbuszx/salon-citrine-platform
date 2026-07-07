@@ -6,7 +6,8 @@ import {
 } from "./lib/auth";
 import { createSupabaseServerClient, teamUrl } from "./lib/supabase-server";
 
-const PUBLIC_PATHS = new Set(["/login"]);
+const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/auth/confirm"]);
+const RESET_PASSWORD_PATH = "/reset-password";
 const CHANGE_PASSWORD_PATH = "/change-password";
 
 function normalizePath(pathname: string, base: string) {
@@ -48,7 +49,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const isApiRoute = routePath.startsWith("/api/");
   const isPublicRoute = PUBLIC_PATHS.has(routePath);
-  const isPublicApi = routePath === "/api/auth/login";
+  const isPublicApi =
+    routePath === "/api/auth/login" ||
+    routePath === "/api/auth/forgot-password" ||
+    routePath === "/api/auth/exchange";
 
   let user = null;
   try {
@@ -99,9 +103,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return next();
   }
 
+  if (routePath === RESET_PASSWORD_PATH) {
+    if (!user) {
+      return context.redirect(teamUrl("/login?error=reset_expired"));
+    }
+    return next();
+  }
+
   if (
     user &&
     needsPasswordChange &&
+    routePath !== CHANGE_PASSWORD_PATH &&
     routePath !== "/api/auth/change-password" &&
     routePath !== "/api/auth/logout"
   ) {

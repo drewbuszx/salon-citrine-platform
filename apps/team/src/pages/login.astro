@@ -1,60 +1,248 @@
 ---
 import TeamLayout from "../layouts/TeamLayout.astro";
 import { BUSINESS } from "@saloncitrine/shared";
+import { loginErrorMessage } from "../lib/login-errors";
+import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
 
-const error = Astro.url.searchParams.get("error");
-const message =
-  error === "unlinked"
-    ? "Your login is not linked to a staff profile. Ask an owner to set staff.supabase_user_id."
-    : error === "invalid"
-      ? "Invalid email or password."
-      : null;
+const errorCode = Astro.url.searchParams.get("error");
+const message = loginErrorMessage(errorCode);
+const preservedEmail = Astro.url.searchParams.get("email") ?? "";
+
+const logoPrimarySrc = withBase("images/salon-citrine-primary-rev.png");
+const logoMobileLightSrc = withBase("images/salon-citrine-wordmark-mobile.png");
+const logoMobileDarkSrc = withBase("images/salon-citrine-wordmark-rev.png");
+const appVersion = "0.0.1";
+const privacyUrl = `https://${BUSINESS.domain}/privacy`;
+const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-in%20help`;
 ---
 
 <TeamLayout title="Sign in" loginPage plain>
   <section class="login-split">
-    <aside class="login-split__hero" aria-hidden="true">
-      <div class="login-split__photo">
-        <div class="login-split__photo-shimmer"></div>
-      </div>
-      <div class="login-split__hero-copy">
-        <p class="login-split__kicker">{BUSINESS.name}</p>
-        <p class="login-split__tagline">Warm gold clarity for your working day.</p>
-        <ul class="login-split__features">
-          <li>Today's book at a glance</li>
-          <li>Clients, waitlist, checkout — one sign-in</li>
-          <li>Built for iPad at the chair</li>
-        </ul>
+    <aside class="login-split__hero" aria-label="Salon Citrine staff workspace">
+      <div class="login-split__texture" aria-hidden="true"></div>
+
+      <svg
+        class="login-split__crystal"
+        viewBox="0 0 320 420"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
+      >
+        <path
+          d="M160 24 L280 140 L220 396 L100 396 L40 140 Z"
+          stroke="currentColor"
+          stroke-width="1.2"
+          opacity="0.24"></path>
+        <path
+          d="M160 24 L160 396 M40 140 L280 140 M100 396 L220 140 M220 396 L100 140"
+          stroke="currentColor"
+          stroke-width="0.8"
+          opacity="0.16"></path>
+        <path
+          d="M160 80 L240 140 L160 340 L80 140 Z"
+          stroke="currentColor"
+          stroke-width="0.6"
+          opacity="0.14"></path>
+      </svg>
+
+      <div class="login-split__hero-inner">
+        <div class="login-split__brand">
+          <div class="login-split__logo-stage">
+            <div class="login-split__logo-glow" aria-hidden="true"></div>
+            <img
+              class="login-split__primary-logo"
+              src={logoPrimarySrc}
+              alt={BUSINESS.name}
+              width="280"
+              height="360"
+              loading="eager"
+            />
+          </div>
+
+          <div class="login-split__hero-copy">
+            <p class="login-split__lead">Your Salon Citrine workspace</p>
+            <p class="login-split__desc">
+              Appointments, clients, inventory, tasks, and team resources in one place.
+            </p>
+          </div>
+        </div>
       </div>
     </aside>
 
     <div class="login-split__panel">
-      <header class="login-page__brand">
-        <p class="login-page__kicker">Staff portal</p>
-        <h1 class="login-page__title">Welcome back</h1>
-        <p class="login-page__lead">Sign in to manage your book, clients, and salon day.</p>
-      </header>
+      <div class="login-split__panel-main">
+        <div class="login-split__stack">
+          <a
+            class="login-split__mobile-logo"
+            href={`https://${BUSINESS.domain}/`}
+            aria-label={BUSINESS.name}
+          >
+            <img
+              class="login-split__mobile-logo-img login-split__mobile-logo-img--light"
+              src={logoMobileLightSrc}
+              alt={BUSINESS.name}
+              width="220"
+              height="82"
+              loading="eager"
+            />
+            <img
+              class="login-split__mobile-logo-img login-split__mobile-logo-img--dark"
+              src={logoMobileDarkSrc}
+              alt=""
+              width="220"
+              height="82"
+              loading="eager"
+              aria-hidden="true"
+            />
+          </a>
 
-      {message ? <p class="notice notice--error" role="alert">{message}</p> : null}
+          <div class="login-card">
+            <header class="login-card__heading">
+              <p class="login-card__kicker">Staff portal</p>
+              <h1 class="login-card__title">Welcome back</h1>
+              <p class="login-card__lead">
+                Sign in to view your schedule and manage your salon day.
+              </p>
+            </header>
 
-      <form class="form-stack" method="post" action={teamUrl("/api/auth/login")}>
-        <label class="form-label">
-          Email
-          <input class="form-input" name="email" type="email" autocomplete="username" required />
-        </label>
-        <label class="form-label">
-          Password
-          <input
-            class="form-input"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            required
-          />
-        </label>
-        <button class="btn-primary" type="submit">Sign in</button>
-      </form>
+            <form
+              class="login-form"
+              method="post"
+              action={teamUrl("/api/auth/login")}
+              data-login-form
+              novalidate
+            >
+              <div
+                class="login-alert-slot"
+                id="login-alert-slot"
+                role="alert"
+                aria-live="assertive"
+                data-login-alert-slot
+              >
+                {
+                  message ? (
+                    <p class="login-alert login-alert--error">{message}</p>
+                  ) : (
+                    <span class="login-alert-slot__empty" aria-hidden="true"></span>
+                  )
+                }
+              </div>
+
+              <div class="login-field" data-field>
+                <label class="login-field__label" for="login-email">Email</label>
+                <input
+                  class="login-field__input"
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  autocomplete="username"
+                  inputmode="email"
+                  spellcheck="false"
+                  placeholder="Email address"
+                  required
+                  value={preservedEmail}
+                  aria-describedby={message ? "login-alert-slot" : undefined}
+                />
+                <p class="login-field__error" data-field-error hidden></p>
+              </div>
+
+              <div class="login-field" data-field>
+                <div class="login-field__label-row">
+                  <label class="login-field__label" for="login-password">Password</label>
+                  <a class="login-link login-link--quiet" href={teamUrl("/forgot-password")}>
+                    Forgot password?
+                  </a>
+                </div>
+                <div class="login-field__password-wrap">
+                  <input
+                    class="login-field__input login-field__input--password"
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder=""
+                    required
+                  />
+                  <button
+                    class="login-field__toggle"
+                    type="button"
+                    data-password-toggle
+                    aria-pressed="false"
+                    aria-label="Show password"
+                    title="Show password"
+                  >
+                    <svg class="login-field__toggle-icon login-field__toggle-icon--show" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.75"></path>
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"></circle>
+                    </svg>
+                    <svg class="login-field__toggle-icon login-field__toggle-icon--hide" viewBox="0 0 24 24" aria-hidden="true" fill="none" hidden>
+                      <path d="M3 3l18 18M10.58 10.58A3 3 0 0012 15a3 3 0 002.42-4.42M9.88 4.24A10.4 10.4 0 0112 5c6.5 0 10 7 10 7a16.6 16.6 0 01-4.12 5.12M6.12 6.12A16.6 16.6 0 002 12s3.5 7 10 7a10.4 10.4 0 004.12-.88" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+                    </svg>
+                  </button>
+                </div>
+                <p
+                  class="login-field__hint login-field__hint--caps"
+                  id="login-caps-warning"
+                  data-caps-warning
+                  hidden
+                >
+                  Caps Lock is on
+                </p>
+                <p class="login-field__error" data-field-error hidden></p>
+              </div>
+
+              <label class="login-remember">
+                <input
+                  class="login-remember__input"
+                  id="login-remember"
+                  name="remember"
+                  type="checkbox"
+                />
+                <span class="login-remember__box" aria-hidden="true">
+                  <svg class="login-remember__check" viewBox="0 0 12 10" aria-hidden="true" fill="none">
+                    <path d="M1 5.2 4.2 8.4 11 1.4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+                  </svg>
+                </span>
+                <span class="login-remember__label">Keep me signed in on this device</span>
+              </label>
+
+              <button
+                class="login-submit"
+                type="submit"
+                data-login-submit
+                aria-describedby="login-submit-status"
+              >
+                <span class="login-submit__spinner" data-login-spinner hidden aria-hidden="true"></span>
+                <span class="login-submit__label" data-login-submit-label>Sign in</span>
+              </button>
+            </form>
+          </div>
+
+          <div class="login-support">
+            <p class="login-staff-badge">
+              <svg class="login-staff-badge__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"></rect>
+                <path d="M8 11V8a4 4 0 118 0v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+              </svg>
+              Authorized Salon Citrine staff only
+            </p>
+            <a class="login-help-link" href={helpUrl}>Need help signing in?</a>
+          </div>
+        </div>
+      </div>
+
+      <footer class="login-footer">
+        <nav class="login-footer__nav" aria-label="Login footer">
+          <a class="login-footer__link" href={privacyUrl}>Privacy</a>
+          <span class="login-footer__brand">{BUSINESS.name}</span>
+          <span class="login-footer__version" title="Application version">v{appVersion}</span>
+        </nav>
+      </footer>
     </div>
   </section>
+
+  <span class="login-sr-status" id="login-submit-status" data-login-status aria-live="polite" aria-atomic="true"></span>
 </TeamLayout>
+
+<script src="../scripts/login-form.ts"></script>

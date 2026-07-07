@@ -59,7 +59,13 @@ function parseArgs(argv) {
 }
 
 function generateTempPassword() {
-  return randomBytes(18).toString("base64url");
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const bytes = randomBytes(24);
+  let password = "";
+  for (let i = 0; i < 24; i += 1) {
+    password += alphabet[bytes[i] % alphabet.length];
+  }
+  return password;
 }
 
 async function findUserByEmail(supabase, email) {

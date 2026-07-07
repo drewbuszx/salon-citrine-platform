@@ -65,14 +65,18 @@ function requireEnv(name: RequiredSupabaseEnv) {
 export function createSupabaseServerClient(
   request: Request,
   cookies: AstroCookies,
+  options?: { maxAge?: number },
 ) {
   const cookieMethods: CookieMethodsServer = {
     getAll() {
       return parseCookieHeader(request.headers.get("Cookie") ?? "");
     },
     setAll(cookiesToSet) {
-      cookiesToSet.forEach(({ name, value, options }) => {
-        cookies.set(name, value, options);
+      cookiesToSet.forEach(({ name, value, options: cookieOpts }) => {
+        cookies.set(name, value, {
+          ...cookieOpts,
+          ...(options?.maxAge != null ? { maxAge: options.maxAge } : {}),
+        });
       });
     },
   };
@@ -90,4 +94,10 @@ export function teamUrl(path = "") {
     return base || "/";
   }
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** Absolute team-app URL for Supabase email redirects (must match Site URL / redirect allow list). */
+export function teamAbsoluteUrl(path: string, request: Request) {
+  const origin = new URL(request.url).origin;
+  return `${origin}${teamUrl(path)}`;
 }
