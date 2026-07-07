@@ -2839,6 +2839,11 @@ const calendarConfig = {
     --day-staff-width: 9rem;
     --day-time-width: 3rem;
     --day-header-height: 2.75rem;
+    /* Structural grid hairlines — subtle but visible against the calendar bg. */
+    --day-divider: rgba(0, 0, 0, 0.12);
+    --day-divider-strong: rgba(0, 0, 0, 0.18);
+    /* Solid surface for the schedule header bar (distinct from the chip row). */
+    --day-header-bg: var(--color-light);
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -2846,6 +2851,11 @@ const calendarConfig = {
     min-height: 0;
     background: var(--color-bg);
     color: var(--color-text);
+  }
+
+  [data-theme="dark"] .day-cal {
+    --day-divider: rgba(255, 255, 255, 0.14);
+    --day-divider-strong: rgba(255, 255, 255, 0.22);
   }
 
   .visually-hidden {
@@ -3295,15 +3305,15 @@ const calendarConfig = {
     position: sticky;
     left: 0;
     z-index: 5;
-    border-right: 1px solid var(--color-border);
+    border-right: 1px solid var(--day-divider);
     background: var(--color-bg);
   }
 
   .day-cal__time-spacer {
     height: var(--day-header-height);
     flex-shrink: 0;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-bg);
+    border-bottom: 1px solid var(--day-divider-strong);
+    background: var(--day-header-bg);
     position: sticky;
     top: 0;
     z-index: 6;
@@ -3404,8 +3414,8 @@ const calendarConfig = {
       to right,
       transparent,
       transparent calc(var(--day-staff-width) - 1px),
-      var(--color-border) calc(var(--day-staff-width) - 1px),
-      var(--color-border) var(--day-staff-width)
+      var(--day-divider) calc(var(--day-staff-width) - 1px),
+      var(--day-divider) var(--day-staff-width)
     );
   }
 
@@ -3420,14 +3430,15 @@ const calendarConfig = {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
     box-sizing: border-box;
     height: var(--day-header-height);
     min-height: var(--day-header-height);
     max-height: var(--day-header-height);
-    padding: 0 0.35rem;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-bg);
+    padding: 0 0.45rem;
+    border-bottom: 1px solid var(--day-divider-strong);
+    border-right: 1px solid var(--day-divider);
+    background: var(--day-header-bg);
     color: var(--color-text);
     overflow: hidden;
     position: sticky;
@@ -3488,8 +3499,8 @@ const calendarConfig = {
   .day-cal__staff-name {
     flex: 0 0 auto;
     font-family: var(--font-sans);
-    font-size: 0.62rem;
-    font-weight: 600;
+    font-size: 0.64rem;
+    font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     line-height: 1.1;
@@ -3554,6 +3565,16 @@ const calendarConfig = {
     opacity: 0.55;
   }
 
+  /* Clearer top-of-hour gridlines (every 4th 15-min slot starts on the hour). */
+  .day-cal__slot:nth-child(4n + 1) {
+    border-top: 1px solid var(--day-divider);
+  }
+
+  /* Stronger boundary where the unavailable region meets the bookable grid. */
+  .day-cal__slot--off + .day-cal__slot--shift {
+    border-top: 1px solid var(--day-divider-strong);
+  }
+
   .day-cal__slot--drop-target {
     background: rgba(231, 172, 70, 0.35) !important;
     box-shadow: inset 0 0 0 2px var(--color-citrine);
@@ -3603,8 +3624,8 @@ const calendarConfig = {
 
   .day-cal__block {
     position: absolute;
-    left: 0.15rem;
-    right: 0.15rem;
+    left: 0.2rem;
+    right: 0.28rem;
     z-index: 2;
     display: flex;
     flex-direction: column;
@@ -4408,8 +4429,8 @@ const calendarConfig = {
         to right,
         transparent,
         transparent calc(100% / var(--day-staff-count) - 1px),
-        var(--color-border) calc(100% / var(--day-staff-count) - 1px),
-        var(--color-border) calc(100% / var(--day-staff-count))
+        var(--day-divider) calc(100% / var(--day-staff-count) - 1px),
+        var(--day-divider) calc(100% / var(--day-staff-count))
       );
     }
   }
