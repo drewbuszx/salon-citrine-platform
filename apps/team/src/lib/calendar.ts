@@ -84,6 +84,10 @@ export const CALENDAR_ROW_HEIGHT_REM = 1.25;
 export const STAFF_AVATAR_SIZE_REM = 2.5;
 /** Minimum provider column width so appointment text stays readable. */
 export const MIN_STAFF_COLUMN_WIDTH_REM = 9;
+/** Header layout constants used to size shared staff columns. */
+const STAFF_HEADER_HORIZONTAL_PADDING_REM = 0.9;
+const STAFF_HEADER_GAP_REM = 0.4;
+const STAFF_NAME_CHAR_WIDTH_REM = 0.36;
 /** Compact sticky provider header height. */
 export const STAFF_HEADER_HEIGHT_REM = 2.75;
 
@@ -310,11 +314,14 @@ export function staffColumnWidthRem(staff: Pick<CalendarStaff, "name">[]) {
   if (staff.length === 0) {
     return MIN_STAFF_COLUMN_WIDTH_REM;
   }
-  const nameCharWidthRem = 0.36;
   const maxNameWidth = Math.max(
-    ...staff.map((member) => member.name.length * nameCharWidthRem),
+    ...staff.map((member) => member.name.length * STAFF_NAME_CHAR_WIDTH_REM),
   );
-  const contentWidth = Math.max(STAFF_AVATAR_SIZE_REM, maxNameWidth);
+  const contentWidth =
+    STAFF_HEADER_HORIZONTAL_PADDING_REM +
+    STAFF_AVATAR_SIZE_REM +
+    STAFF_HEADER_GAP_REM +
+    maxNameWidth;
   return Math.max(
     MIN_STAFF_COLUMN_WIDTH_REM,
     Math.ceil(contentWidth * 100) / 100,

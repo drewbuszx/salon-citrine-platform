@@ -306,7 +306,15 @@ const calendarConfig = {
             }
           </nav>
 
-          <div class="day-cal__staff-filter" data-staff-filter aria-label="Filter by professional">
+          <div
+            class="day-cal__staff-filter"
+            data-staff-filter
+            role="group"
+            aria-label="Show or hide staff columns"
+          >
+            <span class="day-cal__staff-filter-label" aria-hidden="true">
+              Columns
+            </span>
             <button
               type="button"
               class="day-cal__staff-chip day-cal__staff-chip--all is-active"
@@ -324,7 +332,7 @@ const calendarConfig = {
                 ]}
                 data-staff-filter-id={member.id}
                 aria-pressed="true"
-                title={member.name}
+                title={`Show or hide ${member.name}'s column`}
               >
                 <img
                   class="day-cal__staff-chip-photo"
@@ -337,6 +345,7 @@ const calendarConfig = {
                 <span class="day-cal__staff-chip-name">{member.name.split(" ")[0]}</span>
               </button>
             ))}
+            <span class="visually-hidden" role="status" aria-live="polite" data-staff-filter-status></span>
           </div>
         </div>
       )
@@ -3017,6 +3026,14 @@ const calendarConfig = {
         if (columns instanceof HTMLElement) {
           columns.style.setProperty("--day-staff-count", String(visible || 1));
         }
+        const total = config.staffIds.length;
+        const status = root.querySelector("[data-staff-filter-status]");
+        if (status instanceof HTMLElement) {
+          status.textContent =
+            visible >= total
+              ? `Showing all ${total} staff columns`
+              : `Showing ${visible} of ${total} staff columns`;
+        }
         updateWeekLinkHref();
         root.dispatchEvent(new CustomEvent("team:staff-columns-changed"));
       }
@@ -5385,9 +5402,107 @@ const calendarConfig = {
   }
 
   @media (min-width: 48rem) {
-    .day-cal__mobile-bar,
+    .day-cal__mobile-bar {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 64rem) {
     .day-cal__compact-subbar {
       display: none !important;
+    }
+  }
+
+  @media (max-width: 64rem) {
+    .day-cal__subbar-btn {
+      min-height: var(--touch-target-min, 2.75rem);
+    }
+
+    .day-cal__subbar-btn--icon {
+      width: var(--touch-target-min, 2.75rem);
+      height: var(--touch-target-min, 2.75rem);
+    }
+
+    .day-cal__date-picker {
+      min-height: var(--touch-target-min, 2.75rem);
+    }
+
+    .day-cal__week-day {
+      min-width: 2.75rem;
+      min-height: var(--touch-target-min, 2.75rem);
+      padding-block: 0.28rem;
+    }
+
+    .day-cal__staff-chip,
+    .day-cal__staff-chip--all {
+      min-height: var(--touch-target-min, 2.75rem);
+      padding-block: 0.35rem;
+    }
+
+    .day-cal__staff-chip-photo {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .day-cal__view-pill {
+      min-height: var(--touch-target-min, 2.75rem);
+      display: inline-flex;
+      align-items: center;
+    }
+  }
+
+  @media (min-width: 48rem) and (max-width: 64rem) {
+    .day-cal {
+      --day-staff-width: 7.25rem;
+    }
+
+    .day-cal__toolbar-secondary {
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.45rem;
+    }
+
+    .day-cal__week-strip {
+      flex: 0 1 auto;
+      max-width: 42%;
+    }
+
+    .day-cal__staff-filter {
+      mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 var(--ui-scroll-fade-width, 1.25rem),
+        #000 calc(100% - var(--ui-scroll-fade-width, 1.25rem)),
+        transparent
+      );
+    }
+
+    .day-cal__staff-row {
+      position: sticky;
+      top: 0;
+      z-index: 7;
+      box-shadow: 0 1px 0 var(--day-divider);
+    }
+
+    .day-cal--compact-toolbar .day-cal__toolbar-primary {
+      display: none;
+    }
+
+    .day-cal--compact-toolbar .day-cal__toolbar-secondary {
+      padding-top: 0;
+    }
+  }
+
+  @media (min-width: 48rem) and (max-width: 64rem) and (orientation: landscape) {
+    .day-cal__staff-row {
+      z-index: 8;
+    }
+
+    .day-cal__compact-subbar.is-visible {
+      display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 19;
     }
   }
 </style>
