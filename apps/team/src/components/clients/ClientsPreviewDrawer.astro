@@ -1,0 +1,82 @@
+---
+---
+
+<aside
+  class="clients-drawer"
+  data-preview-drawer
+  hidden
+  aria-label="Client preview"
+  aria-hidden="true"
+>
+  <div class="clients-drawer__backdrop" data-drawer-close tabindex="-1" aria-hidden="true"></div>
+  <div class="clients-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="clients-drawer-title">
+    <div class="clients-drawer__head">
+      <div class="clients-drawer__head-main">
+        <div class="clients-drawer__avatar" data-drawer-avatar aria-hidden="true"></div>
+        <div>
+          <h2 class="clients-drawer__title" id="clients-drawer-title" data-drawer-name></h2>
+          <p class="clients-drawer__preferred" data-drawer-preferred hidden></p>
+        </div>
+      </div>
+      <button class="clients-drawer__close" type="button" data-drawer-close aria-label="Close preview">×</button>
+    </div>
+
+    <div class="clients-drawer__loading" data-drawer-loading hidden>
+      <span class="clients-drawer__spinner" aria-hidden="true"></span>
+      <span>Loading profile…</span>
+    </div>
+
+    <p class="clients-page__notice clients-page__notice--error" data-drawer-error hidden></p>
+
+    <div class="clients-drawer__body" data-drawer-body hidden>
+      <dl class="clients-drawer__facts">
+        <div class="clients-drawer__fact">
+          <dt>Contact</dt>
+          <dd data-drawer-contact></dd>
+        </div>
+        <div class="clients-drawer__fact">
+          <dt>Next appointment</dt>
+          <dd data-drawer-upcoming></dd>
+        </div>
+        <div class="clients-drawer__fact">
+          <dt>Last visit</dt>
+          <dd data-drawer-last-visit></dd>
+        </div>
+        <div class="clients-drawer__fact">
+          <dt>Provider</dt>
+          <dd data-drawer-provider></dd>
+        </div>
+        <div class="clients-drawer__fact">
+          <dt>Visits</dt>
+          <dd data-drawer-visits></dd>
+        </div>
+        <div class="clients-drawer__fact">
+          <dt>
+            <abbr title="Lifetime value from completed sales">LTV</abbr>
+          </dt>
+          <dd data-drawer-ltv></dd>
+        </div>
+      </dl>
+
+      <div class="clients-drawer__tags" data-drawer-tags-wrap hidden>
+        <p class="clients-drawer__section-label">Tags</p>
+        <ul class="clients-drawer__tag-list" data-drawer-tags></ul>
+      </div>
+
+      <div class="clients-drawer__section" data-drawer-visits-wrap hidden>
+        <p class="clients-drawer__section-label">Recent visits</p>
+        <ul class="clients-drawer__timeline" data-drawer-timeline></ul>
+      </div>
+
+      <div class="clients-drawer__section" data-drawer-notes-wrap hidden>
+        <p class="clients-drawer__section-label">Notes</p>
+        <ul class="clients-drawer__notes" data-drawer-notes></ul>
+      </div>
+
+      <div class="clients-drawer__actions">
+        <a class="clients-page__btn-primary" data-drawer-profile href="#">Edit profile</a>
+        <a class="clients-page__btn-secondary" data-drawer-book href="#">Book appointment</a>
+      </div>
+    </div>
+  </div>
+</aside>

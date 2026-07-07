@@ -1,0 +1,45 @@
+---
+---
+
+<div class="clients-modal" data-add-modal hidden>
+  <div class="clients-modal__backdrop" data-modal-close tabindex="-1" aria-hidden="true"></div>
+  <div class="clients-modal__panel" role="dialog" aria-modal="true" aria-labelledby="add-client-title">
+    <div class="clients-modal__head">
+      <div>
+        <h2 id="add-client-title">Add client</h2>
+        <p class="clients-modal__lead">Quick add — full profile opens after save.</p>
+      </div>
+      <button class="clients-modal__close" type="button" data-modal-close aria-label="Close">×</button>
+    </div>
+    <form class="clients-modal__form" data-add-form>
+      <div class="clients-modal__row">
+        <label class="clients-modal__label">
+          First name
+          <input class="clients-modal__input" name="firstName" required autocomplete="given-name" />
+        </label>
+        <label class="clients-modal__label">
+          Last name
+          <input class="clients-modal__input" name="lastName" required autocomplete="family-name" />
+        </label>
+      </div>
+      <label class="clients-modal__label">
+        Mobile
+        <input class="clients-modal__input" name="phone" type="tel" autocomplete="tel" placeholder="(317) 555-0100" />
+      </label>
+      <label class="clients-modal__label">
+        Email
+        <input class="clients-modal__input" name="email" type="email" autocomplete="email" placeholder="name@email.com" />
+      </label>
+      <div class="clients-modal__duplicate" data-add-duplicate hidden role="alert">
+        <p class="clients-modal__duplicate-lead">A similar client already exists:</p>
+        <ul class="clients-modal__duplicate-list" data-duplicate-list></ul>
+        <p class="clients-modal__duplicate-hint">Review before creating another profile.</p>
+      </div>
+      <p class="clients-page__notice clients-page__notice--error" data-add-error hidden></p>
+      <div class="clients-modal__actions">
+        <button class="clients-page__btn-secondary" type="button" data-modal-close>Cancel</button>
+        <button class="clients-page__btn-primary" type="submit" data-add-submit>Create client</button>
+      </div>
+    </form>
+  </div>
+</div>
