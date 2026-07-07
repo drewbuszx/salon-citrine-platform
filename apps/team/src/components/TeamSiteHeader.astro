@@ -30,9 +30,11 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** White wordmark on dark team bar; compact PNG is invert-filter fallback */
-const logoPrimarySrc = withBase("images/salon-citrine-primary-white.png");
+/** Light theme: white wordmark on dark team bar; compact PNG is invert-filter fallback */
+const logoLightSrc = withBase("images/salon-citrine-primary-white.png");
 const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
+/** Dark theme: HorizRev horizontal logo on #1a1a1a team bar */
+const logoDarkSrc = withBase("images/logo-horiz-rev-dark.png");
 const profileMenuId = "team-profile-menu";
 
 const navTabs: {
@@ -62,13 +64,22 @@ const initials = staff ? staffInitials(staff.name) : "";
     <div class="team-bar__brand">
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
-          class="team-bar__logo-img"
-          src={logoPrimarySrc}
+          class="team-bar__logo-img team-bar__logo-img--light"
+          src={logoLightSrc}
           data-fallback-src={logoFallbackSrc}
           alt=""
           width="200"
           height="40"
           loading="eager"
+        />
+        <img
+          class="team-bar__logo-img team-bar__logo-img--dark"
+          src={logoDarkSrc}
+          alt=""
+          width="200"
+          height="40"
+          loading="eager"
+          aria-hidden="true"
         />
         <span class="team-bar__logo-wordmark">{BUSINESS.name}</span>
       </a>
@@ -369,6 +380,18 @@ const initials = staff ? staffInitials(staff.name) : "";
     transition: opacity var(--transition-fast);
   }
 
+  .team-bar__logo-img--dark {
+    display: none;
+  }
+
+  [data-theme="dark"] .team-bar__logo-img--light {
+    display: none;
+  }
+
+  [data-theme="dark"] .team-bar__logo-img--dark {
+    display: block;
+  }
+
   .team-bar__logo:hover .team-bar__logo-img,
   .team-bar__logo:focus-visible .team-bar__logo-img {
     opacity: 1;
@@ -392,7 +415,8 @@ const initials = staff ? staffInitials(staff.name) : "";
     white-space: nowrap;
   }
 
-  .team-bar__logo.is-wordmark .team-bar__logo-img {
+  .team-bar__logo.is-wordmark .team-bar__logo-img--light,
+  .team-bar__logo.is-wordmark .team-bar__logo-img--dark {
     display: none;
   }
 
