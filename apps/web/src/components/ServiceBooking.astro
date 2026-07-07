@@ -7,7 +7,6 @@ import {
   HAIR_STYLIST_CATEGORY_ORDER,
   VIEW_ALL_LABEL,
 } from "../lib/booking-data";
-import { cartUrl, stylistUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 interface Props {
@@ -20,7 +19,13 @@ interface Props {
 const { catalog, initialStaffSlug, initialCategory, embed = false } = Astro.props;
 
 const initialCategories = getCategoriesForStaff(catalog, initialStaffSlug);
+const categoryDisplayLabels = Object.fromEntries(
+  [...new Set(catalog.services.map((service) => service.category))].map(
+    (category) => [category, getCategoryDisplayLabel(category)],
+  ),
+);
 const catalogJson = JSON.stringify(catalog);
+const categoryDisplayLabelsJson = JSON.stringify(categoryDisplayLabels);
 const hairStylistCategoryOrder = JSON.stringify(HAIR_STYLIST_CATEGORY_ORDER);
 const estheticianCategoryOrder = JSON.stringify(ESTHETICIAN_CATEGORY_ORDER);
 const viewAllLabel = VIEW_ALL_LABEL;
@@ -31,67 +36,105 @@ const stylistBase = withBase("stylist/");
 <section class="service-booking" data-service-booking>
   <header class="service-booking__header">
     <p class="service-booking__kicker">Book an appointment</p>
-    <h1 class="service-booking__title">Filter Your Booking</h1>
+    <h1 class="service-booking__title">Choose a Service</h1>
     <p class="service-booking__lead">
-      Choose a professional and category, then select a service to continue.
+      Search or filter by professional and category, then select a service to
+      continue.
     </p>
   </header>
 
-  <div class="service-booking__filters">
-    <label class="filter-field">
-      <span class="filter-field__label">Select a Professional</span>
-      <select
-        class="filter-field__select"
-        name="professional"
-        data-filter-professional
-        aria-label="Select a professional"
-      >
-        <option value="">Any Professional</option>
-        {
-          catalog.staff.map((member) => (
-            <option
-              value={member.slug}
-              selected={member.slug === initialStaffSlug}
-            >
-              {member.name}
-            </option>
-          ))
-        }
-      </select>
+  <div class="service-booking__toolbar">
+    <label class="search-field">
+      <span class="search-field__label">Search services</span>
+      <input
+        class="search-field__input"
+        type="search"
+        name="service-search"
+        data-service-search
+        placeholder="Search by name or description"
+        autocomplete="off"
+        enterkeyhint="search"
+        aria-label="Search services"
+      />
     </label>
 
-    <label class="filter-field">
-      <span class="filter-field__label">Select a Category</span>
-      <select
-        class="filter-field__select"
-        name="category"
-        data-filter-category
-        aria-label="Select a category"
+    <div class="filter-tray">
+      <label class="filter-tray__field">
+        <span class="filter-tray__label">Professional</span>
+        <select
+          class="filter-tray__select"
+          name="professional"
+          data-filter-professional
+          aria-label="Select a professional"
+        >
+          <option value="">Any Professional</option>
+          {
+            catalog.staff.map((member) => (
+              <option
+                value={member.slug}
+                selected={member.slug === initialStaffSlug}
+              >
+                {member.name}
+              </option>
+            ))
+          }
+        </select>
+      </label>
+    </div>
+
+    <div class="filter-tray filter-tray--pills">
+      <span class="filter-tray__label" id="category-filter-label">Category</span>
+      <div
+        class="category-pills"
+        role="group"
+        aria-labelledby="category-filter-label"
+        data-category-pills
       >
-        <option value="">{viewAllLabel}</option>
+        <button
+          type="button"
+          class="category-pill is-selected"
+          data-category=""
+          aria-pressed="true"
+        >
+          {viewAllLabel}
+        </button>
         {
           initialCategories.map((category) => (
-            <option value={category} selected={category === initialCategory}>
+            <button
+              type="button"
+              class:list={[
+                "category-pill",
+                { "is-selected": category === initialCategory },
+              ]}
+              data-category={category}
+              aria-pressed={category === initialCategory ? "true" : "false"}
+            >
               {getCategoryDisplayLabel(category)}
-            </option>
+            </button>
           ))
         }
-      </select>
-    </label>
+      </div>
+    </div>
   </div>
 
   <div class="service-booking__results" data-results-region aria-live="polite">
     <p class="service-booking__count" data-results-count hidden></p>
     <ul class="service-list" data-service-list></ul>
-    <p class="service-booking__empty" data-empty-state hidden>
-      No services match these filters. Try another professional or category.
-    </p>
+    <div class="service-booking__empty" data-empty-state hidden>
+      <p class="service-booking__empty-title" data-empty-title>
+        No services found
+      </p>
+      <p class="service-booking__empty-hint" data-empty-hint>
+        Try another professional or category.
+      </p>
+    </div>
   </div>
 </section>
 
 <script
   define:vars={{
     catalogJson,
+    categoryDisplayLabelsJson,
     hairStylistCategoryOrder,
     estheticianCategoryOrder,
     viewAllLabel,
@@ -104,22 +147,34 @@ const stylistBase = withBase("stylist/");
 >
   /** @type {import('../lib/booking-data').BookingCatalog} */
   const catalog = JSON.parse(catalogJson);
+  /** @type {Record<string, string>} */
+  const categoryDisplayLabels = JSON.parse(categoryDisplayLabelsJson);
   const hairOrder = JSON.parse(hairStylistCategoryOrder);
   const estheticianOrder = JSON.parse(estheticianCategoryOrder);
 
   const root = document.querySelector("[data-service-booking]");
   const professionalSelect = root?.querySelector("[data-filter-professional]");
-  const categorySelect = root?.querySelector("[data-filter-category]");
+  const categoryPills = root?.querySelector("[data-category-pills]");
+  const searchInput = root?.querySelector("[data-service-search]");
   const serviceList = root?.querySelector("[data-service-list]");
   const emptyState = root?.querySelector("[data-empty-state]");
+  const emptyTitle = root?.querySelector("[data-empty-title]");
+  const emptyHint = root?.querySelector("[data-empty-hint]");
   const resultsCount = root?.querySelector("[data-results-count]");
+
+  /** @type {string} */
+  let selectedCategory = initialCategory;
+
+  function getCategoryLabel(category) {
+    return categoryDisplayLabels[category] ?? category;
+  }
 
   function orderAvailableCategories(available, order) {
     return order.filter((category) => available.has(category));
   }
 
   function getCategoriesForStaff(staffSlug) {
-    const services = filterServices(staffSlug, "");
+    const services = filterServices(staffSlug, "", "");
     const available = new Set(services.map((service) => service.category));
 
     if (!staffSlug) {
@@ -149,7 +204,7 @@ const stylistBase = withBase("stylist/");
     return orderAvailableCategories(available, hairOrder);
   }
 
-  function filterServices(staffSlug, category) {
+  function filterServices(staffSlug, category, searchQuery) {
     let filtered = catalog.services;
 
     if (staffSlug) {
@@ -162,6 +217,15 @@ const stylistBase = withBase("stylist/");
 
     if (category) {
       filtered = filtered.filter((service) => service.category === category);
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((service) => {
+        const name = service.name.toLowerCase();
+        const description = (service.description ?? "").toLowerCase();
+        return name.includes(query) || description.includes(query);
+      });
     }
 
     return filtered;
@@ -196,34 +260,99 @@ const stylistBase = withBase("stylist/");
     window.history.replaceState({}, "", url);
   }
 
-  function refreshCategoryOptions(staffSlug, preserveCategory) {
-    if (!categorySelect) return;
-    const available = getCategoriesForStaff(staffSlug);
-    const current = preserveCategory && available.includes(preserveCategory)
-      ? preserveCategory
-      : "";
+  function setSelectedCategory(category) {
+    selectedCategory = category;
+    if (!categoryPills) return;
 
-    categorySelect.innerHTML = "";
-    const allOption = document.createElement("option");
-    allOption.value = "";
-    allOption.textContent = viewAllLabel;
-    categorySelect.appendChild(allOption);
+    for (const pill of categoryPills.querySelectorAll("[data-category]")) {
+      const value = pill.getAttribute("data-category") ?? "";
+      const isSelected = value === category;
+      pill.classList.toggle("is-selected", isSelected);
+      pill.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    }
+  }
+
+  function refreshCategoryPills(staffSlug, preserveCategory) {
+    if (!categoryPills) return;
+
+    const available = getCategoriesForStaff(staffSlug);
+    const current =
+      preserveCategory && available.includes(preserveCategory)
+        ? preserveCategory
+        : "";
+
+    categoryPills.innerHTML = "";
+
+    const allPill = document.createElement("button");
+    allPill.type = "button";
+    allPill.className = `category-pill${current === "" ? " is-selected" : ""}`;
+    allPill.dataset.category = "";
+    allPill.setAttribute("aria-pressed", current === "" ? "true" : "false");
+    allPill.textContent = viewAllLabel;
+    categoryPills.appendChild(allPill);
 
     for (const category of available) {
-      const option = document.createElement("option");
-      option.value = category;
-      option.textContent = category;
-      if (category === current) option.selected = true;
-      categorySelect.appendChild(option);
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = `category-pill${category === current ? " is-selected" : ""}`;
+      pill.dataset.category = category;
+      pill.setAttribute(
+        "aria-pressed",
+        category === current ? "true" : "false",
+      );
+      pill.textContent = getCategoryLabel(category);
+      categoryPills.appendChild(pill);
     }
 
-    categorySelect.value = current;
+    selectedCategory = current;
+  }
+
+  function getActiveFilters() {
+    const staffSlug = professionalSelect?.value ?? "";
+    const searchQuery = searchInput?.value ?? "";
+    return { staffSlug, category: selectedCategory, searchQuery };
+  }
+
+  function updateEmptyState({ staffSlug, category, searchQuery }, resultCount) {
+    if (!emptyTitle || !emptyHint) return;
+
+    if (searchQuery.trim()) {
+      emptyTitle.textContent = "No matching services";
+      emptyHint.textContent =
+        resultCount === 0
+          ? `No results for "${searchQuery.trim()}". Try a different search or clear your filters.`
+          : "";
+      return;
+    }
+
+    if (category) {
+      emptyTitle.textContent = "No services in this category";
+      emptyHint.textContent =
+        "Try another category or choose a different professional.";
+      return;
+    }
+
+    if (staffSlug) {
+      emptyTitle.textContent = "No services for this professional";
+      emptyHint.textContent =
+        "Try another professional or view all categories.";
+      return;
+    }
+
+    emptyTitle.textContent = "No services found";
+    emptyHint.textContent = "Try adjusting your filters.";
+  }
+
+  function formatResultsCount(count, searchQuery) {
+    const noun = `${count} service${count === 1 ? "" : "s"}`;
+    const query = searchQuery.trim();
+    if (query) return `${noun} matching "${query}"`;
+    return `Showing ${noun}`;
   }
 
   function renderServices() {
-    const staffSlug = professionalSelect?.value ?? "";
-    const category = categorySelect?.value ?? "";
-    const services = filterServices(staffSlug, category);
+    const { staffSlug, category, searchQuery } = getActiveFilters();
+    const services = filterServices(staffSlug, category, searchQuery);
 
     syncUrl(staffSlug, category);
 
@@ -234,16 +363,18 @@ const stylistBase = withBase("stylist/");
     if (services.length === 0) {
       emptyState.hidden = false;
       resultsCount.hidden = true;
+      updateEmptyState({ staffSlug, category, searchQuery }, 0);
       return;
     }
 
     emptyState.hidden = true;
     resultsCount.hidden = false;
-    resultsCount.textContent = `${services.length} service${services.length === 1 ? "" : "s"}`;
+    resultsCount.textContent = formatResultsCount(services.length, searchQuery);
 
     for (const service of services) {
       const li = document.createElement("li");
       li.className = "service-card";
+      li.tabIndex = 0;
 
       const body = document.createElement("div");
       body.className = "service-card__body";
@@ -253,6 +384,21 @@ const stylistBase = withBase("stylist/");
       name.textContent = service.name;
       body.appendChild(name);
 
+      const meta = document.createElement("div");
+      meta.className = "service-card__meta";
+
+      const duration = document.createElement("span");
+      duration.className = "service-card__duration";
+      duration.textContent = `${service.durationMinutes} min`;
+      meta.appendChild(duration);
+
+      const price = document.createElement("span");
+      price.className = "service-card__price";
+      price.textContent = formatPriceClient(service);
+      meta.appendChild(price);
+
+      body.appendChild(meta);
+
       if (service.description) {
         const desc = document.createElement("p");
         desc.className = "service-card__description";
@@ -260,24 +406,26 @@ const stylistBase = withBase("stylist/");
         body.appendChild(desc);
       }
 
-      const meta = document.createElement("p");
-      meta.className = "service-card__meta";
-      meta.textContent = `${formatPriceClient(service)} · ${service.durationMinutes} min`;
-      body.appendChild(meta);
+      const badges = document.createElement("div");
+      badges.className = "service-card__badges";
 
       const options = optionsLabel(service);
       if (options) {
         const badge = document.createElement("span");
         badge.className = "service-card__options";
         badge.textContent = options;
-        body.appendChild(badge);
+        badges.appendChild(badge);
       }
 
       if (service.requiresConsultation) {
         const badge = document.createElement("span");
         badge.className = "service-card__badge";
         badge.textContent = "Consultation required";
-        body.appendChild(badge);
+        badges.appendChild(badge);
+      }
+
+      if (badges.childElementCount > 0) {
+        body.appendChild(badges);
       }
 
       const actions = document.createElement("div");
@@ -297,15 +445,25 @@ const stylistBase = withBase("stylist/");
 
   function onFilterChange() {
     const staffSlug = professionalSelect?.value ?? "";
-    const category = categorySelect?.value ?? "";
-    refreshCategoryOptions(staffSlug, category);
+    refreshCategoryPills(staffSlug, selectedCategory);
+    renderServices();
+  }
+
+  function onCategoryPillClick(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) return;
+    if (!target.matches("[data-category]")) return;
+
+    const category = target.getAttribute("data-category") ?? "";
+    setSelectedCategory(category);
     renderServices();
   }
 
   professionalSelect?.addEventListener("change", onFilterChange);
-  categorySelect?.addEventListener("change", renderServices);
+  categoryPills?.addEventListener("click", onCategoryPillClick);
+  searchInput?.addEventListener("input", renderServices);
 
-  refreshCategoryOptions(initialStaffSlug, initialCategory);
+  refreshCategoryPills(initialStaffSlug, initialCategory);
   renderServices();
 </script>
 
@@ -337,25 +495,18 @@ const stylistBase = withBase("stylist/");
     margin-inline: auto;
   }
 
-  .service-booking__filters {
+  .service-booking__toolbar {
     display: grid;
     gap: 1rem;
     margin-bottom: 2rem;
   }
 
-  @media (min-width: 640px) {
-    .service-booking__filters {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  .filter-field {
+  .search-field {
     display: grid;
     gap: 0.4rem;
-    position: relative;
   }
 
-  .filter-field__label {
+  .search-field__label {
     font-family: var(--font-sans);
     font-size: 0.72rem;
     letter-spacing: 0.12em;
@@ -363,11 +514,65 @@ const stylistBase = withBase("stylist/");
     color: var(--color-dusty-rose);
   }
 
-  .filter-field__select {
+  .search-field__input {
+    width: 100%;
+    padding: 0.9rem 1rem 0.9rem 2.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background:
+      var(--color-stone-50)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b6560' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E")
+      0.95rem center / 1.05rem no-repeat;
+    color: var(--color-text);
+    font-family: var(--font-body);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .search-field__input::placeholder {
+    color: var(--color-gray);
+    opacity: 0.85;
+  }
+
+  .search-field__input:hover,
+  .search-field__input:focus-visible {
+    border-color: var(--color-citrine);
+    box-shadow:
+      inset 0 1px 2px rgba(0, 0, 0, 0.04),
+      0 0 0 3px var(--color-focus-ring);
+    outline: none;
+  }
+
+  .filter-tray {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .filter-tray__label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .filter-tray__field {
+    display: block;
+    position: relative;
+  }
+
+  .filter-tray__select {
     appearance: none;
     width: 100%;
-    padding: 0.85rem 2.5rem 0.85rem 1rem;
-    border: 1px solid var(--color-border);
+    padding: 0.75rem 2.5rem 0.75rem 0.85rem;
+    border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
     color: var(--color-text);
@@ -378,10 +583,10 @@ const stylistBase = withBase("stylist/");
       box-shadow var(--transition-fast);
   }
 
-  .filter-field::after {
+  .filter-tray__field::after {
     content: "";
     position: absolute;
-    right: 1.15rem;
+    right: 1rem;
     bottom: 1.05rem;
     width: 0.5rem;
     height: 0.5rem;
@@ -391,11 +596,80 @@ const stylistBase = withBase("stylist/");
     pointer-events: none;
   }
 
-  .filter-field__select:hover,
-  .filter-field__select:focus-visible {
+  .filter-tray__select:hover,
+  .filter-tray__select:focus-visible {
     border-color: var(--color-citrine);
     box-shadow: 0 0 0 3px var(--color-focus-ring);
     outline: none;
+  }
+
+  .filter-tray--pills {
+    padding-bottom: 0.75rem;
+  }
+
+  .category-pills {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-stone-300) transparent;
+  }
+
+  .category-pills::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .category-pills::-webkit-scrollbar-thumb {
+    background: var(--color-stone-300);
+    border-radius: 999px;
+  }
+
+  .category-pill {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .category-pill:hover {
+    border-color: var(--color-citrine);
+    color: var(--color-text);
+  }
+
+  .category-pill:focus-visible {
+    outline: none;
+    border-color: var(--color-citrine);
+    box-shadow: 0 0 0 3px var(--color-focus-ring);
+  }
+
+  .category-pill.is-selected {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  .category-pill.is-selected:hover {
+    background: var(--color-citrine-dark);
+    border-color: var(--color-citrine-dark);
   }
 
   .service-booking__count {
@@ -412,13 +686,13 @@ const stylistBase = withBase("stylist/");
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   :global(.service-card) {
     display: grid;
     gap: 1rem;
-    padding: 1.25rem 1.35rem;
+    padding: 1.1rem 1.2rem;
     background: var(--color-booking-card-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -428,34 +702,46 @@ const stylistBase = withBase("stylist/");
       transform var(--transition-base);
   }
 
-  @media (min-width: 640px) {
-    :global(.service-card) {
-      grid-template-columns: 1fr auto;
-      align-items: center;
-    }
-  }
-
-  :global(.service-card:hover) {
+  :global(.service-card:hover),
+  :global(.service-card:focus-within) {
     border-color: var(--color-citrine);
     box-shadow: var(--shadow-card-hover);
     transform: translateY(-1px);
   }
 
-  :global(.service-card__name) {
-    margin: 0 0 0.35rem;
-    font-size: 1.25rem;
-    font-weight: 600;
+  :global(.service-card:focus-visible) {
+    outline: none;
+    border-color: var(--color-citrine);
+    box-shadow:
+      var(--shadow-card-hover),
+      0 0 0 3px var(--color-focus-ring);
   }
 
-  :global(.service-card__description) {
-    margin: 0 0 0.5rem;
-    font-size: 0.98rem;
-    color: var(--color-gray);
-    line-height: 1.5;
+  @media (min-width: 640px) {
+    :global(.service-card) {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 1.25rem 1.35rem;
+    }
+  }
+
+  :global(.service-card__name) {
+    margin: 0 0 0.4rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    line-height: 1.25;
   }
 
   :global(.service-card__meta) {
-    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    margin: 0 0 0.35rem;
+  }
+
+  :global(.service-card__duration),
+  :global(.service-card__price) {
     font-family: var(--font-sans);
     font-size: 0.78rem;
     letter-spacing: 0.06em;
@@ -463,10 +749,31 @@ const stylistBase = withBase("stylist/");
     color: var(--color-charcoal);
   }
 
+  :global(.service-card__price) {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  :global(.service-card__description) {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--color-gray);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  :global(.service-card__badges) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
   :global(.service-card__options) {
     display: inline-block;
-    margin-top: 0.5rem;
-    margin-right: 0.5rem;
     padding: 0.2rem 0.55rem;
     font-family: var(--font-sans);
     font-size: 0.62rem;
@@ -474,11 +781,11 @@ const stylistBase = withBase("stylist/");
     text-transform: uppercase;
     background: var(--color-light);
     color: var(--color-charcoal);
+    border-radius: var(--radius-sm);
   }
 
   :global(.service-card__badge) {
     display: inline-block;
-    margin-top: 0.5rem;
     padding: 0.2rem 0.55rem;
     font-family: var(--font-sans);
     font-size: 0.62rem;
@@ -486,11 +793,13 @@ const stylistBase = withBase("stylist/");
     text-transform: uppercase;
     background: var(--color-sage);
     color: var(--color-white);
+    border-radius: var(--radius-sm);
   }
 
   :global(.service-card__select) {
     display: inline-block;
-    padding: 0.75rem 1.75rem;
+    min-width: 7.5rem;
+    padding: 0.75rem 1.5rem;
     border: 1px solid var(--color-citrine);
     border-radius: var(--radius-sm);
     font-family: var(--font-body);
@@ -504,6 +813,7 @@ const stylistBase = withBase("stylist/");
     color: var(--color-black);
     transition:
       background var(--transition-fast),
+      border-color var(--transition-fast),
       color var(--transition-fast);
     white-space: nowrap;
   }
@@ -517,10 +827,77 @@ const stylistBase = withBase("stylist/");
 
   .service-booking__empty {
     margin: 2rem 0 0;
-    padding: 2rem;
+    padding: 2rem 1.5rem;
     text-align: center;
+    background: var(--color-stone-50);
+    border: 1px dashed var(--color-stone-200);
+    border-radius: var(--radius-md);
+  }
+
+  .service-booking__empty-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .service-booking__empty-hint {
+    margin: 0;
+    font-size: 0.95rem;
     color: var(--color-gray);
-    background: var(--color-light);
-    border: 1px dashed var(--color-border);
+    line-height: 1.5;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .search-field__input {
+      background-color: var(--color-stone-50);
+      border-color: var(--color-stone-200);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .filter-tray {
+      background: var(--color-stone-50);
+      border-color: var(--color-stone-200);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .filter-tray__select {
+      background: var(--color-bg);
+      border-color: var(--color-stone-200);
+    }
+
+    .category-pill {
+      background: var(--color-bg);
+      border-color: var(--color-stone-200);
+      color: var(--color-text);
+    }
+
+    .category-pill.is-selected {
+      color: var(--color-black);
+    }
+
+    :global(.service-card) {
+      background: var(--color-booking-card-bg);
+      border-color: var(--color-border);
+    }
+
+    :global(.service-card:hover),
+    :global(.service-card:focus-within) {
+      border-color: var(--color-citrine);
+    }
+
+    :global(.service-card__duration) {
+      color: var(--color-gray);
+    }
+
+    :global(.service-card__options) {
+      background: var(--color-stone-50);
+      color: var(--color-text);
+    }
+
+    .service-booking__empty {
+      background: var(--color-stone-50);
+      border-color: var(--color-stone-200);
+    }
   }
 </style>

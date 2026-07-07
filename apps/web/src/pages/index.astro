@@ -58,7 +58,7 @@ const continueHref = `${withBase()}?${continueParams.toString()}`;
 
   {
     preselectedStylist && initialStaffSlug && (
-      <p class="prefill">
+      <p class="prefill" role="status">
         Booking with <strong>{preselectedStylist.name}</strong>
       </p>
     )
@@ -74,10 +74,14 @@ const continueHref = `${withBase()}?${continueParams.toString()}`;
 
 <style>
   .prefill {
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.5rem;
-    background: var(--color-light);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    background: var(--color-stone-50);
+    border: 1px solid var(--color-stone-200);
     border-left: 3px solid var(--color-citrine);
+    border-radius: var(--radius-md);
     text-align: center;
+    font-size: 0.95rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 </style>
