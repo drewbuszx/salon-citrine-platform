@@ -12,7 +12,7 @@ import {
   staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
-import { appendFlowFlags, bookingFlagsFromUrl } from "../lib/booking-flow";
+import { appendFlowFlags, bookingFlagsFromUrl, serviceIndexUrl, sessionFlagsFromUrl } from "../lib/booking-flow";
 
 const stylistSlug = Astro.url.searchParams.get("stylist") ?? "";
 const category = Astro.url.searchParams.get("category") ?? "";
@@ -40,6 +40,8 @@ if (category) continueParams.set("category", category);
 continueParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
 appendFlowFlags(continueParams, flowFlags);
 const continueHref = `${withBase()}?${continueParams.toString()}`;
+const sessionFlags = sessionFlagsFromUrl(Astro.url);
+const chooseStylistHref = serviceIndexUrl(sessionFlags);
 ---
 
 <BookingLayout title="Choose a service" step="service" embed={flowFlags.embed}>
@@ -50,7 +52,7 @@ const continueHref = `${withBase()}?${continueParams.toString()}`;
         stylistFirstName={staffFirstName(preselectedStylist.name)}
         stylistSlug={preselectedStylist.slug}
         continueHref={continueHref}
-        chooseStylistHref={withBase()}
+        chooseStylistHref={chooseStylistHref}
         autoOpen={true}
       />
     )

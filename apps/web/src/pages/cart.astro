@@ -21,7 +21,7 @@ import {
   staffFirstName,
   sumServiceDuration,
 } from "../lib/booking-data";
-import { datetimeUrl, stylistUrl, bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
+import { datetimeUrl, stylistUrl, bookingFlagsFromUrl, appendFlowFlags, serviceIndexUrl, sessionFlagsFromUrl } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
 
 const serviceParam = Astro.url.searchParams.get("service");
@@ -71,7 +71,7 @@ const cartParams = new URLSearchParams();
 cartParams.set("services", serviceIds.length > 0 ? serviceIds.join(",") : primaryService.id);
 if (stylist) cartParams.set("stylist", stylist.slug);
 if (returningAck) cartParams.set("returning", "1");
-cartParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
+if (existingAck) cartParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
 appendFlowFlags(cartParams, flowFlags);
 const continueHref = `${withBase("cart/")}?${cartParams.toString()}`;
 
@@ -158,6 +158,10 @@ const suggestionsJson = JSON.stringify(
 );
 
 const bookBase = withBase();
+const sessionFlags = sessionFlagsFromUrl(Astro.url);
+const backHref = serviceIndexUrl(sessionFlags, {
+  stylistSlug: stylist?.slug,
+});
 ---
 
 <BookingLayout
@@ -300,7 +304,7 @@ const bookBase = withBase();
   </div>
 
   <p class="back">
-    <a href={stylist ? `${bookBase}?stylist=${stylist.slug}` : bookBase}>
+    <a href={backHref}>
       ← Back to services
     </a>
   </p>
@@ -498,6 +502,7 @@ const bookBase = withBase();
     flex-wrap: wrap;
     align-items: center;
     gap: 0.35rem 0.55rem;
+    min-height: var(--touch-target-min, 2.75rem);
     padding: 0.65rem 0.95rem;
     border: 1px solid var(--color-stone-300);
     border-radius: var(--radius-pill);
@@ -729,7 +734,11 @@ const bookBase = withBase();
   }
 
   .cart-sticky__cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
+    min-height: var(--touch-target-min, 2.75rem);
     padding: 0.75rem 1.25rem;
     border: 1px solid var(--color-citrine);
     border-radius: var(--radius-pill);

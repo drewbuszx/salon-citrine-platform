@@ -76,28 +76,38 @@ const servicesLabel =
     : services.map((service) => service.name).join(", ");
 const totalDuration = sumServiceDuration(services);
 const whenLabel = formatConfirmationWhen(slot.startsAt);
-const priceLabel = estimateCartPrice(services) ?? formatCents(subtotalCents);
 const subtotalCents = services.reduce(
   (sum, service) => sum + (service.basePriceCents ?? 0),
   0,
 );
+const priceLabel = estimateCartPrice(services) ?? formatCents(subtotalCents);
 const depositRequiredCents = calculateRequiredDepositCents(
   bookingPolicy,
   subtotalCents,
 );
+const requiresCardOnFile =
+  depositRequiredCents > 0 ||
+  bookingPolicy.depositType === "card_on_file" ||
+  bookingPolicy.requiresCardOnFile;
+const paymentHint =
+  depositRequiredCents > 0
+    ? `A ${formatCents(depositRequiredCents)} deposit is charged when you confirm. The rest is due at your visit.`
+    : requiresCardOnFile
+      ? "Your card secures this appointment — no charge today unless noted below."
+      : "No payment is collected online today.";
 const depositLabel =
   depositRequiredCents > 0
     ? formatCents(depositRequiredCents)
     : bookingPolicy.depositType === "card_on_file" || bookingPolicy.requiresCardOnFile
-      ? "Card on file only"
-      : "None today";
+      ? "Card on file — no charge today"
+      : "No charge today";
 const cancellationSummary = formatLateCancelMessage(bookingPolicy);
-const cardOnFileExplanation =
+const paymentExplanation =
   depositRequiredCents > 0
-    ? "Your deposit is charged when you confirm. The remaining balance is due at your appointment."
+    ? "Charged when you confirm. Applied toward your service total."
     : bookingPolicy.depositType === "card_on_file" || bookingPolicy.requiresCardOnFile
-      ? "Your card secures this appointment. You won't be charged now unless noted in the policy."
-      : "No card charge today — see the full policy for details.";
+      ? "Kept on file to secure your appointment. You won't be charged today."
+      : "No card charge today. Review cancellation terms before you book.";
 
 const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const setupIntentUrl = withBase("api/booking/setup-intent");
@@ -151,7 +161,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   {
     cartId && (
       <p class="reservation-hold" data-reservation-hold data-cart-id={cartId} hidden>
-        Your time is held for <strong data-reservation-countdown>…</strong>.
+        Your time is reserved for <strong data-reservation-countdown>…</strong>. Complete booking before it expires.
       </p>
     )
   }
@@ -166,11 +176,14 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     data-client-lookup-url={bookingApi.clientLookup}
     data-cart-api-url={bookingApi.cart}
     data-cart-id={cartId ?? ""}
+    data-deposit-required-cents={depositRequiredCents}
+    data-requires-card-on-file={requiresCardOnFile ? "true" : "false"}
     novalidate
   >
     <input type="hidden" name="services" value={servicesParamValue} />
     <input type="hidden" name="stylist" value={stylist.slug} />
     {showStylistStep && <input type="hidden" name="flow" value="stylist" />}
+    {flowFlags.embed && <input type="hidden" name="embed" value="1" />}
     <input type="hidden" name="date" value={date} />
     <input type="hidden" name="time" value={slot.label} />
     <input type="hidden" name="startsAt" value={slot.startsAt} />
@@ -364,19 +377,22 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     </fieldset>
 
     <section class="trust-panel stone-tray" aria-labelledby="trust-panel-title">
-      <h2 id="trust-panel-title" class="trust-panel__title">What to expect</h2>
+      <h2 id="trust-panel-title" class="trust-panel__title">Before you confirm</h2>
+      <p class="trust-panel__intro">
+        Clear terms up front — no surprises at checkout.
+      </p>
       <dl class="trust-panel__items">
         <div>
-          <dt>Deposit due today</dt>
+          <dt>Due today</dt>
           <dd>{depositLabel}</dd>
         </div>
         <div>
-          <dt>Cancellation policy</dt>
+          <dt>Cancellation</dt>
           <dd>{cancellationSummary}</dd>
         </div>
         <div>
-          <dt>Card on file</dt>
-          <dd>{cardOnFileExplanation}</dd>
+          <dt>Payment</dt>
+          <dd>{paymentExplanation}</dd>
         </div>
       </dl>
       <p class="trust-panel__link-wrap">
@@ -388,13 +404,13 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
 
     <div class="card-section stone-tray">
       <p class="card-section__label">Payment method</p>
-      <p class="card-section__hint">
-        Secure card on file — required to complete booking.
+      <p class="card-section__hint" data-payment-hint>
+        {paymentHint}
       </p>
       <div id="payment-element" class="payment-element" aria-busy="false" aria-live="polite">
-        <p class="payment-element__status">Enter your email above to load the card form.</p>
+        <p class="payment-element__status">Enter your email to securely load the card form.</p>
       </div>
-      <p class="form-error" data-form-error hidden></p>
+      <p class="form-error" data-form-error hidden role="alert"></p>
     </div>
 
     <div class="submit-bar">
@@ -491,6 +507,12 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     gap: var(--space-5);
     max-width: 36rem;
     margin-top: var(--space-5);
+  }
+
+  @media (max-width: 639px) {
+    .details-form {
+      padding-bottom: calc(5.5rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+    }
   }
 
   .stone-tray {
@@ -603,6 +625,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     display: flex;
     gap: 0.5rem;
     align-items: flex-start;
+    min-height: var(--touch-target-min, 2.75rem);
     font-size: 0.95rem;
   }
 
@@ -650,6 +673,9 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   }
 
   .trust-panel__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target-min, 2.75rem);
     padding: 0;
     border: 0;
     background: none;
@@ -666,6 +692,12 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   .trust-panel__link:hover,
   .trust-panel__link:focus-visible {
     color: var(--color-citrine);
+  }
+
+  .trust-panel__link:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   .card-section {
@@ -701,7 +733,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   .payment-element__error {
     margin: 0;
     font-size: 0.9rem;
-    color: #b42318;
+    color: var(--color-error);
   }
 
   .form-error {
@@ -716,12 +748,27 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     z-index: 20;
     margin: 0 calc(-1 * var(--space-4));
     padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
     background: linear-gradient(
       to top,
       var(--color-bg) 70%,
       rgba(255, 255, 255, 0)
     );
     border-top: 1px solid var(--color-border-subtle);
+  }
+
+  @media (max-width: 639px) {
+    .submit-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 90;
+      margin: 0;
+      background: color-mix(in srgb, var(--color-booking-panel-bg) 92%, transparent);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 -8px 32px var(--color-card-shadow);
+    }
   }
 
   .submit-bar :global(.sc-button) {
@@ -762,5 +809,11 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       var(--color-bg) 70%,
       rgba(24, 24, 24, 0)
     );
+  }
+
+  @media (max-width: 639px) {
+    :global([data-theme="dark"]) .submit-bar {
+      background: color-mix(in srgb, var(--color-booking-panel-bg) 95%, transparent);
+    }
   }
 </style>

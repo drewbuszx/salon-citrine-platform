@@ -2,6 +2,8 @@
  * Client-side Boulevard cart helpers (session + reserve before checkout).
  */
 
+import { appendEmbedIfActive } from "../lib/booking-flow";
+
 const CART_STORAGE_KEY = "sc-booking-cart-id";
 
 export function getStoredCartId(): string | null {
@@ -230,6 +232,15 @@ export function initServiceCart(): void {
   const existingAck = root.dataset.existingAck === "true";
   const existingClientAckParam = root.dataset.existingClientAckParam ?? "";
   const continueUrl = root.dataset.continueUrl ?? "";
+  const returningAck = new URLSearchParams(window.location.search).get("returning") === "1";
+
+  function appendSessionParams(params: URLSearchParams): void {
+    if (existingAck && existingClientAckParam) {
+      params.set(existingClientAckParam, "1");
+    }
+    if (returningAck) params.set("returning", "1");
+    appendEmbedIfActive(params);
+  }
 
   const itemsEl = root.querySelector("[data-cart-items]");
   const durationEls = root.querySelectorAll("[data-total-duration]");
@@ -454,7 +465,7 @@ export function initServiceCart(): void {
     const params = new URLSearchParams();
     params.set("services", cart.map((item) => item.id).join(","));
     if (stylistSlug) params.set("stylist", stylistSlug);
-    if (existingAck) params.set(existingClientAckParam, "1");
+    appendSessionParams(params);
     window.history.replaceState({}, "", `?${params.toString()}`);
   }
 
@@ -483,7 +494,7 @@ export function initServiceCart(): void {
     const params = new URLSearchParams();
     params.set("services", cart.map((item) => item.id).join(","));
     if (stylistSlug) params.set("stylist", stylistSlug);
-    if (existingAck) params.set(existingClientAckParam, "1");
+    appendSessionParams(params);
     const separator = continueUrl.includes("?") ? "&" : "?";
     window.location.href = `${continueUrl}${separator}${params.toString()}`;
   }

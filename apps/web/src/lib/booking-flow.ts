@@ -39,6 +39,29 @@ export function appendFlowFlags(params: URLSearchParams, flags: BookingFlowFlags
   if (flags.embed) params.set(BOOKING_QUERY.embed, "1");
 }
 
+/** Session flags (embed, ack params) without step-specific flow=stylist. */
+export function sessionFlagsFromUrl(url: URL): BookingFlowFlags {
+  const flags = bookingFlagsFromUrl(url);
+  return {
+    returningAck: flags.returningAck,
+    existingAck: flags.existingAck,
+    embed: flags.embed,
+  };
+}
+
+/** Service picker landing with optional stylist/category prefill. */
+export function serviceIndexUrl(
+  flags: BookingFlowFlags = {},
+  options: { stylistSlug?: string | null; category?: string | null } = {},
+): string {
+  const params = new URLSearchParams();
+  if (options.stylistSlug) params.set(BOOKING_QUERY.stylist, options.stylistSlug);
+  if (options.category) params.set("category", options.category);
+  appendFlowFlags(params, flags);
+  const qs = params.toString();
+  return qs ? `${withBase()}?${qs}` : withBase();
+}
+
 /** Preserve embed=1 in client-side navigations when layout sets data-booking-embed on <html>. */
 export function appendEmbedIfActive(params: URLSearchParams) {
   if (
@@ -89,7 +112,9 @@ export function datetimeUrl(
   flags: BookingFlowFlags = {},
 ): string {
   const params = new URLSearchParams();
-  params.set(BOOKING_QUERY.services, servicesQueryValue(serviceIds));
+  const services = servicesQueryValue(serviceIds);
+  if (services) params.set(BOOKING_QUERY.services, services);
+  if (serviceIds[0]) params.set(BOOKING_QUERY.service, serviceIds[0]);
   params.set(BOOKING_QUERY.stylist, stylistSlug);
   appendFlowFlags(params, flags);
   return `${withBase("datetime/")}?${params.toString()}`;
@@ -118,6 +143,24 @@ export function confirmUrl(appointmentId: string, flags: BookingFlowFlags = {}):
   const params = new URLSearchParams({ appointment: appointmentId });
   appendFlowFlags(params, flags);
   return `${withBase("confirm/")}?${params.toString()}`;
+}
+
+/** Rebook same services + stylist — jumps to datetime when both are known. */
+export function rebookUrl(
+  serviceIds: string[],
+  stylistSlug: string,
+  flags: BookingFlowFlags = {},
+): string {
+  if (serviceIds.length > 0 && stylistSlug) {
+    return datetimeUrl(serviceIds, stylistSlug, flags);
+  }
+
+  const params = new URLSearchParams();
+  if (stylistSlug) params.set(BOOKING_QUERY.stylist, stylistSlug);
+  const services = servicesQueryValue(serviceIds);
+  if (services) params.set(BOOKING_QUERY.services, services);
+  appendFlowFlags(params, flags);
+  return `${withBase()}?${params.toString()}`;
 }
 
 /** API paths (respect /book base). */

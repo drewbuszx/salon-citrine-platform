@@ -30,8 +30,8 @@ import {
   staffFirstName,
 } from "../lib/booking-data";
 import { withBase } from "../lib/paths";
-import { bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
-import { rankRecommendedSlots } from "../scripts/datetime-booking";
+import { bookingFlagsFromUrl, appendFlowFlags, serviceIndexUrl, sessionFlagsFromUrl } from "../lib/booking-flow";
+import { rankRecommendedSlots, salonTimezoneLabel } from "../scripts/datetime-booking";
 
 const serviceParam = Astro.url.searchParams.get("service");
 const servicesParam = Astro.url.searchParams.get("services");
@@ -128,6 +128,8 @@ if (showStylistStep) backParams.set("flow", "stylist");
 if (existingAck) backParams.set(EXISTING_CLIENT_ACK_PARAM, "1");
 appendFlowFlags(backParams, flowFlags);
 const backHref = `${withBase("cart/")}?${backParams.toString()}`;
+const sessionFlags = sessionFlagsFromUrl(Astro.url);
+const servicePickerHref = serviceIndexUrl(sessionFlags, { stylistSlug: stylist.slug });
 ---
 
 <BookingLayout
@@ -142,7 +144,7 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
         stylistFirstName={staffFirstName(stylist.name)}
         stylistSlug={stylist.slug}
         continueHref={newClientsContinueHref}
-        chooseStylistHref={withBase()}
+        chooseStylistHref={servicePickerHref}
         autoOpen={true}
       />
     )
@@ -168,10 +170,11 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
         data-waitlist-api={withBase("api/booking/waitlist.json")}
         data-stylist-slug={stylist.slug}
         data-service-ids={servicesParamValue}
+        data-today={today}
       >
         <h2>No open times right now</h2>
         <p class="lead">
-          Join the waitlist and we will reach out when {stylist.name.split(" ")[0]} has an opening.
+          {stylist.name.split(" ")[0]}'s schedule is full for now. Join the waitlist and we'll email you the moment something opens.
         </p>
         <form class="waitlist-offer__form" data-waitlist-form>
           <div class="waitlist-offer__row">
@@ -194,7 +197,7 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
           </label>
           <label class="form-label">
             Preferred date (optional)
-            <input class="form-input" name="preferredDate" type="date" />
+            <input class="form-input" name="preferredDate" type="date" min={today} />
           </label>
           <label class="form-label">
             Notes (optional)
@@ -205,7 +208,7 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
           <button class="btn-primary" type="submit">Join waitlist</button>
         </form>
         <p class="waitlist-offer__alt">
-          Or <a href={`${withBase()}?stylist=${stylist.slug}`}>try another service or professional</a>.
+          Or <a href={servicePickerHref}>try another service or professional</a>.
         </p>
       </section>
     ) : (
@@ -301,22 +304,25 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
         </section>
 
         <section class="time-section" aria-label="Choose a time">
-          <h3 class="time-section__heading">Available times</h3>
+          <div class="time-section__header">
+            <h3 class="time-section__heading">Available times</h3>
+            <p class="time-section__timezone">{salonTimezoneLabel()}</p>
+          </div>
 
-          <div class="time-section__body" data-time-panel>
+          <div class="time-section__body" data-time-panel aria-live="polite">
             {
               !selectedDate ? (
                 <p class="time-section__empty" data-time-empty>
-                  Select a date to see available times.
+                  Pick a date on the calendar to see open times.
                 </p>
               ) : slots.length === 0 ? (
                 <p class="time-section__empty" data-time-empty>
-                  No times left on this day.
+                  Fully booked on this day — try another date or join the waitlist below.
                 </p>
               ) : (
                 <>
                   <p class="time-section__empty" data-time-empty hidden>
-                    Select a date to see available times.
+                    Pick a date on the calendar to see open times.
                   </p>
                   <form
                     class="time-form"
@@ -494,8 +500,9 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 2.75rem;
-    height: 2.5rem;
+    min-width: var(--touch-target-min, 2.75rem);
+    min-height: var(--touch-target-min, 2.75rem);
+    height: var(--touch-target-min, 2.75rem);
     padding: 0 0.85rem;
     border: 1px solid var(--color-stone-200);
     border-radius: 999px;
@@ -630,13 +637,37 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
     border-top: 1px solid var(--color-border-subtle);
   }
 
+  .time-section__header {
+    margin-bottom: 1rem;
+  }
+
   .time-section__heading {
-    margin: 0 0 1rem;
+    margin: 0;
     font-family: var(--font-sans);
     font-size: 0.75rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     font-weight: 400;
+  }
+
+  .time-section__timezone {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--color-gray);
+  }
+
+  .time-section__error {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md, 0.5rem);
+    background: var(--color-stone-50);
+  }
+
+  .time-section__retry {
+    justify-self: start;
   }
 
   .time-section__empty {
@@ -690,6 +721,32 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
     display: flex;
     justify-content: flex-start;
     margin-top: 1.5rem;
+  }
+
+  @media (max-width: 767px) {
+    .datetime-picker {
+      padding-bottom: calc(5rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+    }
+
+    .time-form__actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 90;
+      margin-top: 0;
+      padding: 0.75rem clamp(1rem, 4vw, 1.5rem)
+        calc(0.75rem + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+      background: color-mix(in srgb, var(--color-booking-panel-bg) 92%, transparent);
+      border-top: 1px solid var(--color-stone-200);
+      box-shadow: 0 -8px 32px var(--color-card-shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .time-form__actions :global(.sc-button) {
+      width: 100%;
+      text-align: center;
+    }
   }
 
   .time-option {
@@ -833,9 +890,11 @@ const backHref = `${withBase("cart/")}?${backParams.toString()}`;
 
   .empty {
     padding: 1rem;
-    background: var(--color-light);
+    background: var(--color-stone-50);
+    border: 1px solid var(--color-stone-200);
     color: var(--color-gray);
     text-align: center;
+    border-radius: var(--radius-md);
   }
 
   .waitlist-offer {
