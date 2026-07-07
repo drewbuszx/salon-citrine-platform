@@ -251,6 +251,10 @@ flowchart LR
 
 Production Worker deployed from `apps/team` via `npx wrangler deploy --config dist-build/server/wrangler.json`.
 
+- **URL:** https://salon-citrine-team.dbuszx.workers.dev
+- **Version ID:** `d20c5b71-7ec1-43e5-b80e-d7142608cad9`
+- **Commits:** `3e637d4` (spec/types) · `3c20abf` (API) · `ebeef3d` (panel) · `0095839` / `6f64f20` (header wire-up) · `e23c8ab` (integration polish)
+
 ### Known limitations (v2)
 
 1. **Dismiss is per-browser** — `localStorage` only; badge differs across devices until server-side dismiss.
