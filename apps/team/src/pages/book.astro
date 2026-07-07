@@ -47,10 +47,18 @@ try {
   calendar = { staff: [], appointments: [], blockedTimes: [], staffSchedules: {} };
 }
 
-const { count: waitlistCount } = await supabase
+let waitlistCountQuery = supabase
   .from("waitlist_entries")
   .select("*", { count: "exact", head: true })
   .eq("status", "active");
+
+if (!managerView) {
+  waitlistCountQuery = waitlistCountQuery.or(
+    `staff_id.eq.${staff.id},staff_id.is.null`,
+  );
+}
+
+const { count: waitlistCount } = await waitlistCountQuery;
 ---
 
 <TeamLayout title="Book" activeNav="book" fullBleed>
