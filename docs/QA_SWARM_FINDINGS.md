@@ -109,6 +109,126 @@ _No screenshots captured._ Browser MCP created tabs but navigation failed (`No b
 
 ---
 
+## Agent 2 — Team Pages
+
+**Agent:** QA Agent 2 of 5  
+**Scope:** Non-book team pages — `/team/` (dashboard), `/team/clients`, `/team/inventory`, `/team/reports`, `/team/tasks`, `/team/events`, `/team/manage`, `/team/waitlist`  
+**Production:** https://salon-citrine-team.dbuszx.workers.dev/team/  
+**Login hint (from Agent 1):** `dbuszx@gmail.com` (Miriam, owner) — **password not provided; all authenticated routes redirect to `/team/login`.**  
+**Method:** HTTP route probe · Playwright `qa:mobile-viewport` on production (unauthenticated) · production CSS token check · full source review of page components + `team-list-sidebar.css`. Browser MCP tabs failed to persist (no live screenshots).
+
+### Test coverage summary
+
+| Route | HTTP | Auth | Layout / chrome (code) | Sticky sidebar | Mobile | Data / empty states |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/team/` (dashboard) | 302→login | Blocked | `TeamLayout` + `TeamPulse` + hero avatar; cream bg; citrine accents | N/A | Quick actions stack ≤420px | Empty upcoming state + CTA; pulse metrics from API |
+| `/team/clients` | 302→login | Blocked | `TeamListLayout` + filter sidebar; table + **card fallback ≤640px** | No sticky (scrolls away) | Filter sheet ≤900px; cards on phone | Search, skeleton, empty search hints |
+| `/team/inventory` | 302→login | Blocked | `TeamListLayout`; low-stock banner; manager Add product | **Sticky ≥901px** (`.stock-page`) | FAB + filter sheet; touch targets 2.75rem | Category/brand filters; empty placeholders |
+| `/team/reports` | 302→login | Blocked | `TeamListLayout`; manager-only (`redirect /` if not manager) | **Sticky ≥901px** (`.reports-page`) | Sidebar hidden ≤900px; section pill tabs | Skeleton loading; CSV export; date presets |
+| `/team/tasks` | 302→login | Blocked | `TeamListLayout` + `TeamSidebarNav`; notebook paper UI | No sticky | Sidebar hidden ≤900px; **tasks-tabs** pill row | Attention badge; modal create; empty notebook |
+| `/team/events` | 302→login | Blocked | `TeamListLayout` + month calendar + filter sidebar | No sticky | Bottom-sheet modals ≤900px; compact cells ≤640px | Type/staff filters; create/request time off |
+| `/team/manage` | 302→login | Blocked | `TeamManageLayout` (reference sidebar); hub rows | Manage sidebar (link nav) | Hub list stacks; Soon badges on disabled rows | Staff/Business "Soon"; Services/Products live links |
+| `/team/waitlist` | 302→login | Blocked | `TeamListLayout` **`showSidebar={false}`**; 7-col table | N/A | **Table only** — `overflow-x: auto` on wrap | Illustrated empty state; Add modal (managers); search filter |
+| `/team/login` (gate) | **200** | Public | Split hero + form; citrine CTA; skip link | N/A | Hero hidden; mobile wordmark | — |
+
+**Production CSS verified:** `--color-citrine`, `--color-stone-800`, `.team-list-layout__filter-chevron` (12px), `.team-bar` present in deployed bundle.
+
+**Mobile viewport QA (production, unauthenticated):** All routes at 320–430px (+ 390px @2x zoom) report **0px horizontal overflow** — but every protected route resolves to login, so list/table layouts were **not** exercised at authenticated breakpoints.
+
+---
+
+### P0 bugs
+
+1. **Authenticated team-page QA blocked on production**  
+   All eight scoped routes return `302 → /team/login`. Cannot verify sticky sidebars, data tables, empty states with real data, or citrine active nav tabs without owner session. Same blocker as Agent 1 / `VISUAL_QA_REPORT.md`.
+
+---
+
+### P1 polish
+
+1. **Waitlist mobile UX — table-only, no card fallback**  
+   `waitlist.astro` renders a 7-column table with min-width columns (`Client`, `Phone`, `Staff`, `Services`, `Preferred Time`, `Date Added`, `Actions`). Unlike **Clients** (which swaps to `.clients-page__cards` at ≤640px), waitlist relies on `.team-list-layout__table-wrap { overflow-x: auto }` only. On phone, staff must horizontal-scroll a wide grid — poor front-desk UX.  
+   **Fix:** Mirror clients card pattern or collapse to 2-column stacked rows on ≤640px. Selectors: `.waitlist-table`, `.waitlist-page__empty`.
+
+2. **Waitlist page nav context misleading**  
+   `waitlist.astro` sets `activeNav="book"` while `TeamSiteHeader` has no Waitlist tab. Users arriving from Dashboard Pulse (`TeamPulse` → `/waitlist`) see **Book** highlighted in the top bar, not a waitlist breadcrumb.  
+   **Fix (CSS/copy only):** Add `.team-bar__page-title` subtitle "Waitlist" on this route, or sub-nav chip under Book; avoid restructuring sidebar architecture.
+
+3. **Sticky filter sidebar inconsistent across list pages**  
+   Only **Stock** (`.stock-page .team-list-layout__sidebar`) and **Reports** (`.reports-page …`) get `position: sticky; top: var(--team-bar-height)` on desktop ≥901px. **Clients, Tasks, Events** sidebars scroll away on long pages — filters fall off-screen while results scroll.  
+   **Fix (CSS polish only):** Reuse the stock-page sticky block for `.clients-page`, `.tasks-page`, `.events-page` wrappers — no TeamListLayout restructure.
+
+4. **Mobile filter-sheet active state uses sage, not citrine**  
+   At ≤900px, `.team-list-layout__sidebar-nav-btn.is-active` uses `--color-sage` inset border/background (`team-list-sidebar.css` ~785–789). Reports mobile tabs duplicate this (`reports.astro` `.reports-tabs__btn.is-active`). Design system + `TEAM_SIDEBAR_DECISION` specify **citrine** active chrome. Desktop sidebar correctly uses `--team-sidebar-active-border` (citrine).  
+   **Fix:** Swap mobile sheet active tokens to citrine-muted / citrine border — CSS-only.
+
+5. **Reports silently redirects non-managers**  
+   `reports.astro` redirects stylists/estheticians to `/` with no toast or "Managers only" message. Users may think Reports is broken.  
+   **Fix:** Redirect to `/` with query param + one-line notice, or hide Reports tab for non-managers in `TeamSiteHeader` (role-gated nav).
+
+6. **`qa:mobile-viewport` omits `/waitlist`**  
+   `apps/team/scripts/mobile-viewport-qa.mjs` ROUTES array has `/login`, `/`, `/book`, `/clients`, … `/manage` but **not `/waitlist`**. Post-deploy mobile regression can miss waitlist table overflow.  
+   **Fix:** Add `/waitlist` to ROUTES.
+
+---
+
+### P2 ideas
+
+1. **Waitlist discovery** — No top-nav entry; only Dashboard Pulse, Book drawer badge, and deep link. Consider a Waitlist sub-link under Book dropdown or Pulse-only is intentional — document in demo script.
+
+2. **Clients "Saved Audiences" empty filter** — Sidebar shows `Saved Audiences (0)` / "No saved audiences yet" — marketing-segment placeholder with no backend. Hide until schema exists or rename to reduce clutter.
+
+3. **Manage hub "Soon" rows** — Staff + Business Details disabled with Soon badge; fine for beta but flag for owner demos (manage/index.astro).
+
+4. **Dashboard "Scan" label** — Quick action says "Scan" but links to `/inventory`, not the barcode scanner modal. Rename to "Stock" or open scanner FAB directly.
+
+5. **Events calendar legend hidden on mobile** — `.events-calendar-legend { display: none }` at ≤900px; color-coded event types harder to decode on phone.
+
+6. **Unified empty-state component** — Waitlist, clients, tasks, and reports each hand-roll empty UI; extract shared `.ui-empty` with citrine illustration slot for brand consistency.
+
+7. **Post-deploy auth QA** — Check in `team-auth.json` (Playwright storage) for CI; run `qa:mobile-viewport` + `qa:desktop-sidebar` against production after each deploy.
+
+8. **Docs URL drift** — `VISUAL_QA_CHECKLIST.md` still references `salon-citrine-platform.dbuszx.workers.dev`; production team Worker is `salon-citrine-team.dbuszx.workers.dev`.
+
+---
+
+### Wins (verified in code + production gate)
+
+- **Login page** — HTTP 200; zero horizontal overflow at 320–430px and 390px@2x on production; skip link + citrine tokens deployed.
+- **TeamListLayout cohesion** — Clients, Stock, Tasks, Events, Reports, Waitlist share Boulevard-style subheader, filter sheet, and data table chrome.
+- **Team Pulse dashboard** — Citrine live dot, metric cards deep-link to book/waitlist/inventory/reports; hot/alert states for waitlist ≥3 and low stock.
+- **Clients mobile** — Card grid fallback at ≤640px (table hidden) — best-in-class mobile list pattern in the app.
+- **Stock** — Sticky filter sidebar, low-stock banner shortcut, manager add product, export in sidebar footer.
+- **Tasks** — Notebook metaphor, attention badge with pulse animation, mobile pill tabs mirroring sidebar views.
+- **Waitlist** — Full empty-state illustration, manager Add modal with Morning/Afternoon/Evening chips, Book/Remove row actions wired in `waitlist.ts`.
+- **Manage** — Reference `TeamManageLayout` with citrine 3px left active border; hub rows with clear Soon vs Open CTAs.
+- **Reports** — Section sidebar + mobile tabs, date presets, skeleton shimmer, low-stock section links to inventory.
+- **Global sidebar guard** — 12px chevrons, `(N)` count spacing, SVG size constraints in `team-list-sidebar.css`.
+
+---
+
+### Screenshot notes
+
+_No authenticated screenshots captured._ Recommend re-run with owner session (`dbuszx@gmail.com` or `TEAM_QA_STORAGE_STATE`) and capture:
+
+- Dashboard: Team Pulse strip + empty upcoming state
+- Clients: desktop filter sidebar (citrine active) + mobile card list
+- Stock: sticky sidebar scrolled mid-page + low-stock banner
+- Tasks: notebook entries + Needs attention badge lit
+- Events: month grid + filter sheet on tablet
+- Reports: metric cards + staff table (manager view)
+- Manage: hub list with Soon badges
+- Waitlist: empty state + populated table (or horizontal-scroll failure on 390px)
+- Mobile ≤900px: filter sheet open on Clients/Stock (verify citrine vs sage active)
+
+---
+
+### Fixes applied by Agent 2
+
+_None — QA/reporting only. No changes to `TeamListLayout` / sidebar architecture._
+
+---
+
 ## Agent 4 — Innovation & Opportunities
 
 **Agent:** QA Agent 4 of 5 (Innovation & Boulevard gap analyst)  
@@ -215,3 +335,126 @@ From `SPRINT_WATCHER_NOTES.md` + code audit:
 - `apps/team/src/scripts/checkout.ts` (prebook links)
 - `apps/team/src/lib/reports.ts`, `apps/team/src/lib/team-pulse.ts`
 - `docs/BOOK_AGENT_BACKLOG.md` (B2–B8 backlog IDs)
+
+---
+
+## Agent 3 — Auth, Mobile & Shell
+
+**Agent:** QA Agent 3 of 5  
+**Scope:** `/team/login`, `/team/forgot-password`, `/team/change-password`, session persistence, Miriam staff profile after `dbuszx@gmail.com` login, mobile nav / sidebar / touch targets, page load performance, console errors, local `astro.config` Vite setup  
+**Local:** http://localhost:4322/team  
+**Production:** https://salon-citrine-platform.dbuszx.workers.dev/team/ (also https://salon-citrine-team.dbuszx.workers.dev/team/ per Agent 2)  
+**Method:** Playwright auth/perf/touch-target probes · `qa:mobile-viewport` + `qa:mobile-a11y` (local) · `qa:desktop-sidebar` (unauthenticated) · Supabase SQL staff-link verification · `astro.config.mjs` read-only review · middleware + auth-session code review. Browser MCP tabs failed to persist (no live screenshots).
+
+### Test coverage summary
+
+| Area | Method | Result |
+| --- | --- | --- |
+| `/team/login` load | HTTP + Playwright | **Pass** — 200 local & prod; title "Sign in · Team · Salon Citrine" |
+| Login form validation | Playwright empty submit | **Pass** — HTML5 + client validation blocks empty fields |
+| Invalid credentials | POST → redirect | **Pass** — `/login?error=invalid&email=…` + alert "Email or password is incorrect…" |
+| `/team/forgot-password` | HTTP + form POST | **Pass** — 200; submit → `?sent=1` success message |
+| `/team/change-password` (unauthed) | GET redirect | **Pass** — redirects to `/team/login` |
+| Protected routes (`/`, `/book`, etc.) | GET unauthed | **Pass** — middleware redirects to login |
+| Miriam staff profile link | Supabase SQL | **Pass** — `dbuszx@gmail.com` → `miriam-zhukov`, name "Miriam Zhukov", role `owner`, `must_change_password=false` |
+| Live login + profile UI | Playwright | **Blocked** — password not available in swarm; cannot verify avatar/name in header or mobile drawer |
+| Session persistence (remember / idle lock) | Code review | **Designed** — shift 10h, remember 14d, 30min idle lock via `session-guard.ts`; not live-tested |
+| Mobile viewport overflow (login) | `qa:mobile-viewport` | **Pass** — 0px overflow at 320–430px (+ 390px @2x) on all routes (protected routes resolve to login) |
+| Mobile a11y (login) | `qa:mobile-a11y` | **Pass** — skip link present; no unlabeled icon buttons on login |
+| Touch targets (login, 390px) | Playwright bbox | **Partial** — submit/toggle/remember meet 44px; see P1 |
+| Desktop list sidebars | `qa:desktop-sidebar` | **Blocked** — 24/24 checks fail (all routes redirect to login; sidebar DOM absent) |
+| Mobile nav drawer / team bar | Code review | **Designed** — drawer ≤1100px (`team-header.ts`); cannot verify open/close/Escape without auth |
+| Page load performance | Navigation Timing API | **Pass (dev warm)** — login DCL ~623ms, forgot ~163ms local; prod login DCL ~546ms |
+| Console errors (auth pages) | Playwright listeners | **Pass** — zero console errors on login (local + prod reload) |
+| `astro.config.mjs` Vite setup | Read-only | **Pass** — intentional `strictPort`, `envDir: "../../"`, `optimizeDeps` include/exclude; see P0 cache note |
+
+**QA reports written:**  
+`apps/team/qa-reports/mobile-viewport-2026-07-07T05-28-20-973Z.json`  
+`apps/team/qa-reports/mobile-a11y-2026-07-07T05-27-55-150Z.json`  
+`apps/team/qa-reports/desktop-sidebar-2026-07-07T05-31-04-622Z.json`
+
+---
+
+### P0 bugs
+
+1. **Local dev server 500 — stale Vite SSR deps cache (recovered this session)**  
+   Before restart, `/team/login` returned HTTP 500 with:  
+   `The file does not exist at …/node_modules/.vite/deps_ssr/astro_compiler-runtime.js`.  
+   Triggered after prior `vite config has changed` re-optimization.  
+   **Recovery:** `astro dev stop` → delete `apps/team/node_modules/.vite` → `npm run dev:team`. Login then 200.  
+   **Not an `astro.config` defect** — operational cache corruption. Document in README/dev runbook: if team app 500s on all routes after config churn, clear `.vite` before changing config.
+
+2. **Authenticated auth / shell QA blocked without password**  
+   Same blocker as Agents 1–2. Cannot verify: successful login redirect, Miriam avatar/name in `TeamSiteHeader`, mobile drawer (`data-mobile-drawer`), profile menu, remember-me cookie duration, idle lock logout, or post-login change-password flow (`must_change_password` is already `false` for this account).  
+   **Unblock:** Provide password or check in `team-auth.json` + `TEAM_QA_STORAGE_STATE=team-auth.json` for Playwright scripts.
+
+---
+
+### P1 polish
+
+1. **"Forgot password?" link below 44px touch target**  
+   At 390px viewport: `.login-link--quiet` measures **95×17px**. WCAG/mobile guideline is 44×44px minimum.  
+   **Fix:** Increase hit area with padding/min-height on `.login-field__label-row .login-link` (CSS-only).
+
+2. **Skip link height 36px on login**  
+   `.skip-link` is 135×36px — slightly under 44px height. Consider `min-height: 44px` + vertical padding when focused.
+
+3. **Login footer "Privacy" link narrow width (37px)**  
+   Footer nav link width 37px at 390px — tap target too small. Add padding or increase footer link min-width.
+
+4. **Duplicate error alert text on invalid login**  
+   Playwright captured two identical strings in `#login-alert-slot` after bad password — possible duplicate render or live region + visible alert overlap. Verify DOM; dedupe if redundant.
+
+5. **Change-password flow not regression-tested**  
+   Middleware + API (`change-password.ts`) correctly gate on `must_change_password` metadata, but account is already past first-login. Need a test user with `must_change_password: true` or a one-off QA flag to validate the full forced-reset path.
+
+6. **Production URL drift across docs**  
+   This agent tested `salon-citrine-platform.dbuszx.workers.dev`; Agent 2 uses `salon-citrine-team.dbuszx.workers.dev`. Both serve login 200 — consolidate canonical team Worker URL in `VISUAL_QA_CHECKLIST.md`.
+
+---
+
+### P2 ideas
+
+1. **`team-auth.json` in CI** — Generate via `npx playwright codegen --save-storage=team-auth.json` after login; run `qa:mobile-viewport`, `qa:desktop-sidebar`, and `qa:mobile-a11y` on every deploy.
+
+2. **Auth flow E2E script** — Add `apps/team/scripts/auth-flow-qa.mjs` covering login, forgot-password, change-password redirect, and protected-route guards (mirrors this session's ad-hoc Playwright probe).
+
+3. **Login perf budget** — Track DCL/TTFB in QA report JSON; alert if local warm DCL > 1s or prod > 800ms.
+
+4. **Remember-me UX audit** — After auth unblock, verify `sc_team_session_mode` cookie + 14-day persistence vs shift session + idle lock on shared iPad scenario.
+
+5. **Mobile drawer touch audit** — Once authenticated, measure `.team-bar__drawer-link` and `.team-bar__mobile-menu-btn` at 390px (avatar menu is primary nav entry ≤1100px).
+
+---
+
+### Wins (verified)
+
+- **Auth middleware** — Public paths (`/login`, `/forgot-password`, `/auth/confirm`) reachable; API routes 401 when unauthed; unlinked staff → `?error=unlinked`; password-change gate redirects correctly in code.
+- **Staff link integrity** — `dbuszx@gmail.com` correctly mapped to Miriam Zhukov (`owner`) in Supabase; login API will reject unlinked users via `staff.supabase_user_id` check.
+- **Forgot-password UX** — Generic success copy (no email enumeration); error states for missing/send/connection query params.
+- **Login mobile shell** — Split layout hides hero on phone; mobile wordmark shown; no authenticated `team-bar` on login page; zero horizontal scroll at all tested widths.
+- **No JS console errors** on auth pages (local dev after cache fix, production).
+- **Vite dev config** — `strictPort: true` on 4322 prevents silent port drift to wrong app; `envDir: "../../"` loads repo-root `.env` correctly.
+- **Session design** — Sensible salon defaults: 10h shift, 14d remember-me, 30min idle lock on non-remember sessions (`auth-session.ts`, `session-guard.ts`).
+
+---
+
+### Screenshot notes
+
+_No authenticated screenshots captured._ Recommend re-run with owner session and capture:
+
+- Login mobile (390px): form, remember-me, forgot-password link hit area
+- Post-login dashboard: Miriam name + avatar in team bar
+- Mobile drawer open (390px): nav list, account section, Done close
+- Desktop (1280px): horizontal nav tabs + profile dropdown
+- `/team/tasks` or `/clients`: list sidebar sticky behavior (with `TEAM_QA_STORAGE_STATE`)
+- Change-password page (if test user with `must_change_password: true`)
+
+---
+
+### Fixes applied by Agent 3
+
+| Action | Detail |
+| --- | --- |
+| Local dev recovery | Stopped hung Astro dev (pid 15376), cleared `.vite` cache, restarted — login 200 again |
+| Config changes | **None** — `astro.config.mjs` read-only; issue was cache not config |

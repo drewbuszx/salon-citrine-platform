@@ -4384,6 +4384,18 @@ const calendarConfig = {
     z-index: 2;
   }
 
+  /*
+   * Hidden staff columns must leave the grid entirely so the remaining
+   * columns redistribute. The base `.day-cal__staff-header { display: flex }`
+   * rule outranks the UA `[hidden] { display: none }`, so hidden headers would
+   * otherwise stay in flow and wrap into a second row. Match the attribute for
+   * higher specificity to keep header + body on the same visible-column model.
+   */
+  .day-cal__staff-header[hidden],
+  .day-cal__column[hidden] {
+    display: none;
+  }
+
   .day-cal__staff-heading {
     display: grid;
     gap: 0.05rem;

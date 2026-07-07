@@ -60,7 +60,29 @@ const initials = staff ? staffInitials(staff.name) : "";
 ---
 
 <header class="team-bar">
-  <div class="team-bar__inner">
+  <div class:list={["team-bar__inner", { "team-bar__inner--app": isAuthenticated }]}>
+    {
+      isAuthenticated ? (
+        <button
+          type="button"
+          class="team-bar__mobile-nav-btn"
+          data-drawer-open="nav"
+          aria-expanded="false"
+          aria-controls="team-nav-drawer"
+          aria-label="Open navigation menu"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <path
+              d="M4 7h16M4 12h16M4 17h16"
+              stroke="currentColor"
+              stroke-width="1.85"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      ) : null
+    }
+
     <div class="team-bar__brand">
       <a class="team-bar__logo" href={isAuthenticated ? teamUrl("/") : marketingOrigin} aria-label={BUSINESS.name}>
         <img
@@ -212,10 +234,10 @@ const initials = staff ? staffInitials(staff.name) : "";
             <button
               type="button"
               class="team-bar__mobile-menu-btn"
-              data-mobile-menu-open
+              data-drawer-open="account"
               aria-expanded="false"
-              aria-controls="team-mobile-drawer"
-              aria-label={`Open menu${staff?.name ? ` for ${staff.name}` : ""}`}
+              aria-controls="team-account-drawer"
+              aria-label={`Open account menu${staff?.name ? ` for ${staff.name}` : ""}`}
             >
               {
                 photoSrc ? (
@@ -229,32 +251,23 @@ const initials = staff ? staffInitials(staff.name) : "";
           </div>
 
           <div class="team-bar__drawer-backdrop" data-drawer-backdrop hidden></div>
+
           <aside
-            id="team-mobile-drawer"
-            class="team-bar__drawer"
+            id="team-nav-drawer"
+            class="team-bar__drawer team-bar__drawer--nav"
             data-mobile-drawer
+            data-drawer-side="left"
             inert
-            aria-label="Account and navigation"
+            aria-label="Navigation"
           >
             <header class="team-bar__drawer-head">
-              <div class="team-bar__drawer-user">
-                {
-                  photoSrc ? (
-                    <StaffAvatar src={photoSrc} crop={photoCrop} size="header" class="team-bar__avatar-wrap" />
-                  ) : (
-                    <span class="team-bar__avatar team-bar__avatar--initials" aria-hidden="true">
-                      {initials}
-                    </span>
-                  )}
-                <p class="team-bar__drawer-name">{staff?.name}</p>
-              </div>
-              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close aria-label="Close menu">
+              <h2 class="team-bar__drawer-title">Menu</h2>
+              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close aria-label="Close navigation menu">
                 Done
               </button>
             </header>
 
             <nav class="team-bar__drawer-section" aria-label="Navigation">
-              <h2 class="team-bar__drawer-label">Navigation</h2>
               <ul class="team-bar__drawer-list">
                 {
                   navTabs.map((item) => (
@@ -277,6 +290,32 @@ const initials = staff ? staffInitials(staff.name) : "";
                 }
               </ul>
             </nav>
+          </aside>
+
+          <aside
+            id="team-account-drawer"
+            class="team-bar__drawer team-bar__drawer--account"
+            data-mobile-drawer
+            data-drawer-side="right"
+            inert
+            aria-label="Account"
+          >
+            <header class="team-bar__drawer-head">
+              <div class="team-bar__drawer-user">
+                {
+                  photoSrc ? (
+                    <StaffAvatar src={photoSrc} crop={photoCrop} size="header" class="team-bar__avatar-wrap" />
+                  ) : (
+                    <span class="team-bar__avatar team-bar__avatar--initials" aria-hidden="true">
+                      {initials}
+                    </span>
+                  )}
+                <p class="team-bar__drawer-name">{staff?.name}</p>
+              </div>
+              <button type="button" class="team-bar__drawer-close ui-btn ui-btn--secondary ui-btn--compact" data-drawer-close aria-label="Close account menu">
+                Done
+              </button>
+            </header>
 
             <div class="team-bar__drawer-section">
               <h2 class="team-bar__drawer-label">Account</h2>
@@ -708,6 +747,45 @@ const initials = staff ? staffInitials(staff.name) : "";
     box-shadow: 0 0 0 3px rgba(231, 172, 70, 0.45);
   }
 
+  .team-bar__mobile-nav-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--touch-target-min, 2.75rem);
+    min-height: var(--touch-target-min, 2.75rem);
+    padding: 0;
+    border: none;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--team-bar-utility, rgba(255, 255, 255, 0.85));
+    cursor: pointer;
+  }
+
+  .team-bar__mobile-nav-btn:hover {
+    background: var(--team-bar-utility-hover-bg, rgba(255, 255, 255, 0.1));
+    color: var(--team-bar-text, #fff);
+  }
+
+  .team-bar__mobile-nav-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(231, 172, 70, 0.45);
+  }
+
+  .team-bar__mobile-nav-btn svg {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .team-bar__drawer-title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-stone-800);
+  }
+
   .team-bar__drawer-backdrop {
     display: none;
   }
@@ -835,6 +913,31 @@ const initials = staff ? staffInitials(staff.name) : "";
       display: none;
     }
 
+    .team-bar__inner--app {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .team-bar__inner--app .team-bar__mobile-nav-btn {
+      display: inline-flex;
+      order: 0;
+      justify-self: start;
+    }
+
+    .team-bar__inner--app .team-bar__brand {
+      order: 1;
+      justify-self: center;
+      min-width: 0;
+    }
+
+    .team-bar__inner--app .team-bar__utilities {
+      order: 2;
+      justify-self: end;
+      margin-left: 0;
+    }
+
     .team-bar__mobile-menu-btn {
       display: inline-flex;
     }
@@ -878,6 +981,12 @@ const initials = staff ? staffInitials(staff.name) : "";
         visibility var(--transition-base);
     }
 
+    .team-bar__drawer--nav {
+      right: auto;
+      left: 0;
+      transform: translateX(-105%);
+    }
+
     .team-bar__drawer.is-open {
       transform: translateX(0);
       visibility: visible;
@@ -895,6 +1004,7 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   @media (min-width: 1101px) {
     .team-bar__mobile-menu-btn,
+    .team-bar__mobile-nav-btn,
     .team-bar__drawer,
     .team-bar__drawer-backdrop {
       display: none !important;

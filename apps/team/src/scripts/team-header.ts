@@ -21,18 +21,20 @@ function initNavScrollFade(wrap: HTMLElement) {
 }
 
 function initMobileDrawer() {
-  const drawer = document.querySelector<HTMLElement>("[data-mobile-drawer]");
   const backdrop = document.querySelector<HTMLElement>("[data-drawer-backdrop]");
-  const openBtn = document.querySelector<HTMLButtonElement>("[data-mobile-menu-open]");
-  const closeBtn = document.querySelector<HTMLButtonElement>("[data-drawer-close]");
-  if (!drawer || !openBtn) return;
-  if (drawer.dataset.drawerReady === "1") return;
-  drawer.dataset.drawerReady = "1";
+  const drawers = Array.from(document.querySelectorAll<HTMLElement>("[data-mobile-drawer]"));
+  if (!backdrop || !drawers.length) return;
+  if (backdrop.dataset.drawerReady === "1") return;
+  backdrop.dataset.drawerReady = "1";
 
   const MOBILE_MQ = window.matchMedia("(max-width: 1100px)");
+  let openDrawerEl: HTMLElement | null = null;
   let lastFocus: HTMLElement | null = null;
 
-  function focusables() {
+  const openerFor = (drawer: HTMLElement) =>
+    document.querySelector<HTMLButtonElement>(`[data-drawer-open][aria-controls="${drawer.id}"]`);
+
+  function focusables(drawer: HTMLElement) {
     return Array.from(
       drawer.querySelectorAll<HTMLElement>(
         "a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])",
@@ -40,48 +42,67 @@ function initMobileDrawer() {
     ).filter((el) => !el.closest("[hidden]") && el.offsetParent !== null);
   }
 
-  function openDrawer() {
+  function openDrawer(drawer: HTMLElement) {
     if (!MOBILE_MQ.matches) return;
+    if (openDrawerEl && openDrawerEl !== drawer) closeDrawer(openDrawerEl, false);
     lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     drawer.classList.add("is-open");
     drawer.removeAttribute("inert");
-    backdrop?.removeAttribute("hidden");
-    openBtn.setAttribute("aria-expanded", "true");
+    backdrop.removeAttribute("hidden");
+    openerFor(drawer)?.setAttribute("aria-expanded", "true");
     document.documentElement.classList.add("team-drawer-open");
-    closeBtn?.focus();
+    openDrawerEl = drawer;
+    (drawer.querySelector<HTMLElement>("[data-drawer-close]") ?? focusables(drawer)[0])?.focus();
   }
 
-  function closeDrawer(returnFocus = true) {
+  function closeDrawer(drawer: HTMLElement, returnFocus = true) {
+    const opener = openerFor(drawer);
     drawer.classList.remove("is-open");
     drawer.setAttribute("inert", "");
-    backdrop?.setAttribute("hidden", "");
-    openBtn.setAttribute("aria-expanded", "false");
-    document.documentElement.classList.remove("team-drawer-open");
+    opener?.setAttribute("aria-expanded", "false");
+    if (openDrawerEl === drawer) {
+      openDrawerEl = null;
+      backdrop.setAttribute("hidden", "");
+      document.documentElement.classList.remove("team-drawer-open");
+    }
     if (returnFocus) {
-      (lastFocus ?? openBtn).focus();
+      (lastFocus ?? opener)?.focus();
     }
   }
 
-  openBtn.addEventListener("click", () => {
-    if (drawer.classList.contains("is-open")) closeDrawer();
-    else openDrawer();
+  document.querySelectorAll<HTMLButtonElement>("[data-drawer-open]").forEach((openBtn) => {
+    const id = openBtn.getAttribute("aria-controls");
+    const drawer = id ? document.getElementById(id) : null;
+    if (!drawer) return;
+    openBtn.addEventListener("click", () => {
+      if (drawer.classList.contains("is-open")) closeDrawer(drawer);
+      else openDrawer(drawer);
+    });
   });
-  closeBtn?.addEventListener("click", () => closeDrawer());
-  backdrop?.addEventListener("click", () => closeDrawer());
 
-  drawer.querySelectorAll("a[href]").forEach((link) => {
-    link.addEventListener("click", () => closeDrawer(false));
+  drawers.forEach((drawer) => {
+    drawer
+      .querySelector<HTMLButtonElement>("[data-drawer-close]")
+      ?.addEventListener("click", () => closeDrawer(drawer));
+    drawer.querySelectorAll("a[href]").forEach((link) => {
+      link.addEventListener("click", () => closeDrawer(drawer, false));
+    });
+    if (MOBILE_MQ.matches) drawer.setAttribute("inert", "");
+  });
+
+  backdrop.addEventListener("click", () => {
+    if (openDrawerEl) closeDrawer(openDrawerEl);
   });
 
   document.addEventListener("keydown", (event) => {
-    if (!drawer.classList.contains("is-open")) return;
+    if (!openDrawerEl) return;
     if (event.key === "Escape") {
       event.preventDefault();
-      closeDrawer();
+      closeDrawer(openDrawerEl);
       return;
     }
     if (event.key === "Tab") {
-      const items = focusables();
+      const items = focusables(openDrawerEl);
       if (!items.length) return;
       const first = items[0];
       const last = items[items.length - 1];
@@ -96,12 +117,8 @@ function initMobileDrawer() {
   });
 
   MOBILE_MQ.addEventListener("change", () => {
-    if (!MOBILE_MQ.matches) closeDrawer(false);
+    if (!MOBILE_MQ.matches && openDrawerEl) closeDrawer(openDrawerEl, false);
   });
-
-  if (MOBILE_MQ.matches) {
-    drawer.setAttribute("inert", "");
-  }
 }
 
 function initDesktopProfileMenu() {
