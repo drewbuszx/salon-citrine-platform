@@ -43,9 +43,14 @@ const embed =
   </head>
   <body>
     <div class:list={["booking-shell", embed && "booking-shell--embed"]}>
+      {embed ? (
+        <a class="booking-skip-link" href="#booking-main">
+          Skip to main content
+        </a>
+      ) : null}
       {embed ? null : <SiteHeader />}
 
-      <main class="booking-main">
+      <main id="booking-main" class="booking-main" tabindex="-1">
         <div class="booking-steps-wrap">
           <BookingSteps current={step} showStylistStep={showStylistStep} compact={embed} />
         </div>
@@ -64,10 +69,44 @@ const embed =
         )
       }
     </div>
+    {embed ? <script src="../scripts/embed-resize.ts"></script> : null}
   </body>
 </html>
 
 <style>
+  /* Flat cream + natural height in iframe — avoids gradient bleed and double scrollbars. */
+  :global(html[data-booking-embed="1"]),
+  :global(html[data-booking-embed="1"] body) {
+    min-height: auto;
+    height: auto;
+    overflow-x: hidden;
+    background: var(--color-cream);
+    background-image: none;
+  }
+
+  .booking-skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 500;
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-800);
+    color: var(--color-cream);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform var(--transition-fast);
+  }
+
+  .booking-skip-link:focus {
+    transform: translateY(0);
+    outline: 2px solid var(--color-citrine);
+    outline-offset: 2px;
+  }
+
   .booking-shell {
     min-height: 100vh;
     display: flex;
@@ -76,6 +115,7 @@ const embed =
   }
 
   .booking-shell--embed {
+    min-height: auto;
     padding-top: 0;
     background: var(--color-cream);
     --booking-steps-sticky-top: 0;

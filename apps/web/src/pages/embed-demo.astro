@@ -22,13 +22,14 @@ const iframeSnippet = `<!-- Salon Citrine booking embed — paste on saloncitrin
   allow="payment *"
 ></iframe>
 
-<!-- Optional: auto-resize iframe when booking posts height hints -->
+<!-- Optional: auto-resize iframe when booking posts height hints (see embed-resize.ts) -->
 <script>
   window.addEventListener("message", function (event) {
     if (event.data && event.data.type === "saloncitrine:embed-height") {
       var iframe = document.getElementById("booking-embed");
       if (iframe && typeof event.data.height === "number") {
         iframe.style.height = event.data.height + "px";
+        iframe.style.minHeight = "0";
       }
     }
   });
@@ -143,12 +144,23 @@ const iframeSnippet = `<!-- Salon Citrine booking embed — paste on saloncitrin
           <code>var(--color-cream)</code> for a seamless edge blend on the marketing site.
         </p>
         <p>
-          <strong>Optional height sync:</strong> The booking app may post resize hints to the parent
-          page. Listen for <code>saloncitrine:embed-height</code> messages (Wave 2) to avoid a
-          fixed min-height on long funnel steps.
+          <strong>Height sync:</strong> Booking posts <code>saloncitrine:embed-height</code> messages
+          to the parent page (see snippet below). This demo listens and resizes the iframe so only
+          the host page scrolls — no nested scrollbars inside the widget.
         </p>
       </div>
       <pre class="demo__code" aria-label="iframe snippet">{iframeSnippet}</pre>
     </div>
+    <script is:inline>
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "saloncitrine:embed-height") {
+          var iframe = document.getElementById("booking-embed");
+          if (iframe && typeof event.data.height === "number") {
+            iframe.style.height = event.data.height + "px";
+            iframe.style.minHeight = "0";
+          }
+        }
+      });
+    </script>
   </body>
 </html>

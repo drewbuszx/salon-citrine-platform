@@ -47,6 +47,7 @@ const currentIndex = steps.findIndex((step) => step.id === current);
               index === currentIndex && "steps__item--current",
               index < currentIndex && "steps__item--complete",
             ]}
+            aria-current={index === currentIndex ? "step" : undefined}
           >
             <span class="steps__num" aria-hidden="true">
               {index < currentIndex ? (
@@ -214,11 +215,15 @@ const currentIndex = steps.findIndex((step) => step.id === current);
   }
 
   .steps--compact .steps__item {
-    padding: 0.18rem 0.45rem 0.18rem 0.18rem;
+    padding: 0.18rem;
   }
 
   .steps--compact .steps__connector {
     width: 0.85rem;
+  }
+
+  .steps--compact .steps__label {
+    display: none;
   }
 
   @media (max-width: 479px) {
