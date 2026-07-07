@@ -222,7 +222,6 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         <path d="M7 12h10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
       </svg>
     </button>
-  </div>
 
   <!-- Scanner modal -->
   <div class="inventory-modal" data-scan-modal hidden>
@@ -456,6 +455,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
   </div>
 
   <div class="stock-toast" data-toast hidden role="status"></div>
+  </div>
 
   <script define:vars={{ apiBase: teamUrl("") }}>
     document.body.dataset.apiBase = apiBase;
