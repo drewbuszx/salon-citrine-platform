@@ -306,10 +306,17 @@ const servicePickerHref = serviceIndexUrl(sessionFlags, { stylistSlug: stylist.s
         <section class="time-section" aria-label="Choose a time">
           <div class="time-section__header">
             <h3 class="time-section__heading">Available times</h3>
-            <p class="time-section__timezone">{salonTimezoneLabel()}</p>
+            <p class="time-section__timezone" id="time-section-timezone">
+              {salonTimezoneLabel()}
+            </p>
           </div>
 
-          <div class="time-section__body" data-time-panel aria-live="polite">
+          <div
+            class="time-section__body"
+            data-time-panel
+            aria-live="polite"
+            aria-describedby="time-section-timezone"
+          >
             {
               !selectedDate ? (
                 <p class="time-section__empty" data-time-empty>
