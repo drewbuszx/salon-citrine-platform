@@ -13,6 +13,7 @@ import {
   requireManager,
   type EventRow,
 } from "../../../lib/api-events";
+import { birthdaysForRange, type BirthdayRow } from "../../../lib/api-birthdays";
 
 type CreateEventBody = {
   title?: string;
@@ -60,7 +61,53 @@ export const GET: APIRoute = async (context) => {
   });
 
   const events = rows.map((row) => mapEvent(row as EventRow, staff));
-  return jsonOk({ events, from, to });
+
+  const birthdayRows: BirthdayRow[] = [];
+
+  const { data: staffBirthdays, error: staffBirthdayError } = await supabase
+    .from("staff")
+    .select("id, name, birthday")
+    .not("birthday", "is", null);
+
+  if (staffBirthdayError) {
+    console.warn("staff birthdays load failed", staffBirthdayError);
+  } else {
+    for (const row of staffBirthdays ?? []) {
+      if (!row.birthday) continue;
+      birthdayRows.push({
+        id: row.id,
+        name: row.name,
+        birthday: String(row.birthday),
+        source: "staff",
+        staffId: row.id,
+      });
+    }
+  }
+
+  const { data: clientBirthdays, error: clientBirthdayError } = await supabase
+    .from("clients")
+    .select("id, first_name, last_name, birthday")
+    .not("birthday", "is", null);
+
+  if (clientBirthdayError) {
+    console.warn("client birthdays load failed", clientBirthdayError);
+  } else {
+    for (const row of clientBirthdays ?? []) {
+      if (!row.birthday) continue;
+      const first = String(row.first_name ?? "").trim();
+      if (!first) continue;
+      birthdayRows.push({
+        id: row.id,
+        name: first,
+        birthday: String(row.birthday),
+        source: "client",
+      });
+    }
+  }
+
+  const birthdays = birthdaysForRange(birthdayRows, from, staff.id);
+
+  return jsonOk({ events: [...events, ...birthdays], from, to });
 };
 
 export const POST: APIRoute = async (context) => {

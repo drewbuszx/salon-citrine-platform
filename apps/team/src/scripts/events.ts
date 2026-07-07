@@ -1,4 +1,4 @@
-import { TIMEZONE } from "@saloncitrine/shared";
+import { TIMEZONE, getCalendarDayTheme, JUNE_PRIDE_BG } from "@saloncitrine/shared";
 import { dayOfWeekInSalon } from "../lib/calendar";
 import { localDateTimeToUtc } from "../lib/datetime";
 import { staffAccentColor } from "../lib/staff-colors";
@@ -8,7 +8,7 @@ type TeamEvent = {
   id: string;
   title: string;
   description: string | null;
-  eventType: "event" | "time_off" | "closure" | "announcement";
+  eventType: "event" | "time_off" | "closure" | "announcement" | "birthday";
   startsAt: string;
   endsAt: string | null;
   allDay: boolean;
@@ -26,6 +26,7 @@ if (!root) {
 }
 
 const apiBase = root.dataset.apiBase ?? "";
+const holidaysBase = root.dataset.holidaysBase ?? "";
 const isManager = root.dataset.manager === "1";
 const currentStaffId = root.dataset.currentStaffId ?? "";
 const calendarEl = root.querySelector<HTMLElement>("[data-events-calendar]");
@@ -75,7 +76,7 @@ function getActiveTypeFilters(): Set<TeamEvent["eventType"]> {
     if (input.checked && type) active.add(type);
   });
   if (active.size === 0) {
-    return new Set(["closure", "event", "announcement", "time_off"]);
+    return new Set(["closure", "event", "announcement", "time_off", "birthday"]);
   }
   return active;
 }
@@ -172,6 +173,7 @@ function typeBadge(type: TeamEvent["eventType"]) {
     time_off: "Time off",
     closure: "Closure",
     announcement: "Announcement",
+    birthday: "Birthday",
   };
   return `<span class="event-badge event-badge--${type}">${labels[type]}</span>`;
 }
@@ -219,8 +221,11 @@ function formatSelectedDayLabel(year: number, month: number, day: number) {
 }
 
 function renderEventMarker(event: TeamEvent) {
-  const color = eventStaffColor(event);
   const title = escapeHtml(event.title);
+  if (event.eventType === "birthday") {
+    return `<span class="events-calendar__marker events-calendar__marker--birthday" title="${title}" aria-hidden="true"></span>`;
+  }
+  const color = eventStaffColor(event);
   return `<span class="events-calendar__marker events-calendar__marker--${event.eventType}" style="--event-staff-color: ${color}" title="${title}" aria-hidden="true"></span>`;
 }
 
@@ -263,19 +268,36 @@ function renderCalendar() {
     const dayOfWeek = dayOfWeekInSalon(dateStr);
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isSelected = selectedDay?.year === viewYear && selectedDay.month === viewMonth && selectedDay.day === day;
+    const theme = getCalendarDayTheme(dateStr);
+    const holiday = theme.holiday;
+    const cellStyles: string[] = [];
+    if (theme.isPrideMonth) {
+      cellStyles.push(`--pride-bg: ${JUNE_PRIDE_BG}`);
+    }
+    if (holiday) {
+      cellStyles.push(`--holiday-bg: ${holiday.bgColor}`);
+      if (holidaysBase) {
+        cellStyles.push(`--holiday-image: url("${holidaysBase}${holiday.image}")`);
+      }
+    }
+    const styleAttr = cellStyles.length > 0 ? ` style="${cellStyles.join("; ")}"` : "";
     const classes = [
       "events-calendar__cell",
       dayEvents.length > 0 ? "events-calendar__cell--has-events" : "",
       isToday ? "events-calendar__cell--today" : "",
       isWeekend ? "events-calendar__cell--weekend" : "",
       isSelected ? "events-calendar__cell--selected" : "",
+      theme.isPrideMonth ? "events-calendar__cell--pride" : "",
+      holiday ? "events-calendar__cell--holiday" : "",
+      holiday ? `events-calendar__cell--holiday-${holiday.id}` : "",
     ]
       .filter(Boolean)
       .join(" ");
+    const holidayLabel = holiday ? `, ${holiday.name}` : "";
     const ariaLabel =
       dayEvents.length > 0
-        ? `${day}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}`
-        : String(day);
+        ? `${day}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}${holidayLabel}`
+        : `${day}${holidayLabel}`;
 
     html += `
       <button
@@ -283,7 +305,7 @@ function renderCalendar() {
         type="button"
         data-calendar-day="${dayKey(viewYear, viewMonth, day)}"
         aria-label="${escapeHtml(ariaLabel)}"
-        aria-pressed="${isSelected ? "true" : "false"}"
+        aria-pressed="${isSelected ? "true" : "false"}"${styleAttr}
       >
         <span class="events-calendar__day">${day}</span>
         <span class="events-calendar__markers">${markers}</span>
@@ -369,19 +391,21 @@ function renderList() {
       const startDateStr = salonDateFromIso(event.startsAt);
       const [eventYear, eventMonth, eventDay] = startDateStr.split("-").map(Number);
       const eventDayKey = dayKey(eventYear, eventMonth - 1, eventDay);
+      const clickable = event.eventType !== "birthday";
+      const tag = clickable ? "button" : "div";
+      const openAttrs = clickable ? `data-event-open="${event.id}" data-event-day="${eventDayKey}"` : "";
       return `
-        <button
-          class="event-row event-row--${event.eventType}"
-          type="button"
-          data-event-open="${event.id}"
-          data-event-day="${eventDayKey}"
+        <${tag}
+          class="event-row event-row--${event.eventType}${clickable ? "" : " event-row--static"}"
+          ${clickable ? 'type="button"' : ""}
+          ${openAttrs}
           style="--event-staff-color: ${color}"
         >
           <span class="event-row__dot" aria-hidden="true"></span>
           <span class="event-row__title">${escapeHtml(event.title)}</span>
           ${metaLine}
           ${typeBadge(event.eventType)}
-        </button>
+        </${tag}>
       `;
     })
     .join("");

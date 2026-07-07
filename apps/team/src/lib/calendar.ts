@@ -37,6 +37,15 @@ export type CalendarBlockedTime = {
   reason: string | null;
 };
 
+export type CalendarTimeOff = {
+  id: string;
+  staffId: string;
+  startsAt: string;
+  endsAt: string;
+  label: string;
+  allDay: boolean;
+};
+
 export type CalendarStaff = {
   id: string;
   slug: string;
@@ -74,6 +83,15 @@ export type CalendarEvent =
       startsAt: string;
       endsAt: string;
       label: string;
+    }
+  | {
+      kind: "time_off";
+      id: string;
+      staffId: string;
+      startsAt: string;
+      endsAt: string;
+      label: string;
+      allDay: boolean;
     };
 
 /** Full bookable day grid: 4:00 AM through 11:59 PM (midnight end). */
@@ -540,13 +558,38 @@ export async function loadCalendarData(
     schedulesQuery = schedulesQuery.in("staff_id", options.staffFilterIds);
   }
 
-  const [staffResult, appointmentsResult, blockedResult, schedulesResult] =
-    await Promise.all([
-      staffQuery,
-      appointmentsQuery,
-      blockedQuery,
-      schedulesQuery,
-    ]);
+  // Personal time off lives in team_events (event_type = 'time_off') and is
+  // scoped to the staff member it belongs to. Fetch anything starting before
+  // the day ends; overlap with the day is refined in JS to allow null ends_at
+  // and multi-day ranges.
+  let timeOffQuery = supabase
+    .from("team_events")
+    .select("id, title, starts_at, ends_at, all_day, staff_id")
+    .eq("event_type", "time_off")
+    .eq("is_active", true)
+    .not("staff_id", "is", null)
+    .lt("starts_at", endIso)
+    .order("starts_at");
+
+  if (options.staffFilterIds?.length === 1) {
+    timeOffQuery = timeOffQuery.eq("staff_id", options.staffFilterIds[0]!);
+  } else if (options.staffFilterIds && options.staffFilterIds.length > 0) {
+    timeOffQuery = timeOffQuery.in("staff_id", options.staffFilterIds);
+  }
+
+  const [
+    staffResult,
+    appointmentsResult,
+    blockedResult,
+    schedulesResult,
+    timeOffResult,
+  ] = await Promise.all([
+    staffQuery,
+    appointmentsQuery,
+    blockedQuery,
+    schedulesQuery,
+    timeOffQuery,
+  ]);
 
   if (staffResult.error) {
     throw staffResult.error;
@@ -559,6 +602,9 @@ export async function loadCalendarData(
   }
   if (schedulesResult.error) {
     throw schedulesResult.error;
+  }
+  if (timeOffResult.error) {
+    throw timeOffResult.error;
   }
 
   const staff = (staffResult.data ?? []).map((row) => ({
@@ -944,6 +990,67 @@ export function staffEventsForDay(
   return [...appts, ...blocks].sort((a, b) =>
     a.startsAt.localeCompare(b.startsAt),
   );
+}
+
+export type EventOverlapLayout = {
+  /** 0-based position within its overlap cluster, left-to-right. */
+  columnIndex: number;
+  /** Total concurrent columns in this event's overlap cluster (1 = no conflict). */
+  columnCount: number;
+};
+
+/**
+ * Lays out same-column events so overlapping (double-booked) items sit
+ * side-by-side instead of stacking on top of each other. Returns one layout
+ * entry per input event, in the same order. Events are expected to already
+ * be sorted by `startsAt` (as `staffEventsForDay` returns).
+ */
+export function layoutOverlappingEvents(
+  events: Array<{ startsAt: string; endsAt: string }>,
+): EventOverlapLayout[] {
+  const n = events.length;
+  const columnIndexByPosition = new Array<number>(n).fill(0);
+  const clusterOf = new Array<number>(n).fill(0);
+  const clusterColumnCount: number[] = [];
+
+  const order = events
+    .map((_, i) => i)
+    .sort(
+      (a, b) =>
+        new Date(events[a].startsAt).getTime() -
+        new Date(events[b].startsAt).getTime(),
+    );
+
+  /** @type {Array<{ column: number; endsAt: number }>} */
+  let active: Array<{ column: number; endsAt: number }> = [];
+  let clusterIndex = -1;
+  let clusterMaxColumn = 0;
+
+  for (const idx of order) {
+    const startMs = new Date(events[idx].startsAt).getTime();
+    active = active.filter((entry) => entry.endsAt > startMs);
+
+    if (active.length === 0) {
+      if (clusterIndex >= 0) clusterColumnCount[clusterIndex] = clusterMaxColumn + 1;
+      clusterIndex += 1;
+      clusterMaxColumn = 0;
+    }
+
+    const usedColumns = new Set(active.map((entry) => entry.column));
+    let column = 0;
+    while (usedColumns.has(column)) column += 1;
+
+    columnIndexByPosition[idx] = column;
+    clusterOf[idx] = clusterIndex;
+    clusterMaxColumn = Math.max(clusterMaxColumn, column);
+    active.push({ column, endsAt: new Date(events[idx].endsAt).getTime() });
+  }
+  if (clusterIndex >= 0) clusterColumnCount[clusterIndex] = clusterMaxColumn + 1;
+
+  return events.map((_, idx) => ({
+    columnIndex: columnIndexByPosition[idx] ?? 0,
+    columnCount: clusterColumnCount[clusterOf[idx] ?? 0] ?? 1,
+  }));
 }
 
 function slotRangeOverlapsEvents(

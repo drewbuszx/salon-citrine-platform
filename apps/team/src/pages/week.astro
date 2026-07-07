@@ -1,0 +1,79 @@
+---
+import WeekCalendar from "../components/WeekCalendar.astro";
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { isSalonManager } from "../lib/auth";
+import {
+  formatDayParam,
+  loadCalendarData,
+  loadWeekCalendarData,
+  parseDayParam,
+  shiftDay,
+  sortStaffWithCurrentFirst,
+} from "../lib/calendar";
+import { teamUrl } from "../lib/supabase-server";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+const managerView = isSalonManager(staff);
+const weekAnchor = parseDayParam(
+  Astro.url.searchParams.get("week") ?? Astro.url.searchParams.get("day"),
+);
+const weekStart = shiftDay(weekAnchor, -weekAnchor.getDay());
+const weekParam = formatDayParam(weekStart);
+
+let staffList: Awaited<ReturnType<typeof loadCalendarData>>["staff"] = [];
+try {
+  const loaded = await loadCalendarData(supabase, {
+    selectedDay: weekAnchor,
+    staffFilterIds: managerView ? null : [staff.id],
+  });
+  staffList = sortStaffWithCurrentFirst(loaded.staff, staff.id);
+} catch (error) {
+  console.error("Failed to load staff for week view", error);
+}
+
+const requestedStaffId = Astro.url.searchParams.get("staff");
+const defaultStaffId =
+  requestedStaffId && staffList.some((member) => member.id === requestedStaffId)
+    ? requestedStaffId
+    : staff.id;
+
+let weekData;
+try {
+  weekData = await loadWeekCalendarData(supabase, {
+    weekStart,
+    staffId: defaultStaffId,
+  });
+} catch (error) {
+  console.error("Failed to load week calendar", error);
+  weekData = {
+    staff: staffList.find((member) => member.id === defaultStaffId) ?? {
+      id: staff.id,
+      slug: staff.slug,
+      name: staff.name,
+      photoUrl: staff.photoUrl,
+    },
+    appointments: [],
+    blockedTimes: [],
+    staffSchedules: [],
+  };
+}
+---
+
+<TeamLayout title="Week" activeNav="book" fullBleed>
+  <WeekCalendar
+    weekStart={weekStart}
+    weekParam={weekParam}
+    staff={weekData.staff}
+    staffOptions={staffList}
+    appointments={weekData.appointments}
+    blockedTimes={weekData.blockedTimes}
+    staffSchedules={weekData.staffSchedules}
+    currentStaffId={staff.id}
+    managerView={managerView}
+  />
+</TeamLayout>
