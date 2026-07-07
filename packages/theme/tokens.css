@@ -168,6 +168,13 @@
   --color-stone-50: #1e1c1a;
   --color-stone-100: #262422;
   --color-stone-200: #33302c;
+  --color-stone-300: #4a4540;
+  --color-stone-400: #a8a093;
+  --color-stone-500: #b8b0a4;
+  --color-stone-600: #d0c9bf;
+  --color-stone-700: #e3ddd4;
+  --color-stone-800: #f3f0ea;
+  --color-stone-900: #faf9f7;
   --team-sidebar-bg: var(--color-stone-100);
   --color-focus-ring: rgba(231, 172, 70, 0.25);
 }

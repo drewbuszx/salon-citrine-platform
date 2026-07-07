@@ -41,7 +41,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         ) : null
       }
 
-      <TeamListFilter slot="sidebarFilters" label={`Category · ${categories.length}`} open={categories.length > 0}>
+      <TeamListFilter slot="sidebarFilters" label="Category" count={categories.length} open={categories.length > 0}>
         {
           categories.length > 0 ? (
             <div class="team-list-layout__filter-options">
@@ -85,7 +85,7 @@ const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
         </div>
       </TeamListFilter>
 
-      <TeamListFilter slot="sidebarFilters" label={`Brand · ${brands.length}`} open={brands.length > 0}>
+      <TeamListFilter slot="sidebarFilters" label="Brand" count={brands.length} open={brands.length > 0}>
         {
           brands.length > 0 ? (
             <div class="team-list-layout__filter-options">

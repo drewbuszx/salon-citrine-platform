@@ -689,4 +689,26 @@ function formatUpcomingWhen(startsAt: string, endsAt: string) {
       text-align: left;
     }
   }
+
+  :global([data-theme="dark"]) .dashboard__name {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .dashboard__salon {
+    color: var(--color-stone-500);
+  }
+
+  :global([data-theme="dark"]) .dashboard__copy-link {
+    color: var(--color-stone-700);
+    border-color: var(--color-stone-300);
+    background: var(--color-stone-100);
+  }
+
+  :global([data-theme="dark"]) .dashboard__action {
+    color: var(--color-stone-700);
+  }
+
+  :global([data-theme="dark"]) .dashboard__empty-copy {
+    color: var(--color-stone-500);
+  }
 </style>

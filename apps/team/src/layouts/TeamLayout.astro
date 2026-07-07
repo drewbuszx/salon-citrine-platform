@@ -51,7 +51,7 @@ const isAuthenticated = Boolean(user && staff);
       })();
     </script>
   </head>
-  <body>
+  <body class:list={[loginPage && "body--login"]}>
     <a class="skip-link" href="#team-main-content">Skip to main content</a>
     <div
       class:list={[
@@ -61,19 +61,23 @@ const isAuthenticated = Boolean(user && staff);
         cream && "team-shell--editorial",
       ]}
     >
-      <TeamSiteHeader
-        activeNav={activeNav}
-        staff={staff}
-        isAuthenticated={isAuthenticated}
-        pageTitle={title}
-      />
+      {
+        !loginPage ? (
+          <TeamSiteHeader
+            activeNav={activeNav}
+            staff={staff}
+            isAuthenticated={isAuthenticated}
+            pageTitle={title}
+          />
+        ) : null
+      }
 
       <main
         id="team-main-content"
         class:list={[
           "team-main",
           wide && "team-main--wide",
-          fullBleed && "team-main--full-bleed",
+          (fullBleed || loginPage) && "team-main--full-bleed",
         ]}
       >
         {
@@ -87,6 +91,12 @@ const isAuthenticated = Boolean(user && staff);
         }
       </main>
     </div>
+
+    {
+      isAuthenticated && !loginPage ? (
+        <script src="../scripts/session-guard.ts"></script>
+      ) : null
+    }
 
     <script>
       import "../scripts/nav-state.ts";

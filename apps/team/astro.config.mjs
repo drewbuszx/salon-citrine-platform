@@ -7,6 +7,20 @@ export default defineConfig({
   base: "/team",
   output: "server",
   adapter: cloudflare(),
+  devToolbar: {
+    enabled: false,
+  },
+  security: import.meta.env.PROD
+    ? {
+        allowedDomains: [
+          { hostname: "team.saloncitrineindy.com" },
+          { hostname: "salon-citrine-team.dbuszx.workers.dev" },
+          { hostname: "salon-citrine-platform.dbuszx.workers.dev" },
+        ],
+      }
+    : {
+        checkOrigin: false,
+      },
   server: {
     host: true,
     port: 4322,

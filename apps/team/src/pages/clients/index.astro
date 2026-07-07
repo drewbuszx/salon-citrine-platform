@@ -142,14 +142,16 @@ if (!countError) {
     </TeamListFilter>
 
     <TeamListFilter slot="sidebarFilters" label="Purchased">
-      <label class="team-list-layout__filter-option">
-        <input type="checkbox" data-filter-purchased />
-        <span>Has purchase history</span>
-      </label>
-      <label class="team-list-layout__filter-option">
-        <input type="checkbox" data-filter-has-visits />
-        <span>Has at least one visit</span>
-      </label>
+      <div class="team-list-layout__filter-options">
+        <label class="team-list-layout__filter-option">
+          <input type="checkbox" data-filter-purchased />
+          <span>Has purchase history</span>
+        </label>
+        <label class="team-list-layout__filter-option">
+          <input type="checkbox" data-filter-has-visits />
+          <span>Has at least one visit</span>
+        </label>
+      </div>
     </TeamListFilter>
 
     <TeamListFilter slot="sidebarFilters" label="Provider" count={providers.length} open={providers.length > 0}>
@@ -1193,7 +1195,7 @@ if (!countError) {
       display: grid;
     }
 
-    .clients-page__stats-sep {
+    .team-list-layout__stats-sep {
       display: none;
     }
 

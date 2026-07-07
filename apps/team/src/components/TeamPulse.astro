@@ -319,6 +319,21 @@ const stockAlert = metrics.lowStock > 0;
     color: var(--color-text);
   }
 
+  :global([data-theme="dark"]) .team-pulse__title,
+  :global([data-theme="dark"]) .team-pulse__label,
+  :global([data-theme="dark"]) .team-pulse__revenue-value {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .team-pulse__subtitle,
+  :global([data-theme="dark"]) .team-pulse__hint {
+    color: var(--color-stone-500);
+  }
+
+  :global([data-theme="dark"]) .team-pulse__revenue-label {
+    color: var(--color-citrine-light);
+  }
+
   @media (max-width: 420px) {
     .team-pulse__head {
       flex-direction: column;

@@ -472,12 +472,14 @@
 
 /* Layout shell (TeamListLayout root — global so slotted content inherits chrome) */
 .team-list-layout {
+  --team-sidebar-width: 270px;
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - var(--team-bar-height, 3.25rem));
   font-family: var(--font-body);
   background: var(--color-bg);
   color: var(--color-text);
+  position: relative;
 }
 
 .team-list-layout__subheader {
@@ -511,9 +513,19 @@
 
 .team-list-layout__body {
   display: grid;
-  grid-template-columns: minmax(200px, 220px) 1fr;
+  grid-template-columns: minmax(250px, var(--team-sidebar-width)) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
+}
+
+@media (min-width: 901px) {
+  .team-list-layout__sidebar {
+    order: 1;
+  }
+
+  .team-list-layout__main {
+    order: 2;
+  }
 }
 
 .team-list-layout:not(:has(.team-list-layout__sidebar)) .team-list-layout__body {
@@ -527,6 +539,7 @@
   padding: 0.75rem 0 1rem;
   border-right: 1px solid var(--color-stone-200);
   background: var(--team-sidebar-bg);
+  min-width: 0;
 }
 
 .team-list-layout__main {
@@ -784,6 +797,7 @@
 
   .team-list-layout__main {
     padding-inline: var(--space-4);
+    padding-top: var(--space-4);
   }
 }
 
