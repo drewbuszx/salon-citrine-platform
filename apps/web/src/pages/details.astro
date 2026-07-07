@@ -5,17 +5,23 @@ import BookingLayout from "../layouts/BookingLayout.astro";
 import Button from "@saloncitrine/theme/components/Button.astro";
 import PolicyModal from "../components/PolicyModal.astro";
 import {
+  estimateCartPrice,
   fetchServicesByIds,
   formatDuration,
   getStaffBySlug,
   parseServiceIdsFromParams,
   sumServiceDuration,
 } from "../lib/booking-data";
+import { formatConfirmationWhen } from "../lib/appointment-confirmation";
 import { resolveBookingSlot } from "../lib/availability";
 import { fetchActiveBookingPolicy } from "../lib/booking-policy";
 import { bookingApi, bookingFlagsFromUrl, appendFlowFlags } from "../lib/booking-flow";
 import { withBase } from "../lib/paths";
-import { calculateRequiredDepositCents, formatCents } from "@saloncitrine/shared";
+import {
+  calculateRequiredDepositCents,
+  formatCents,
+  formatLateCancelMessage,
+} from "@saloncitrine/shared";
 import {
   INTAKE_REFERRAL_SOURCES,
   NEW_CLIENT_INTAKE_WELCOME,
@@ -64,11 +70,13 @@ if (!slot) {
   return Astro.redirect(`${withBase("datetime/")}?${params.toString()}`);
 }
 
-const serviceSummary =
+const servicesLabel =
   services.length === 1
     ? services[0].name
-    : `${services[0].name} + ${services.length - 1} more`;
+    : services.map((service) => service.name).join(", ");
 const totalDuration = sumServiceDuration(services);
+const whenLabel = formatConfirmationWhen(slot.startsAt);
+const priceLabel = estimateCartPrice(services) ?? formatCents(subtotalCents);
 const subtotalCents = services.reduce(
   (sum, service) => sum + (service.basePriceCents ?? 0),
   0,
@@ -83,6 +91,13 @@ const depositLabel =
     : bookingPolicy.depositType === "card_on_file" || bookingPolicy.requiresCardOnFile
       ? "Card on file only"
       : "None today";
+const cancellationSummary = formatLateCancelMessage(bookingPolicy);
+const cardOnFileExplanation =
+  depositRequiredCents > 0
+    ? "Your deposit is charged when you confirm. The remaining balance is due at your appointment."
+    : bookingPolicy.depositType === "card_on_file" || bookingPolicy.requiresCardOnFile
+      ? "Your card secures this appointment. You won't be charged now unless noted in the policy."
+      : "No card charge today — see the full policy for details.";
 
 const stripePublishableKey = import.meta.env.PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const setupIntentUrl = withBase("api/booking/setup-intent");
@@ -106,12 +121,32 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   embed={flowFlags.embed}
 >
   <h1>Your details</h1>
-  <p class="summary">
-    {serviceSummary} · {stylist.name}
-    {services.length > 1 && ` · ${formatDuration(totalDuration)}`}
-    <br />
-    {date} at {slot.label}
-  </p>
+
+  <section class="appointment-summary" aria-label="Appointment summary">
+    <p class="appointment-summary__kicker">Your appointment</p>
+    <dl class="appointment-summary__grid">
+      <div>
+        <dt>Service{services.length > 1 ? "s" : ""}</dt>
+        <dd>{servicesLabel}</dd>
+      </div>
+      <div>
+        <dt>Stylist</dt>
+        <dd>{stylist.name}</dd>
+      </div>
+      <div>
+        <dt>When</dt>
+        <dd>{whenLabel}</dd>
+      </div>
+      <div>
+        <dt>Duration</dt>
+        <dd>{formatDuration(totalDuration)}</dd>
+      </div>
+      <div>
+        <dt>Estimated price</dt>
+        <dd>{priceLabel}</dd>
+      </div>
+    </dl>
+  </section>
 
   {
     cartId && (
@@ -153,7 +188,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       <p class="intake-welcome__text">{RETURNING_CLIENT_INTAKE_NOTE}</p>
     </div>
 
-    <fieldset class="form-section">
+    <fieldset class="form-section stone-tray">
       <legend>Contact information</legend>
 
       <div class="field-row">
@@ -209,7 +244,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       </label>
     </fieldset>
 
-    <fieldset class="form-section form-section--intake" data-intake-section>
+    <fieldset class="form-section form-section--intake stone-tray" data-intake-section>
       <legend>New client intake</legend>
       <p class="form-section__intro">
         A few details help us personalize your first visit. Returning guests can skip this section.
@@ -304,7 +339,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       </fieldset>
     </fieldset>
 
-    <fieldset class="form-section form-section--optional">
+    <fieldset class="form-section form-section--optional stone-tray">
       <legend>Appointment notes (optional)</legend>
 
       <label class="field">
@@ -328,25 +363,30 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       </label>
     </fieldset>
 
-    <div class="order-summary" aria-label="Order summary">
-      <div class="order-summary__row">
-        <span>Services subtotal</span>
-        <span>{formatCents(subtotalCents)}</span>
-      </div>
-      <div class="order-summary__row order-summary__row--deposit">
-        <span>Deposit due today</span>
-        <span>{depositLabel}</span>
-      </div>
-      <p class="order-summary__hint">
-        {
-          depositRequiredCents > 0
-            ? "Your deposit is charged when you confirm. The remaining balance is due at your appointment."
-            : "Your card secures this appointment. You won't be charged now unless noted in the policy."
-        }
+    <section class="trust-panel stone-tray" aria-labelledby="trust-panel-title">
+      <h2 id="trust-panel-title" class="trust-panel__title">What to expect</h2>
+      <dl class="trust-panel__items">
+        <div>
+          <dt>Deposit due today</dt>
+          <dd>{depositLabel}</dd>
+        </div>
+        <div>
+          <dt>Cancellation policy</dt>
+          <dd>{cancellationSummary}</dd>
+        </div>
+        <div>
+          <dt>Card on file</dt>
+          <dd>{cardOnFileExplanation}</dd>
+        </div>
+      </dl>
+      <p class="trust-panel__link-wrap">
+        <button type="button" class="trust-panel__link" data-open-policy-link>
+          Read full booking policy
+        </button>
       </p>
-    </div>
+    </section>
 
-    <div class="card-section">
+    <div class="card-section stone-tray">
       <p class="card-section__label">Payment method</p>
       <p class="card-section__hint">
         Secure card on file — required to complete booking.
@@ -357,9 +397,11 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
       <p class="form-error" data-form-error hidden></p>
     </div>
 
-    <Button type="button" variant="primary" data-open-policy-modal>
-      Review policy & continue
-    </Button>
+    <div class="submit-bar">
+      <Button type="button" variant="primary" data-open-policy-modal data-submit-button>
+        <span data-submit-label>Review policy &amp; book</span>
+      </Button>
+    </div>
   </form>
 
   <PolicyModal policy={bookingPolicy} />
@@ -374,14 +416,46 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
 <script src="../scripts/details-booking.ts"></script>
 
 <style>
-  .summary {
-    padding: 1rem;
-    background: var(--color-light);
-    border-left: 3px solid var(--color-sage);
+  .appointment-summary {
+    margin-top: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
+  }
+
+  .appointment-summary__kicker {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    letter-spacing: var(--tracking-widest);
+    text-transform: uppercase;
+    color: var(--color-sage);
+  }
+
+  .appointment-summary__grid {
+    margin: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .appointment-summary__grid dt {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .appointment-summary__grid dd {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-body);
+    font-weight: 500;
+    line-height: var(--leading-normal);
   }
 
   .reservation-hold {
-    margin: 1rem 0 0;
+    margin: var(--space-4) 0 0;
     padding: 0.75rem 1rem;
     background: rgba(231, 172, 70, 0.15);
     border: 1px solid var(--color-citrine);
@@ -395,7 +469,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
   }
 
   .intake-welcome {
-    margin-top: 1.25rem;
+    margin-top: 0;
     padding: 0.85rem 1rem;
     background: rgba(231, 172, 70, 0.12);
     border-left: 3px solid var(--color-citrine);
@@ -414,16 +488,22 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
 
   .details-form {
     display: grid;
-    gap: 1.5rem;
+    gap: var(--space-5);
     max-width: 36rem;
-    margin-top: 1.5rem;
+    margin-top: var(--space-5);
+  }
+
+  .stone-tray {
+    margin: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
   }
 
   .form-section {
     display: grid;
     gap: 1rem;
-    margin: 0;
-    padding: 0;
     border: 0;
   }
 
@@ -505,6 +585,7 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     background: var(--color-bg);
     color: var(--color-text);
     font: inherit;
+    border-radius: var(--radius-sm);
   }
 
   .field textarea {
@@ -530,50 +611,75 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     gap: 0.5rem;
   }
 
-  .order-summary {
-    margin: 0.25rem 0;
-    padding: 1rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
+  .trust-panel {
     display: grid;
-    gap: 0.5rem;
+    gap: var(--space-4);
   }
 
-  .order-summary__row {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    font-family: var(--font-sans);
-    font-size: 0.9rem;
+  .trust-panel__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 500;
+    line-height: 1.25;
   }
 
-  .order-summary__row--deposit {
+  .trust-panel__items {
+    margin: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .trust-panel__items dt {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--color-dusty-rose);
+  }
+
+  .trust-panel__items dd {
+    margin: 0.2rem 0 0;
+    font-size: 0.92rem;
+    line-height: var(--leading-relaxed);
+    color: var(--color-text);
+  }
+
+  .trust-panel__link-wrap {
+    margin: 0;
+  }
+
+  .trust-panel__link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-citrine-dark);
+    font-family: var(--font-body);
+    font-size: 0.88rem;
     font-weight: 600;
-    padding-top: 0.35rem;
-    border-top: 1px solid var(--color-border-subtle);
+    letter-spacing: 0.04em;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+    cursor: pointer;
   }
 
-  .order-summary__hint {
-    margin: 0.25rem 0 0;
-    font-size: 0.82rem;
-    color: var(--color-gray);
-    line-height: 1.45;
+  .trust-panel__link:hover,
+  .trust-panel__link:focus-visible {
+    color: var(--color-citrine);
   }
 
   .card-section {
     display: grid;
     gap: 0.5rem;
-    padding: 0.75rem;
-    border: 1px solid var(--color-border);
-    background: var(--color-bg);
   }
 
   .card-section__label {
     margin: 0;
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.72rem;
-    letter-spacing: 0.1em;
+    letter-spacing: var(--tracking-wide);
     text-transform: uppercase;
+    color: var(--color-dusty-rose);
   }
 
   .card-section__hint {
@@ -604,7 +710,57 @@ const backHref = `${withBase("datetime/")}?${backParams.toString()}`;
     color: var(--color-error);
   }
 
+  .submit-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin: 0 calc(-1 * var(--space-4));
+    padding: var(--space-4);
+    background: linear-gradient(
+      to top,
+      var(--color-bg) 70%,
+      rgba(255, 255, 255, 0)
+    );
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .submit-bar :global(.sc-button) {
+    width: 100%;
+    text-align: center;
+  }
+
+  .submit-bar :global(.sc-button[disabled]) {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .submit-bar :global(.sc-button[aria-busy="true"]) {
+    opacity: 0.75;
+  }
+
+  @media (min-width: 640px) {
+    .submit-bar {
+      position: static;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border-top: 0;
+    }
+
+    .submit-bar :global(.sc-button) {
+      width: auto;
+    }
+  }
+
   .back {
-    margin-top: 1.5rem;
+    margin-top: var(--space-5);
+  }
+
+  :global([data-theme="dark"]) .submit-bar {
+    background: linear-gradient(
+      to top,
+      var(--color-bg) 70%,
+      rgba(24, 24, 24, 0)
+    );
   }
 </style>

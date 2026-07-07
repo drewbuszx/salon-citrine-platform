@@ -10,6 +10,7 @@ const form = document.querySelector<HTMLFormElement>("[data-booking-details-form
 const paymentMount = document.getElementById("payment-element");
 const errorEl = document.querySelector<HTMLElement>("[data-form-error]");
 const submitBtn = document.querySelector<HTMLButtonElement>("[data-open-policy-modal]");
+const submitLabelEl = document.querySelector<HTMLElement>("[data-submit-label]");
 const lookupStatusEl = document.querySelector<HTMLElement>("[data-lookup-status]");
 const intakeSectionEl = document.querySelector<HTMLElement>("[data-intake-section]");
 const newClientWelcomeEl = document.querySelector<HTMLElement>("[data-new-client-welcome]");
@@ -42,6 +43,66 @@ let initializing = false;
 let submitting = false;
 let lookupInFlight = false;
 let reservationTimer: ReturnType<typeof setInterval> | null = null;
+
+const SUBMIT_LABEL_DEFAULT = "Review policy & book";
+const SUBMIT_LABEL_LOADING = "Booking your appointment…";
+
+function isDarkMode(): boolean {
+  return document.documentElement.getAttribute("data-theme") === "dark";
+}
+
+function stripeAppearance() {
+  const dark = isDarkMode();
+
+  return {
+    theme: dark ? "night" : "stripe",
+    variables: {
+      colorPrimary: "#e7ac46",
+      colorBackground: dark ? "#181818" : "#faf9f7",
+      colorText: dark ? "#ececec" : "#1a1816",
+      colorTextSecondary: dark ? "#aaaaaa" : "#787068",
+      colorTextPlaceholder: dark ? "#787068" : "#a8a093",
+      colorDanger: "#b42318",
+      borderRadius: "4px",
+      fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    },
+    rules: {
+      ".Input": {
+        backgroundColor: dark ? "#141414" : "#faf9f7",
+        borderColor: dark ? "rgba(255, 255, 255, 0.12)" : "#e8e4dc",
+        boxShadow: "none",
+      },
+      ".Input:focus": {
+        borderColor: "#e7ac46",
+        boxShadow: dark ? "0 0 0 2px rgba(231, 172, 70, 0.25)" : "0 0 0 2px rgba(231, 172, 70, 0.2)",
+      },
+      ".Label": {
+        color: dark ? "#ececec" : "#1a1816",
+      },
+      ".Tab": {
+        borderColor: dark ? "rgba(255, 255, 255, 0.12)" : "#e8e4dc",
+      },
+      ".Tab--selected": {
+        borderColor: "#e7ac46",
+        color: dark ? "#ececec" : "#1a1816",
+      },
+    },
+  } as const;
+}
+
+function setSubmitLoading(loading: boolean) {
+  if (!submitBtn) return;
+  if (loading) {
+    submitBtn.setAttribute("disabled", "true");
+    submitBtn.setAttribute("aria-busy", "true");
+  } else {
+    submitBtn.removeAttribute("disabled");
+    submitBtn.setAttribute("aria-busy", "false");
+  }
+  if (submitLabelEl) {
+    submitLabelEl.textContent = loading ? SUBMIT_LABEL_LOADING : SUBMIT_LABEL_DEFAULT;
+  }
+}
 
 function showError(message: string) {
   if (!errorEl) return;
@@ -297,12 +358,7 @@ async function ensureStripeElements(forceRecreate = false) {
 
     elements = stripe.elements({
       clientSecret: payload.clientSecret as string,
-      appearance: {
-        theme: "stripe",
-        variables: {
-          colorPrimary: "#e7ac46",
-        },
-      },
+      appearance: stripeAppearance(),
     });
 
     const paymentElement = elements.create("payment");
@@ -547,7 +603,7 @@ async function completeBooking() {
 
   showError("");
   submitting = true;
-  submitBtn?.setAttribute("disabled", "true");
+  setSubmitLoading(true);
 
   try {
     let verifiedSetupIntentId = confirmedSetupIntentId;
@@ -641,7 +697,7 @@ async function completeBooking() {
   } catch (error) {
     logBookingError("completeBooking", error);
     showError(formatBookingError(error, "Booking failed"));
-    submitBtn?.removeAttribute("disabled");
+    setSubmitLoading(false);
     submitting = false;
   }
 }
