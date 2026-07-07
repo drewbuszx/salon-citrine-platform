@@ -2,6 +2,7 @@
 import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import TeamSidebarNav from "../components/TeamSidebarNav.astro";
+import UiScrollRow from "../components/ui/UiScrollRow.astro";
 import { isSalonManager } from "../lib/auth";
 import { teamUrl } from "../lib/supabase-server";
 
@@ -38,7 +39,8 @@ const staffOptions = staffRows ?? [];
         ) : null
       }
 
-      <TeamSidebarNav slot="sidebarFilters" label="Task views">
+      <div class="tasks-page__sidebar-nav" data-tasks-nav slot="sidebarFilters">
+      <TeamSidebarNav label="Task views">
         <button class="team-list-layout__sidebar-nav-btn is-active" type="button" data-view="my" aria-selected="true">
           <span>Assigned to me</span>
         </button>
@@ -71,8 +73,50 @@ const staffOptions = staffRows ?? [];
           ) : null
         }
       </TeamSidebarNav>
+      </div>
 
       <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
+
+      <div class="tasks-tabs" data-tasks-nav>
+        <UiScrollRow label="Task views">
+          <button class="tasks-tabs__btn is-active" type="button" data-view="my" aria-selected="true">
+            <span class="tasks-tabs__long">Assigned to me</span>
+            <span class="tasks-tabs__short">Mine</span>
+          </button>
+          <button class="tasks-tabs__btn" type="button" data-view="available" aria-selected="false">
+            <span class="tasks-tabs__long">For everyone</span>
+            <span class="tasks-tabs__short">Open</span>
+          </button>
+          <button
+            class="tasks-tabs__btn"
+            type="button"
+            data-view="attention"
+            aria-selected="false"
+            title="Active tasks already overdue or due within 24 hours"
+          >
+            <span class="tasks-tabs__long">Needs attention</span>
+            <span class="tasks-tabs__short">Urgent</span>
+            <span
+              class="tasks-tabs__badge"
+              data-attention-badge
+              hidden
+              aria-label="Tasks needing attention"
+            >0</span>
+          </button>
+          <button class="tasks-tabs__btn" type="button" data-view="completed" aria-selected="false">
+            <span class="tasks-tabs__long">Completed</span>
+            <span class="tasks-tabs__short">Done</span>
+          </button>
+          {
+            managerView ? (
+              <button class="tasks-tabs__btn" type="button" data-view="all" aria-selected="false">
+                <span class="tasks-tabs__long">All active</span>
+                <span class="tasks-tabs__short">All</span>
+              </button>
+            ) : null
+          }
+        </UiScrollRow>
+      </div>
 
       <div class="notebook" aria-label="Task notebook">
         <div class="notebook__binding" aria-hidden="true">
@@ -365,32 +409,70 @@ const staffOptions = staffRows ?? [];
 
   .tasks-tabs {
     display: none;
+    max-width: 52rem;
+    margin: 0 auto 0.65rem;
+    min-width: 0;
   }
 
   .tasks-tabs__btn {
-    padding: 0.35rem 0.65rem;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: var(--color-gray);
-    font-family: var(--font-basic-title);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.25rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: 999px;
+    background: var(--color-bg);
+    color: var(--color-stone-600);
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
     cursor: pointer;
-    transition: color 0.2s ease, border-color 0.2s ease;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
   }
 
   .tasks-tabs__btn:hover,
   .tasks-tabs__btn:focus-visible {
     color: var(--color-text);
+    border-color: var(--color-stone-300);
     outline: none;
   }
 
   .tasks-tabs__btn.is-active {
     color: var(--color-text);
-    border-bottom-color: var(--color-citrine);
+    border-color: var(--color-sage);
+    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
+    box-shadow: inset 0 0 0 1px var(--color-sage);
+  }
+
+  .tasks-tabs__short {
+    display: none;
+  }
+
+  .tasks-tabs__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--color-citrine);
+    color: var(--color-black);
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .tasks-tabs__badge[hidden] {
+    display: none;
   }
 
   /* Keep the subtitle centred on the same column as the notebook sheet. */
@@ -413,41 +495,51 @@ const staffOptions = staffRows ?? [];
     flex-direction: column;
   }
 
-  .tasks-page :global(.notebook-empty) {
+  .tasks-page :global(.notebook-empty),
+  .tasks-page :global(.tasks-loading) {
     margin: 0;
-    padding: var(--notebook-line) 0;
-    min-height: calc(var(--notebook-line) * 3);
-    font-family: var(--font-display);
-    color: var(--color-stone-500);
-    line-height: var(--notebook-line);
-  }
-
-  /* Empty state lives at the top of the same sheet, aligned to the rules. */
-  .tasks-page :global(.notebook-empty--filter) {
-    display: grid;
-    gap: 0;
-    align-content: start;
-    min-height: calc(var(--notebook-line) * 2);
-    padding: 0;
-  }
-
-  .tasks-page :global(.notebook-empty__title) {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: 500;
-    font-style: normal;
-    line-height: var(--notebook-line);
-    color: var(--color-stone-700);
-  }
-
-  .tasks-page :global(.notebook-empty__hint) {
-    margin: 0;
+    padding: var(--mobile-space-sm) 0;
+    min-height: auto;
     font-family: var(--font-body);
     font-size: var(--text-sm);
-    font-style: normal;
-    line-height: var(--notebook-line);
     color: var(--color-stone-500);
+    line-height: var(--leading-normal);
+  }
+
+  .tasks-page :global(.tasks-loading--error) {
+    color: var(--color-error, #b42318);
+  }
+
+  .tasks-page :global(.tasks-empty.ui-empty) {
+    justify-items: start;
+    margin: 0;
+    padding: var(--mobile-space-md) 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    text-align: left;
+  }
+
+  .tasks-page :global(.tasks-empty .ui-empty__icon) {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1rem;
+  }
+
+  .tasks-page :global(.tasks-empty .ui-empty__title) {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .tasks-page :global(.tasks-empty .ui-empty__hint) {
+    font-size: var(--text-xs);
+    max-width: none;
+  }
+
+  .tasks-page :global(.tasks-empty .ui-empty__actions) {
+    justify-content: flex-start;
+    margin-top: 0.15rem;
   }
 
   /*
@@ -777,9 +869,13 @@ const staffOptions = staffRows ?? [];
     box-shadow: 0 0 0 3px rgba(196, 90, 78, 0.18);
   }
 
-  .tasks-page :global(.notebook-empty__cta) {
-    justify-self: start;
-    margin-top: 0.5rem;
+  .tasks-page :global(.notebook-entry__actions .task-action--danger) {
+    grid-column: 1 / -1;
+    margin-left: 0;
+  }
+
+  .tasks-page :global(.notebook-entry__actions .task-action--primary:only-of-type) {
+    grid-column: 1 / -1;
   }
 
   @media (min-width: 48rem) {
@@ -812,73 +908,22 @@ const staffOptions = staffRows ?? [];
     }
   }
 
-  /* Mobile: page-level sidebar override only (frozen global sidebar architecture). */
+  /* Mobile: compact tab row replaces sidebar nav. */
   @media (max-width: 900px) {
+    .tasks-tabs {
+      display: block;
+    }
+
     .tasks-page :global(.team-list-layout__sidebar) {
-      max-height: none;
-      padding-top: 0.5rem;
-      padding-bottom: 0.5rem;
-      overflow: visible;
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-title) {
-      margin-bottom: 0.35rem;
-    }
-
-    .tasks-page :global(.team-list-layout__filters) {
-      overflow: visible;
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-nav) {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: nowrap;
-      align-items: stretch;
-      gap: 0.35rem;
-      padding: 0 0.75rem 0.35rem;
-      overflow-x: auto;
-      overflow-y: visible;
-      overscroll-behavior-x: contain;
-      scroll-padding-inline: 0.75rem;
-      -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x proximity;
-      scrollbar-width: none;
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-nav::-webkit-scrollbar) {
       display: none;
     }
 
-    .tasks-page :global(.team-list-layout__sidebar-nav-btn) {
-      flex: 0 0 auto;
-      width: auto;
-      min-height: 2.75rem;
-      padding: 0.5rem 0.75rem;
-      border-left: none;
-      border-radius: var(--radius-sm);
-      font-size: 0.8125rem;
-      scroll-snap-align: start;
+    .tasks-page :global(.team-list-layout__mobile-filter-bar) {
+      display: none;
     }
 
-    .tasks-page :global(.team-list-layout__sidebar-nav-btn > span:first-child) {
-      white-space: nowrap;
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-nav-btn.is-active) {
-      border-left: none;
-      box-shadow: inset 0 0 0 2px var(--color-citrine);
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-badge) {
-      flex-shrink: 0;
-      min-width: 1.25rem;
-      height: 1.25rem;
-      padding: 0 0.35rem;
-      font-size: 0.6875rem;
-    }
-
-    .tasks-page :global(.team-list-layout__sidebar-badge--attention:not([hidden])) {
-      box-shadow: 0 0 0 2px var(--color-bg);
+    .tasks-page :global(.team-list-layout__main-lead) {
+      display: none;
     }
   }
 
@@ -985,8 +1030,17 @@ const staffOptions = staffRows ?? [];
       --notebook-line: 1.85rem;
     }
 
-    .tasks-page :global(.team-list-layout__sidebar-nav-btn) {
-      padding-inline: 0.6rem;
+    .tasks-tabs__long {
+      display: none;
+    }
+
+    .tasks-tabs__short {
+      display: inline;
+    }
+
+    .tasks-tabs__btn {
+      min-height: 2rem;
+      padding-inline: 0.55rem;
       font-size: 0.75rem;
     }
   }

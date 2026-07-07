@@ -31,7 +31,7 @@ const staffOptions = staffRows ?? [];
   >
     <TeamListLayout title="Events" mainTitle="Team calendar" sidebarTitle="Filters">
       <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-event-create>
-        Add event
+        {managerView ? "Add event" : "Request time off"}
       </button>
 
       <TeamListFilter slot="sidebarFilters" label="Event type" open>
@@ -93,7 +93,28 @@ const staffOptions = staffRows ?? [];
 
       <section class="events-calendar-panel" aria-label="Month calendar">
         <header class="events-calendar-panel__header">
-          <h3 class="events-calendar-panel__title" data-month-header></h3>
+          <div class="events-calendar-panel__nav">
+            <button
+              class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
+              type="button"
+              data-month-prev
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <h3 class="events-calendar-panel__title" data-month-header></h3>
+            <button
+              class="events-calendar-panel__nav-btn ui-btn ui-btn--ghost ui-btn--icon"
+              type="button"
+              data-month-next
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+          <button class="events-calendar-panel__today ui-btn ui-btn--ghost ui-btn--compact" type="button" data-month-today>
+            Today
+          </button>
         </header>
         <div class="events-calendar" data-events-calendar></div>
         <div class="events-calendar-legend" aria-hidden="true">
@@ -112,7 +133,7 @@ const staffOptions = staffRows ?? [];
           </button>
         </div>
         <div class="events-list" data-events-list aria-live="polite">
-          <p class="empty-state">Loading events…</p>
+          <p class="events-loading">Loading events…</p>
         </div>
       </section>
     </TeamListLayout>
@@ -122,7 +143,7 @@ const staffOptions = staffRows ?? [];
     <form class="events-modal__form" method="dialog" data-event-form>
       <header class="events-modal__header">
         <h2 id="event-modal-title" data-event-modal-title>Add event</h2>
-        <button class="events-modal__close" type="button" data-event-modal-close aria-label="Close">
+        <button class="events-modal__close ui-btn ui-btn--ghost ui-btn--icon" type="button" data-event-modal-close aria-label="Close">
           ×
         </button>
       </header>
@@ -188,6 +209,7 @@ const staffOptions = staffRows ?? [];
       </div>
 
       <footer class="events-modal__footer">
+        <p class="events-modal__delete-hint" data-event-delete-hint hidden>Tap again to confirm removal.</p>
         <button class="team-list-layout__btn-secondary" type="button" data-event-modal-close>Cancel</button>
         {
           managerView ? (
@@ -211,11 +233,13 @@ const staffOptions = staffRows ?? [];
 <style>
   .events-page {
     --event-color-closure: var(--color-error);
-    --event-color-event: var(--color-citrine);
+    --event-color-event: var(--color-stone-600);
     --event-color-announcement: var(--color-stone-600);
     --event-color-time-off: var(--color-dusty-rose);
     --event-marker-size: 0.5rem;
     --event-marker-gap: 0.2rem;
+    min-width: 0;
+    overflow-x: clip;
   }
 
   .events-page [data-event-create].team-list-layout__btn-primary {
@@ -245,6 +269,60 @@ const staffOptions = staffRows ?? [];
   .events-sidebar-nav {
     border-top: 1px solid var(--color-stone-200);
     padding-top: 0.35rem;
+  }
+
+  @media (max-width: 900px) {
+    .events-sidebar-nav {
+      display: none;
+    }
+  }
+
+  .events-loading {
+    margin: 0;
+    padding: var(--mobile-space-md);
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .events-loading--error {
+    color: var(--color-error, #b42318);
+  }
+
+  .events-page :global(.events-empty.ui-empty) {
+    margin: 0;
+    border: none;
+    background: transparent;
+    padding: var(--mobile-space-md);
+    text-align: left;
+    justify-items: start;
+  }
+
+  .events-page :global(.events-empty .ui-empty__title) {
+    font-size: var(--text-sm);
+  }
+
+  .events-page :global(.events-empty .ui-empty__hint) {
+    font-size: var(--text-xs);
+    max-width: none;
+  }
+
+  .events-page :global(.event-row--skeleton) {
+    pointer-events: none;
+  }
+
+  .events-page :global(.event-row__skeleton-title) {
+    display: block;
+    width: 50%;
+    height: 0.85rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .events-page :global(.event-row__skeleton-meta) {
+    display: block;
+    width: 70%;
+    height: 0.65rem;
+    margin-top: 0.25rem;
+    border-radius: var(--radius-sm);
   }
 
   .events-page__toolbar {
@@ -288,9 +366,31 @@ const staffOptions = staffRows ?? [];
   }
 
   .events-calendar-panel__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 0.75rem;
     padding: 0.75rem 1rem 0.5rem;
     border-bottom: 1px solid var(--color-border-subtle);
     background: color-mix(in srgb, var(--color-cream) 45%, var(--color-bg));
+  }
+
+  .events-calendar-panel__nav {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .events-calendar-panel__nav-btn {
+    flex-shrink: 0;
+  }
+
+  .events-calendar-panel__today {
+    flex-shrink: 0;
   }
 
   .events-calendar-panel__title {
@@ -353,13 +453,20 @@ const staffOptions = staffRows ?? [];
   }
 
   .events-page :global(.events-calendar__cell:hover:not(.events-calendar__cell--pad)) {
-    background: color-mix(in srgb, var(--color-citrine) 6%, var(--color-bg));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-citrine) 30%, transparent);
+    background: color-mix(in srgb, var(--color-sage) 8%, var(--color-bg));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sage) 35%, transparent);
     z-index: 1;
   }
 
+  @media (hover: none) {
+    .events-page :global(.events-calendar__cell:hover:not(.events-calendar__cell--pad)) {
+      background: var(--color-bg);
+      box-shadow: none;
+    }
+  }
+
   .events-page :global(.events-calendar__cell:focus-visible) {
-    outline: 2px solid var(--color-citrine);
+    outline: 2px solid var(--color-selection-border, var(--color-sage));
     outline-offset: -2px;
     z-index: 2;
   }
@@ -384,13 +491,13 @@ const staffOptions = staffRows ?? [];
   }
 
   .events-page :global(.events-calendar__cell--selected) {
-    background: var(--color-citrine-muted);
-    box-shadow: inset 0 0 0 2px var(--color-citrine);
+    background: var(--color-selection-bg, rgba(141, 158, 136, 0.12));
+    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
   }
 
   .events-page :global(.events-calendar__cell--selected.events-calendar__cell--today) {
-    background: color-mix(in srgb, var(--color-citrine-muted) 70%, color-mix(in srgb, var(--color-dusty-rose) 6%, var(--color-bg)));
-    box-shadow: inset 0 0 0 2px var(--color-citrine);
+    background: color-mix(in srgb, var(--color-selection-bg, rgba(141, 158, 136, 0.12)) 75%, color-mix(in srgb, var(--color-dusty-rose) 6%, var(--color-bg)));
+    box-shadow: inset 0 0 0 2px var(--color-selection-border, var(--color-sage));
   }
 
   .events-page :global(.events-calendar__cell--today .events-calendar__day) {
@@ -537,11 +644,13 @@ const staffOptions = staffRows ?? [];
   .events-upcoming__clear {
     border: none;
     background: none;
-    padding: 0;
+    padding: 0.5rem 0.25rem;
+    min-height: var(--touch-target-min);
     font-family: var(--font-body);
     font-size: var(--text-xs);
     font-weight: 500;
-    letter-spacing: 0.02em;
+    letter-spacing: normal;
+    text-transform: none;
     color: var(--color-link);
     cursor: pointer;
     text-decoration: underline;
@@ -599,8 +708,12 @@ const staffOptions = staffRows ?? [];
 
   .events-page :global(.event-row:hover),
   .events-page :global(.event-row:focus-visible) {
-    background: color-mix(in srgb, var(--color-citrine) 8%, var(--color-bg));
+    background: color-mix(in srgb, var(--color-sage) 10%, var(--color-bg));
     outline: none;
+  }
+
+  .events-page :global(.event-row) {
+    min-height: var(--touch-target-comfortable, 3.5rem);
   }
 
   .events-page :global(.event-row__dot) {
@@ -696,8 +809,8 @@ const staffOptions = staffRows ?? [];
 
   .events-page :global(.event-badge--event) {
     border-color: var(--event-color-event);
-    color: var(--color-text);
-    background: var(--color-citrine-muted);
+    color: var(--color-stone-700);
+    background: var(--color-stone-100);
   }
 
   .events-modal {
@@ -802,6 +915,35 @@ const staffOptions = staffRows ?? [];
     background: var(--color-error-muted);
   }
 
+  .events-modal__delete-hint {
+    flex: 1 1 100%;
+    margin: 0 0 0.25rem;
+    font-size: var(--text-xs);
+    color: var(--color-stone-500);
+  }
+
+  .events-modal__delete-hint[hidden] {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .events-modal {
+      width: 100%;
+      max-width: none;
+      max-height: var(--ui-bottom-sheet-max-height, 85vh);
+      margin: 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .events-modal__footer {
+      padding-bottom: calc(var(--space-4) + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
+    }
+
+    .events-calendar-legend {
+      display: none;
+    }
+  }
+
   @media (max-width: 640px) {
     .events-page :global(.events-calendar__cell) {
       min-height: 3.75rem;
@@ -845,25 +987,38 @@ const staffOptions = staffRows ?? [];
     }
 
     .events-calendar-legend__item {
-      font-size: 0.5625rem;
-    }
-
-    .events-page :global(.event-row) {
-      padding: var(--space-2);
-      column-gap: var(--space-2);
-    }
-
-    .events-page :global(.event-row__title) {
-      font-size: var(--text-xs);
-    }
-
-    .events-page :global(.event-row__meta) {
       font-size: 0.625rem;
+      text-transform: none;
+      letter-spacing: normal;
     }
 
     .events-page :global(.event-row .event-badge) {
-      padding: 0.06rem 0.3rem;
-      font-size: 0.5rem;
+      display: none;
+    }
+
+    .events-page :global(.event-row__title) {
+      font-size: var(--text-sm);
+      white-space: normal;
+    }
+
+    .events-page :global(.event-row__meta) {
+      font-size: var(--text-xs);
+      white-space: normal;
+    }
+  }
+</style>
+
+<style>
+  dialog.events-modal {
+    padding: 0;
+  }
+
+  @media (max-width: 900px) {
+    dialog.events-modal {
+      inset: auto 0 0 0;
+      position: fixed;
+      width: 100%;
+      max-height: var(--ui-bottom-sheet-max-height, 85vh);
     }
   }
 </style>

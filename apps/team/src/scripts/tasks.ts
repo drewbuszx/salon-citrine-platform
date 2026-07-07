@@ -39,8 +39,7 @@ const apiBase = root.dataset.apiBase ?? "";
 const isManager = root.dataset.manager === "1";
 const listEl = root.querySelector<HTMLElement>("[data-tasks-list]");
 const errorEl = root.querySelector<HTMLElement>("[data-tasks-error]");
-const tabButtons = root.querySelectorAll<HTMLButtonElement>("[data-view]");
-const attentionBadge = root.querySelector<HTMLElement>("[data-attention-badge]");
+const tabButtons = root.querySelectorAll<HTMLButtonElement>("[data-tasks-nav] [data-view]");
 const createBtn = root.querySelector<HTMLButtonElement>("[data-task-create]");
 const taskModal = document.querySelector<HTMLDialogElement>("[data-task-modal]");
 const taskForm = document.querySelector<HTMLFormElement>("[data-task-form]");
@@ -367,23 +366,25 @@ function emptyStateContent(view: string): EmptyState {
 function renderEmptyState(view: string) {
   const { title, hint, cta } = emptyStateContent(view);
   const action = cta
-    ? `<button class="task-action task-action--primary notebook-empty__cta" type="button" data-view-jump="${cta.view}">${escapeHtml(cta.label)}</button>`
+    ? `<button class="ui-btn ui-btn--primary ui-btn--compact" type="button" data-view-jump="${cta.view}">${escapeHtml(cta.label)}</button>`
     : "";
-  return `<div class="notebook-empty notebook-empty--filter" role="status">
-    <p class="notebook-empty__title">${escapeHtml(title)}</p>
-    <p class="notebook-empty__hint">${escapeHtml(hint)}</p>
-    ${action}
+  return `<div class="ui-empty ui-empty--compact tasks-empty" role="status">
+    <span class="ui-empty__icon" aria-hidden="true">☑</span>
+    <p class="ui-empty__title">${escapeHtml(title)}</p>
+    <p class="ui-empty__hint">${escapeHtml(hint)}</p>
+    ${action ? `<div class="ui-empty__actions">${action}</div>` : ""}
   </div>`;
 }
 
 function updateAttentionBadge(count: number) {
-  if (!attentionBadge) return;
-  attentionBadge.textContent = String(count);
-  attentionBadge.hidden = count <= 0;
-  attentionBadge.setAttribute(
-    "aria-label",
-    count > 0 ? `${count} tasks need attention` : "Tasks needing attention",
-  );
+  root.querySelectorAll<HTMLElement>("[data-attention-badge]").forEach((badge) => {
+    badge.textContent = String(count);
+    badge.hidden = count <= 0;
+    badge.setAttribute(
+      "aria-label",
+      count > 0 ? `${count} tasks need attention` : "Tasks needing attention",
+    );
+  });
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
@@ -401,7 +402,7 @@ async function apiFetch(path: string, init?: RequestInit) {
 async function loadTasks() {
   if (!listEl) return;
   clearError();
-  listEl.innerHTML = '<p class="notebook-empty">Loading tasks…</p>';
+  listEl.innerHTML = '<p class="tasks-loading">Loading tasks…</p>';
 
   try {
     const data = await apiFetch(`?view=${encodeURIComponent(currentView)}`);
@@ -418,7 +419,7 @@ async function loadTasks() {
     bindTaskActions();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load tasks";
-    listEl.innerHTML = `<p class="notebook-empty">${escapeHtml(message)}</p>`;
+    listEl.innerHTML = `<p class="tasks-loading tasks-loading--error">${escapeHtml(message)}</p>`;
     showError(message);
   }
 }

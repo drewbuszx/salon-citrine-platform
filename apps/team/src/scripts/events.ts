@@ -2,6 +2,7 @@ import { TIMEZONE } from "@saloncitrine/shared";
 import { dayOfWeekInSalon } from "../lib/calendar";
 import { localDateTimeToUtc } from "../lib/datetime";
 import { staffAccentColor } from "../lib/staff-colors";
+import { showToast, friendlyError } from "../lib/toast";
 
 type TeamEvent = {
   id: string;
@@ -43,6 +44,7 @@ const modalTitle = document.querySelector<HTMLElement>("[data-event-modal-title]
 const closeButtons = document.querySelectorAll<HTMLButtonElement>("[data-event-modal-close]");
 const submitBtn = document.querySelector<HTMLButtonElement>("[data-event-submit]");
 const deleteBtn = document.querySelector<HTMLButtonElement>("[data-event-delete]");
+const deleteHintEl = document.querySelector<HTMLElement>("[data-event-delete-hint]");
 const typeSelect = document.querySelector<HTMLSelectElement>("[data-event-type]");
 const staffPicker = document.querySelector<HTMLElement>("[data-staff-picker]");
 const allDayInput = document.querySelector<HTMLInputElement>("[data-all-day]");
@@ -56,6 +58,15 @@ let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();
 let editingEventId: string | null = null;
 let selectedDay: { year: number; month: number; day: number } | null = null;
+let deleteConfirmPending = false;
+
+function resetDeleteConfirm() {
+  deleteConfirmPending = false;
+  if (deleteBtn) {
+    deleteBtn.textContent = isManager ? "Delete" : "Remove";
+  }
+  if (deleteHintEl) deleteHintEl.hidden = true;
+}
 
 function getActiveTypeFilters(): Set<TeamEvent["eventType"]> {
   const active = new Set<TeamEvent["eventType"]>();
@@ -299,6 +310,32 @@ function eventsForList() {
   });
 }
 
+function renderSkeletonList() {
+  if (!listEl) return;
+  listEl.innerHTML = Array.from({ length: 4 }, () => `
+    <div class="event-row event-row--skeleton" aria-hidden="true">
+      <span class="event-row__dot" aria-hidden="true"></span>
+      <span class="skeleton event-row__skeleton-title"></span>
+      <span class="skeleton event-row__skeleton-meta"></span>
+    </div>
+  `).join("");
+}
+
+function renderEmptyList() {
+  if (selectedDay) {
+    return `<div class="ui-empty ui-empty--compact events-empty" role="status">
+      <span class="ui-empty__icon" aria-hidden="true">📅</span>
+      <p class="ui-empty__title">Nothing on this day</p>
+      <p class="ui-empty__hint">Pick another date or show all upcoming events.</p>
+    </div>`;
+  }
+  return `<div class="ui-empty ui-empty--compact events-empty" role="status">
+    <span class="ui-empty__icon" aria-hidden="true">📅</span>
+    <p class="ui-empty__title">No upcoming events</p>
+    <p class="ui-empty__hint">Closures, announcements, and time off will show here.</p>
+  </div>`;
+}
+
 function renderList() {
   if (!listEl) return;
 
@@ -315,9 +352,7 @@ function renderList() {
   const listed = eventsForList();
 
   if (listed.length === 0) {
-    listEl.innerHTML = selectedDay
-      ? `<p class="empty-state">No events on this day.</p>`
-      : `<p class="empty-state">No upcoming events this month.</p>`;
+    listEl.innerHTML = renderEmptyList();
     return;
   }
 
@@ -426,6 +461,7 @@ async function apiFetch(path: string, init?: RequestInit) {
 
 async function loadEvents() {
   clearError();
+  renderSkeletonList();
   const range = monthRange(viewYear, viewMonth);
   try {
     const data = (await apiFetch(
@@ -437,7 +473,7 @@ async function loadEvents() {
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to load events");
     if (listEl) {
-      listEl.innerHTML = `<p class="empty-state">Could not load events.</p>`;
+      listEl.innerHTML = `<p class="events-loading events-loading--error">${escapeHtml(error instanceof Error ? error.message : "Could not load events.")}</p>`;
     }
   }
 }
@@ -445,7 +481,10 @@ async function loadEvents() {
 function resetForm() {
   form?.reset();
   editingEventId = null;
-  if (modalTitle) modalTitle.textContent = "Add event";
+  resetDeleteConfirm();
+  if (modalTitle) {
+    modalTitle.textContent = isManager ? "Add event" : "Request time off";
+  }
   if (deleteBtn) deleteBtn.hidden = true;
   if (typeSelect && !isManager) {
     typeSelect.value = "time_off";
@@ -464,6 +503,7 @@ function openEditModal(event: TeamEvent) {
   editingEventId = event.id;
   if (modalTitle) modalTitle.textContent = "Event details";
   if (deleteBtn) deleteBtn.hidden = !event.canDelete;
+  resetDeleteConfirm();
 
   (form.elements.namedItem("title") as HTMLInputElement).value = event.title;
   (form.elements.namedItem("description") as HTMLTextAreaElement).value =
@@ -531,32 +571,35 @@ root.querySelectorAll("[data-filter-staff]").forEach((el) => {
 
 root.closest(".team-list-layout")?.addEventListener("team-filters-restored", refreshViews);
 
-prevBtn?.addEventListener("click", () => {
-  viewMonth -= 1;
+function shiftMonth(delta: number) {
+  viewMonth += delta;
   if (viewMonth < 0) {
     viewMonth = 11;
     viewYear -= 1;
-  }
-  selectedDay = null;
-  void loadEvents();
-});
-
-nextBtn?.addEventListener("click", () => {
-  viewMonth += 1;
-  if (viewMonth > 11) {
+  } else if (viewMonth > 11) {
     viewMonth = 0;
     viewYear += 1;
   }
   selectedDay = null;
   void loadEvents();
+}
+
+root.querySelectorAll("[data-month-prev]").forEach((btn) => {
+  btn.addEventListener("click", () => shiftMonth(-1));
 });
 
-todayBtn?.addEventListener("click", () => {
-  const now = new Date();
-  viewYear = now.getFullYear();
-  viewMonth = now.getMonth();
-  selectedDay = null;
-  void loadEvents();
+root.querySelectorAll("[data-month-next]").forEach((btn) => {
+  btn.addEventListener("click", () => shiftMonth(1));
+});
+
+root.querySelectorAll("[data-month-today]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    selectedDay = null;
+    void loadEvents();
+  });
 });
 
 function clearSelectedDay() {
@@ -622,9 +665,10 @@ form?.addEventListener("submit", async (event) => {
       });
     }
     closeModal();
+    showToast(editingEventId ? "Event updated." : "Event saved.", "success");
     await loadEvents();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to save event");
+    showError(friendlyError(error, "Failed to save event"));
   } finally {
     submitBtn.disabled = false;
   }
@@ -632,14 +676,21 @@ form?.addEventListener("submit", async (event) => {
 
 deleteBtn?.addEventListener("click", async () => {
   if (!editingEventId) return;
-  if (!confirm("Remove this event?")) return;
+  if (!deleteConfirmPending) {
+    deleteConfirmPending = true;
+    deleteBtn.textContent = "Yes, remove";
+    if (deleteHintEl) deleteHintEl.hidden = false;
+    return;
+  }
   clearError();
   try {
     await apiFetch(`/${editingEventId}?soft=1`, { method: "DELETE" });
     closeModal();
+    showToast("Event removed.", "success");
     await loadEvents();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to remove event");
+    showError(friendlyError(error, "Failed to remove event"));
+    resetDeleteConfirm();
   }
 });
 

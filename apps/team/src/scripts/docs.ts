@@ -1,3 +1,5 @@
+import { showToast, friendlyError } from "../lib/toast";
+
 type Document = {
   id: string;
   title: string;
@@ -30,6 +32,7 @@ const submitBtn = document.querySelector<HTMLButtonElement>("[data-doc-submit]")
 let documents: Document[] = [];
 let searchQuery = "";
 let categoryFilter = "all";
+let pendingDeleteId: string | null = null;
 
 function showError(message: string) {
   if (!errorEl) return;
@@ -60,10 +63,14 @@ function formatFileSize(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function categoryLabel(category: string | null) {
+  if (!category) return "";
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
 function categoryBadge(category: string | null) {
   if (!category) return "";
-  const label = category.replace("_", " ");
-  return `<span class="doc-badge doc-badge--${category}">${label}</span>`;
+  return `<span class="ui-badge doc-badge doc-badge--${category}">${escapeHtml(categoryLabel(category))}</span>`;
 }
 
 function filteredDocuments() {
@@ -81,12 +88,71 @@ function filteredDocuments() {
   });
 }
 
+function renderSkeleton() {
+  if (!listEl) return;
+  listEl.innerHTML = Array.from({ length: 3 }, () => `
+    <article class="doc-card doc-card--skeleton" aria-hidden="true">
+      <div class="doc-card__top">
+        <span class="skeleton doc-card__skeleton-title"></span>
+        <span class="skeleton doc-card__skeleton-badge"></span>
+      </div>
+      <span class="skeleton doc-card__skeleton-line"></span>
+      <span class="skeleton doc-card__skeleton-meta"></span>
+    </article>
+  `).join("");
+}
+
+function renderEmptyState() {
+  const filtered = filteredDocuments();
+  const hasFilters = categoryFilter !== "all" || searchQuery.trim().length > 0;
+
+  if (documents.length === 0) {
+    const action = isManager
+      ? `<div class="ui-empty__actions"><button class="ui-btn ui-btn--primary ui-btn--compact" type="button" data-doc-upload-open-inline">Upload document</button></div>`
+      : "";
+    return `<div class="ui-empty ui-empty--compact docs-empty" role="status">
+      <span class="ui-empty__icon" aria-hidden="true">📄</span>
+      <p class="ui-empty__title">No documents yet</p>
+      <p class="ui-empty__hint">Salon resources and handbooks will appear here.</p>
+      ${action}
+    </div>`;
+  }
+
+  if (filtered.length === 0 && hasFilters) {
+    return `<div class="ui-empty ui-empty--compact docs-empty" role="status">
+      <span class="ui-empty__icon" aria-hidden="true">📄</span>
+      <p class="ui-empty__title">No documents match</p>
+      <p class="ui-empty__hint">Try another category or clear your search.</p>
+    </div>`;
+  }
+
+  return "";
+}
+
+function renderDeleteActions(doc: Document) {
+  if (!isManager) return "";
+
+  if (pendingDeleteId === doc.id) {
+    return `<div class="doc-card__confirm">
+      <span class="doc-card__confirm-text">Remove this document?</span>
+      <div class="doc-card__confirm-actions">
+        <button class="ui-btn ui-btn--destructive ui-btn--compact" type="button" data-doc-delete-confirm="${doc.id}">Yes, remove</button>
+        <button class="ui-btn ui-btn--ghost ui-btn--compact" type="button" data-doc-delete-cancel>Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  return `<button class="ui-btn ui-btn--destructive ui-btn--compact" type="button" data-doc-delete="${doc.id}">Remove</button>`;
+}
+
 function renderList() {
   if (!listEl) return;
   const visible = filteredDocuments();
+  const empty = renderEmptyState();
 
-  if (visible.length === 0) {
-    listEl.innerHTML = `<p class="empty-state">${documents.length === 0 ? "No documents yet." : "No documents match your filters."}</p>`;
+  if (empty) {
+    listEl.innerHTML = empty;
+    listEl.querySelector<HTMLButtonElement>("[data-doc-upload-open-inline]")?.addEventListener("click", openModal);
     return;
   }
 
@@ -99,12 +165,8 @@ function renderList() {
         size,
       ].filter(Boolean);
 
-      const managerActions = isManager
-        ? `<button class="team-list-layout__btn-destructive" type="button" data-doc-delete="${doc.id}">Remove</button>`
-        : "";
-
       return `
-        <article class="doc-card">
+        <article class="doc-card ui-card">
           <div class="doc-card__top">
             <h3 class="doc-card__title">${escapeHtml(doc.title)}</h3>
             <div>${categoryBadge(doc.category)}</div>
@@ -115,8 +177,8 @@ function renderList() {
             ${metaParts.map((part) => `<span>${escapeHtml(String(part))}</span>`).join('<span class="doc-card__meta-sep" aria-hidden="true">·</span>')}
           </div>
           <div class="doc-card__actions">
-            <button class="team-list-layout__btn-secondary" type="button" data-doc-download="${doc.id}">Download</button>
-            ${managerActions}
+            <button class="ui-btn ui-btn--secondary ui-btn--compact" type="button" data-doc-download="${doc.id}">Download</button>
+            ${renderDeleteActions(doc)}
           </div>
         </article>
       `;
@@ -146,15 +208,17 @@ async function apiFetch(path: string, init?: RequestInit) {
 
 async function loadDocuments() {
   clearError();
+  renderSkeleton();
   const category = categoryFilter !== "all" ? `?category=${encodeURIComponent(categoryFilter)}` : "";
   try {
     const data = (await apiFetch(category)) as { documents?: Document[] };
     documents = data.documents ?? [];
+    pendingDeleteId = null;
     renderList();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to load documents");
     if (listEl) {
-      listEl.innerHTML = `<p class="empty-state">Could not load documents.</p>`;
+      listEl.innerHTML = `<p class="docs-loading docs-loading--error">${escapeHtml(error instanceof Error ? error.message : "Could not load documents.")}</p>`;
     }
   }
 }
@@ -167,22 +231,22 @@ async function downloadDocument(id: string) {
       throw new Error("Download link unavailable");
     }
     window.open(data.url, "_blank", "noopener,noreferrer");
+    showToast("Opening document…", "info");
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Download failed");
+    showError(friendlyError(error, "Download failed"));
   }
 }
 
 async function deleteDocument(id: string) {
-  if (!confirm("Remove this document? This cannot be undone.")) {
-    return;
-  }
   clearError();
   try {
     await apiFetch(`/${id}?soft=1`, { method: "DELETE" });
     documents = documents.filter((doc) => doc.id !== id);
+    pendingDeleteId = null;
     renderList();
+    showToast("Document removed.", "success");
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Failed to remove document");
+    showError(friendlyError(error, "Failed to remove document"));
   }
 }
 
@@ -197,6 +261,7 @@ function closeModal() {
 
 searchInput?.addEventListener("input", () => {
   searchQuery = searchInput.value;
+  pendingDeleteId = null;
   renderList();
 });
 
@@ -206,6 +271,7 @@ categoryButtons.forEach((button) => {
     categoryButtons.forEach((btn) => {
       btn.classList.toggle("is-active", btn === button);
     });
+    pendingDeleteId = null;
     void loadDocuments();
   });
 });
@@ -220,9 +286,20 @@ listEl?.addEventListener("click", (event) => {
     void downloadDocument(downloadId);
     return;
   }
+  if (target.closest("[data-doc-delete-cancel]")) {
+    pendingDeleteId = null;
+    renderList();
+    return;
+  }
+  const confirmId = target.closest<HTMLElement>("[data-doc-delete-confirm]")?.dataset.docDeleteConfirm;
+  if (confirmId) {
+    void deleteDocument(confirmId);
+    return;
+  }
   const deleteId = target.closest<HTMLElement>("[data-doc-delete]")?.dataset.docDelete;
   if (deleteId) {
-    void deleteDocument(deleteId);
+    pendingDeleteId = deleteId;
+    renderList();
   }
 });
 
@@ -246,9 +323,10 @@ form?.addEventListener("submit", async (event) => {
       throw new Error(data.error ?? "Upload failed");
     }
     closeModal();
+    showToast("Document uploaded.", "success");
     await loadDocuments();
   } catch (error) {
-    showError(error instanceof Error ? error.message : "Upload failed");
+    showError(friendlyError(error, "Upload failed"));
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = "Upload";
