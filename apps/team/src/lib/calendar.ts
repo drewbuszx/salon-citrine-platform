@@ -680,6 +680,20 @@ export async function loadCalendarData(
     }),
   );
 
+  const timeOff: CalendarTimeOff[] = (timeOffResult.data ?? [])
+    .filter((row) => {
+      const endsAt = (row.ends_at as string | null) ?? (row.starts_at as string);
+      return endsAt > startIso;
+    })
+    .map((row) => ({
+      id: row.id as string,
+      staffId: row.staff_id as string,
+      startsAt: row.starts_at as string,
+      endsAt: (row.ends_at as string | null) ?? (row.starts_at as string),
+      label: (row.title as string)?.trim() || "Time off",
+      allDay: Boolean(row.all_day),
+    }));
+
   const staffSchedules: Record<string, StaffSchedule[]> = {};
   for (const row of schedulesResult.data ?? []) {
     const list = staffSchedules[row.staff_id] ?? [];
@@ -693,7 +707,7 @@ export async function loadCalendarData(
     staffSchedules[row.staff_id] = list;
   }
 
-  return { staff, appointments, blockedTimes, staffSchedules };
+  return { staff, appointments, blockedTimes, timeOff, staffSchedules };
 }
 
 /** Load one provider's appointments and blocks across a 7-day week. */
@@ -992,6 +1006,44 @@ export function staffEventsForDay(
   );
 }
 
+/**
+ * Personal time off for one provider on the selected day, as calendar events.
+ * Time off can be all-day or span multiple days, so match on overlap with the
+ * day and clamp the returned range to the day's bounds for display/availability.
+ */
+export function timeOffForDay(
+  staffId: string,
+  selectedDay: Date,
+  timeOff: CalendarTimeOff[],
+): Array<Extract<CalendarEvent, { kind: "time_off" }>> {
+  const dayStartIso = localDateTimeToUtc(
+    formatDayParam(selectedDay),
+    "00:00",
+  ).toISOString();
+  const dayEndIso = localDateTimeToUtc(
+    formatDayParam(shiftDay(selectedDay, 1)),
+    "00:00",
+  ).toISOString();
+
+  return timeOff
+    .filter(
+      (item) =>
+        item.staffId === staffId &&
+        item.startsAt < dayEndIso &&
+        item.endsAt > dayStartIso,
+    )
+    .map((item) => ({
+      kind: "time_off" as const,
+      id: item.id,
+      staffId: item.staffId,
+      startsAt: item.startsAt < dayStartIso ? dayStartIso : item.startsAt,
+      endsAt: item.endsAt > dayEndIso ? dayEndIso : item.endsAt,
+      label: item.label || "Time off",
+      allDay: item.allDay,
+    }))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
 export type EventOverlapLayout = {
   /** 0-based position within its overlap cluster, left-to-right. */
   columnIndex: number;
@@ -1093,6 +1145,7 @@ export function findOpenGaps(
     maxResults?: number;
     staffIds?: string[] | null;
     afterMinutes?: number;
+    timeOff?: CalendarTimeOff[];
   } = {},
 ): OpenGapResult[] {
   const minDurationMinutes = options.minDurationMinutes ?? 60;
@@ -1113,12 +1166,10 @@ export function findOpenGaps(
   const results: OpenGapResult[] = [];
 
   for (const member of staffList) {
-    const events = staffEventsForDay(
-      member.id,
-      selectedDay,
-      appointments,
-      blockedTimes,
-    );
+    const events = [
+      ...staffEventsForDay(member.id, selectedDay, appointments, blockedTimes),
+      ...timeOffForDay(member.id, selectedDay, options.timeOff ?? []),
+    ];
     const schedules = staffSchedules[member.id] ?? [];
 
     for (let i = 0; i <= timeSlots.length - slotsNeeded; i++) {
@@ -1182,6 +1233,7 @@ export function findNextOpenGap(
   blockedTimes: CalendarBlockedTime[],
   staffSchedules: Record<string, StaffSchedule[]>,
   minDurationMinutes = 60,
+  timeOff: CalendarTimeOff[] = [],
 ): NextOpenGap | null {
   const [first] = findOpenGaps(
     selectedDay,
@@ -1190,7 +1242,7 @@ export function findNextOpenGap(
     appointments,
     blockedTimes,
     staffSchedules,
-    { minDurationMinutes, maxResults: 1 },
+    { minDurationMinutes, maxResults: 1, timeOff },
   );
   if (!first) return null;
   const firstName = first.staffName.split(" ")[0] ?? first.staffName;
