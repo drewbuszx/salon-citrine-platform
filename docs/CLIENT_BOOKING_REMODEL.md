@@ -170,10 +170,49 @@ Included in Wave 1/2 scope without owner request:
 - Published this brief; launching Wave 1 (10 agents, disjoint scopes)
 - Architect retains: `tokens.css`, batched deploy, integration review
 
+### 2026-07-07 — Wave 1 complete + checkpoint deploy
+
+**Commits (10):**
+| Agent | Commit | Shipped |
+| --- | --- | --- |
+| W1-01 Nightfall | `056098f` | `dark-mode-overrides.css`, body dark gradients |
+| W1-02 Frame | `bb6cb68` | Editorial shell, sticky step bar, pill progress |
+| W1-03 Threshold | `8600620` | Header theme pill, location chip |
+| W1-04 Menu | `57792c1` | Service search, category pill chips |
+| W1-05 Cart | `25c1dff` | Cart cards, add-ons tray, sticky mobile summary |
+| W1-06 Cast | `246bc15` | Staff selection cards |
+| W1-07 Clock | `9ed74b3` | Recommended times strip, calendar pills, waitlist polish |
+| W1-08 Vault | `60d7aa6` | Trust panel, deposit clarity, Stripe citrine theme |
+| W1-09 Seal | `78f51fd` | ICS calendar add, rebook CTA, confirmation hero |
+| W1-10 Portal | `09f6b1d` | Modal polish, tokenized embed demo |
+
+**Deploy:** `salon-citrine-book` · Version `68fb78af-f3f0-424d-ae6a-42e615196e03`  
+**URL:** https://salon-citrine-book.dbuszx.workers.dev/book/  
+**Blocker fixed:** `wrangler.toml` KV placeholder → real SESSION namespace (`d5592b0`)
+
+### 2026-07-07 — Wave 2 complete + final deploy
+
+**Commits (9):**
+| Agent | Commit | Shipped |
+| --- | --- | --- |
+| W2-01 Eagle | `df30ae6` | Cross-step visual/dark consistency |
+| W2-02 Thumb | `f5efe3a` | Mobile touch targets, safe-area, `booking-mobile.css` |
+| W2-03 A11y | `929e046` | Skip link, aria-live, focus, reduced-motion |
+| W2-04 Speed | `78d8969` | Slot fetch debounce/abort, catalog trim, lazy photos |
+| W2-05 Copy | `f8735cf` | Trust microcopy, error/empty state copy |
+| W2-06 Flow | `603a304` | Embed flag preservation, funnel redirect fixes |
+| W2-07 Pay | `362f026` | Stripe decline/retry, theme sync, $0 deposit path |
+| W2-08 Time | _(merged in W1/W2 flow)_ | TZ label, waitlist date min, slot spread ranking |
+| W2-09 Finish | `cb3b810` | ICS VTIMEZONE hardening, share/print, rebook preserves services |
+| W2-10 Embed | `916c1df` | postMessage height, flat embed shell, compact steps |
+
+**Deploy:** `salon-citrine-book` · Version `f6738070-d41f-4600-9a8d-939c4a13c78c`  
+**URL:** https://salon-citrine-book.dbuszx.workers.dev/book/
+
 | Wave | Status | Deploy version | Notes |
 | --- | --- | --- | --- |
-| Wave 1 | **In progress** | — | 10 agents launched |
-| Wave 2 | Pending | — | After W1 checkpoint deploy |
+| Wave 1 | **Shipped** | `68fb78af` | 10 agents, disjoint scopes |
+| Wave 2 | **Shipped** | `f6738070` | Fresh-perspective critique pass |
 
 ---
 
