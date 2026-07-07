@@ -79,6 +79,8 @@ const {
   const focusableSelector =
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
+  let lastFocused = null;
+
   function sessionKeyForSlug(slug) {
     return `booking-existing-client-${slug}`;
   }
@@ -109,6 +111,10 @@ const {
 
   function openModal() {
     if (!modal || !dialog) return;
+    lastFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     modal.removeAttribute("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("new-clients-modal-open");
@@ -120,6 +126,7 @@ const {
     modal.setAttribute("hidden", "");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("new-clients-modal-open");
+    lastFocused?.focus();
   }
 
   continueBtn?.addEventListener("click", () => {

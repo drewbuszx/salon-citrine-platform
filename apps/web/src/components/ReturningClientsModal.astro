@@ -89,8 +89,14 @@ const {
     );
   }
 
+  let lastFocused = null;
+
   function openModal() {
     if (!modal || !dialog) return;
+    lastFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     modal.removeAttribute("hidden");
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("returning-modal-open");
@@ -102,6 +108,7 @@ const {
     modal.setAttribute("hidden", "");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("returning-modal-open");
+    lastFocused?.focus();
   }
 
   continueBtn?.addEventListener("click", () => {
