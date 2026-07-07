@@ -421,6 +421,11 @@ const initials = staff ? staffInitials(staff.name) : "";
 
   .team-bar__logo-img--dark {
     display: none;
+    /* HorizRev is a wide 2.74:1 wordmark; give it the full bar height and
+       room to breathe so it reads as the horizontal logo, not a tiny crest */
+    height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
+    max-height: calc(var(--team-bar-height, 3.25rem) - 0.4rem);
+    max-width: 14rem;
   }
 
   [data-theme="dark"] .team-bar__logo-img--light {
