@@ -13,8 +13,16 @@ function initWaitlistOffer() {
   const apiUrl = root.dataset.waitlistApi ?? "";
   const staffSlug = root.dataset.stylistSlug ?? "";
   const serviceIds = (root.dataset.serviceIds ?? "").split(",").filter(Boolean);
+  const today = root.dataset.today ?? "";
   const errorEl = root.querySelector<HTMLElement>("[data-waitlist-error]");
   const successEl = root.querySelector<HTMLElement>("[data-waitlist-success]");
+
+  const preferredDateInput = form.querySelector<HTMLInputElement>(
+    'input[name="preferredDate"]',
+  );
+  if (preferredDateInput && today) {
+    preferredDateInput.min = today;
+  }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -25,6 +33,15 @@ function initWaitlistOffer() {
     if (successEl) {
       successEl.hidden = true;
       successEl.textContent = "";
+    }
+
+    const preferredDate = formValue(form, "preferredDate");
+    if (preferredDate && today && preferredDate < today) {
+      if (errorEl) {
+        errorEl.textContent = "Preferred date can't be in the past.";
+        errorEl.hidden = false;
+      }
+      return;
     }
 
     const submitBtn = form.querySelector<HTMLButtonElement>('button[type="submit"]');
@@ -39,7 +56,7 @@ function initWaitlistOffer() {
         body: JSON.stringify({
           staffSlug: staffSlug || undefined,
           serviceIds,
-          preferredDate: formValue(form, "preferredDate") || undefined,
+          preferredDate: preferredDate || undefined,
           clientMessage: formValue(form, "clientMessage") || undefined,
           client: {
             firstName: formValue(form, "firstName"),
@@ -51,19 +68,21 @@ function initWaitlistOffer() {
       });
       const body = await res.json();
       if (!res.ok || !body.ok) {
-        throw new Error(body.error ?? "Could not join waitlist");
+        throw new Error(body.error ?? "We couldn't add you to the waitlist. Please try again.");
       }
 
       form.reset();
       if (successEl) {
         successEl.textContent =
-          "You are on the waitlist. We will email you when a time opens up.";
+          "You're on the list! We'll email you as soon as a time opens up — no need to check back.";
         successEl.hidden = false;
       }
     } catch (err) {
       if (errorEl) {
         errorEl.textContent =
-          err instanceof Error ? err.message : "Could not join waitlist";
+          err instanceof Error
+            ? err.message
+            : "We couldn't add you to the waitlist. Please try again or call the salon.";
         errorEl.hidden = false;
       }
     } finally {

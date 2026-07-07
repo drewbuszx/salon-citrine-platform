@@ -17,7 +17,7 @@ const lateCancelMessage = formatLateCancelMessage(policy);
 ---
 
 <Modal id="policy-modal" labelledBy="policy-modal-title">
-  <p class="policy-modal__kicker">Before you book</p>
+  <p class="policy-modal__kicker">One last step</p>
   <h2 id="policy-modal-title" class="policy-modal__title">{policy.title}</h2>
 
   <dl class="policy-modal__highlights">
@@ -62,7 +62,7 @@ const lateCancelMessage = formatLateCancelMessage(policy);
 
   <div class="policy-modal__actions">
     <Button variant="secondary" type="button" data-policy-back>Go back</Button>
-    <Button variant="primary" type="button" data-policy-confirm>I understand</Button>
+    <Button variant="primary" type="button" data-policy-confirm>I agree — book my appointment</Button>
   </div>
 </Modal>
 
