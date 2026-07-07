@@ -63,6 +63,11 @@ export function initDayCalendarMobile(
       root.querySelectorAll<HTMLElement>("[data-staff-column]").forEach((col) => {
         col.classList.remove("is-mobile-active");
       });
+      root
+        .querySelectorAll<HTMLElement>("[data-staff-header-column]")
+        .forEach((col) => {
+          col.classList.remove("is-mobile-active");
+        });
       root.classList.remove("day-cal--mobile-single");
       bar.hidden = true;
       compactSubbar?.classList.remove("is-visible");
@@ -81,6 +86,12 @@ export function initDayCalendarMobile(
     root.querySelectorAll<HTMLElement>("[data-staff-column]").forEach((col) => {
       col.classList.toggle("is-mobile-active", col === activeCol);
     });
+    root
+      .querySelectorAll<HTMLElement>("[data-staff-header-column]")
+      .forEach((headerCol) => {
+        const headerId = headerCol.dataset.staffHeaderColumn ?? "";
+        headerCol.classList.toggle("is-mobile-active", headerId === activeId);
+      });
 
     if (select.value !== activeId) select.value = activeId;
     const member = staff.find((s) => s.id === activeId);

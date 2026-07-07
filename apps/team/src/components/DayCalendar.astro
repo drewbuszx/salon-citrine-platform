@@ -1200,13 +1200,20 @@ const calendarConfig = {
         }
       }
 
+      function filterWaitlistEntries(entries) {
+        if (config.managerView) return entries;
+        return entries.filter(
+          (entry) => !entry.staffId || entry.staffId === config.currentStaffId,
+        );
+      }
+
       async function openWaitlistDrawer() {
         openDrawer("Waitlist", "Active requests", `<p class="day-cal__hint">Loading…</p>`);
         try {
           const res = await fetch(`${config.api.waitlist}?status=active`);
           const body = await res.json();
           if (!res.ok) throw new Error(body.error || "Failed to load waitlist");
-          const entries = body.entries ?? [];
+          const entries = filterWaitlistEntries(body.entries ?? []);
           updateWaitlistBadge(entries.length);
 
           if (entries.length === 0) {
@@ -1318,7 +1325,7 @@ const calendarConfig = {
           const res = await fetch(`${config.api.waitlist}?status=active`);
           const body = await res.json();
           if (!res.ok || !body.ok) return;
-          updateWaitlistBadge((body.entries ?? []).length);
+          updateWaitlistBadge(filterWaitlistEntries(body.entries ?? []).length);
         } catch {
           /* keep server-rendered count */
         }
@@ -3520,16 +3527,19 @@ const calendarConfig = {
     flex: 1;
     min-height: 0;
     display: flex;
+    align-items: flex-start;
     width: 100%;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     scrollbar-gutter: stable both-edges;
     background: var(--color-bg);
+    position: relative;
   }
 
   .day-cal__time-axis {
     flex: 0 0 var(--day-time-width);
+    align-self: flex-start;
     position: sticky;
     left: 0;
     z-index: 5;
@@ -3616,8 +3626,10 @@ const calendarConfig = {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
+    align-self: flex-start;
     min-width: max-content;
     width: max-content;
+    position: relative;
     --day-columns-template: repeat(
       var(--day-staff-count),
       minmax(var(--day-staff-width), 1fr)
@@ -3633,6 +3645,22 @@ const calendarConfig = {
     grid-template-columns: var(--day-columns-template);
     background: var(--day-header-bg);
     border-bottom: 1px solid var(--day-divider-strong);
+    isolation: isolate;
+  }
+
+  .day-cal__staff-row::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(100% / var(--day-staff-count) - 1px),
+      var(--day-divider) calc(100% / var(--day-staff-count) - 1px),
+      var(--day-divider) calc(100% / var(--day-staff-count))
+    );
   }
 
   .day-cal__columns {
@@ -3643,6 +3671,22 @@ const calendarConfig = {
     min-width: 0;
     width: 100%;
     background: var(--color-bg);
+    isolation: isolate;
+  }
+
+  .day-cal__columns::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent,
+      transparent calc(100% / var(--day-staff-count) - 1px),
+      var(--day-divider) calc(100% / var(--day-staff-count) - 1px),
+      var(--day-divider) calc(100% / var(--day-staff-count))
+    );
   }
 
   .day-cal__now-line {
@@ -3658,7 +3702,6 @@ const calendarConfig = {
   .day-cal__column {
     position: relative;
     min-width: 0;
-    border-right: 1px solid var(--day-divider);
     background: var(--color-bg);
   }
 
@@ -3672,7 +3715,6 @@ const calendarConfig = {
     min-height: var(--day-header-height);
     max-height: var(--day-header-height);
     padding: 0 0.45rem;
-    border-right: 1px solid var(--day-divider);
     background: var(--day-header-bg);
     color: var(--color-text);
     overflow: hidden;
@@ -5284,6 +5326,11 @@ const calendarConfig = {
 
     .day-cal--mobile-single [data-staff-header-column].is-mobile-active {
       display: flex;
+    }
+
+    .day-cal--mobile-single .day-cal__staff-row::after,
+    .day-cal--mobile-single .day-cal__columns::after {
+      display: none;
     }
 
     .day-cal--mobile-single {
