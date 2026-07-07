@@ -27,6 +27,7 @@ const staffOptions = staffRows ?? [];
     class="tasks-page"
     data-tasks-app
     data-api-base={teamUrl("/api/tasks")}
+    data-routines-api-base={teamUrl("/api/tasks/routines")}
     data-manager={managerView ? "1" : "0"}
     data-current-staff-id={staff.id}
   >
@@ -87,12 +88,50 @@ const staffOptions = staffRows ?? [];
           ) : null
         }
       </TeamSidebarNav>
+
+      <TeamSidebarNav label="Salon routines">
+        <button
+          class="team-list-layout__sidebar-nav-btn"
+          type="button"
+          data-view="routine-opening"
+          aria-selected="false"
+        >
+          <span>Opening the salon</span>
+          <span class="team-list-layout__sidebar-badge" data-routine-badge="opening" hidden>0/0</span>
+        </button>
+        <button
+          class="team-list-layout__sidebar-nav-btn"
+          type="button"
+          data-view="routine-closing"
+          aria-selected="false"
+        >
+          <span>Closing the salon</span>
+          <span class="team-list-layout__sidebar-badge" data-routine-badge="closing" hidden>0/0</span>
+        </button>
+      </TeamSidebarNav>
       </div>
 
       <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
 
       <div class="tasks-page__content">
         <div class="tasks-page__primary">
+          <div class="tasks-routines" data-tasks-routines aria-label="Salon routines">
+            <button class="tasks-routines__card" type="button" data-view="routine-opening">
+              <span class="tasks-routines__icon" aria-hidden="true">☀</span>
+              <span class="tasks-routines__body">
+                <span class="tasks-routines__title">Opening the salon</span>
+                <span class="tasks-routines__meta" data-routine-progress="opening">Loading…</span>
+              </span>
+            </button>
+            <button class="tasks-routines__card" type="button" data-view="routine-closing">
+              <span class="tasks-routines__icon" aria-hidden="true">☾</span>
+              <span class="tasks-routines__body">
+                <span class="tasks-routines__title">Closing the salon</span>
+                <span class="tasks-routines__meta" data-routine-progress="closing">Loading…</span>
+              </span>
+            </button>
+          </div>
+
           <div class="tasks-summary" data-tasks-summary aria-label="Task summary" hidden>
             <button class="tasks-summary__card" type="button" data-summary-view="my">
               <span class="tasks-summary__value" data-summary-assigned>—</span>
@@ -154,6 +193,14 @@ const staffOptions = staffRows ?? [];
                   </button>
                 ) : null
               }
+              <button class="tasks-tabs__btn tasks-tabs__btn--routine" type="button" data-view="routine-opening" aria-selected="false">
+                <span class="tasks-tabs__long">Opening</span>
+                <span class="tasks-tabs__short">Open</span>
+              </button>
+              <button class="tasks-tabs__btn tasks-tabs__btn--routine" type="button" data-view="routine-closing" aria-selected="false">
+                <span class="tasks-tabs__long">Closing</span>
+                <span class="tasks-tabs__short">Close</span>
+              </button>
             </UiScrollRow>
           </div>
 
@@ -534,6 +581,230 @@ const staffOptions = staffRows ?? [];
     flex-direction: column;
     gap: 0.75rem;
     min-width: 0;
+  }
+
+  .tasks-routines {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .tasks-routines__card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color var(--transition-fast),
+      background var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .tasks-routines__card:hover,
+  .tasks-routines__card:focus-visible,
+  .tasks-routines__card.is-active {
+    border-color: var(--color-citrine);
+    background: rgba(231, 172, 70, 0.08);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-focus-ring);
+  }
+
+  .tasks-routines__icon {
+    flex-shrink: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(231, 172, 70, 0.14);
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .tasks-routines__body {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .tasks-routines__title {
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-stone-800);
+  }
+
+  .tasks-routines__meta {
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    line-height: 1.3;
+    color: var(--color-stone-500);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tasks-routines__meta.is-complete {
+    color: #4f6b4a;
+  }
+
+  .tasks-page :global(.routine-checklist) {
+    display: grid;
+    gap: 0;
+  }
+
+  .tasks-page :global(.routine-checklist__header) {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: calc(var(--notebook-line) * 0.35);
+    padding-bottom: calc(var(--notebook-line) * 0.25);
+    border-bottom: 1px dashed var(--notebook-rule);
+  }
+
+  .tasks-page :global(.routine-checklist__title) {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--notebook-ink);
+  }
+
+  .tasks-page :global(.routine-checklist__lead) {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--notebook-ink-muted);
+  }
+
+  .tasks-page :global(.routine-checklist__progress) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.75rem;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    color: var(--notebook-ink-faint);
+  }
+
+  .tasks-page :global(.routine-checklist__progress-bar) {
+    flex: 1 1 8rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: var(--notebook-surface-muted);
+    overflow: hidden;
+  }
+
+  .tasks-page :global(.routine-checklist__progress-fill) {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-citrine);
+    transition: width 0.2s ease;
+  }
+
+  .tasks-page :global(.routine-item) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: calc(var(--notebook-line) * 0.22) 0;
+    min-height: 2.75rem;
+  }
+
+  .tasks-page :global(.routine-item + .routine-item) {
+    border-top: 1px dashed var(--notebook-rule);
+  }
+
+  .tasks-page :global(.routine-item__toggle) {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin: -0.55rem 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .tasks-page :global(.routine-item__check) {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1.5px solid var(--color-dusty-rose);
+    border-radius: 3px 4px 3px 2px;
+    background: transparent;
+    position: relative;
+    transform: rotate(-1.5deg);
+    transition:
+      border-color 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .tasks-page :global(.routine-item.is-done .routine-item__check) {
+    border-color: var(--color-sage);
+    background: rgba(141, 158, 136, 0.12);
+  }
+
+  .tasks-page :global(.routine-item.is-done .routine-item__check::after) {
+    content: "";
+    position: absolute;
+    left: 0.28rem;
+    top: 0.08rem;
+    width: 0.45rem;
+    height: 0.7rem;
+    border: solid 2px var(--color-sage);
+    border-width: 0 2px 2px 0;
+    transform: rotate(38deg);
+  }
+
+  .tasks-page :global(.routine-item__body) {
+    flex: 1;
+    min-width: 0;
+    padding-top: 0.35rem;
+  }
+
+  .tasks-page :global(.routine-item__label) {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.4;
+    color: var(--notebook-ink);
+  }
+
+  .tasks-page :global(.routine-item.is-done .routine-item__label) {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-sage);
+    color: var(--notebook-ink-faint);
+  }
+
+  .tasks-page :global(.routine-item__meta) {
+    margin: 0.15rem 0 0;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    line-height: 1.35;
+    color: var(--notebook-ink-faint);
+  }
+
+  .tasks-tabs__btn--routine {
+    border-style: dashed;
+  }
+
+  @media (min-width: 901px) {
+    .tasks-routines {
+      display: none;
+    }
   }
 
   .tasks-summary {

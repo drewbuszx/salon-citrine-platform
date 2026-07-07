@@ -71,12 +71,41 @@ type SummaryResponse = {
   summary?: TaskSummaryPayload;
 };
 
+type RoutineSlug = "opening" | "closing";
+
+type RoutineItem = {
+  id: string;
+  label: string;
+  sortOrder: number;
+  completed: boolean;
+  completedAt: string | null;
+  completedByName: string | null;
+};
+
+type Routine = {
+  id: string;
+  slug: RoutineSlug;
+  title: string;
+  salonDate: string;
+  completedCount: number;
+  totalCount: number;
+  items: RoutineItem[];
+};
+
+type RoutinesResponse = {
+  ok: boolean;
+  error?: string;
+  routines?: Routine[];
+  routine?: Routine | null;
+};
+
 const root = document.querySelector<HTMLElement>("[data-tasks-app]");
 if (!root) {
   throw new Error("Tasks app root not found");
 }
 
 const apiBase = root.dataset.apiBase ?? "";
+const routinesApiBase = root.dataset.routinesApiBase ?? "";
 const isManager = root.dataset.manager === "1";
 const listEl = root.querySelector<HTMLElement>("[data-tasks-list]");
 const errorEl = root.querySelector<HTMLElement>("[data-tasks-error]");
@@ -97,6 +126,23 @@ const completeTaskTitle = document.querySelector<HTMLElement>("[data-complete-ta
 let currentView = "my";
 let editingTaskId: string | null = null;
 let completingTaskId: string | null = null;
+let routines: Routine[] = [];
+
+function isRoutineView(view: string) {
+  return view === "routine-opening" || view === "routine-closing";
+}
+
+function routineSlugFromView(view: string): RoutineSlug | null {
+  if (view === "routine-opening") return "opening";
+  if (view === "routine-closing") return "closing";
+  return null;
+}
+
+function currentRoutine(): Routine | null {
+  const slug = routineSlugFromView(currentView);
+  if (!slug) return null;
+  return routines.find((routine) => routine.slug === slug) ?? null;
+}
 
 function showError(message: string) {
   if (!errorEl) return;
@@ -380,6 +426,175 @@ type EmptyState = {
   cta?: { label: string; view: string };
 };
 
+function renderRoutineChecklist(routine: Routine) {
+  const pct =
+    routine.totalCount > 0
+      ? Math.round((routine.completedCount / routine.totalCount) * 100)
+      : 0;
+  const lead =
+    routine.slug === "opening"
+      ? "Shared opening checklist for today — anyone on the team can check items off."
+      : "Shared closing checklist for today — anyone on the team can check items off.";
+
+  const items = routine.items
+    .map((item) => {
+      const completed = formatSalonDayTime(item.completedAt);
+      const meta =
+        item.completed && item.completedByName && completed
+          ? `<p class="routine-item__meta">Checked by ${escapeHtml(item.completedByName)} · ${escapeHtml(completed)}</p>`
+          : "";
+      return `
+        <div class="routine-item${item.completed ? " is-done" : ""}" data-routine-item="${item.id}">
+          <button
+            class="routine-item__toggle"
+            type="button"
+            data-routine-toggle="${item.id}"
+            aria-pressed="${item.completed ? "true" : "false"}"
+            aria-label="${escapeHtml(item.label)}"
+          >
+            <span class="routine-item__check" aria-hidden="true"></span>
+          </button>
+          <div class="routine-item__body">
+            <p class="routine-item__label">${escapeHtml(item.label)}</p>
+            ${meta}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  return `
+    <div class="routine-checklist" data-routine-slug="${routine.slug}">
+      <header class="routine-checklist__header">
+        <h2 class="routine-checklist__title">${escapeHtml(routine.title)}</h2>
+        <p class="routine-checklist__lead">${lead}</p>
+        <div class="routine-checklist__progress" aria-live="polite">
+          <span>${routine.completedCount} of ${routine.totalCount} complete</span>
+          <div class="routine-checklist__progress-bar" role="presentation">
+            <span class="routine-checklist__progress-fill" style="width: ${pct}%"></span>
+          </div>
+        </div>
+      </header>
+      ${items}
+    </div>`;
+}
+
+function updateRoutineProgressUi() {
+  for (const routine of routines) {
+    const progressEl = root.querySelector<HTMLElement>(
+      `[data-routine-progress="${routine.slug}"]`,
+    );
+    if (progressEl) {
+      const complete = routine.completedCount === routine.totalCount && routine.totalCount > 0;
+      progressEl.textContent = `${routine.completedCount}/${routine.totalCount} today`;
+      progressEl.classList.toggle("is-complete", complete);
+    }
+
+    const badge = root.querySelector<HTMLElement>(`[data-routine-badge="${routine.slug}"]`);
+    if (badge) {
+      badge.textContent = `${routine.completedCount}/${routine.totalCount}`;
+      badge.hidden = routine.totalCount === 0;
+    }
+  }
+
+  root.querySelectorAll<HTMLButtonElement>(".tasks-routines__card").forEach((card) => {
+    const view = card.dataset.view;
+    card.classList.toggle("is-active", Boolean(view && view === currentView));
+  });
+}
+
+function renderCurrentRoutine() {
+  if (!listEl) return;
+  clearError();
+
+  const routine = currentRoutine();
+  if (!routine) {
+    listEl.innerHTML = errorPanelHtml({
+      title: "Couldn't load checklist",
+      hint: "Try again in a moment.",
+      actionLabel: "Try again",
+      actionAttr: "data-retry-routine",
+    });
+    listEl.querySelector<HTMLButtonElement>("[data-retry-routine]")?.addEventListener("click", () => {
+      void loadRoutines(true);
+    });
+    return;
+  }
+
+  listEl.innerHTML = renderRoutineChecklist(routine);
+  bindRoutineActions();
+  updateRoutineProgressUi();
+}
+
+async function routinesFetch(path: string, init?: RequestInit) {
+  const response = await fetch(`${routinesApiBase}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+  const body = (await response.json()) as RoutinesResponse & Record<string, unknown>;
+  if (!response.ok || !body.ok) {
+    throw new Error(body.error ?? "Request failed");
+  }
+  return body;
+}
+
+async function loadRoutines(render = false) {
+  try {
+    const data = await routinesFetch("");
+    routines = data.routines ?? [];
+    updateRoutineProgressUi();
+    if (render && isRoutineView(currentView)) {
+      renderCurrentRoutine();
+    }
+  } catch (error) {
+    console.error("salon routines load failed", error);
+    if (render && isRoutineView(currentView)) {
+      if (!listEl) return;
+      listEl.innerHTML = errorPanelHtml({
+        title: "Couldn't load checklist",
+        hint: friendlyError(error, "Try again in a moment."),
+        actionLabel: "Try again",
+        actionAttr: "data-retry-routine",
+      });
+      listEl.querySelector<HTMLButtonElement>("[data-retry-routine]")?.addEventListener("click", () => {
+        void loadRoutines(true);
+      });
+    }
+  }
+}
+
+async function toggleRoutineItem(itemId: string, completed: boolean) {
+  const routine = currentRoutine();
+  if (!routine) return;
+
+  const button = listEl?.querySelector<HTMLButtonElement>(`[data-routine-toggle="${itemId}"]`);
+  if (button) button.disabled = true;
+
+  try {
+    const data = await routinesFetch(`/${routine.slug}/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ completed }),
+    });
+    routines = data.routines ?? routines;
+    renderCurrentRoutine();
+  } catch (error) {
+    showError(friendlyError(error, "Couldn't update checklist item"));
+    showToast(friendlyError(error, "Couldn't update checklist item"), "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function bindRoutineActions() {
+  listEl?.querySelectorAll<HTMLButtonElement>("[data-routine-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const itemId = button.dataset.routineToggle;
+      if (!itemId) return;
+      const pressed = button.getAttribute("aria-pressed") === "true";
+      void toggleRoutineItem(itemId, !pressed);
+    });
+  });
+}
+
 function emptyStateContent(view: string): EmptyState {
   const states: Record<string, EmptyState> = {
     available: {
@@ -630,7 +845,27 @@ function setActiveTab(view: string) {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-selected", String(active));
   });
+
+  if (isRoutineView(view)) {
+    if (summaryEl) summaryEl.hidden = true;
+    if (panelsEl) panelsEl.hidden = true;
+
+    if (routines.length > 0) {
+      renderCurrentRoutine();
+    } else {
+      if (listEl) {
+        listEl.innerHTML = tasksSkeletonHtml(6);
+        listEl.setAttribute("aria-busy", "true");
+      }
+      void loadRoutines(true).finally(() => {
+        listEl?.removeAttribute("aria-busy");
+      });
+    }
+    return;
+  }
+
   void loadTasks();
+  void loadSummary();
 }
 
 function updateAssigneePickerVisibility() {
@@ -869,6 +1104,13 @@ tabButtons.forEach((button) => {
   });
 });
 
+root.querySelectorAll<HTMLButtonElement>("[data-tasks-routines] [data-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const view = button.dataset.view;
+    if (view) setActiveTab(view);
+  });
+});
+
 createBtn?.addEventListener("click", () => openCreateModal("task"));
 
 createChecklistBtn?.addEventListener("click", () => openCreateModal("checklist"));
@@ -903,3 +1145,4 @@ document.querySelectorAll("[data-complete-modal-close]").forEach((button) => {
 });
 
 void loadTasks();
+void loadRoutines();
