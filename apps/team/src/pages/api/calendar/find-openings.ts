@@ -77,6 +77,7 @@ export const GET: APIRoute = async (context) => {
         minDurationMinutes: duration,
         maxResults: maxResults - allResults.length,
         staffIds: staffId && staffId !== "all" ? [staffId] : null,
+        timeOff: calendar.timeOff,
       },
     );
 

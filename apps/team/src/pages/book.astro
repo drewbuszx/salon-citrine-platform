@@ -44,7 +44,13 @@ try {
   );
 } catch (error) {
   console.error("Failed to load calendar", error);
-  calendar = { staff: [], appointments: [], blockedTimes: [], staffSchedules: {} };
+  calendar = {
+    staff: [],
+    appointments: [],
+    blockedTimes: [],
+    timeOff: [],
+    staffSchedules: {},
+  };
 }
 
 let waitlistCountQuery = supabase
@@ -68,6 +74,7 @@ const { count: waitlistCount } = await waitlistCountQuery;
     staff={calendar.staff}
     appointments={calendar.appointments}
     blockedTimes={calendar.blockedTimes}
+    timeOff={calendar.timeOff ?? []}
     staffSchedules={calendar.staffSchedules ?? {}}
     servicesByStaff={servicesByStaff}
     currentStaffId={staff.id}
