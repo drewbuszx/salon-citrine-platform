@@ -384,9 +384,148 @@ const staffOptions = staffRows ?? [];
 
   [data-theme="dark"] .notebook__paper {
     background-color: var(--notebook-paper-dark);
-    --notebook-rule: rgba(174, 148, 143, 0.18);
-    --notebook-margin-line: rgba(196, 90, 78, 0.35);
-    --notebook-sketch-opacity: 0.07;
+    --notebook-rule: rgba(90, 78, 68, 0.24);
+    --notebook-margin-line: rgba(160, 72, 62, 0.44);
+    --notebook-sketch-opacity: 0.08;
+  }
+
+  /*
+    Dark shell + cream paper island: global stone tokens invert for the dark
+    chrome, but ink on paper must stay dark. Scoped paper palette keeps the
+    notebook aesthetic without pale-gold / light-gray-on-cream contrast fails.
+  */
+  [data-theme="dark"] .tasks-page {
+    --notebook-paper-dark: #e8e0d2;
+    --notebook-ink: #2f2a28;
+    --notebook-ink-muted: #5c554e;
+    --notebook-ink-faint: #787068;
+    --notebook-surface: #f3f0ea;
+    --notebook-surface-muted: #f3f1ec;
+    --notebook-border: #d4cfc4;
+    --notebook-border-strong: #a8a093;
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-empty),
+  [data-theme="dark"] .tasks-page :global(.tasks-loading) {
+    color: var(--notebook-ink-faint);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry.is-active .notebook-entry__title) {
+    color: var(--notebook-ink);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry__title) {
+    color: var(--notebook-ink);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry.is-done .notebook-entry__title) {
+    color: var(--notebook-ink-faint);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry.is-low .notebook-entry__title) {
+    color: var(--notebook-ink-faint);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry__description) {
+    color: var(--notebook-ink-muted);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.notebook-entry__meta) {
+    color: var(--notebook-ink-faint);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge) {
+    color: var(--notebook-ink-faint);
+    background: var(--notebook-surface-muted);
+    border-color: var(--notebook-border);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge--high) {
+    color: #8f3a32;
+    background: rgba(196, 90, 78, 0.14);
+    border-color: rgba(196, 90, 78, 0.38);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge--low) {
+    color: var(--notebook-ink-faint);
+    background: transparent;
+    border-color: var(--notebook-border);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge--open) {
+    color: #3f5a3a;
+    background: rgba(141, 158, 136, 0.2);
+    border-color: rgba(141, 158, 136, 0.45);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge--claimed) {
+    color: var(--notebook-ink-muted);
+    background: var(--notebook-surface-muted);
+    border-color: var(--notebook-border);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-badge--done) {
+    color: #3f5a3a;
+    background: rgba(141, 158, 136, 0.16);
+    border-color: rgba(141, 158, 136, 0.35);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-due) {
+    color: var(--notebook-ink-muted);
+    background: var(--notebook-surface);
+    border-color: var(--notebook-border);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-due--soon) {
+    color: #7a5610;
+    background: rgba(231, 172, 70, 0.2);
+    border-color: #c9952e;
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-due--overdue) {
+    color: #7a2222;
+    background: rgba(196, 90, 78, 0.18);
+    border-color: rgba(196, 90, 78, 0.55);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-action--primary) {
+    background: var(--color-citrine);
+    border-color: var(--color-citrine);
+    color: var(--color-black);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-action--ghost) {
+    background: var(--notebook-surface);
+    border-color: var(--notebook-border-strong);
+    color: var(--notebook-ink);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-action--ghost:hover),
+  [data-theme="dark"] .tasks-page :global(.task-action--ghost:focus-visible) {
+    background: #faf9f7;
+    border-color: #787068;
+    color: var(--notebook-ink);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-action--danger) {
+    background: transparent;
+    border-color: var(--notebook-border-strong);
+    color: var(--notebook-ink-muted);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.task-action--danger:hover),
+  [data-theme="dark"] .tasks-page :global(.task-action--danger:focus-visible) {
+    background: rgba(196, 90, 78, 0.12);
+    border-color: rgba(196, 90, 78, 0.6);
+    color: #7a2222;
+  }
+
+  [data-theme="dark"] .tasks-page :global(.tasks-empty .ui-empty__title) {
+    color: var(--notebook-ink);
+  }
+
+  [data-theme="dark"] .tasks-page :global(.tasks-empty .ui-empty__hint) {
+    color: var(--notebook-ink-faint);
   }
 
   .notebook__paper::after {
