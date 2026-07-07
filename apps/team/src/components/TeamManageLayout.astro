@@ -12,7 +12,7 @@ const { title, activeSection = "hub", rootClass = "", managerView = true } = Ast
 const hasHeaderActions = Astro.slots.has("headerActions");
 
 const navItems = MANAGE_NAV.filter((item) => {
-  if (item.id === "services" || item.id === "booking-policy") {
+  if (item.id === "services" || item.id === "booking-policy" || item.id === "staff" || item.id === "business") {
     return managerView;
   }
   return true;

@@ -13,12 +13,7 @@ if (!staff) {
 
 const managerView = isSalonManager(staff);
 
-const SOON_NOTES: Record<string, string> = {
-  staff: "Employee profiles and schedules are on the way.",
-  business: "Business details editing is on the way.",
-};
-
-const MANAGER_ONLY = new Set(["services", "booking-policy"]);
+const MANAGER_ONLY = new Set(["services", "booking-policy", "staff", "business"]);
 
 const hubItems: ManageHubItem[] = MANAGE_HUB_ITEMS.filter((item) => {
   if (item.disabled) return true;
@@ -52,9 +47,7 @@ const hubIcons: Record<string, string> = {
             <div class="team-manage-layout__hub-icon" set:html={hubIcons[item.id] ?? hubIcons.services} />
             <div class="team-manage-layout__hub-copy">
               <h2 class="team-manage-layout__hub-title">{item.title}</h2>
-              <p class="team-manage-layout__hub-desc">
-                {item.disabled ? (SOON_NOTES[item.id] ?? item.description) : item.description}
-              </p>
+              <p class="team-manage-layout__hub-desc">{item.description}</p>
             </div>
             {
               item.disabled ? (

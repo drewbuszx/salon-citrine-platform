@@ -1,0 +1,361 @@
+---
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamManageLayout from "../../components/TeamManageLayout.astro";
+import StaffAvatar from "../../components/StaffAvatar.astro";
+import { isSalonManager } from "../../lib/auth";
+import {
+  mapStaffRow,
+  STAFF_MANAGE_SELECT,
+  STAFF_ROLE_LABELS,
+  type StaffManageRow,
+} from "../../lib/staff-manage";
+import { staffPhotoSrc } from "../../lib/staff-display";
+import { teamUrl } from "../../lib/supabase-server";
+
+const { staff, supabase } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+if (!isSalonManager(staff)) {
+  return Astro.redirect(teamUrl("/manage"));
+}
+
+const { data, error } = await supabase
+  .from("staff")
+  .select(STAFF_MANAGE_SELECT)
+  .order("name");
+
+const employees = (data ?? []).map((row) => mapStaffRow(row as StaffManageRow));
+const apiBase = teamUrl("/api/staff");
+const schedulesApi = teamUrl("/api/my-book/schedules");
+---
+
+<TeamLayout title="Employees" activeNav="manage" plain wide fullBleed>
+  <TeamManageLayout title="Employees" activeSection="staff" managerView>
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/manage")}>← Manage</a>
+
+    <p class="manage-page__lead">
+      Team profiles, roles, and weekly bookable hours. Auth account linking is managed separately from the account page.
+    </p>
+
+    {
+      error ? (
+        <p class="notice notice--error" role="alert">
+          Failed to load employees.
+        </p>
+      ) : (
+        <div
+          class="manage-employees"
+          data-manage-employees
+          data-api-base={apiBase}
+          data-schedules-api={schedulesApi}
+        >
+          <p class="notice notice--success" data-employees-success hidden role="status">
+            Saved.
+          </p>
+          <p class="notice notice--error" data-employees-error hidden role="alert"></p>
+
+          <div class="manage-employees__toolbar">
+            <button class="btn-primary" type="button" data-add-employee>
+              Add employee
+            </button>
+          </div>
+
+          <div class="manage-employees__list" data-employee-list>
+            {
+              employees.length === 0 ? (
+                <p class="empty-state">No employees yet.</p>
+              ) : (
+                employees.map((member) => {
+                  const photo = staffPhotoSrc(member.photoUrl, member.slug);
+                  return (
+                    <button
+                      class="manage-employees__row"
+                      type="button"
+                      data-employee-row
+                      data-employee-id={member.id}
+                    >
+                      {
+                        photo ? (
+                          <StaffAvatar
+                            src={photo}
+                            alt=""
+                            crop={member.photoCrop}
+                            size="preview"
+                          />
+                        ) : (
+                          <span class="manage-employees__initials" aria-hidden="true">
+                            {member.name
+                              .split(/\s+/)
+                              .map((part) => part[0] ?? "")
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                        )
+                      }
+                      <span class="manage-employees__copy">
+                        <span class="manage-employees__name">{member.name}</span>
+                        <span class="manage-employees__meta">
+                          {STAFF_ROLE_LABELS[member.role]}
+                          {member.isBookable ? "" : " · Inactive"}
+                          {member.isLinked ? " · Linked" : " · Not linked"}
+                        </span>
+                      </span>
+                      <span class="ui-badge ui-badge--info" hidden={member.isBookable}>
+                        Inactive
+                      </span>
+                    </button>
+                  );
+                })
+              )
+            }
+          </div>
+
+          <dialog class="manage-employees__dialog" data-employee-dialog>
+            <form class="manage-employees__form" data-employee-form>
+              <header class="manage-employees__dialog-header">
+                <h2 data-employee-form-title>Edit employee</h2>
+                <button class="manage-employees__close" type="button" data-close-dialog aria-label="Close">
+                  ×
+                </button>
+              </header>
+
+              <input type="hidden" name="id" data-employee-id />
+
+              <div class="form-stack form-stack--medium">
+                <label class="form-label">
+                  Name
+                  <input class="form-input" name="name" type="text" required />
+                </label>
+
+                <label class="form-label">
+                  Slug
+                  <input class="form-input" name="slug" type="text" required />
+                  <span class="label-meta">Used in URLs and default photo paths.</span>
+                </label>
+
+                <label class="form-label">
+                  Role
+                  <select class="form-input" name="role" required>
+                    {
+                      Object.entries(STAFF_ROLE_LABELS).map(([value, label]) => (
+                        <option value={value}>{label}</option>
+                      ))
+                    }
+                  </select>
+                </label>
+
+                <label class="form-label">
+                  Phone
+                  <input class="form-input" name="phone" type="tel" autocomplete="tel" />
+                </label>
+
+                <label class="form-label">
+                  Bio
+                  <textarea class="form-input" name="bio" rows="4"></textarea>
+                </label>
+
+                <label class="form-label form-label--checkbox">
+                  <input type="checkbox" name="isBookable" checked />
+                  Active for online booking
+                </label>
+
+                <label class="form-label form-label--checkbox">
+                  <input type="checkbox" name="acceptingNewClients" checked />
+                  Accepting new clients
+                </label>
+
+                <p class="label-meta" data-link-status hidden></p>
+
+                <section class="page-section" data-schedule-section hidden>
+                  <h3>Weekly bookable hours</h3>
+                  <p class="page-section__lead">
+                    These hours feed client availability on the booking site.
+                  </p>
+                  <div class="manage-employees__schedule" data-schedule-grid></div>
+                </section>
+
+                <div class="card-row card-row--1">
+                  <button class="btn-primary" type="submit">Save employee</button>
+                </div>
+              </div>
+            </form>
+          </dialog>
+        </div>
+      )
+    }
+  </TeamManageLayout>
+
+  <script src="../../scripts/manage-employees.ts"></script>
+</TeamLayout>
+
+<style>
+  .manage-page__lead {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--color-stone-500);
+  }
+
+  .manage-employees__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+  }
+
+  .manage-employees__list {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .manage-employees__row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--color-stone-200);
+    background: var(--color-bg);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .manage-employees__row:last-child {
+    border-bottom: none;
+  }
+
+  .manage-employees__row:hover,
+  .manage-employees__row:focus-visible {
+    background: var(--color-citrine-muted);
+    outline: none;
+  }
+
+  .manage-employees__initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    background: var(--color-stone-100);
+    color: var(--color-stone-600);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .manage-employees__copy {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .manage-employees__name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .manage-employees__meta {
+    font-size: 0.8rem;
+    color: var(--color-stone-500);
+  }
+
+  .manage-employees__dialog {
+    width: min(100%, 36rem);
+    max-height: 90vh;
+    padding: 0;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .manage-employees__dialog::backdrop {
+    background: rgb(15 23 42 / 0.45);
+  }
+
+  .manage-employees__dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--color-stone-200);
+  }
+
+  .manage-employees__dialog-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .manage-employees__close {
+    border: 0;
+    background: transparent;
+    color: var(--color-stone-500);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .manage-employees__form {
+    padding: 1.25rem;
+    overflow: auto;
+    max-height: calc(90vh - 4rem);
+  }
+
+  .form-label--checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .form-label--checkbox input {
+    width: auto;
+  }
+
+  .manage-employees__schedule {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .manage-employees__day-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-booking-card-bg, var(--color-stone-50));
+  }
+
+  .manage-employees__day-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .manage-employees__day-times {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .manage-employees__day-times[hidden] {
+    display: none;
+  }
+</style>

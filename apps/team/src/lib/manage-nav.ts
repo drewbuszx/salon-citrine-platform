@@ -19,10 +19,10 @@ export type ManageNavItem = {
 export const MANAGE_NAV: ManageNavItem[] = [
   { id: "services", label: "Services", href: teamUrl("/services") },
   { id: "products", label: "Products", href: teamUrl("/inventory") },
-  { id: "staff", label: "Employees", href: teamUrl("/manage#staff"), disabled: true },
+  { id: "staff", label: "Employees", href: teamUrl("/manage/employees") },
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
-  { id: "business", label: "Business Details", href: teamUrl("/manage#business"), disabled: true },
+  { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
 ];
 
 export type ManageHubItem = {
@@ -50,18 +50,18 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     actionLabel: "Open",
   },
   {
+    id: "staff",
+    title: "Employees",
+    description: "Team members, roles, and schedules.",
+    href: teamUrl("/manage/employees"),
+    actionLabel: "Open",
+  },
+  {
     id: "booking-policy",
     title: "Booking Policy",
     description: "Cancellation windows, deposits, and guest messaging.",
     href: teamUrl("/booking-policy"),
     actionLabel: "Configure",
-  },
-  {
-    id: "staff",
-    title: "Employees",
-    description: "Team members, roles, and schedules.",
-    href: teamUrl("/manage#staff"),
-    disabled: true,
   },
   {
     id: "tags",
@@ -74,7 +74,7 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     id: "business",
     title: "Business Details",
     description: "Salon name, locations, and contact information.",
-    href: teamUrl("/manage#business"),
-    disabled: true,
+    href: teamUrl("/manage/business"),
+    actionLabel: "Configure",
   },
 ];

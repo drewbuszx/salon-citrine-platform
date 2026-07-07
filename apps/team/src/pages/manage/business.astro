@@ -1,0 +1,286 @@
+---
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamManageLayout from "../../components/TeamManageLayout.astro";
+import { formatBookingPolicySummary } from "@saloncitrine/shared";
+import { isSalonManager } from "../../lib/auth";
+import {
+  defaultPolicyResponse,
+  mapPolicyRow,
+  POLICY_SELECT,
+  type BookingPolicyRow,
+} from "../../lib/booking-policy";
+import {
+  DEFAULT_LOCATION_SLUG,
+  defaultBusinessDetails,
+  LOCATION_SELECT,
+  mapLocationRow,
+  type LocationRow,
+} from "../../lib/business-settings";
+import { teamUrl } from "../../lib/supabase-server";
+
+const { staff, supabase } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+if (!isSalonManager(staff)) {
+  return Astro.redirect(teamUrl("/manage"));
+}
+
+const [{ data: location, error: locationError }, { data: policy, error: policyError }] =
+  await Promise.all([
+    supabase
+      .from("locations")
+      .select(LOCATION_SELECT)
+      .eq("slug", DEFAULT_LOCATION_SLUG)
+      .maybeSingle(),
+    supabase
+      .from("booking_policy_settings")
+      .select(POLICY_SELECT)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+const business = location
+  ? mapLocationRow(location as LocationRow)
+  : defaultBusinessDetails();
+const policyData = policy
+  ? mapPolicyRow(policy as BookingPolicyRow)
+  : defaultPolicyResponse();
+const bookingPolicySummary = formatBookingPolicySummary(policyData);
+
+const DAY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+---
+
+<TeamLayout title="Business details" activeNav="manage" plain wide fullBleed>
+  <TeamManageLayout title="Business details" activeSection="business" managerView>
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/manage")}>← Manage</a>
+
+    <p class="manage-page__lead">
+      Salon contact information, hours, and branding used across booking and team surfaces.
+    </p>
+
+    <section
+      class="form-stack form-stack--medium"
+      data-manage-business
+      data-api-base={teamUrl("/api/business")}
+    >
+      <p class="notice notice--success" data-business-success hidden role="status">
+        Business details saved.
+      </p>
+      <p class="notice notice--error" data-business-error hidden role="alert"></p>
+
+      {
+        locationError || policyError ? (
+          <p class="notice notice--error" role="alert">
+            {locationError ? "Failed to load business details." : "Failed to load booking policy summary."}
+          </p>
+        ) : null
+      }
+
+      <form class="card-grid" data-business-form>
+        <label class="form-label">
+          Salon name
+          <input class="form-input" name="name" type="text" value={business.name} required />
+        </label>
+
+        <label class="form-label">
+          Tagline
+          <textarea class="form-input" name="tagline" rows="2">{business.tagline}</textarea>
+        </label>
+
+        <label class="form-label">
+          Street address
+          <input class="form-input" name="addressLine1" type="text" value={business.addressLine1} required />
+        </label>
+
+        <label class="form-label">
+          Suite / line 2
+          <input class="form-input" name="addressLine2" type="text" value={business.addressLine2} />
+        </label>
+
+        <label class="form-label">
+          City
+          <input class="form-input" name="city" type="text" value={business.city} required />
+        </label>
+
+        <label class="form-label">
+          State
+          <input class="form-input" name="state" type="text" value={business.state} required maxlength="2" />
+        </label>
+
+        <label class="form-label">
+          ZIP
+          <input class="form-input" name="postalCode" type="text" value={business.postalCode} required />
+        </label>
+
+        <label class="form-label">
+          Phone
+          <input class="form-input" name="phone" type="tel" value={business.phone} />
+        </label>
+
+        <label class="form-label">
+          Email
+          <input class="form-input" name="email" type="email" value={business.email} />
+        </label>
+
+        <label class="form-label">
+          Booking email
+          <input class="form-input" name="bookingEmail" type="email" value={business.bookingEmail} />
+        </label>
+
+        <label class="form-label">
+          Timezone
+          <input
+            class="form-input"
+            name="timezone"
+            type="text"
+            value={business.timezone}
+            required
+            readonly
+          />
+          <span class="label-meta">Fixed to America/Indiana/Indianapolis for this salon.</span>
+        </label>
+
+        <label class="form-label">
+          Instagram URL
+          <input class="form-input" name="instagramUrl" type="url" value={business.instagramUrl} />
+        </label>
+
+        <label class="form-label">
+          Logo URL
+          <input class="form-input" name="logoUrl" type="url" value={business.logoUrl} />
+          <span class="label-meta">Optional hosted logo image URL.</span>
+        </label>
+
+        <label class="form-label form-label--checkbox">
+          <input type="checkbox" name="isActive" checked={business.isActive} />
+          Location active
+        </label>
+
+        <section class="page-section">
+          <h2>Hours of operation</h2>
+          <p class="page-section__lead">
+            Salon-wide hours shown to guests. Individual stylist hours are managed per employee.
+          </p>
+          <div class="manage-business__hours">
+            {
+              DAY_LABELS.map((label, day) => {
+                const hours = business.businessHours[day];
+                const enabled = Boolean(hours);
+                return (
+                  <div class="manage-business__day-row" data-day-row data-day={day}>
+                    <label class="manage-business__day-toggle">
+                      <input
+                        type="checkbox"
+                        name={`hours_${day}_enabled`}
+                        checked={enabled}
+                        data-hours-enabled
+                      />
+                      <span>{label}</span>
+                    </label>
+                    <div class="manage-business__day-times" data-hours-times hidden={!enabled}>
+                      <input
+                        class="form-input"
+                        type="time"
+                        name={`hours_${day}_open`}
+                        value={hours?.open ?? "10:00"}
+                        data-hours-open
+                      />
+                      <input
+                        class="form-input"
+                        type="time"
+                        name={`hours_${day}_close`}
+                        value={hours?.close ?? "17:00"}
+                        data-hours-close
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </section>
+
+        <section class="page-section" id="business-policy-summary">
+          <h2>Booking policy</h2>
+          <p class="page-section__lead" data-policy-summary>{bookingPolicySummary}</p>
+          <a class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>
+            Edit booking policy
+          </a>
+        </section>
+
+        <div class="card-row card-row--1">
+          <button class="btn-primary" type="submit">Save business details</button>
+        </div>
+      </form>
+    </section>
+  </TeamManageLayout>
+
+  <script src="../../scripts/manage-business.ts"></script>
+</TeamLayout>
+
+<style>
+  .manage-page__lead {
+    margin: 0 0 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--color-stone-500);
+  }
+
+  .form-label--checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .form-label--checkbox input {
+    width: auto;
+  }
+
+  .manage-business__hours {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .manage-business__day-row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 10rem) 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-booking-card-bg, var(--color-stone-50));
+  }
+
+  .manage-business__day-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .manage-business__day-times {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .manage-business__day-times[hidden] {
+    display: none;
+  }
+</style>
