@@ -32,6 +32,45 @@ type TasksResponse = {
   attentionCount?: number;
 };
 
+type TaskPanelPreview = {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  status: string;
+  assignmentType: string;
+  priority: string;
+};
+
+type TaskSummaryCounts = {
+  assignedToMe: number;
+  openToEveryone: number;
+  needsAttention: number;
+  dueToday: number;
+  completedThisWeek: number;
+};
+
+type TaskActivityItem = {
+  id: string;
+  title: string;
+  kind: "completed" | "claimed" | "created";
+  at: string;
+  byName: string | null;
+};
+
+type TaskSummaryPayload = {
+  counts: TaskSummaryCounts;
+  dueSoon: TaskPanelPreview[];
+  openToClaim: TaskPanelPreview[];
+  checklistProgress: { active: number; completedThisWeek: number };
+  recentActivity: TaskActivityItem[];
+};
+
+type SummaryResponse = {
+  ok: boolean;
+  error?: string;
+  summary?: TaskSummaryPayload;
+};
+
 const root = document.querySelector<HTMLElement>("[data-tasks-app]");
 if (!root) {
   throw new Error("Tasks app root not found");
@@ -43,6 +82,10 @@ const listEl = root.querySelector<HTMLElement>("[data-tasks-list]");
 const errorEl = root.querySelector<HTMLElement>("[data-tasks-error]");
 const tabButtons = root.querySelectorAll<HTMLButtonElement>("[data-tasks-nav] [data-view]");
 const createBtn = root.querySelector<HTMLButtonElement>("[data-task-create]");
+const createChecklistBtn = root.querySelector<HTMLButtonElement>("[data-task-create-checklist]");
+const browseOpenBtn = root.querySelector<HTMLButtonElement>("[data-task-browse-open]");
+const summaryEl = root.querySelector<HTMLElement>("[data-tasks-summary]");
+const panelsEl = root.querySelector<HTMLElement>("[data-tasks-panels]");
 const taskModal = document.querySelector<HTMLDialogElement>("[data-task-modal]");
 const taskForm = document.querySelector<HTMLFormElement>("[data-task-form]");
 const taskModalTitle = document.querySelector<HTMLElement>("[data-task-modal-title]");
@@ -353,7 +396,7 @@ function emptyStateContent(view: string): EmptyState {
     },
     all: {
       title: "No active tasks",
-      hint: "Use New entry to assign salon checklists.",
+      hint: "Use Create task to assign salon checklists.",
     },
     my: {
       title: "Nothing assigned to you",
@@ -387,6 +430,149 @@ function updateAttentionBadge(count: number) {
       count > 0 ? `${count} tasks need attention` : "Tasks needing attention",
     );
   });
+}
+
+function renderSummaryCounts(counts: TaskSummaryCounts) {
+  const assigned = root.querySelector<HTMLElement>("[data-summary-assigned]");
+  const open = root.querySelector<HTMLElement>("[data-summary-open]");
+  const attention = root.querySelector<HTMLElement>("[data-summary-attention]");
+  const dueToday = root.querySelector<HTMLElement>("[data-summary-due-today]");
+  const completedWeek = root.querySelector<HTMLElement>("[data-summary-completed-week]");
+
+  if (assigned) assigned.textContent = String(counts.assignedToMe);
+  if (open) open.textContent = String(counts.openToEveryone);
+  if (attention) attention.textContent = String(counts.needsAttention);
+  if (dueToday) dueToday.textContent = String(counts.dueToday);
+  if (completedWeek) completedWeek.textContent = String(counts.completedThisWeek);
+
+  if (summaryEl) {
+    summaryEl.hidden = false;
+  }
+}
+
+function panelDueLabel(dueAt: string | null) {
+  if (!dueAt) return "No due date";
+  const label = formatDueDate(dueAt);
+  return label ? `Due ${label}` : "Due date set";
+}
+
+function renderPanelList(
+  listEl: HTMLElement | null,
+  panelEl: HTMLElement | null,
+  items: TaskPanelPreview[],
+  emptyLabel: string,
+  metaFn: (item: TaskPanelPreview) => string,
+) {
+  if (!listEl || !panelEl) return;
+
+  if (items.length === 0) {
+    panelEl.hidden = true;
+    listEl.innerHTML = "";
+    return;
+  }
+
+  panelEl.hidden = false;
+  listEl.innerHTML = items
+    .map(
+      (item) => `<li class="tasks-panel__item">
+        <p class="tasks-panel__item-title">${escapeHtml(item.title)}</p>
+        <p class="tasks-panel__item-meta">${escapeHtml(metaFn(item))}</p>
+      </li>`,
+    )
+    .join("");
+}
+
+function activityLabel(item: TaskActivityItem) {
+  const when = formatSalonDayTime(item.at) ?? "recently";
+  if (item.kind === "completed") {
+    return item.byName ? `Done by ${item.byName} · ${when}` : `Completed · ${when}`;
+  }
+  if (item.kind === "claimed") {
+    return item.byName ? `Claimed by ${item.byName} · ${when}` : `Claimed · ${when}`;
+  }
+  return item.byName ? `Added by ${item.byName} · ${when}` : `Created · ${when}`;
+}
+
+function renderSummaryPanels(summary: TaskSummaryPayload) {
+  renderPanelList(
+    root.querySelector<HTMLElement>("[data-panel-due-soon-list]"),
+    root.querySelector<HTMLElement>("[data-panel-due-soon]"),
+    summary.dueSoon,
+    "Nothing due in the next week.",
+    (item) => panelDueLabel(item.dueAt),
+  );
+
+  renderPanelList(
+    root.querySelector<HTMLElement>("[data-panel-open-claim-list]"),
+    root.querySelector<HTMLElement>("[data-panel-open-claim]"),
+    summary.openToClaim,
+    "No open tasks right now.",
+    () => "Available to claim",
+  );
+
+  const checklistPanel = root.querySelector<HTMLElement>("[data-panel-checklist]");
+  const checklistBody = root.querySelector<HTMLElement>("[data-panel-checklist-body]");
+  const { active, completedThisWeek } = summary.checklistProgress;
+  const total = active + completedThisWeek;
+  const pct = total > 0 ? Math.round((completedThisWeek / total) * 100) : 0;
+
+  if (checklistPanel && checklistBody) {
+    if (total === 0) {
+      checklistPanel.hidden = true;
+      checklistBody.innerHTML = "";
+    } else {
+      checklistPanel.hidden = false;
+      checklistBody.innerHTML = `
+        <div class="tasks-panel__progress-row">
+          <span>${completedThisWeek} done this week</span>
+          <span>${active} still active</span>
+        </div>
+        <div class="tasks-panel__progress-bar" role="presentation">
+          <span class="tasks-panel__progress-fill" style="width: ${pct}%"></span>
+        </div>`;
+    }
+  }
+
+  const activityPanel = root.querySelector<HTMLElement>("[data-panel-activity]");
+  const activityList = root.querySelector<HTMLElement>("[data-panel-activity-list]");
+  if (activityPanel && activityList) {
+    if (summary.recentActivity.length === 0) {
+      activityPanel.hidden = true;
+      activityList.innerHTML = "";
+    } else {
+      activityPanel.hidden = false;
+      activityList.innerHTML = summary.recentActivity
+        .map(
+          (item) => `<li class="tasks-panel__item">
+            <p class="tasks-panel__item-title">${escapeHtml(item.title)}</p>
+            <p class="tasks-panel__item-meta">${escapeHtml(activityLabel(item))}</p>
+          </li>`,
+        )
+        .join("");
+    }
+  }
+
+  if (panelsEl) {
+    const anyVisible = Boolean(
+      summary.dueSoon.length ||
+        summary.openToClaim.length ||
+        total > 0 ||
+        summary.recentActivity.length,
+    );
+    panelsEl.hidden = !anyVisible;
+  }
+}
+
+async function loadSummary() {
+  try {
+    const data = (await apiFetch("/summary")) as SummaryResponse;
+    if (!data.summary) return;
+    renderSummaryCounts(data.summary.counts);
+    renderSummaryPanels(data.summary);
+    updateAttentionBadge(data.summary.counts.needsAttention);
+  } catch (error) {
+    console.error("task summary load failed", error);
+  }
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
@@ -460,13 +646,23 @@ function resetTaskForm() {
   taskForm.reset();
   editingTaskId = null;
   if (taskModalTitle) {
-    taskModalTitle.textContent = "New entry";
+    taskModalTitle.textContent = "New task";
   }
   updateAssigneePickerVisibility();
 }
 
-function openCreateModal() {
+function openCreateModal(mode: "task" | "checklist" = "task") {
   resetTaskForm();
+  if (taskModalTitle) {
+    taskModalTitle.textContent = mode === "checklist" ? "New checklist" : "New task";
+  }
+  if (mode === "checklist" && taskForm) {
+    const openRadio = taskForm.querySelector<HTMLInputElement>(
+      'input[name="assignment_type"][value="open"]',
+    );
+    if (openRadio) openRadio.checked = true;
+    updateAssigneePickerVisibility();
+  }
   taskModal?.showModal();
 }
 
@@ -480,7 +676,7 @@ async function openEditModal(taskId: string) {
 
     editingTaskId = taskId;
     if (taskModalTitle) {
-      taskModalTitle.textContent = "Edit entry";
+      taskModalTitle.textContent = "Edit task";
     }
 
     const titleInput = taskForm.querySelector<HTMLInputElement>('input[name="title"]');
@@ -557,7 +753,7 @@ async function submitTaskForm(event: Event) {
       taskModal?.close();
       resetTaskForm();
       showToast(wasEditing ? "Task updated." : "Task added to the list.", "success");
-      await loadTasks();
+      await Promise.all([loadTasks(), loadSummary()]);
     } catch (error) {
       showError(friendlyError(error, "Failed to save task"));
       showToast(friendlyError(error, "Failed to save task"), "error");
@@ -589,7 +785,7 @@ async function submitCompleteForm(event: Event) {
     completeModal?.close();
     completingTaskId = null;
     showToast("Nice work — marked done.", "success");
-    await loadTasks();
+    await Promise.all([loadTasks(), loadSummary()]);
   } catch (error) {
     showError(friendlyError(error, "Failed to complete task"));
   }
@@ -600,6 +796,7 @@ async function claimTask(taskId: string) {
     await apiFetch(`/${taskId}/claim`, { method: "POST", body: "{}" });
     showToast("It's yours — moved to Assigned to me.", "success");
     setActiveTab("my");
+    void loadSummary();
   } catch (error) {
     showError(friendlyError(error, "Failed to claim task"));
   }
@@ -616,7 +813,7 @@ async function cancelTask(taskId: string, title: string) {
   try {
     await apiFetch(`/${taskId}?cancel=1`, { method: "DELETE" });
     showToast("Task cancelled — no completion recorded.", "info");
-    await loadTasks();
+    await Promise.all([loadTasks(), loadSummary()]);
   } catch (error) {
     showError(friendlyError(error, "Failed to cancel task"));
   }
@@ -672,7 +869,18 @@ tabButtons.forEach((button) => {
   });
 });
 
-createBtn?.addEventListener("click", openCreateModal);
+createBtn?.addEventListener("click", () => openCreateModal("task"));
+
+createChecklistBtn?.addEventListener("click", () => openCreateModal("checklist"));
+
+browseOpenBtn?.addEventListener("click", () => setActiveTab("available"));
+
+root.querySelectorAll<HTMLButtonElement>("[data-summary-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const view = button.dataset.summaryView;
+    if (view) setActiveTab(view);
+  });
+});
 
 taskForm?.querySelectorAll('input[name="assignment_type"]').forEach((input) => {
   input.addEventListener("change", updateAssigneePickerVisibility);

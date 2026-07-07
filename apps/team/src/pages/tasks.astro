@@ -34,10 +34,24 @@ const staffOptions = staffRows ?? [];
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-task-create>
-            + New entry
+            <span class="tasks-page__action-long">Create task</span>
+            <span class="tasks-page__action-short">+ New entry</span>
           </button>
         ) : null
       }
+
+      <div slot="toolbar" class="tasks-page__toolbar" data-tasks-toolbar>
+        {
+          managerView ? (
+            <button class="team-list-layout__btn-secondary" type="button" data-task-create-checklist>
+              Create checklist
+            </button>
+          ) : null
+        }
+        <button class="team-list-layout__btn-secondary" type="button" data-task-browse-open>
+          Browse open tasks
+        </button>
+      </div>
 
       <div class="tasks-page__sidebar-nav" data-tasks-nav slot="sidebarFilters">
       <TeamSidebarNav label="Task views">
@@ -77,61 +91,110 @@ const staffOptions = staffRows ?? [];
 
       <Fragment slot="mainLead">Team to-dos and salon checklists.</Fragment>
 
-      <div class="tasks-tabs" data-tasks-nav>
-        <UiScrollRow label="Task views">
-          <button class="tasks-tabs__btn is-active" type="button" data-view="my" aria-selected="true">
-            <span class="tasks-tabs__long">Assigned to me</span>
-            <span class="tasks-tabs__short">Mine</span>
-          </button>
-          <button class="tasks-tabs__btn" type="button" data-view="available" aria-selected="false">
-            <span class="tasks-tabs__long">For everyone</span>
-            <span class="tasks-tabs__short">Open</span>
-          </button>
-          <button
-            class="tasks-tabs__btn"
-            type="button"
-            data-view="attention"
-            aria-selected="false"
-            title="Active tasks already overdue or due within 24 hours"
-          >
-            <span class="tasks-tabs__long">Needs attention</span>
-            <span class="tasks-tabs__short">Urgent</span>
-            <span
-              class="tasks-tabs__badge"
-              data-attention-badge
-              hidden
-              aria-label="Tasks needing attention"
-            >0</span>
-          </button>
-          <button class="tasks-tabs__btn" type="button" data-view="completed" aria-selected="false">
-            <span class="tasks-tabs__long">Completed</span>
-            <span class="tasks-tabs__short">Done</span>
-          </button>
-          {
-            managerView ? (
-              <button class="tasks-tabs__btn" type="button" data-view="all" aria-selected="false">
-                <span class="tasks-tabs__long">All active</span>
-                <span class="tasks-tabs__short">All</span>
+      <div class="tasks-page__content">
+        <div class="tasks-page__primary">
+          <div class="tasks-summary" data-tasks-summary aria-label="Task summary" hidden>
+            <button class="tasks-summary__card" type="button" data-summary-view="my">
+              <span class="tasks-summary__value" data-summary-assigned>—</span>
+              <span class="tasks-summary__label">Assigned to me</span>
+            </button>
+            <button class="tasks-summary__card" type="button" data-summary-view="available">
+              <span class="tasks-summary__value" data-summary-open>—</span>
+              <span class="tasks-summary__label">Open to everyone</span>
+            </button>
+            <button class="tasks-summary__card" type="button" data-summary-view="attention">
+              <span class="tasks-summary__value" data-summary-attention>—</span>
+              <span class="tasks-summary__label">Needs attention</span>
+            </button>
+            <button class="tasks-summary__card" type="button" data-summary-view="attention">
+              <span class="tasks-summary__value" data-summary-due-today>—</span>
+              <span class="tasks-summary__label">Due today</span>
+            </button>
+            <button class="tasks-summary__card" type="button" data-summary-view="completed">
+              <span class="tasks-summary__value" data-summary-completed-week>—</span>
+              <span class="tasks-summary__label">Completed this week</span>
+            </button>
+          </div>
+
+          <div class="tasks-tabs" data-tasks-nav>
+            <UiScrollRow label="Task views">
+              <button class="tasks-tabs__btn is-active" type="button" data-view="my" aria-selected="true">
+                <span class="tasks-tabs__long">Assigned to me</span>
+                <span class="tasks-tabs__short">Mine</span>
               </button>
-            ) : null
-          }
-        </UiScrollRow>
-      </div>
+              <button class="tasks-tabs__btn" type="button" data-view="available" aria-selected="false">
+                <span class="tasks-tabs__long">For everyone</span>
+                <span class="tasks-tabs__short">Open</span>
+              </button>
+              <button
+                class="tasks-tabs__btn"
+                type="button"
+                data-view="attention"
+                aria-selected="false"
+                title="Active tasks already overdue or due within 24 hours"
+              >
+                <span class="tasks-tabs__long">Needs attention</span>
+                <span class="tasks-tabs__short">Urgent</span>
+                <span
+                  class="tasks-tabs__badge"
+                  data-attention-badge
+                  hidden
+                  aria-label="Tasks needing attention"
+                >0</span>
+              </button>
+              <button class="tasks-tabs__btn" type="button" data-view="completed" aria-selected="false">
+                <span class="tasks-tabs__long">Completed</span>
+                <span class="tasks-tabs__short">Done</span>
+              </button>
+              {
+                managerView ? (
+                  <button class="tasks-tabs__btn" type="button" data-view="all" aria-selected="false">
+                    <span class="tasks-tabs__long">All active</span>
+                    <span class="tasks-tabs__short">All</span>
+                  </button>
+                ) : null
+              }
+            </UiScrollRow>
+          </div>
 
-      <div class="notebook" aria-label="Task notebook">
-        <div class="notebook__binding" aria-hidden="true">
-          <span class="notebook__hole"></span>
-          <span class="notebook__hole"></span>
-          <span class="notebook__hole"></span>
-        </div>
+          <div class="notebook" aria-label="Task notebook">
+            <div class="notebook__binding" aria-hidden="true">
+              <span class="notebook__hole"></span>
+              <span class="notebook__hole"></span>
+              <span class="notebook__hole"></span>
+            </div>
 
-        <div class="notebook__paper">
-          <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
+            <div class="notebook__paper">
+              <p class="notice notice--error tasks-page__error" data-tasks-error hidden role="alert"></p>
 
-          <div class="tasks-list" data-tasks-list aria-live="polite">
-            <p class="notebook-empty">Loading tasks…</p>
+              <div class="tasks-list" data-tasks-list aria-live="polite">
+                <p class="notebook-empty">Loading tasks…</p>
+              </div>
+            </div>
           </div>
         </div>
+
+        <aside class="tasks-page__secondary" data-tasks-panels aria-label="Task insights" hidden>
+          <section class="tasks-panel" data-panel-due-soon hidden>
+            <h2 class="tasks-panel__title">Due soon</h2>
+            <ul class="tasks-panel__list" data-panel-due-soon-list></ul>
+          </section>
+
+          <section class="tasks-panel" data-panel-open-claim hidden>
+            <h2 class="tasks-panel__title">Open to claim</h2>
+            <ul class="tasks-panel__list" data-panel-open-claim-list></ul>
+          </section>
+
+          <section class="tasks-panel" data-panel-checklist hidden>
+            <h2 class="tasks-panel__title">Team checklist progress</h2>
+            <div class="tasks-panel__progress" data-panel-checklist-body></div>
+          </section>
+
+          <section class="tasks-panel" data-panel-activity hidden>
+            <h2 class="tasks-panel__title">Recent activity</h2>
+            <ul class="tasks-panel__list tasks-panel__list--activity" data-panel-activity-list></ul>
+          </section>
+        </aside>
       </div>
     </TeamListLayout>
   </div>
@@ -139,7 +202,7 @@ const staffOptions = staffRows ?? [];
   <dialog class="tasks-modal" data-task-modal aria-labelledby="task-modal-title">
     <form class="tasks-modal__form" method="dialog" data-task-form>
       <header class="tasks-modal__header">
-        <h2 id="task-modal-title" data-task-modal-title>New entry</h2>
+        <h2 id="task-modal-title" data-task-modal-title>New task</h2>
         <button class="tasks-modal__close" type="button" data-task-modal-close aria-label="Close">
           ×
         </button>
@@ -212,7 +275,7 @@ const staffOptions = staffRows ?? [];
 
       <footer class="tasks-modal__footer">
         <button class="team-list-layout__btn-secondary" type="button" data-task-modal-close>Discard</button>
-        <button class="team-list-layout__btn-primary" type="submit" data-task-submit>Save entry</button>
+        <button class="team-list-layout__btn-primary" type="submit" data-task-submit>Save task</button>
       </footer>
     </form>
   </dialog>
@@ -257,6 +320,8 @@ const staffOptions = staffRows ?? [];
   .tasks-page {
     --notebook-line: clamp(2rem, 1.7rem + 0.6vw, 2.25rem);
     --notebook-margin: clamp(2.25rem, 1.9rem + 1vw, 2.75rem);
+    --notebook-max-width: clamp(56rem, 48vw + 12rem, 68.75rem);
+    --tasks-content-max: min(100%, 88rem);
     --notebook-paper: #fdfaf4;
     --notebook-paper-dark: #1e1c19;
     --notebook-rule: rgba(174, 148, 143, 0.32);
@@ -299,7 +364,8 @@ const staffOptions = staffRows ?? [];
     position: relative;
     display: flex;
     flex-direction: column;
-    max-width: 52rem;
+    width: 100%;
+    max-width: var(--notebook-max-width);
     margin: clamp(0.75rem, 0.4rem + 1vw, 1.5rem) auto 0;
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-lg);
@@ -343,9 +409,9 @@ const staffOptions = staffRows ?? [];
   .notebook__paper {
     position: relative;
     flex: 1 1 auto;
-    min-height: 16rem;
+    min-height: 6rem;
     padding:
-      calc(var(--notebook-line) * 1.15)
+      calc(var(--notebook-line) * 0.65)
       2rem
       calc(var(--notebook-line) * 0.75)
       calc(var(--notebook-margin) + 1.75rem);
@@ -435,9 +501,189 @@ const staffOptions = staffRows ?? [];
     opacity: 0.4;
   }
 
+  .tasks-page__action-long {
+    display: none;
+  }
+
+  .tasks-page__action-short {
+    display: inline;
+  }
+
+  .tasks-page__toolbar {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    max-width: var(--tasks-content-max);
+    margin-inline: auto;
+  }
+
+  .tasks-page__content {
+    width: 100%;
+    max-width: var(--tasks-content-max);
+    margin-inline: auto;
+  }
+
+  .tasks-page__primary {
+    min-width: 0;
+  }
+
+  .tasks-page__secondary {
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .tasks-summary {
+    display: none;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .tasks-summary__card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-width: 6.5rem;
+    flex: 1 1 6.5rem;
+    max-width: 9.5rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color var(--transition-fast),
+      background var(--transition-fast),
+      box-shadow var(--transition-fast);
+  }
+
+  .tasks-summary__card:hover,
+  .tasks-summary__card:focus-visible {
+    border-color: var(--color-sage);
+    background: var(--color-selection-bg, rgba(141, 158, 136, 0.08));
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-focus-ring);
+  }
+
+  .tasks-summary__value {
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    color: var(--color-stone-800);
+  }
+
+  .tasks-summary__label {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--color-stone-500);
+  }
+
+  .tasks-panel {
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+  }
+
+  .tasks-panel__title {
+    margin: 0 0 0.55rem;
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .tasks-panel__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .tasks-panel__item {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--color-stone-100);
+  }
+
+  .tasks-panel__item:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .tasks-panel__item-title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--color-stone-800);
+  }
+
+  .tasks-panel__item-meta {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    color: var(--color-stone-500);
+  }
+
+  .tasks-panel__empty {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-stone-500);
+  }
+
+  .tasks-panel__progress {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .tasks-panel__progress-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-family: var(--font-body);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--color-stone-700);
+  }
+
+  .tasks-panel__progress-bar {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: var(--color-stone-100);
+    overflow: hidden;
+  }
+
+  .tasks-panel__progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-sage);
+  }
+
   .tasks-tabs {
     display: none;
-    max-width: 52rem;
+    max-width: var(--notebook-max-width);
     margin: 0 auto 0.65rem;
     min-width: 0;
   }
@@ -505,7 +751,13 @@ const staffOptions = staffRows ?? [];
 
   /* Keep the subtitle centred on the same column as the notebook sheet. */
   .tasks-page :global(.team-list-layout__main-lead) {
-    max-width: 52rem;
+    max-width: var(--tasks-content-max);
+    margin-inline: auto;
+  }
+
+  .tasks-page :global(.team-list-layout__toolbar) {
+    display: none;
+    max-width: var(--tasks-content-max);
     margin-inline: auto;
   }
 
@@ -933,9 +1185,55 @@ const staffOptions = staffRows ?? [];
       grid-template-columns: minmax(184px, 200px) 1fr;
     }
 
+    .tasks-page :global(.team-list-layout__main) {
+      padding-inline: var(--space-5);
+      padding-top: var(--space-4);
+    }
+
     .tasks-page :global(.team-list-layout__sidebar-nav-btn) {
       padding-top: 0.4rem;
       padding-bottom: 0.4rem;
+    }
+
+    .tasks-page__action-long {
+      display: inline;
+    }
+
+    .tasks-page__action-short {
+      display: none;
+    }
+
+    .tasks-page__toolbar {
+      display: flex;
+    }
+
+    .tasks-page :global(.team-list-layout__toolbar) {
+      display: block;
+    }
+
+    .tasks-summary {
+      display: flex;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .tasks-page__content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(15rem, 17.5rem);
+      align-items: start;
+      gap: 1.25rem;
+    }
+
+    .tasks-page__secondary {
+      display: flex;
+    }
+
+    .notebook {
+      margin-inline: 0;
+    }
+
+    .tasks-tabs {
+      margin-inline: 0;
     }
   }
 
@@ -1000,7 +1298,7 @@ const staffOptions = staffRows ?? [];
 
     .notebook__paper {
       padding: 0.85rem 0.65rem 1.25rem calc(var(--notebook-margin) + 0.55rem);
-      min-height: 12rem;
+      min-height: 10rem;
       overflow-x: hidden;
     }
 

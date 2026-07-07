@@ -1,5 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSalonManager } from "./auth";
+import {
+  addDays,
+  dayOfWeek,
+  localWallClockToUtc,
+  salonLocalDate,
+} from "./report-range";
 import type { StaffProfile } from "../env.d.ts";
 
 export type TaskStatus = "open" | "claimed" | "done" | "cancelled";
@@ -210,4 +216,282 @@ export async function countAttentionTasks(
     const assignees = (row.task_assignees ?? []) as Array<{ staff_id: string }>;
     return assignees.some((a) => a.staff_id === staffId);
   }).length;
+}
+
+async function loadAssigneeTaskIds(
+  supabase: SupabaseClient,
+  staffId: string,
+) {
+  const { data, error } = await supabase
+    .from("task_assignees")
+    .select("task_id")
+    .eq("staff_id", staffId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => row.task_id as string);
+}
+
+function salonWeekStartUtc(now = new Date()) {
+  const today = salonLocalDate(now);
+  const sunday = addDays(today, -dayOfWeek(today));
+  return localWallClockToUtc(sunday, "00:00").toISOString();
+}
+
+function salonDayBoundsUtc(now = new Date()) {
+  const today = salonLocalDate(now);
+  return {
+    start: localWallClockToUtc(today, "00:00").toISOString(),
+    end: localWallClockToUtc(addDays(today, 1), "00:00").toISOString(),
+  };
+}
+
+function isDueTodaySalon(dueAt: string | null, now = new Date()) {
+  if (!dueAt) return false;
+  const due = new Date(dueAt);
+  if (Number.isNaN(due.getTime())) return false;
+  return salonLocalDate(due) === salonLocalDate(now);
+}
+
+export type TaskSummaryCounts = {
+  assignedToMe: number;
+  openToEveryone: number;
+  needsAttention: number;
+  dueToday: number;
+  completedThisWeek: number;
+};
+
+export type TaskPanelPreview = {
+  id: string;
+  title: string;
+  dueAt: string | null;
+  status: TaskStatus;
+  assignmentType: TaskAssignmentType;
+  priority: TaskPriority;
+};
+
+export type TaskActivityItem = {
+  id: string;
+  title: string;
+  kind: "completed" | "claimed" | "created";
+  at: string;
+  byName: string | null;
+};
+
+export type TaskChecklistProgress = {
+  active: number;
+  completedThisWeek: number;
+};
+
+export type TaskSummaryPayload = {
+  counts: TaskSummaryCounts;
+  dueSoon: TaskPanelPreview[];
+  openToClaim: TaskPanelPreview[];
+  checklistProgress: TaskChecklistProgress;
+  recentActivity: TaskActivityItem[];
+};
+
+const PANEL_PREVIEW_SELECT = `
+  id,
+  title,
+  due_at,
+  status,
+  assignment_type,
+  priority,
+  completed_at,
+  updated_at,
+  created_at,
+  created_by:staff!tasks_created_by_staff_id_fkey ( id, name ),
+  completed_by:staff!tasks_completed_by_staff_id_fkey ( id, name ),
+  task_assignees (
+    staff_id,
+    claimed_at,
+    staff ( id, name )
+  )
+`;
+
+function toPanelPreview(row: TaskRow): TaskPanelPreview {
+  return {
+    id: row.id,
+    title: row.title,
+    dueAt: row.due_at,
+    status: row.status,
+    assignmentType: row.assignment_type,
+    priority: row.priority,
+  };
+}
+
+function relOneName(
+  value: { name: string } | { name: string }[] | null | undefined,
+) {
+  if (!value) return null;
+  const row = Array.isArray(value) ? value[0] : value;
+  return row?.name ?? null;
+}
+
+export async function loadTaskSummary(
+  supabase: SupabaseClient,
+  staffId: string,
+  manager: boolean,
+): Promise<TaskSummaryPayload> {
+  const weekStart = salonWeekStartUtc();
+  const { start: todayStart, end: todayEnd } = salonDayBoundsUtc();
+  const dueSoonEnd = localWallClockToUtc(addDays(salonLocalDate(), 7), "00:00").toISOString();
+
+  const assigneeTaskIds = await loadAssigneeTaskIds(supabase, staffId);
+
+  const [
+    openPoolCount,
+    attentionCount,
+    assignedRows,
+    dueTodayRows,
+    completedWeekCount,
+    activeCount,
+    dueSoonResult,
+    openPoolResult,
+    recentDoneResult,
+    recentUpdatedResult,
+  ] = await Promise.all([
+    countOpenPoolTasks(supabase),
+    countAttentionTasks(supabase, staffId, manager),
+    assigneeTaskIds.length > 0
+      ? supabase
+          .from("tasks")
+          .select("id")
+          .in("id", assigneeTaskIds)
+          .in("status", ["open", "claimed"])
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("tasks")
+      .select("id, due_at, status, assignment_type, task_assignees(staff_id)")
+      .in("status", ["open", "claimed"])
+      .not("due_at", "is", null)
+      .gte("due_at", todayStart)
+      .lt("due_at", todayEnd),
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "done")
+      .gte("completed_at", weekStart),
+    supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["open", "claimed"]),
+    supabase
+      .from("tasks")
+      .select(PANEL_PREVIEW_SELECT)
+      .in("status", ["open", "claimed"])
+      .not("due_at", "is", null)
+      .gte("due_at", todayStart)
+      .lte("due_at", dueSoonEnd)
+      .order("due_at", { ascending: true })
+      .limit(6),
+    supabase
+      .from("tasks")
+      .select(PANEL_PREVIEW_SELECT)
+      .eq("assignment_type", "open")
+      .eq("status", "open")
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .limit(6),
+    supabase
+      .from("tasks")
+      .select(PANEL_PREVIEW_SELECT)
+      .eq("status", "done")
+      .order("completed_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("tasks")
+      .select(PANEL_PREVIEW_SELECT)
+      .in("status", ["open", "claimed"])
+      .order("updated_at", { ascending: false })
+      .limit(8),
+  ]);
+
+  if (assignedRows.error) throw assignedRows.error;
+  if (dueTodayRows.error) throw dueTodayRows.error;
+  if (dueSoonResult.error) throw dueSoonResult.error;
+  if (openPoolResult.error) throw openPoolResult.error;
+  if (recentDoneResult.error) throw recentDoneResult.error;
+  if (recentUpdatedResult.error) throw recentUpdatedResult.error;
+
+  const dueTodayFiltered = (dueTodayRows.data ?? []).filter((row) => {
+    if (!isDueTodaySalon(row.due_at)) return false;
+    if (manager) return true;
+    if (row.assignment_type === "open") return true;
+    const assignees = (row.task_assignees ?? []) as Array<{ staff_id: string }>;
+    return assignees.some((a) => a.staff_id === staffId);
+  });
+
+  let dueSoon = (dueSoonResult.data ?? []).map((row) => toPanelPreview(row as TaskRow));
+  if (!manager) {
+    dueSoon = dueSoon.filter((task) => {
+      const row = (dueSoonResult.data ?? []).find((item) => item.id === task.id) as TaskRow | undefined;
+      if (!row) return false;
+      if (row.assignment_type === "open") return true;
+      return (row.task_assignees ?? []).some((a) => a.staff_id === staffId);
+    });
+  }
+
+  const recentActivity: TaskActivityItem[] = [];
+
+  for (const row of recentDoneResult.data ?? []) {
+    const task = row as TaskRow;
+    if (!task.completed_at) continue;
+    recentActivity.push({
+      id: task.id,
+      title: task.title,
+      kind: "completed",
+      at: task.completed_at,
+      byName: relOneName(task.completed_by),
+    });
+  }
+
+  for (const row of recentUpdatedResult.data ?? []) {
+    const task = row as TaskRow;
+    const claimer = (task.task_assignees ?? []).find((a) => a.claimed_at);
+    if (claimer?.claimed_at) {
+      recentActivity.push({
+        id: task.id,
+        title: task.title,
+        kind: "claimed",
+        at: claimer.claimed_at,
+        byName: relOneName(claimer.staff),
+      });
+      continue;
+    }
+    if (task.created_at) {
+      recentActivity.push({
+        id: task.id,
+        title: task.title,
+        kind: "created",
+        at: task.created_at,
+        byName: relOneName(task.created_by),
+      });
+    }
+  }
+
+  recentActivity.sort(
+    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+  );
+
+  return {
+    counts: {
+      assignedToMe: assignedRows.data?.length ?? 0,
+      openToEveryone: openPoolCount,
+      needsAttention: attentionCount,
+      dueToday: dueTodayFiltered.length,
+      completedThisWeek: completedWeekCount.count ?? 0,
+    },
+    dueSoon: dueSoon.slice(0, 5),
+    openToClaim: (openPoolResult.data ?? [])
+      .map((row) => toPanelPreview(row as TaskRow))
+      .slice(0, 5),
+    checklistProgress: {
+      active: activeCount.count ?? 0,
+      completedThisWeek: completedWeekCount.count ?? 0,
+    },
+    recentActivity: recentActivity.slice(0, 6),
+  };
 }
