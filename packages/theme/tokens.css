@@ -192,7 +192,7 @@
   --color-focus-ring: rgba(231, 172, 70, 0.25);
 
   /* Team bar stays dark in dark mode — do not inherit inverted stone neutrals */
-  --team-bar-bg: #2f2a28;
+  --team-bar-bg: #1a1a1a;
   --team-bar-border: rgba(255, 255, 255, 0.1);
   --team-bar-text: rgba(255, 255, 255, 0.92);
   --team-bar-tab: rgba(255, 255, 255, 0.62);

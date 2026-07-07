@@ -187,13 +187,29 @@ textarea {
   background-image:
     radial-gradient(
       ellipse 100% 70% at 20% 0%,
-      rgba(231, 172, 70, 0.08) 0%,
+      rgba(231, 172, 70, 0.06) 0%,
       transparent 50%
     ),
     linear-gradient(
       165deg,
       var(--color-cream) 0%,
       var(--color-cream-deep) 55%,
+      var(--color-cream) 100%
+    );
+}
+
+[data-theme="dark"] body:has(.team-shell) {
+  background-color: var(--color-cream);
+  background-image:
+    radial-gradient(
+      ellipse 120% 80% at 10% -10%,
+      rgba(231, 172, 70, 0.06) 0%,
+      transparent 55%
+    ),
+    linear-gradient(
+      165deg,
+      var(--color-cream) 0%,
+      var(--color-cream-deep) 45%,
       var(--color-cream) 100%
     );
 }

@@ -30,9 +30,9 @@ interface Props {
 const { activeNav, staff = null, isAuthenticated = false, pageTitle = "" } = Astro.props;
 
 const marketingOrigin = `https://${BUSINESS.domain}`;
-/** Default bar wordmark (light mode); Horiz.png for dark mode */
-const logoLightSrc = withBase("images/salon-citrine-banner-dark.png");
-const logoDarkSrc = withBase("images/logo-horiz-dark.png");
+/** White wordmark on dark bar (light theme); Horiz.png swap in dark theme */
+const logoLightSrc = withBase("images/salon-citrine-primary-white.png");
+const logoDarkSrc = withBase("assets/salon-citrine-logo-horiz-dark.png");
 const logoFallbackSrc = withBase("images/salon-citrine-logo-compact.png");
 const profileMenuId = "team-profile-menu";
 
@@ -885,7 +885,8 @@ const initials = staff ? staffInitials(staff.name) : "";
       visibility: visible;
     }
 
-    :global(.team-shell.is-page-scrolled) .team-bar__logo-img,
+    :global(.team-shell.is-page-scrolled) .team-bar__logo-img--light-theme,
+    :global(.team-shell.is-page-scrolled) .team-bar__logo-img--dark-theme,
     :global(.team-shell.is-page-scrolled) .team-bar__logo-wordmark {
       display: none;
     }
