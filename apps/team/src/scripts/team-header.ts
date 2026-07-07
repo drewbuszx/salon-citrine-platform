@@ -1,5 +1,5 @@
 import { initNetworkStatus } from "../lib/network-status";
-import { closeTeamAlertsDropdown } from "./team-alerts";
+import { closeTeamAlertsDropdown, getTeamAlerts } from "./team-alerts";
 
 /**
  * Team header — mobile drawer, desktop profile menu, nav scroll fades, compact title on scroll.
@@ -229,12 +229,30 @@ function initCompactPageTitle() {
   update();
 }
 
+/** Keep the bell badge current while the tab stays open (fetch-on-open and
+ *  fetch-on-visibility are handled by the alerts controller itself). */
+function initAlertsAutoRefresh() {
+  const root = document.querySelector<HTMLElement>("[data-team-alerts]");
+  if (!root || root.dataset.alertsAutoRefresh === "1") return;
+  root.dataset.alertsAutoRefresh = "1";
+
+  const REFRESH_MS = 60_000;
+  window.setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    // Don't disrupt an open panel with a loading flash.
+    const dropdown = root.closest<HTMLElement>("[data-alerts-dropdown]");
+    if (dropdown?.classList.contains("is-open")) return;
+    void getTeamAlerts(root)?.refresh();
+  }, REFRESH_MS);
+}
+
 export function initTeamHeader() {
   initNetworkStatus();
   document.querySelectorAll<HTMLElement>(".team-bar__nav-wrap").forEach(initNavScrollFade);
   initMobileDrawer();
   initDesktopProfileMenu();
   initCompactPageTitle();
+  initAlertsAutoRefresh();
 }
 
 if (typeof document !== "undefined") {

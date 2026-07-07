@@ -1,77 +1,112 @@
 ---
+import { teamUrl } from "../lib/supabase-server";
+
 /**
  * Team alerts panel — dropdown feed for the header notification bell.
  *
- * Minimal client-populated shell: the markup here is the container, states
- * (loading / empty / error) and the list region. `team-header.ts` fetches
- * `/api/alerts`, renders items into `[data-alerts-list]`, and toggles states.
+ * This is the container shell only. All behaviour (toggle, fetch, badge,
+ * dismiss, keyboard) lives in `scripts/team-alerts.ts`, which reads the
+ * `[data-team-alerts]` root (api + base), populates `[data-alerts-list]`, and
+ * swaps the loading / error / empty / list states below.
  *
- * NOTE (Agent 3): created inline by Agent 4 to unblock header wiring. Reconcile
- * item template / dismiss behaviour with the richer panel when ready.
+ * NOTE (Agent 3): created by Agent 4 to unblock header wiring against the
+ * existing `team-alerts.ts` controller contract. Reconcile visual design /
+ * richer content here as needed — keep the `data-*` hooks intact.
  */
 interface Props {
-  id: string;
+  panelId: string;
 }
 
-const { id } = Astro.props;
+const { panelId } = Astro.props;
+const alertsApi = teamUrl("/api/alerts");
+const teamBase = teamUrl("");
 ---
 
-<div class="team-alerts" data-alerts-panel role="region" aria-label="Notifications">
-  <div id={id} class="team-alerts__panel" data-alerts-menu hidden>
+<div
+  class="team-alerts"
+  data-team-alerts
+  data-alerts-api={alertsApi}
+  data-team-base={teamBase}
+>
+  <div
+    id={panelId}
+    class="team-alerts__panel"
+    data-alerts-panel
+    role="menu"
+    aria-label="Notifications"
+    hidden
+  >
     <header class="team-alerts__head">
-      <h2 class="team-alerts__title">Notifications</h2>
+      <h2 class="team-alerts__title">Alerts</h2>
+      <button
+        type="button"
+        class="team-alerts__mark-all"
+        data-alerts-mark-all
+        hidden
+      >
+        Mark all read
+      </button>
     </header>
 
     <div class="team-alerts__body">
-      <p class="team-alerts__state" data-alerts-loading>Loading…</p>
-      <p class="team-alerts__state" data-alerts-empty hidden>You're all caught up.</p>
-      <p class="team-alerts__state team-alerts__state--error" data-alerts-error hidden>
-        Couldn't load notifications.
-      </p>
-      <ul class="team-alerts__list" data-alerts-list role="list" hidden></ul>
+      <div class="team-alerts__state" data-alerts-loading>
+        <ul class="team-alerts__list" role="list">
+          <li class="team-alerts__skeleton" aria-hidden="true">
+            <span class="team-alerts__skeleton-icon"></span>
+            <span class="team-alerts__skeleton-copy">
+              <span class="team-alerts__skeleton-line team-alerts__skeleton-line--wide"></span>
+              <span class="team-alerts__skeleton-line team-alerts__skeleton-line--medium"></span>
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="team-alerts__state team-alerts__state--empty" data-alerts-empty hidden>
+        <p class="team-alerts__empty-title">You're all caught up</p>
+        <p class="team-alerts__empty-body">No waitlist, stock, or task alerts right now.</p>
+      </div>
+
+      <div class="team-alerts__state team-alerts__state--error" data-alerts-error hidden>
+        <p class="team-alerts__error-title">Couldn't load notifications</p>
+        <p class="team-alerts__error-hint" data-alerts-error-hint>
+          Check your connection and try again.
+        </p>
+        <button type="button" class="team-alerts__retry" data-alerts-retry>
+          Try again
+        </button>
+      </div>
+
+      <ul class="team-alerts__list" data-alerts-list role="menu" aria-label="Alerts" hidden></ul>
     </div>
   </div>
 </div>
 
-<template data-alerts-item-template>
-  <li class="team-alerts__item" role="listitem">
-    <a class="team-alerts__link" data-alerts-item-link href="#">
-      <span class="team-alerts__dot" data-alerts-item-dot aria-hidden="true"></span>
-      <span class="team-alerts__text">
-        <span class="team-alerts__item-title" data-alerts-item-title></span>
-        <span class="team-alerts__item-message" data-alerts-item-message></span>
-      </span>
-    </a>
-  </li>
-</template>
-
 <style>
   .team-alerts {
     position: absolute;
-    inset: 0;
-    pointer-events: none;
+    top: 100%;
+    right: 0;
+    z-index: 130;
   }
 
   .team-alerts__panel {
     position: absolute;
-    top: calc(100% + 0.4rem);
+    top: 0.4rem;
     right: 0;
-    z-index: 130;
-    width: min(20rem, calc(100vw - 1.5rem));
-    max-height: min(28rem, calc(100vh - var(--team-bar-height, 3.25rem) - 1.5rem));
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: min(24rem, calc(100vh - var(--team-bar-height, 3.25rem) - 2rem));
     display: flex;
     flex-direction: column;
     overflow: hidden;
     margin: 0;
     border: 1px solid var(--color-border);
-    border-radius: 0.6rem;
+    border-radius: 0.5rem;
     background: var(--color-bg);
     color: var(--color-text);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
     opacity: 0;
     visibility: hidden;
     transform: translateY(-4px);
-    pointer-events: auto;
     transition:
       opacity 0.15s ease,
       transform 0.15s ease,
@@ -82,28 +117,55 @@ const { id } = Astro.props;
     display: flex;
   }
 
-  :global(.team-bar__alerts.is-open) .team-alerts__panel {
+  :global([data-alerts-dropdown].is-open) .team-alerts__panel {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+  }
+
+  :global([data-alerts-dropdown].is-open) .team-alerts__panel[hidden] {
+    display: flex;
   }
 
   .team-alerts__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.7rem 0.9rem;
     border-bottom: 1px solid var(--color-border);
   }
 
   .team-alerts__title {
     margin: 0;
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    letter-spacing: var(--tracking-wide);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--color-text);
+    color: var(--color-gray);
+  }
+
+  .team-alerts__mark-all {
+    border: none;
+    background: none;
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.35rem;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-link, var(--color-citrine));
+    cursor: pointer;
+  }
+
+  .team-alerts__mark-all[hidden] {
+    display: none;
+  }
+
+  .team-alerts__mark-all:hover,
+  .team-alerts__mark-all:focus-visible {
+    background: var(--color-light);
+    outline: none;
   }
 
   .team-alerts__body {
@@ -111,17 +173,54 @@ const { id } = Astro.props;
     -webkit-overflow-scrolling: touch;
   }
 
-  .team-alerts__state {
-    margin: 0;
-    padding: 1.1rem 0.95rem;
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    color: var(--color-gray);
+  .team-alerts__state[hidden] {
+    display: none;
+  }
+
+  .team-alerts__state--empty,
+  .team-alerts__state--error {
+    padding: 1.35rem 1rem;
     text-align: center;
   }
 
-  .team-alerts__state--error {
+  .team-alerts__empty-title,
+  .team-alerts__error-title {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .team-alerts__empty-body,
+  .team-alerts__error-hint {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--color-gray);
+  }
+
+  .team-alerts__error-title {
     color: var(--color-error);
+  }
+
+  .team-alerts__retry {
+    margin-top: 0.75rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.4rem;
+    background: var(--color-bg);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .team-alerts__retry:hover,
+  .team-alerts__retry:focus-visible {
+    background: var(--color-light);
+    outline: none;
   }
 
   .team-alerts__list {
@@ -129,60 +228,181 @@ const { id } = Astro.props;
     padding: 0.3rem;
     list-style: none;
     display: grid;
-    gap: 0.15rem;
+    gap: 0.1rem;
   }
 
-  .team-alerts__link {
+  .team-alerts__list[hidden] {
+    display: none;
+  }
+
+  .team-alerts__item {
+    margin: 0;
+  }
+
+  .team-alerts__row {
     display: flex;
-    align-items: flex-start;
-    gap: 0.6rem;
-    padding: 0.6rem 0.65rem;
-    border-radius: 0.45rem;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.6rem;
+    border-radius: 0.5rem;
     text-decoration: none;
     color: inherit;
   }
 
-  .team-alerts__link:hover,
-  .team-alerts__link:focus-visible {
+  .team-alerts__row:hover,
+  .team-alerts__row:focus-visible {
     background: var(--color-light);
     outline: none;
   }
 
-  .team-alerts__dot {
+  .team-alerts__icon {
     flex-shrink: 0;
-    width: 0.55rem;
-    height: 0.55rem;
-    margin-top: 0.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
     border-radius: 50%;
-    background: var(--color-gray);
+    background: var(--color-light);
+    color: var(--color-gray);
   }
 
-  .team-alerts__dot[data-severity="warning"] {
-    background: var(--color-citrine, #e7ac46);
+  .team-alerts__icon svg {
+    width: 1.05rem;
+    height: 1.05rem;
   }
 
-  .team-alerts__dot[data-severity="urgent"] {
-    background: var(--color-error, #b42318);
+  .team-alerts__row--info .team-alerts__icon {
+    background: var(--color-sage-muted);
+    color: var(--color-sage-dark);
   }
 
-  .team-alerts__text {
+  .team-alerts__row--warning .team-alerts__icon {
+    background: var(--color-citrine-muted);
+    color: var(--color-citrine-dark);
+  }
+
+  .team-alerts__row--urgent .team-alerts__icon {
+    background: var(--color-error-muted);
+    color: var(--color-error);
+  }
+
+  .team-alerts__copy {
     display: grid;
     gap: 0.1rem;
     min-width: 0;
+    flex: 1 1 auto;
   }
 
-  .team-alerts__item-title {
+  .team-alerts__row-title {
     font-family: var(--font-body);
     font-size: 0.88rem;
     font-weight: 600;
     color: var(--color-text);
   }
 
-  .team-alerts__item-message {
+  .team-alerts__row-body {
     font-family: var(--font-sans);
     font-size: 0.78rem;
     color: var(--color-gray);
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .team-alerts__row-time {
+    font-family: var(--font-body);
+    font-size: 0.62rem;
+    color: var(--color-stone-500);
+  }
+
+  .team-alerts__chevron {
+    flex-shrink: 0;
+    color: var(--color-gray);
+    opacity: 0.6;
+  }
+
+  .team-alerts__chevron svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Loading skeleton */
+  .team-alerts__skeleton {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem;
+  }
+
+  .team-alerts__skeleton-icon {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--color-light);
+  }
+
+  .team-alerts__skeleton-copy {
+    display: grid;
+    gap: 0.35rem;
+    flex: 1 1 auto;
+  }
+
+  .team-alerts__skeleton-line {
+    height: 0.6rem;
+    border-radius: 999px;
+    background: var(--color-light);
+  }
+
+  .team-alerts__skeleton-line--wide {
+    width: 75%;
+  }
+
+  .team-alerts__skeleton-line--medium {
+    width: 50%;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .team-alerts__skeleton-icon,
+    .team-alerts__skeleton-line {
+      animation: team-alerts-pulse 1.4s ease-in-out infinite;
+    }
+  }
+
+  @keyframes team-alerts-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+
+  :global([data-theme="dark"]) .team-alerts__panel {
+    border-color: var(--color-border);
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  :global([data-theme="dark"]) .team-alerts__row:hover,
+  :global([data-theme="dark"]) .team-alerts__row:focus-visible {
+    background: var(--color-stone-100);
+  }
+
+  :global([data-theme="dark"]) .team-alerts__empty-title {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .team-alerts__mark-all:hover,
+  :global([data-theme="dark"]) .team-alerts__mark-all:focus-visible {
+    background: var(--color-stone-100);
+  }
+
+  @media (max-width: 1100px) {
+    .team-alerts__panel {
+      right: -0.35rem;
+      width: min(20rem, calc(100vw - 1.25rem));
+    }
   }
 </style>

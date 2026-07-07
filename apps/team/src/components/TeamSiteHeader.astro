@@ -7,7 +7,6 @@ import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
-import TeamAlertsPanel from "./TeamAlertsPanel.astro";
 
 /** Boulevard-style top bar sections mapped to team routes */
 export type TeamActiveNav =
@@ -36,9 +35,6 @@ const marketingOrigin = `https://${BUSINESS.domain}`;
     HorizRev horizontal wordmark is the single logo for every theme. */
 const logoSrc = withBase("images/logo-horiz-rev-dark.png");
 const profileMenuId = "team-profile-menu";
-const alertsMenuId = "team-alerts-menu";
-const alertsEndpoint = teamUrl("/api/alerts");
-const alertsBase = teamUrl("");
 const alertsPanelId = "team-alerts-panel";
 
 const navTabs: {
