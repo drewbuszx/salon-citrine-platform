@@ -56,7 +56,7 @@ const ALL_NAV_TABS: {
   { id: "stock", label: "Stock", href: teamUrl("/inventory") },
   { id: "clients", label: "Clients", href: teamUrl("/clients") },
   { id: "docs", label: "Docs", href: teamUrl("/docs") },
-  { id: "events", label: "Events", href: teamUrl("/events") },
+  { id: "events", label: "Calendar", href: teamUrl("/events") },
   { id: "reports", label: "Reports", href: teamUrl("/reports") },
   { id: "manage", label: "Manage", href: teamUrl("/manage") },
 ];
@@ -223,11 +223,29 @@ const initials = staff ? staffInitials(staff.name) : "";
                 <li role="none">
                   <button
                     type="button"
-                    class="team-bar__profile-item team-bar__profile-item--button"
+                    class="team-bar__profile-item team-bar__profile-item--button team-bar__theme-toggle"
                     role="menuitem"
                     data-theme-toggle
+                    aria-pressed="false"
+                    aria-label="Switch to dark mode"
                   >
-                    Change appearance
+                    <svg class="team-bar__theme-icon" data-theme-icon="moon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                      <path
+                        d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"></path>
+                    </svg>
+                    <svg class="team-bar__theme-icon" data-theme-icon="sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" hidden>
+                      <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.75"></circle>
+                      <path
+                        d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"></path>
+                    </svg>
+                    <span data-theme-toggle-label>Dark mode</span>
                   </button>
                 </li>
                 <li class="team-bar__profile-divider" role="separator" aria-hidden="true"></li>
@@ -349,8 +367,30 @@ const initials = staff ? staffInitials(staff.name) : "";
 
             <div class="team-bar__drawer-section">
               <h2 class="team-bar__drawer-label">Appearance</h2>
-              <button type="button" class="team-bar__drawer-link team-bar__drawer-link--button" data-theme-toggle>
-                Change appearance
+              <button
+                type="button"
+                class="team-bar__drawer-link team-bar__drawer-link--button team-bar__theme-toggle"
+                data-theme-toggle
+                aria-pressed="false"
+                aria-label="Switch to dark mode"
+              >
+                <svg class="team-bar__theme-icon" data-theme-icon="moon" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+                  <path
+                    d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"></path>
+                </svg>
+                <svg class="team-bar__theme-icon" data-theme-icon="sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" hidden>
+                  <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.75"></circle>
+                  <path
+                    d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"></path>
+                </svg>
+                <span data-theme-toggle-label>Dark mode</span>
               </button>
             </div>
 
@@ -749,6 +789,23 @@ const initials = staff ? staffInitials(staff.name) : "";
     height: 1px;
     margin: 0.25rem 0;
     background: var(--color-border);
+  }
+
+  .team-bar__theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.55rem;
+  }
+
+  .team-bar__theme-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+  }
+
+  .team-bar__theme-icon[hidden] {
+    display: none;
   }
 
   .team-bar__profile-item--logout {
