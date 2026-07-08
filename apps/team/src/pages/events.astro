@@ -320,9 +320,13 @@ const typeFilters: { type: string; label: string }[] = [
     box-shadow: var(--shadow-sm);
   }
 
-  /* Tighter sidebar↔main gap on desktop (page-scoped only). */
-  .events-page :global(.events-list-layout .team-list-layout__body) {
-    grid-template-columns: minmax(240px, 260px) minmax(0, 1fr);
+  /* Tighter sidebar↔main gap on desktop (page-scoped only).
+     Guarded to desktop so the global mobile single-column collapse
+     (max-width: 900px → 1fr) is not overridden on narrow viewports. */
+  @media (min-width: 901px) {
+    .events-page :global(.events-list-layout .team-list-layout__body) {
+      grid-template-columns: minmax(240px, 260px) minmax(0, 1fr);
+    }
   }
 
   .events-page :global(.events-list-layout .team-list-layout__main) {
