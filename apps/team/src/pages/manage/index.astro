@@ -3,6 +3,7 @@ import TeamLayout from "../../layouts/TeamLayout.astro";
 import TeamManageLayout from "../../components/TeamManageLayout.astro";
 import { isSalonManager } from "../../lib/auth";
 import { MANAGE_HUB_ITEMS, type ManageHubItem } from "../../lib/manage-nav";
+import { isManageSectionEnabled } from "../../lib/modules";
 import { PAGE_CONTEXT } from "../../lib/page-context";
 import { teamUrl } from "../../lib/supabase-server";
 
@@ -17,6 +18,8 @@ const managerView = isSalonManager(staff);
 const MANAGER_ONLY = new Set(["services", "booking-policy", "staff", "business"]);
 
 const hubItems: ManageHubItem[] = MANAGE_HUB_ITEMS.filter((item) => {
+  // Hide hub cards whose module is set aside (see lib/modules.ts).
+  if (!isManageSectionEnabled(item.id)) return false;
   if (item.disabled) return true;
   if (MANAGER_ONLY.has(item.id) && !managerView) return false;
   return true;

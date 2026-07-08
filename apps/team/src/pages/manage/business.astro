@@ -17,8 +17,12 @@ import {
   type LocationRow,
 } from "../../lib/business-settings";
 import { teamUrl } from "../../lib/supabase-server";
+import { isManageSectionEnabled } from "../../lib/modules";
 
 const { staff, supabase } = Astro.locals;
+
+/** Booking policy is a Book-module surface — hide its editor while set aside. */
+const showBookingPolicy = isManageSectionEnabled("booking-policy");
 
 if (!staff) {
   return Astro.redirect(teamUrl("/login?error=unlinked"));
@@ -213,13 +217,17 @@ const DAY_LABELS = [
           </div>
         </section>
 
-        <section class="page-section" id="business-policy-summary">
-          <h2>Booking policy</h2>
-          <p class="page-section__lead" data-policy-summary>{bookingPolicySummary}</p>
-          <a class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>
-            Edit booking policy
-          </a>
-        </section>
+        {
+          showBookingPolicy ? (
+            <section class="page-section" id="business-policy-summary">
+              <h2>Booking policy</h2>
+              <p class="page-section__lead" data-policy-summary>{bookingPolicySummary}</p>
+              <a class="team-list-layout__btn-secondary" href={teamUrl("/booking-policy")}>
+                Edit booking policy
+              </a>
+            </section>
+          ) : null
+        }
 
         <div class="card-row card-row--1">
           <button class="btn-primary" type="submit">Save business details</button>

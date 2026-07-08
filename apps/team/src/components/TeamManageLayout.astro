@@ -1,6 +1,7 @@
 ---
 import PageContextHeader from "./PageContextHeader.astro";
 import { MANAGE_NAV, type ManageSection } from "../lib/manage-nav";
+import { isManageSectionEnabled } from "../lib/modules";
 
 interface Props {
   title: string;
@@ -33,6 +34,8 @@ const resolvedContextTitle = contextTitle ?? title;
 const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
 
 const navItems = MANAGE_NAV.filter((item) => {
+  // Hide sections whose module is set aside (see lib/modules.ts).
+  if (!isManageSectionEnabled(item.id)) return false;
   if (item.id === "services" || item.id === "booking-policy" || item.id === "staff" || item.id === "business") {
     return managerView;
   }
