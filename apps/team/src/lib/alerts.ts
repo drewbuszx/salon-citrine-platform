@@ -1,5 +1,6 @@
 import { pulseHint } from "./team-pulse";
 import type { TeamPulseMetrics } from "./team-pulse";
+import { isModuleEnabled } from "./modules";
 
 /** Stable v1 alert identifiers — used for dismiss state and DOM keys. */
 export const TEAM_ALERT_IDS = {
@@ -153,9 +154,15 @@ export function buildTasksOpenAlert(
 
 /** Build the v1 alert list from aggregated metrics (count > 0 only). */
 export function buildTeamAlerts(metrics: TeamAlertMetrics): TeamAlert[] {
+  // Waitlist belongs to Book and low stock to Stock; skip those alerts while
+  // those modules are set aside so alerts never deep-link into hidden routes.
   const alerts = [
-    buildWaitlistAlert(metrics.waitlistActive, metrics.generatedAt),
-    buildLowStockAlert(metrics.lowStock, metrics.generatedAt),
+    isModuleEnabled("book")
+      ? buildWaitlistAlert(metrics.waitlistActive, metrics.generatedAt)
+      : null,
+    isModuleEnabled("stock")
+      ? buildLowStockAlert(metrics.lowStock, metrics.generatedAt)
+      : null,
     buildTasksOpenAlert(metrics),
   ].filter((alert): alert is TeamAlert => alert != null);
 

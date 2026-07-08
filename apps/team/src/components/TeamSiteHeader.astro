@@ -7,6 +7,7 @@ import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { withBase } from "../lib/paths";
 import { teamUrl } from "../lib/supabase-server";
+import { isModuleEnabled } from "../lib/modules";
 
 /** Boulevard-style top bar sections mapped to team routes */
 export type TeamActiveNav =
@@ -37,7 +38,13 @@ const logoSrc = withBase("images/logo-horiz-rev-dark.png");
 const profileMenuId = "team-profile-menu";
 const alertsPanelId = "team-alerts-panel";
 
-const navTabs: {
+/**
+ * Full nav declaration. Visible tabs are filtered by the employee-management
+ * scale-back config (see lib/modules.ts) so removed modules (Book, Stock,
+ * Clients, Reports) disappear from BOTH the desktop bar and the mobile drawer,
+ * while their routes stay intact. Re-enable a tab there, not here.
+ */
+const ALL_NAV_TABS: {
   id: TeamActiveNav;
   label: string;
   href: string;
@@ -53,6 +60,13 @@ const navTabs: {
   { id: "reports", label: "Reports", href: teamUrl("/reports") },
   { id: "manage", label: "Manage", href: teamUrl("/manage") },
 ];
+
+const navTabs = ALL_NAV_TABS.filter(
+  (item) => item.id === "account" || isModuleEnabled(item.id),
+);
+
+/** "My book" is a booking surface — hide it while Book is set aside. */
+const showMyBook = isModuleEnabled("book");
 
 const photoSrc = staff ? staffPhotoSrc(staff.photo_url, staff.slug) : null;
 const photoCrop = staff ? normalizePhotoCrop(parsePhotoCrop(staff.photo_crop)) : null;
@@ -196,11 +210,15 @@ const initials = staff ? staffInitials(staff.name) : "";
                     Account settings
                   </a>
                 </li>
-                <li role="none">
-                  <a class="team-bar__profile-item" href={teamUrl("/my-book")} role="menuitem">
-                    My book
-                  </a>
-                </li>
+                {
+                  showMyBook ? (
+                    <li role="none">
+                      <a class="team-bar__profile-item" href={teamUrl("/my-book")} role="menuitem">
+                        My book
+                      </a>
+                    </li>
+                  ) : null
+                }
                 <li class="team-bar__profile-divider" role="separator" aria-hidden="true"></li>
                 <li role="none">
                   <button
@@ -319,9 +337,13 @@ const initials = staff ? staffInitials(staff.name) : "";
                 <li>
                   <a class="team-bar__drawer-link" href={teamUrl("/account")}>Account settings</a>
                 </li>
-                <li>
-                  <a class="team-bar__drawer-link" href={teamUrl("/my-book")}>My book</a>
-                </li>
+                {
+                  showMyBook ? (
+                    <li>
+                      <a class="team-bar__drawer-link" href={teamUrl("/my-book")}>My book</a>
+                    </li>
+                  ) : null
+                }
               </ul>
             </div>
 

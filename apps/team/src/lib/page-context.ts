@@ -5,8 +5,8 @@
 export const PAGE_CONTEXT = {
   dashboard: {
     nav: "Dashboard",
-    title: "Salon Overview",
-    subtitle: "Today's appointments, team activity, and salon alerts.",
+    title: "Team Dashboard",
+    subtitle: "Your tasks, salon routines, and upcoming team events.",
   },
   book: {
     nav: "Book",
@@ -51,7 +51,7 @@ export const PAGE_CONTEXT = {
   manage: {
     nav: "Manage",
     title: "Business Settings",
-    subtitle: "Manage services, products, employees, policies, tags, and salon details.",
+    subtitle: "Manage employees and salon business details.",
   },
 } as const;
 
