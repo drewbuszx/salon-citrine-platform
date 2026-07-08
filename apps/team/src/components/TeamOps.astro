@@ -1,0 +1,373 @@
+---
+import { teamUrl } from "../lib/supabase-server";
+import type { TaskSummaryCounts } from "../lib/api-tasks";
+import type { RoutinePayload } from "../lib/api-routines";
+
+interface Props {
+  counts: TaskSummaryCounts;
+  routines: RoutinePayload[];
+}
+
+const { counts, routines } = Astro.props;
+
+const metrics: {
+  key: string;
+  value: number;
+  label: string;
+  href: string;
+  hot?: boolean;
+}[] = [
+  {
+    key: "assigned",
+    value: counts.assignedToMe,
+    label: "Assigned to me",
+    href: teamUrl("/tasks?view=my"),
+  },
+  {
+    key: "open",
+    value: counts.openToEveryone,
+    label: "Open to claim",
+    href: teamUrl("/tasks?view=available"),
+  },
+  {
+    key: "attention",
+    value: counts.needsAttention,
+    label: "Needs attention",
+    href: teamUrl("/tasks?view=attention"),
+    hot: counts.needsAttention > 0,
+  },
+  {
+    key: "completed",
+    value: counts.completedThisWeek,
+    label: "Done this week",
+    href: teamUrl("/tasks?view=completed"),
+  },
+];
+
+const routineHref: Record<string, string> = {
+  opening: teamUrl("/tasks?view=routine-opening"),
+  closing: teamUrl("/tasks?view=routine-closing"),
+};
+
+const routineIcon: Record<string, string> = {
+  opening: "☀",
+  closing: "☾",
+};
+
+function pct(done: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.round((done / total) * 100);
+}
+---
+
+<section class="team-ops" aria-label="Team operations — tasks and routines">
+  <header class="team-ops__head">
+    <div class="team-ops__title-row">
+      <span class="team-ops__live" aria-hidden="true"></span>
+      <h2 class="team-ops__title">Team Ops</h2>
+    </div>
+    <p class="team-ops__subtitle">Tasks &amp; salon routines</p>
+  </header>
+
+  <div class="team-ops__grid">
+    {
+      metrics.map((metric) => (
+        <a
+          class:list={["team-ops__metric", metric.hot && "team-ops__metric--hot"]}
+          href={metric.href}
+        >
+          <span class="team-ops__value">{metric.value}</span>
+          <span class="team-ops__label">{metric.label}</span>
+        </a>
+      ))
+    }
+  </div>
+
+  {
+    routines.length > 0 ? (
+      <div class="team-ops__routines">
+        {routines.map((routine) => {
+          const percent = pct(routine.completedCount, routine.totalCount);
+          const complete =
+            routine.totalCount > 0 && routine.completedCount >= routine.totalCount;
+          return (
+            <a class="team-ops__routine" href={routineHref[routine.slug] ?? teamUrl("/tasks")}>
+              <span class="team-ops__routine-icon" aria-hidden="true">
+                {routineIcon[routine.slug] ?? "✓"}
+              </span>
+              <span class="team-ops__routine-body">
+                <span class="team-ops__routine-title">{routine.title}</span>
+                <span class="team-ops__routine-bar" aria-hidden="true">
+                  <span
+                    class:list={[
+                      "team-ops__routine-fill",
+                      complete && "team-ops__routine-fill--done",
+                    ]}
+                    style={`width: ${percent}%`}
+                  />
+                </span>
+              </span>
+              <span
+                class:list={["team-ops__routine-count", complete && "is-complete"]}
+              >
+                {routine.completedCount}/{routine.totalCount}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    ) : null
+  }
+</section>
+
+<style>
+  .team-ops {
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-lg);
+    background: var(--color-stone-50);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .team-ops__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+    padding: 0 0.15rem;
+  }
+
+  .team-ops__title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .team-ops__live {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--color-citrine);
+    box-shadow: 0 0 0 0 rgba(231, 172, 70, 0.45);
+    animation: team-ops-live 2.4s ease-in-out infinite;
+  }
+
+  @keyframes team-ops-live {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(231, 172, 70, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgba(231, 172, 70, 0);
+    }
+  }
+
+  .team-ops__title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-stone-700);
+  }
+
+  .team-ops__subtitle {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .team-ops__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .team-ops__metric {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    padding: 0.75rem 0.4rem 0.65rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    text-align: center;
+    color: inherit;
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast),
+      background var(--transition-fast);
+  }
+
+  .team-ops__metric:hover,
+  .team-ops__metric:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .team-ops__metric--hot {
+    border-color: rgba(196, 90, 78, 0.4);
+    background: rgba(196, 90, 78, 0.06);
+  }
+
+  .team-ops__metric--hot:hover,
+  .team-ops__metric--hot:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+  }
+
+  .team-ops__value {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-stone-800);
+  }
+
+  .team-ops__label {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-stone-700);
+  }
+
+  .team-ops__routines {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
+  .team-ops__routine {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: inherit;
+    transition:
+      border-color var(--transition-fast),
+      background var(--transition-fast);
+  }
+
+  .team-ops__routine:hover,
+  .team-ops__routine:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    outline: none;
+  }
+
+  .team-ops__routine-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    background: rgba(231, 172, 70, 0.14);
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  .team-ops__routine-body {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .team-ops__routine-title {
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-stone-700);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .team-ops__routine-bar {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: var(--color-stone-100);
+    overflow: hidden;
+  }
+
+  .team-ops__routine-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-citrine);
+    transition: width 0.2s ease;
+  }
+
+  .team-ops__routine-fill--done {
+    background: var(--color-sage);
+  }
+
+  .team-ops__routine-count {
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-stone-500);
+  }
+
+  .team-ops__routine-count.is-complete {
+    color: #4f6b4a;
+  }
+
+  :global([data-theme="dark"]) .team-ops {
+    background: var(--color-stone-100);
+    border-color: var(--color-stone-200);
+  }
+
+  :global([data-theme="dark"]) .team-ops__metric,
+  :global([data-theme="dark"]) .team-ops__routine {
+    background: var(--color-stone-50);
+    border-color: var(--color-stone-200);
+  }
+
+  :global([data-theme="dark"]) .team-ops__value {
+    color: var(--color-text);
+  }
+
+  :global([data-theme="dark"]) .team-ops__title,
+  :global([data-theme="dark"]) .team-ops__label,
+  :global([data-theme="dark"]) .team-ops__routine-title {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .team-ops__subtitle,
+  :global([data-theme="dark"]) .team-ops__routine-count {
+    color: var(--color-stone-500);
+  }
+
+  @media (min-width: 1100px) {
+    .team-ops {
+      margin-bottom: 0;
+      padding: 1.25rem 1.35rem 1.4rem;
+    }
+
+    .team-ops__grid {
+      gap: 0.75rem;
+    }
+
+    .team-ops__metric {
+      padding: 1rem 0.65rem 0.9rem;
+    }
+  }
+</style>
