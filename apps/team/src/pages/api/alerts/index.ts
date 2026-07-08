@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { buildTeamAlerts } from "../../../lib/alerts";
+import { buildTeamAlerts } from "../../../lib/alerts-build";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
 import {
   countAttentionTasks,
