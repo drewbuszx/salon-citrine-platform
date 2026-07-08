@@ -4,6 +4,9 @@ import { BUSINESS } from "@saloncitrine/shared";
 import TeamSiteHeader, {
   type TeamActiveNav,
 } from "../components/TeamSiteHeader.astro";
+import { withBase } from "../lib/paths";
+
+const faviconUrl = withBase("favicon.png");
 
 interface Props {
   title: string;
@@ -34,6 +37,8 @@ const isAuthenticated = Boolean(user && staff);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" href={faviconUrl} />
+    <link rel="apple-touch-icon" href={faviconUrl} />
     <title>{title} · Team · {BUSINESS.name}</title>
     <script is:inline>
       (function () {
