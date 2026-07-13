@@ -156,7 +156,7 @@ async function saveSchedules(staffId: string) {
   }
 }
 
-function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>) {
+function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>, privateDetails?: Record<string, unknown> | null) {
   if (!form || !dialog) return;
   editingId = mode === "edit" && typeof staff?.id === "string" ? staff.id : null;
   form.reset();
@@ -175,6 +175,13 @@ function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>) {
     (form.elements.namedItem("isBookable") as HTMLInputElement).checked = staff.isBookable !== false;
     (form.elements.namedItem("acceptingNewClients") as HTMLInputElement).checked =
       staff.acceptingNewClients !== false;
+    (form.elements.namedItem("startDate") as HTMLInputElement).value = String(staff.startDate ?? "");
+    (form.elements.namedItem("emergencyContactName") as HTMLInputElement).value = String(
+      privateDetails?.emergency_contact_name ?? "",
+    );
+    (form.elements.namedItem("emergencyContactPhone") as HTMLInputElement).value = String(
+      privateDetails?.emergency_contact_phone ?? "",
+    );
     if (idInput) idInput.value = String(staff.id ?? "");
     if (linkStatus) {
       linkStatus.hidden = false;
@@ -253,12 +260,16 @@ function bindRowClicks() {
       const id = button.dataset.employeeId;
       if (!id) return;
       const response = await fetch(`${apiBase}/${id}`);
-      const body = (await response.json()) as { ok?: boolean; staff?: Record<string, unknown> };
+      const body = (await response.json()) as {
+        ok?: boolean;
+        staff?: Record<string, unknown>;
+        privateDetails?: Record<string, unknown> | null;
+      };
       if (!response.ok || !body.ok || !body.staff) {
         showError("Could not load employee");
         return;
       }
-      openDialog("edit", body.staff);
+      openDialog("edit", body.staff, body.privateDetails ?? null);
     });
   });
 }
@@ -292,6 +303,13 @@ form?.addEventListener("submit", async (event) => {
     bio: String((form.elements.namedItem("bio") as HTMLTextAreaElement).value).trim(),
     isBookable: (form.elements.namedItem("isBookable") as HTMLInputElement).checked,
     acceptingNewClients: (form.elements.namedItem("acceptingNewClients") as HTMLInputElement).checked,
+    startDate: String((form.elements.namedItem("startDate") as HTMLInputElement).value).trim(),
+    emergencyContactName: String(
+      (form.elements.namedItem("emergencyContactName") as HTMLInputElement).value,
+    ).trim(),
+    emergencyContactPhone: String(
+      (form.elements.namedItem("emergencyContactPhone") as HTMLInputElement).value,
+    ).trim(),
   };
 
   try {

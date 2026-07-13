@@ -13,6 +13,8 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const bio = String(form.get("bio") ?? "").trim();
   const phone = String(form.get("phone") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const emergencyName = String(form.get("emergency_contact_name") ?? "").trim();
+  const emergencyPhone = String(form.get("emergency_contact_phone") ?? "").trim();
 
   if (!name || !email) {
     return redirect(teamUrl("/account?error=save"));
@@ -26,6 +28,22 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   if (staffError) {
     console.error("Staff profile update failed", staffError);
+    return redirect(teamUrl("/account?error=save"));
+  }
+
+  const { error: emergencyError } = await supabase
+    .from("staff_private_details")
+    .upsert(
+      {
+        staff_id: staff.id,
+        emergency_contact_name: emergencyName || null,
+        emergency_contact_phone: emergencyPhone || null,
+      },
+      { onConflict: "staff_id" },
+    );
+
+  if (emergencyError) {
+    console.error("Emergency contact update failed", emergencyError);
     return redirect(teamUrl("/account?error=save"));
   }
 

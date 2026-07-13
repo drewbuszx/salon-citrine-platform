@@ -170,6 +170,11 @@ const [
   inviteHardeningMigration,
   identityMigration,
   availabilitySource,
+  profileMigration,
+  staffManageSource,
+  accountApi,
+  staffIdApi,
+  accountPage,
 ] = await Promise.all([
   read("packages/db/migrations/0030_security_reliability_hardening.sql"),
   read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
@@ -187,6 +192,11 @@ const [
   read("packages/db/migrations/0033_wave1_invite_task_hardening.sql"),
   read("packages/db/migrations/0034_identity_public_privacy_closure.sql"),
   read("apps/web/src/lib/availability.ts"),
+  read("packages/db/migrations/0035_wave5_employee_profiles.sql"),
+  read("apps/team/src/lib/staff-manage.ts"),
+  read("apps/team/src/pages/api/account.ts"),
+  read("apps/team/src/pages/api/staff/[id].ts"),
+  read("apps/team/src/pages/account.astro"),
 ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
@@ -249,5 +259,20 @@ assert.doesNotMatch(availabilitySource, /\.from\("blocked_times"\)/);
 // private reason is gated to managers/creator.
 assert.match(eventsApi, /visibility\.eq\.team,created_by_staff_id\.eq\./);
 assert.match(eventsApi, /canReadPrivate/);
+
+// Wave 5 / task 23: profile fields plus isolated emergency contacts.
+assert.match(profileMigration, /create table if not exists public\.staff_private_details/);
+assert.match(profileMigration, /"Managers manage private details"/);
+assert.match(profileMigration, /staff_id = public\.current_staff_id\(\)/);
+assert.match(profileMigration, /revoke all on public\.staff_private_details from anon/);
+assert.match(profileMigration, /start_date/);
+assert.doesNotMatch(profileMigration, /add column if not exists bio/);
+assert.match(staffManageSource, /start_date/);
+assert.match(staffManageSource, /Start date must be formatted YYYY-MM-DD/);
+assert.match(accountApi, /\.from\("staff_private_details"\)[\s\S]*upsert/);
+assert.match(staffIdApi, /staff_private_details/);
+assert.match(staffIdApi, /hasEmergency/);
+assert.match(accountPage, /emergency_contact_name/);
+assert.match(accountPage, /start_date/);
 
 console.log("Security hardening regression checks passed.");

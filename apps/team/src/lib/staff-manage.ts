@@ -1,7 +1,7 @@
 import type { StaffRole } from "../env.d.ts";
 
 export const STAFF_MANAGE_SELECT =
-  "id, slug, name, role, bio, phone, email, photo_url, photo_crop, is_bookable, accepting_new_clients, supabase_user_id, access_status, auth_invited_at, deactivated_at, created_at, updated_at";
+  "id, slug, name, role, bio, phone, email, start_date, photo_url, photo_crop, is_bookable, accepting_new_clients, supabase_user_id, access_status, auth_invited_at, deactivated_at, created_at, updated_at";
 
 export type StaffManageRow = {
   id: string;
@@ -11,6 +11,7 @@ export type StaffManageRow = {
   bio: string | null;
   phone: string | null;
   email: string | null;
+  start_date: string | null;
   photo_url: string | null;
   photo_crop: { x: number; y: number; scale: number } | null;
   is_bookable: boolean;
@@ -31,6 +32,7 @@ export type StaffManageItem = {
   bio: string;
   phone: string;
   email: string;
+  startDate: string;
   photoUrl: string | null;
   photoCrop: StaffManageRow["photo_crop"];
   isBookable: boolean;
@@ -73,6 +75,7 @@ export function mapStaffRow(row: StaffManageRow): StaffManageItem {
     bio: row.bio ?? "",
     phone: row.phone ?? "",
     email: row.email ?? "",
+    startDate: row.start_date ?? "",
     photoUrl: row.photo_url,
     photoCrop: row.photo_crop,
     isBookable: row.is_bookable,
@@ -148,6 +151,13 @@ export function mapStaffUpdateBody(body: Record<string, unknown>) {
       return { error: "Invalid email" as const };
     }
     updates.email = email || null;
+  }
+  if (typeof body.startDate === "string") {
+    const raw = body.startDate.trim();
+    if (raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return { error: "Start date must be formatted YYYY-MM-DD" as const };
+    }
+    updates.start_date = raw || null;
   }
   if (typeof body.isBookable === "boolean") updates.is_bookable = body.isBookable;
   if (typeof body.acceptingNewClients === "boolean") {

@@ -166,6 +166,23 @@ const schedulesApi = isModuleEnabled("book")
                   <textarea class="form-input" name="bio" rows="4"></textarea>
                 </label>
 
+                <label class="form-label">
+                  Start date
+                  <input class="form-input" name="startDate" type="date" />
+                </label>
+
+                <fieldset class="manage-employees__fieldset">
+                  <legend>Emergency contact</legend>
+                  <label class="form-label">
+                    Contact name
+                    <input class="form-input" name="emergencyContactName" type="text" autocomplete="off" />
+                  </label>
+                  <label class="form-label">
+                    Contact phone
+                    <input class="form-input" name="emergencyContactPhone" type="tel" autocomplete="off" />
+                  </label>
+                </fieldset>
+
                 <label class="form-label form-label--checkbox">
                   <input type="checkbox" name="isBookable" checked />
                   Active for online booking
@@ -327,6 +344,22 @@ const schedulesApi = isModuleEnabled("book")
     padding: 1.25rem;
     overflow: auto;
     max-height: calc(90vh - 4rem);
+  }
+
+  .manage-employees__fieldset {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+  }
+
+  .manage-employees__fieldset legend {
+    padding: 0 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-stone-600);
   }
 
   .form-label--checkbox {

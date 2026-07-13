@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(5);
+select plan(8);
 
 insert into auth.users (instance_id,id,aud,role,email,created_at,updated_at)
 values
@@ -52,6 +52,20 @@ select is(
   (select count(*)::int from public.staff_private_details
     where staff_id='d1000000-0000-4000-8000-000000000002'),
   1, 'a manager can read any employee private details'
+);
+
+-- Managers may set the new team-visible start_date via the superseded RPC.
+select lives_ok(
+  $select public.manager_update_staff('d1000000-0000-4000-8000-000000000002','{"start_date":"2020-01-15"}'::jsonb,'test')$,
+  'manager can set start_date'
+);
+select is(
+  (select start_date::text from public.staff where id='d1000000-0000-4000-8000-000000000002'),
+  '2020-01-15', 'start_date is persisted by manager update'
+);
+select throws_ok(
+  $select public.manager_update_staff('d1000000-0000-4000-8000-000000000002','{"ssn":"x"}'::jsonb,'test')$,
+  '22023', null, 'manager update rejects unknown fields'
 );
 
 -- Anonymous callers have no access at all.
