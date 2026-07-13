@@ -92,13 +92,22 @@ Known deferred/unproven for Wave 1 (deployment blockers):
   open disposable-replay data question (does not affect production or app security);
   must be confirmed during replay before deploy.
 
-### Wave 2 — Identity and public-data safety
+### Wave 2 — Identity and public-data safety (checkpoint committed)
 
-6. Unique Auth/staff linking — **not started** — Agents 2, 3, 6.
-7. Deactivation proof across boundaries — **not started** — Agents 2, 3, 5.
-8. Active-staff sensitive RLS — **not started** — Agent 2.
-9. Secure legacy booking carts — **not started** — Agents 2, 4.
-10. Public blocked-interval projection — **not started** — Agents 2, 4.
+6. Unique Auth/staff linking — **implemented; unproven pending disposable DB** — Agents 2, 3, 6.
+7. Deactivation proof across boundaries — **implemented (RLS + pgTAP); unproven pending disposable DB** — Agents 2, 3, 5.
+8. Active-staff sensitive RLS — **implemented; unproven pending disposable DB** — Agent 2.
+9. Secure legacy booking carts — **implemented; unproven pending disposable DB** — Agents 2, 4.
+10. Public blocked-interval projection — **implemented; unproven pending disposable DB** — Agents 2, 4.
+
+Delivered in `0034_identity_public_privacy_closure.sql` + `packages/db/tests/0034_identity_public_privacy.sql`:
+partial unique index with a pre-check on `staff.supabase_user_id`; `is_linked_staff()`/
+`is_salon_manager()` replace authenticated-only policies on staff, services,
+staff_services, email/sms logs, waitlist and events; `booking_carts`/
+`booking_cart_items` lose all anon/authenticated grants and the `FOR ALL USING(true)`
+policies; anonymous availability reads only `public_blocked_intervals` (no `reason`).
+pgTAP asserts deactivated-user denial, managers-only event visibility, cart lockout,
+and reason hiding. Unproven until the disposable replay executes the suite.
 
 ### Wave 3 — Legacy boundary and privacy
 

@@ -84,3 +84,27 @@ present, needs Docker/credentials to prove) · **deferred**.
   remote DB lacks `public_staff_profiles` (expected; apply migrations first).
 - `npm run write:migration-evidence` → correctly refuses without replay flag.
 - `npm run db:test:disposable` → blocked: Docker Desktop unavailable.
+
+## Wave 2 — Identity and public-data safety (tasks 6–10) — checkpoint committed
+
+All five land in `packages/db/migrations/0034_identity_public_privacy_closure.sql`
+with behavioral coverage in `packages/db/tests/0034_identity_public_privacy.sql`.
+
+- **6. Unique non-null `staff.supabase_user_id`** — pre-check raises if duplicates
+  exist, then a partial unique index enforces one Auth identity per staff row. The
+  Wave 1 link/confirm paths already reject cross-employee links.
+- **7. Deactivation across boundaries** — `current_staff_id()`/`is_linked_staff()`
+  require `access_status='active'`, so PostgREST/RPC access closes on deactivation;
+  Auth ban is applied in `api/staff/[id]/access.ts`. pgTAP proves a disabled user is
+  not linked and reads no events.
+- **8. Active-staff sensitive RLS** — authenticated-only policies on staff, services,
+  staff_services, email/sms logs, waitlist and events are replaced with
+  `is_linked_staff()` / `is_salon_manager()`.
+- **9. Booking carts** — `FOR ALL USING(true)` policies dropped and all
+  anon/authenticated grants revoked on `booking_carts` and `booking_cart_items`;
+  server service-role code remains the only accessor. pgTAP asserts anon lockout.
+- **10. Blocked-interval projection** — anon loses `select` on `blocked_times`;
+  `public_blocked_intervals` exposes only id/staff/start/end. `apps/web/src/lib/
+  availability.ts` reads the projection. pgTAP asserts no `reason` column and that
+  anon cannot read `blocked_times.reason`.
+- Unproven: the pgTAP suite requires the disposable replay (Docker).

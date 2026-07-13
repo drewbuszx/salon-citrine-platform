@@ -238,7 +238,7 @@ async function fetchAvailabilityContext(
         .select("duration_minutes")
         .in("id", ids),
       supabase
-        .from("blocked_times")
+        .from("public_blocked_intervals")
         .select("starts_at, ends_at")
         .eq("staff_id", staffId)
         .lt("starts_at", rangeEnd.toISOString())
