@@ -25,11 +25,17 @@ export type EventRow = {
   created_at: string;
   updated_at: string;
   visibility: "team" | "managers";
+  approval_status: string | null;
+  decided_at: string | null;
   created_by:
     | { id: string; name: string }
     | { id: string; name: string }[]
     | null;
   staff:
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null;
+  decided_by:
     | { id: string; name: string }
     | { id: string; name: string }[]
     | null;
@@ -49,8 +55,11 @@ export const EVENT_SELECT = `
   created_at,
   updated_at,
   visibility,
+  approval_status,
+  decided_at,
   created_by:staff!team_events_created_by_staff_id_fkey ( id, name ),
-  staff:staff!team_events_staff_id_fkey ( id, name )
+  staff:staff!team_events_staff_id_fkey ( id, name ),
+  decided_by:staff!team_events_decided_by_staff_id_fkey ( id, name )
 `;
 
 function relOne<T extends { id: string; name: string }>(
@@ -179,6 +188,7 @@ export function mapEvent(
 ) {
   const createdBy = relOne(row.created_by);
   const subject = relOne(row.staff);
+  const decidedBy = relOne(row.decided_by);
   return {
     id: row.id,
     title: row.title,
@@ -196,6 +206,9 @@ export function mapEvent(
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isActive: row.is_active,
+    approvalStatus: row.approval_status,
+    decidedAt: row.decided_at,
+    decidedByName: decidedBy?.name ?? null,
     canEdit: canManageEvent(row, currentStaff),
     canDelete: canManageEvent(row, currentStaff),
   };

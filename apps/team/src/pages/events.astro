@@ -273,6 +273,15 @@ const typeFilters: { type: string; label: string }[] = [
         <p class="events-modal__privacy" data-time-off-privacy hidden>
           Time-off notes are visible only to you and managers.
         </p>
+
+        <section class="events-modal__timeoff" data-time-off-actions hidden aria-label="Time off status">
+          <p class="events-modal__timeoff-status" data-time-off-status role="status" aria-live="polite"></p>
+          <div class="events-modal__timeoff-buttons">
+            <button class="team-list-layout__btn-primary" type="button" data-time-off-decision="approved" hidden>Approve</button>
+            <button class="team-list-layout__btn-secondary" type="button" data-time-off-decision="declined" hidden>Decline</button>
+            <button class="team-list-layout__btn-secondary" type="button" data-time-off-decision="cancelled" hidden>Cancel request</button>
+          </div>
+        </section>
       </div>
 
       <footer class="events-modal__footer">
@@ -1136,6 +1145,29 @@ const typeFilters: { type: string; label: string }[] = [
     padding: var(--space-4) var(--space-5);
     border-top: 1px solid var(--color-stone-200);
     background: var(--color-stone-50);
+  }
+
+  .events-modal__timeoff {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .events-modal__timeoff-status {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-stone-700);
+  }
+
+  .events-modal__timeoff-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .events-modal__footer [data-event-delete] {

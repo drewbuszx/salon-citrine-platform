@@ -287,3 +287,15 @@ function escapeAttr(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** Privacy-safe approval labels for time_off events (status is not sensitive). */
+export const TIME_OFF_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  declined: "Declined",
+  cancelled: "Cancelled",
+};
+
+export function timeOffStatusLabel(status: string | null | undefined): string {
+  return TIME_OFF_STATUS_LABELS[String(status ?? "").trim()] ?? "";
+}

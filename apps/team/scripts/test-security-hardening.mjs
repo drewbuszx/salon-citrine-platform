@@ -175,6 +175,10 @@ const [
   accountApi,
   staffIdApi,
   accountPage,
+  timeOffMigration,
+  apiEventsSource,
+  eventIdApi,
+  eventsScript,
 ] = await Promise.all([
   read("packages/db/migrations/0030_security_reliability_hardening.sql"),
   read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
@@ -197,6 +201,10 @@ const [
   read("apps/team/src/pages/api/account.ts"),
   read("apps/team/src/pages/api/staff/[id].ts"),
   read("apps/team/src/pages/account.astro"),
+  read("packages/db/migrations/0036_time_off_workflow.sql"),
+  read("apps/team/src/lib/api-events.ts"),
+  read("apps/team/src/pages/api/events/[id].ts"),
+  read("apps/team/src/scripts/events.ts"),
 ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
@@ -274,5 +282,19 @@ assert.match(staffIdApi, /staff_private_details/);
 assert.match(staffIdApi, /hasEmergency/);
 assert.match(accountPage, /emergency_contact_name/);
 assert.match(accountPage, /start_date/);
+
+// Wave 5 / task 25: time-off approval lifecycle on approval_status.
+assert.match(timeOffMigration, /enforce_time_off_approval_transition/);
+assert.match(timeOffMigration, /not allowed to change approval status/);
+assert.match(timeOffMigration, /grant select \(decided_by_staff_id, decided_at\)/);
+assert.match(timeOffMigration, /add constraint team_events_approval_status_check[\s\S]*cancelled/);
+// Employee self-approval is blocked at the data layer, not just the UI.
+assert.match(timeOffMigration, /is_salon_manager\(\)[\s\S]*new.approval_status = 'cancelled'/);
+assert.match(apiEventsSource, /approval_status/);
+assert.match(apiEventsSource, /approvalStatus: row.approval_status/);
+assert.match(eventIdApi, /approval_status/);
+assert.match(eventIdApi, /!manager && status !== "cancelled"/);
+assert.match(eventsScript, /data-time-off-decision/);
+assert.match(eventsScript, /approval_status: decision/);
 
 console.log("Security hardening regression checks passed.");

@@ -89,6 +89,7 @@
     "0032_corrective_security_closure.sql",
     "0033_wave1_invite_task_hardening.sql",
     "0034_identity_public_privacy_closure.sql",
-    "0035_wave5_employee_profiles.sql"
+    "0035_wave5_employee_profiles.sql",
+    "0036_time_off_workflow.sql"
   ]
 }

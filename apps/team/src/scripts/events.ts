@@ -6,6 +6,7 @@ import { showToast, friendlyError } from "../lib/toast";
 import { escapeHtml } from "../lib/safe-html";
 import {
   eventIconMarkup,
+  timeOffStatusLabel,
   normalizeEventType,
   resolveEventStyle,
   type EventPresentationType,
@@ -39,6 +40,9 @@ type TeamEvent = {
   staffName: string | null;
   canEdit: boolean;
   canDelete: boolean;
+  approvalStatus: string | null;
+  decidedAt: string | null;
+  decidedByName: string | null;
 };
 
 /** A team event with its resolved, centrally-mapped presentation style. */
@@ -79,6 +83,8 @@ const closeButtons = document.querySelectorAll<HTMLButtonElement>("[data-event-m
 const submitBtn = document.querySelector<HTMLButtonElement>("[data-event-submit]");
 const deleteBtn = document.querySelector<HTMLButtonElement>("[data-event-delete]");
 const deleteHintEl = document.querySelector<HTMLElement>("[data-event-delete-hint]");
+const timeOffActions = document.querySelector<HTMLElement>("[data-time-off-actions]");
+const timeOffStatusEl = document.querySelector<HTMLElement>("[data-time-off-status]");
 const typeSelect = document.querySelector<HTMLSelectElement>("[data-event-type]");
 const staffPicker = document.querySelector<HTMLElement>("[data-staff-picker]");
 const staffSelect = form?.querySelector<HTMLSelectElement>('select[name="staff_id"]') ?? null;
@@ -684,6 +690,9 @@ function renderEventCard(event: StyledEvent, opts: { grouped?: boolean } = {}): 
         <span class="event-card__title-row">
           <span class="event-card__title">${escapeHtml(event.title)}</span>
           <span class="event-badge event-badge--${event.type}">${escapeHtml(style.shortLabel)}</span>
+          ${event.type === "time_off" && event.approvalStatus
+            ? `<span class="event-badge event-badge--status status-${event.approvalStatus}">${escapeHtml(timeOffStatusLabel(event.approvalStatus))}</span>`
+            : ""}
         </span>
         <span class="event-card__meta">${escapeHtml(metaParts.join(" · "))}</span>
         ${notes}
@@ -956,6 +965,35 @@ function openCreateModal() {
   (form?.querySelector<HTMLElement>("[data-event-type]") ?? startsInput)?.focus();
 }
 
+function setupTimeOffActions(event: StyledEvent) {
+  if (!timeOffActions) return;
+  const isTimeOff = normalizeEventType(event.eventType) === "time_off";
+  timeOffActions.hidden = !isTimeOff;
+  if (!isTimeOff) return;
+  const status = event.approvalStatus ?? "pending";
+  if (timeOffStatusEl) {
+    const label = timeOffStatusLabel(status) || "Pending";
+    timeOffStatusEl.textContent =
+      event.decidedByName && (status === "approved" || status === "declined")
+        ? `Status: ${label} · by ${event.decidedByName}`
+        : `Status: ${label}`;
+  }
+  const owner =
+    event.createdByStaffId === currentStaffId && event.staffId === currentStaffId;
+  timeOffActions
+    .querySelectorAll<HTMLButtonElement>("[data-time-off-decision]")
+    .forEach((btn) => {
+      const decision = btn.dataset.timeOffDecision ?? "";
+      let show = false;
+      if (isManager) {
+        show = decision === "cancelled" ? status !== "cancelled" : status !== decision;
+      } else if (owner) {
+        show = decision === "cancelled" && (status === "pending" || status === "approved");
+      }
+      btn.hidden = !show;
+    });
+}
+
 function openEditModal(event: StyledEvent) {
   if (!form) return;
   resetForm();
@@ -982,6 +1020,8 @@ function openEditModal(event: StyledEvent) {
   }
   if (staffSelect && event.staffId) staffSelect.value = event.staffId;
   updateStaffColorPreview();
+
+  setupTimeOffActions(event);
 
   if (!event.canEdit) {
     Array.from(form.elements).forEach((el) => {
@@ -1235,6 +1275,28 @@ deleteBtn?.addEventListener("click", async () => {
   } catch (error) {
     showError(friendlyError(error, "Failed to remove event"));
     resetDeleteConfirm();
+  }
+});
+
+timeOffActions?.addEventListener("click", async (event) => {
+  const btn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-time-off-decision]");
+  if (!btn || !editingEventId) return;
+  const decision = btn.dataset.timeOffDecision;
+  if (!decision) return;
+  clearError();
+  btn.disabled = true;
+  try {
+    await apiFetch(`/${editingEventId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ approval_status: decision }),
+    });
+    closeModal();
+    showToast("Time off updated.", "success");
+    await loadEvents();
+  } catch (error) {
+    showError(friendlyError(error, "Failed to update time off"));
+  } finally {
+    btn.disabled = false;
   }
 });
 

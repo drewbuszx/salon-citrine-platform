@@ -25,6 +25,7 @@ type PatchBody = {
   staff_id?: string | null;
   is_active?: boolean;
   visibility?: "team" | "managers";
+  approval_status?: string;
 };
 
 export const PATCH: APIRoute = async (context) => {
@@ -162,6 +163,20 @@ export const PATCH: APIRoute = async (context) => {
       return jsonError("Forbidden", 403);
     }
     updates.visibility = body.visibility;
+  }
+
+  if (body.approval_status !== undefined) {
+    const status = String(body.approval_status).trim();
+    if (!["pending", "approved", "declined", "cancelled"].includes(status)) {
+      return jsonError("Invalid time off status", 400);
+    }
+    if (existing.event_type !== "time_off") {
+      return jsonError("Only time off has an approval status", 400);
+    }
+    if (!manager && status !== "cancelled") {
+      return jsonError("Forbidden", 403);
+    }
+    updates.approval_status = status;
   }
 
   if (Object.keys(updates).length === 0) {
