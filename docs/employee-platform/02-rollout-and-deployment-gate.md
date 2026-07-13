@@ -65,3 +65,16 @@ ledger. `stage-canonical-migrations.mjs` refuses to run when `SUPABASE_DB_URL`,
 `SUPABASE_PROJECT_REF`, or a linked `supabase/.temp/project-ref` is present, and the
 generated `supabase/migrations` directory is gitignored, so canonical files cannot be
 pushed to a remote project.
+
+---
+
+## Addendum — task 23 profile migration (0035)
+
+`0035_wave5_employee_profiles.sql` is additive (new nullable columns on `staff`
+plus the new `staff_private_details` table and its RLS). Rollout: apply with the
+other pending migrations during the disposable replay / deployment gate; it has no
+data backfill and is safe to apply before UI ships. Rollback: `drop table
+public.staff_private_details;` and `alter table public.staff drop column bio, drop
+column start_date;` (no dependent objects). Behavioral coverage:
+`packages/db/tests/0035_employee_profiles.sql` runs inside `npm run
+db:test:disposable`.

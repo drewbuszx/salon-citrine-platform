@@ -17,12 +17,17 @@
         {
           "file": "0017_calendar_overlap_prevention.sql",
           "canonicalVersion": "20000101000018",
-          "requiredObjects": ["blocked_times_no_staff_overlap", "appointments_no_staff_overlap"]
+          "requiredObjects": [
+            "blocked_times_no_staff_overlap",
+            "appointments_no_staff_overlap"
+          ]
         },
         {
           "file": "0017_team_events_salon_tz.sql",
           "canonicalVersion": "20000101000019",
-          "requiredObjects": ["team_events"]
+          "requiredObjects": [
+            "team_events"
+          ]
         }
       ]
     },
@@ -33,12 +38,16 @@
         {
           "file": "0027_demo_clients_seed.sql",
           "canonicalVersion": "20000101000029",
-          "requiredObjects": ["clients"]
+          "requiredObjects": [
+            "clients"
+          ]
         },
         {
           "file": "0027_staff_birthday.sql",
           "canonicalVersion": "20000101000030",
-          "requiredObjects": ["staff.birthday"]
+          "requiredObjects": [
+            "staff.birthday"
+          ]
         }
       ]
     }
@@ -79,6 +88,7 @@
     "0031_staff_photo_profile_rpc.sql",
     "0032_corrective_security_closure.sql",
     "0033_wave1_invite_task_hardening.sql",
-    "0034_identity_public_privacy_closure.sql"
+    "0034_identity_public_privacy_closure.sql",
+    "0035_wave5_employee_profiles.sql"
   ]
 }
