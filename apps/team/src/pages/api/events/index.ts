@@ -4,6 +4,7 @@ import {
   defaultEventRange,
   endOfDayUtc,
   EVENT_SELECT,
+  listPendingTimeOff,
   loadPrivateEventReason,
   mapEvent,
   parseDateInput,
@@ -31,14 +32,27 @@ export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
   if (!auth.ok) return auth.response;
 
+  const { supabase, staff } = auth;
+  const pendingOnly = context.url.searchParams.get("approval_status") === "pending";
+
+  if (pendingOnly) {
+    if (!requireManager(staff)) {
+      return jsonError("Managers only", 403);
+    }
+    try {
+      const events = await listPendingTimeOff(supabase, staff);
+      return jsonOk({ events, pendingCount: events.length });
+    } catch {
+      return jsonError("Failed to load pending time off", 500);
+    }
+  }
+
   const defaults = defaultEventRange();
   const from =
     String(context.url.searchParams.get("from") ?? defaults.from).trim() ||
     defaults.from;
   const to =
     String(context.url.searchParams.get("to") ?? defaults.to).trim() || defaults.to;
-
-  const { supabase, staff } = auth;
 
   let query = supabase
     .from("team_events")

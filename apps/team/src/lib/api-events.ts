@@ -213,3 +213,54 @@ export function mapEvent(
     canDelete: canManageEvent(row, currentStaff),
   };
 }
+
+export type MappedEvent = ReturnType<typeof mapEvent>;
+
+/** Manager-only pending time-off queue (real counts for inbox/dashboard/alerts). */
+export async function listPendingTimeOff(
+  supabase: App.Locals["supabase"],
+  staff: StaffProfile,
+): Promise<MappedEvent[]> {
+  if (!requireManager(staff)) return [];
+
+  const { data, error } = await supabase
+    .from("team_events")
+    .select(EVENT_SELECT)
+    .eq("is_active", true)
+    .eq("event_type", "time_off")
+    .eq("approval_status", "pending")
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    console.error("pending time-off list failed", error);
+    throw error;
+  }
+
+  return Promise.all(
+    (data ?? []).map(async (rawRow) => {
+      const row = rawRow as EventRow;
+      const privateReason = await loadPrivateEventReason(supabase, row.id);
+      return mapEvent(row, staff, privateReason);
+    }),
+  );
+}
+
+export async function countPendingTimeOff(
+  supabase: App.Locals["supabase"],
+  staff: StaffProfile,
+): Promise<number> {
+  if (!requireManager(staff)) return 0;
+
+  const { count, error } = await supabase
+    .from("team_events")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true)
+    .eq("event_type", "time_off")
+    .eq("approval_status", "pending");
+
+  if (error) {
+    console.error("pending time-off count failed", error);
+    throw error;
+  }
+  return count ?? 0;
+}
