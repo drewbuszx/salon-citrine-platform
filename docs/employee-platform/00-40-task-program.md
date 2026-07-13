@@ -171,6 +171,27 @@ Web build and `astro check` diagnostics are documented deployment/backlog items.
 39. Durable activity/audit UI — **not started** — Agents 2, 6.
 40. Permission-safe cross-platform search — **not started** — Agents 2, 4, 9.
 
+## Waves 5–8 status (tasks 21–40) — NOT implemented in the current session
+
+Waves 1–4 (tasks 1–20) are the security, privacy, verification, and release-engineering
+core; they are checkpoint-committed with real fixes, behavioral tests, CI gates, and
+docs. Waves 5–8 (tasks 21–40) are net-new employee-management **feature** builds
+(invitation/deactivation UX, protected profile/role/time-off approval flows, recurring
+tasks, routine templates/history, task comments/attachments, reminders, notification
+state, announcements, document acknowledgments/versioning, training, mobile agenda,
+real-data dashboard, audit UI, cross-platform search).
+
+Per the program's honesty rule ("do not claim a task complete merely because
+scaffolding exists"), these are recorded as **pending — not built in this session**
+rather than committed as shallow scaffolding. Some already exist in partial form in the
+current app (employee management UI, tasks, `0029_salon_routines`, documents, calendar,
+dashboard, `approval_status`/`manager_notes` columns from `0030`) and should be audited
+and hardened, not rebuilt from scratch. Each remaining task still requires its own
+additive migration (where needed), API/UI, permissions, loading/empty/error states,
+accessibility, tests, and docs, followed by an Agent 10 review and a wave checkpoint.
+
+These waves do not block the Wave 1–4 security posture, and nothing here is deployed.
+
 ## Rollback
 
 Application rollback uses the previous Worker version only after schema compatibility

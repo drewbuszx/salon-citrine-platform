@@ -151,3 +151,61 @@ with behavioral coverage in `packages/db/tests/0034_identity_public_privacy.sql`
   `authUserId` as a UUID; documented in `docs/mobile-api-contract.md`. Bearer +
   cookie auth are unified in `getRequestUser`.
 - Unproven: disposable pgTAP replay, credentialed role-matrix E2E, migrated Web build.
+
+## Waves 5–8 (tasks 21–40) — not built in this session
+
+These are net-new employee-management feature builds and are intentionally **not**
+committed as shallow scaffolding. See `00-40-task-program.md` for the per-task list.
+They must each ship with migration/API/UI/permissions/states/accessibility/tests/docs
+and pass an Agent 10 review before their wave checkpoints. Several overlap with
+existing app features (employee management, tasks, `0029_salon_routines`, documents,
+calendar, dashboard, and the `approval_status`/`manager_notes` columns already added in
+`0030`), which should be audited and hardened rather than rebuilt.
+
+## What remains unproven and how to close the deployment gate
+
+Nothing in this branch has been deployed; no remote migration applied; no production
+data changed. To close the pre-deploy gate for the committed Wave 1–4 work, run in a
+Docker-enabled environment with the E2E credentials configured:
+
+```bash
+docker info
+npm ci
+npm run verify:migrations
+npm run db:test:disposable      # disposable Postgres replay + pgTAP; writes evidence
+npm run verify:deployment       # confirms evidence matches the migration set
+npm test
+npm run build --workspace apps/team
+# Role-matrix E2E (needs a running Team instance + seeded role users):
+TEAM_E2E_BASE_URL=... SUPABASE_URL=... SUPABASE_ANON_KEY=... \
+  TEAM_E2E_OWNER_EMAIL=... TEAM_E2E_OWNER_PASSWORD=... \
+  TEAM_E2E_FRONT_DESK_EMAIL=... TEAM_E2E_FRONT_DESK_PASSWORD=... \
+  TEAM_E2E_STYLIST_EMAIL=... TEAM_E2E_STYLIST_PASSWORD=... \
+  TEAM_E2E_ESTHETICIAN_EMAIL=... TEAM_E2E_ESTHETICIAN_PASSWORD=... \
+  TEAM_E2E_UNLINKED_EMAIL=... TEAM_E2E_UNLINKED_PASSWORD=... \
+  npm run test:e2e:role-matrix
+# Live invite/reset flow against a local Supabase (optional but recommended):
+LOCAL_SUPABASE_URL=... LOCAL_SUPABASE_ANON_KEY=... LOCAL_SUPABASE_SERVICE_ROLE_KEY=... \
+  npm run test:invite:local --workspace apps/team
+# The public Web build succeeds only AFTER migrations are applied (needs
+# public_staff_profiles / public_blocked_intervals):
+npm run build --workspace apps/web
+```
+
+Explicitly unproven until the above runs:
+
+1. Disposable Postgres/Supabase migration replay + duplicate-`0017`/`0027`
+   reconciliation against the real ledger.
+2. pgTAP suites (`0030`, `0034`).
+3. Credentialed authenticated role-matrix E2E.
+4. Live Supabase Auth invite → password-setup → activation, invite resend, and email
+   delivery.
+5. Public Web `/book` prerender against the migrated schema.
+6. The `0017_team_events_salon_tz` seed-timestamp question on a clean replay.
+
+## No-deploy confirmation
+
+Nothing was deployed to Cloudflare, no remote Supabase migration was applied, no
+production data was altered, and no push/force-push occurred. The four preserved
+commits (`21e430a`, `f08e7d7`, `9e13003`, `fab2a1a`) remain intact ahead of the four
+new wave checkpoints.
