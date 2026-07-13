@@ -1,5 +1,4 @@
 import {
-  countUnreadAlerts,
   dismissAlert,
   formatAlertBadgeCount,
   isAlertUnread,
@@ -188,14 +187,17 @@ function initOne(root: HTMLElement): TeamAlertsHandle {
   }
 
   function syncVisibleAlerts() {
+    // Badge and panel must share one filtered list — never count alerts that
+    // the empty/list UI would hide (e.g. localStorage-dismissed kinds).
     visibleAlerts = allAlerts.filter((alert) => isAlertUnread(alert, dismissed));
-    setUnreadCount(countUnreadAlerts(allAlerts, dismissed));
+    setUnreadCount(visibleAlerts.length);
   }
 
   function renderList() {
     if (!listEl) return;
     listEl.innerHTML = visibleAlerts.map((alert) => alertRowHtml(alert, teamBase)).join("");
-    showState(visibleAlerts.length ? "list" : "empty");
+    // Empty state only when the visible (badge) count is truly 0.
+    showState(visibleAlerts.length > 0 ? "list" : "empty");
   }
 
   function dismissOne(alert: TeamAlert) {

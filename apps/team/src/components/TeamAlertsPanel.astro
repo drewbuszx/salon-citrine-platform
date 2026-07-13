@@ -62,8 +62,18 @@ const teamBase = teamUrl("");
       </div>
 
       <div class="team-alerts__state team-alerts__state--empty" data-alerts-empty hidden>
+        <span class="team-alerts__empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"></path>
+          </svg>
+        </span>
         <p class="team-alerts__empty-title">You're all caught up</p>
-        <p class="team-alerts__empty-body">No waitlist, stock, or task alerts right now.</p>
+        <p class="team-alerts__empty-body">No task, time-off, or invite alerts right now.</p>
       </div>
 
       <div class="team-alerts__state team-alerts__state--error" data-alerts-error hidden>
@@ -81,7 +91,13 @@ const teamBase = teamUrl("");
   </div>
 </div>
 
-<style>
+<!--
+  is:global — team-alerts.ts injects list rows via innerHTML. Scoped selectors
+  become `.team-alerts__row[data-astro-cid-…]` and never match those nodes, so
+  alert items rendered with the wrong (or missing) layout while the badge still
+  counted them. Prefix class names keep this isolated.
+-->
+<style is:global>
   .team-alerts {
     position: absolute;
     top: 100%;
@@ -117,13 +133,13 @@ const teamBase = teamUrl("");
     display: flex;
   }
 
-  :global([data-alerts-dropdown].is-open) .team-alerts__panel {
+  [data-alerts-dropdown].is-open .team-alerts__panel {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
   }
 
-  :global([data-alerts-dropdown].is-open) .team-alerts__panel[hidden] {
+  [data-alerts-dropdown].is-open .team-alerts__panel[hidden] {
     display: flex;
   }
 
@@ -181,6 +197,23 @@ const teamBase = teamUrl("");
   .team-alerts__state--error {
     padding: 1.35rem 1rem;
     text-align: center;
+  }
+
+  .team-alerts__empty-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: 0 auto 0.65rem;
+    border-radius: 50%;
+    background: var(--color-sage-muted, var(--color-light));
+    color: var(--color-sage-dark, var(--color-success, var(--color-gray)));
+  }
+
+  .team-alerts__empty-icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
   }
 
   .team-alerts__empty-title,
@@ -380,23 +413,57 @@ const teamBase = teamUrl("");
     }
   }
 
-  :global([data-theme="dark"]) .team-alerts__panel {
+  [data-theme="dark"] .team-alerts__panel {
     border-color: var(--color-border);
     box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
   }
 
-  :global([data-theme="dark"]) .team-alerts__row:hover,
-  :global([data-theme="dark"]) .team-alerts__row:focus-visible {
+  [data-theme="dark"] .team-alerts__row:hover,
+  [data-theme="dark"] .team-alerts__row:focus-visible,
+  [data-theme="dark"] .team-alerts__mark-all:hover,
+  [data-theme="dark"] .team-alerts__mark-all:focus-visible,
+  [data-theme="dark"] .team-alerts__retry:hover,
+  [data-theme="dark"] .team-alerts__retry:focus-visible {
     background: var(--color-stone-100);
   }
 
-  :global([data-theme="dark"]) .team-alerts__empty-title {
+  [data-theme="dark"] .team-alerts__title,
+  [data-theme="dark"] .team-alerts__empty-body,
+  [data-theme="dark"] .team-alerts__row-body,
+  [data-theme="dark"] .team-alerts__row-time,
+  [data-theme="dark"] .team-alerts__chevron {
+    color: var(--color-stone-500);
+  }
+
+  [data-theme="dark"] .team-alerts__empty-title,
+  [data-theme="dark"] .team-alerts__row-title,
+  [data-theme="dark"] .team-alerts__mark-all {
     color: var(--color-stone-800);
   }
 
-  :global([data-theme="dark"]) .team-alerts__mark-all:hover,
-  :global([data-theme="dark"]) .team-alerts__mark-all:focus-visible {
-    background: var(--color-stone-100);
+  [data-theme="dark"] .team-alerts__empty-icon {
+    background: var(--color-stone-200);
+    color: var(--color-success, #9cb393);
+  }
+
+  [data-theme="dark"] .team-alerts__icon {
+    background: var(--color-stone-200);
+    color: var(--color-stone-500);
+  }
+
+  [data-theme="dark"] .team-alerts__row--info .team-alerts__icon {
+    background: rgba(141, 158, 136, 0.22);
+    color: #b5c9ae;
+  }
+
+  [data-theme="dark"] .team-alerts__row--warning .team-alerts__icon {
+    background: rgba(231, 172, 70, 0.2);
+    color: var(--color-citrine);
+  }
+
+  [data-theme="dark"] .team-alerts__row--urgent .team-alerts__icon {
+    background: rgba(200, 60, 60, 0.2);
+    color: #f5a8a8;
   }
 
   @media (max-width: 1100px) {
