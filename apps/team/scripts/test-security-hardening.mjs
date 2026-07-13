@@ -55,15 +55,17 @@ for (const route of [
   assert.equal(disabledModuleForPath(route), null, `${route} must remain active`);
 }
 
-const [migration, middleware, authSource, manageEmployees, eventsApi, bookingData, completeApi] =
+const [migration, photoMigration, middleware, authSource, manageEmployees, eventsApi, bookingData, completeApi, photoApi] =
   await Promise.all([
     read("packages/db/migrations/0030_security_reliability_hardening.sql"),
+    read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
     read("apps/team/src/middleware.ts"),
     read("apps/team/src/lib/auth.ts"),
     read("apps/team/src/scripts/manage-employees.ts"),
     read("apps/team/src/pages/api/events/index.ts"),
     read("apps/web/src/lib/booking-data.ts"),
     read("apps/team/src/pages/api/tasks/[id]/complete.ts"),
+    read("apps/team/src/pages/api/account/photo.ts"),
   ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
@@ -80,10 +82,12 @@ for (const forbidden of ["phone", "birthday", "supabase_user_id", "access_status
   assert.ok(!projectionColumns.includes(forbidden), `public projection leaked ${forbidden}`);
 }
 assert.match(migration, /create or replace function public\.complete_task/);
+assert.match(photoMigration, /create or replace function public\.update_own_staff_photo/);
 assert.doesNotMatch(manageEmployees, /\.innerHTML\s*=/);
 assert.doesNotMatch(eventsApi, /from\("clients"\)[\s\S]*birthday/);
 assert.match(bookingData, /\.from\("public_staff_profiles"\)/);
 assert.match(completeApi, /\.rpc\("complete_task"/);
+assert.match(photoApi, /\.rpc\("update_own_staff_photo"/);
 assert.match(middleware, /getRequestUser/);
 assert.match(middleware, /Content-Security-Policy/);
 assert.doesNotMatch(middleware, /unsafe-eval/);

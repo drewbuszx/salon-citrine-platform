@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(10);
+select plan(11);
 
 insert into auth.users (instance_id,id,aud,role,email,created_at,updated_at)
 values
@@ -34,6 +34,10 @@ select lives_ok(
 select is(
   (select role from public.staff where id='f1000000-0000-4000-8000-000000000001'),
   'stylist', 'safe profile RPC cannot change role'
+);
+select lives_ok(
+  $$select public.update_own_staff_photo('https://example.invalid/avatar.webp','{"x":0.5,"y":0.5,"scale":1.2}'::jsonb)$$,
+  'stylist can update validated self-service photo fields'
 );
 select lives_ok(
   $$select public.complete_task('f2000000-0000-4000-8000-000000000001','done safely')$$,

@@ -15,6 +15,8 @@ remote Supabase migration or production-data operation was performed.
 - All security-definer functions set `search_path = pg_catalog`, fully qualify
   application objects, and authorize internally.
 - Account and Manage APIs call the scoped RPCs.
+- `0031_staff_photo_profile_rpc.sql` preserves validated self-service photo/crop
+  editing without restoring table UPDATE privilege.
 - pgTAP tests prove direct role mutation fails, safe profile updates work, and role
   remains unchanged. Required source regression checks pin the policy/RPC controls.
 
@@ -153,7 +155,7 @@ transaction and rolls back.
 
 ## Verification recorded during implementation
 
-- `npm run verify:migrations` — passed, 32 migrations.
+- `npm run verify:migrations` — passed, 33 migrations.
 - `npm test` — passed, including malicious-string/security checks.
 - `npm run build --workspace apps/team` — passed.
 - `npm run test:e2e:role-matrix` — explicit skip: no E2E base URL configured.
