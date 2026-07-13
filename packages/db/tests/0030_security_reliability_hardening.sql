@@ -1,12 +1,13 @@
 begin;
 create extension if not exists pgtap;
-select plan(29);
+select plan(30);
 
 insert into auth.users (instance_id,id,aud,role,email,created_at,updated_at)
 values
  ('00000000-0000-0000-0000-000000000000','f0000000-0000-4000-8000-000000000001','authenticated','authenticated','hardening-stylist@example.invalid',now(),now()),
  ('00000000-0000-0000-0000-000000000000','f0000000-0000-4000-8000-000000000002','authenticated','authenticated','hardening-other@example.invalid',now(),now()),
  ('00000000-0000-0000-0000-000000000000','f0000000-0000-4000-8000-000000000003','authenticated','authenticated','hardening-owner@example.invalid',now(),now()),
+ ('00000000-0000-0000-0000-000000000000','f0000000-0000-4000-8000-000000000004','authenticated','authenticated','hardening-invite@example.invalid',now(),now()),
  ('00000000-0000-0000-0000-000000000000','f0000000-0000-4000-8000-000000000005','authenticated','authenticated','hardening-disabled@example.invalid',now(),now());
 
 insert into public.staff (id,slug,name,role,email,supabase_user_id,access_status,is_bookable)
@@ -80,6 +81,11 @@ select throws_ok(
 select throws_ok(
   $$select public.complete_task('f2000000-0000-4000-8000-000000000001','again')$$,
   '22023', null, 'completed task cannot transition again'
+);
+select throws_ok(
+  $$insert into public.task_assignees(task_id,staff_id)
+    values ('f2000000-0000-4000-8000-000000000003','f1000000-0000-4000-8000-000000000001')$$,
+  '42501', null, 'staff cannot bypass atomic claim RPC with direct assignee insert'
 );
 select lives_ok(
   $$select public.claim_task('f2000000-0000-4000-8000-000000000003')$$,

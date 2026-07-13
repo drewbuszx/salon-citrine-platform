@@ -4,8 +4,8 @@ import process from "node:process";
 import { evidencePath, migrationDigest } from "./migration-evidence.mjs";
 
 // Single orchestrator for disposable Postgres/Supabase replay. Evidence is written
-// only after every child command exits 0, so evidence cannot be fabricated by
-// running the writer directly. Supabase is always stopped in a finally-style block.
+// only after every child command exits 0; the required CI job is the authoritative
+// attestation. Supabase is always stopped in a finally-style block.
 
 function run(command, args, { allowFailure = false } = {}) {
   console.log(`\n$ ${command} ${args.join(" ")}`);

@@ -222,6 +222,10 @@ assert.match(photoMigration, /jsonb_typeof\(p_photo_crop->'x'\)/);
 assert.match(claimApi, /\.rpc\("claim_task"/);
 assert.doesNotMatch(claimApi, /\.from\("tasks"\)[\s\S]*\.update\(/);
 assert.match(inviteHardeningMigration, /drop policy if exists "Staff claim open tasks"/);
+assert.match(
+  inviteHardeningMigration,
+  /drop policy if exists "Staff claim task assignees"/,
+);
 assert.match(inviteHardeningMigration, /create or replace function public\.claim_task/);
 
 // Invite activation must derive its subject from DB state, never mutable metadata,

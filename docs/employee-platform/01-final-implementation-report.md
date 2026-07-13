@@ -26,14 +26,15 @@ present, needs Docker/credentials to prove) · **deferred**.
 
 - `scripts/run-disposable-replay.mjs` orchestrates stage → start → reset → pgTAP →
   evidence, stopping Supabase in a finally block.
-- `write-migration-evidence.mjs` refuses to self-certify (`SC_DISPOSABLE_REPLAY_OK`);
-  `migration-evidence.mjs` binds shims/pgTAP/config/scripts into the digest;
+- The replay orchestrator is the sole evidence writer; the former standalone writer
+  was removed to prevent accidental self-certification. `migration-evidence.mjs`
+  binds shims/pgTAP/config/scripts into the digest;
   `verify-deployment-readiness.mjs` blocks deploy on missing/stale evidence.
 - CI: `.github/workflows/security-ci.yml` defines a required `disposable-db-replay`
   job (Supabase CLI pinned to 2.109.1) plus a role-matrix gate that fails rather than
   skips when unconfigured.
-- Verified here: evidence writer correctly refuses without the orchestration flag;
-  `verify:deployment` correctly reports DEPLOYMENT BLOCKED.
+- Verified here: `verify:deployment` correctly reports DEPLOYMENT BLOCKED when
+  orchestrator evidence is absent.
 - Unproven: the replay itself (Docker unavailable in this environment).
 
 ### 3. Staff-photo crop RPC contract — complete
@@ -82,7 +83,7 @@ present, needs Docker/credentials to prove) · **deferred**.
 - `npm run build --workspace apps/team` → pass.
 - `npm run build --workspace apps/web` → fails at `/book` prerender because the
   remote DB lacks `public_staff_profiles` (expected; apply migrations first).
-- `npm run write:migration-evidence` → correctly refuses without replay flag.
+- Migration evidence is written only inline by `run-disposable-replay.mjs` after a real `supabase db reset` + pgTAP succeed (the forgeable standalone writer was removed).
 - `npm run db:test:disposable` → blocked: Docker Desktop unavailable.
 
 ## Wave 2 — Identity and public-data safety (tasks 6–10) — checkpoint committed

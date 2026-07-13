@@ -119,12 +119,12 @@ const errorMessage =
       </div>
 
       <div class="account-photo__editor" data-photo-editor hidden>
-        <p class="account-photo__status" data-photo-status hidden></p>
-        <p class="notice notice--error account-photo__error" data-photo-error hidden></p>
+        <p class="account-photo__status" data-photo-status role="status" aria-live="polite" hidden></p>
+        <p class="notice notice--error account-photo__error" data-photo-error role="alert" hidden></p>
 
         <div class="account-photo__editor-grid">
           <div class="account-photo__editor-frame" data-editor-frame>
-            <p class="label-meta">Drag to reposition</p>
+            <p class="label-meta">Drag or use arrow keys to reposition</p>
             <div class="account-photo__avatar-ring account-photo__avatar-ring--editor">
               <StaffAvatar
                 src={photoSrc ?? ""}

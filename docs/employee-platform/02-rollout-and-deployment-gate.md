@@ -28,8 +28,9 @@ local stack.
 
 - `db:test:disposable` runs one orchestrator that writes evidence **only** after
   `supabase db reset` and `supabase test db` both exit 0.
-- `write-migration-evidence.mjs` refuses to run unless `SC_DISPOSABLE_REPLAY_OK=1`,
-  so it cannot be used to fabricate a green result by hand.
+- The replay orchestrator is the only evidence writer; no standalone evidence-writing
+  command is exposed. Local JSON is integrity/staleness evidence, not an unforgeable
+  attestation; the required CI replay job is the authoritative deployment gate.
 - The evidence digest binds the manifest, every migration, the reconciliation shim,
   the pgTAP suite, `supabase/config.toml`, and the staging/verify scripts.
 

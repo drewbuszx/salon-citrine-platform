@@ -78,6 +78,7 @@ grant execute on function public.confirm_staff_invite(uuid, text, text) to servi
 -- direct-UPDATE claim policy and replace it with a narrow, atomic RPC that only sets
 -- status and inserts the assignee for the calling active staff member.
 drop policy if exists "Staff claim open tasks" on public.tasks;
+drop policy if exists "Staff claim task assignees" on public.task_assignees;
 
 create or replace function public.claim_task(p_task_id uuid)
 returns void
