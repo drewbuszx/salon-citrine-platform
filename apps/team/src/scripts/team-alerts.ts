@@ -51,6 +51,12 @@ function iconSvg(kind: TeamAlertKind) {
   if (kind === "low-stock") {
     return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16zM3.3 7.7L12 12.5l8.7-4.8M12 22V12.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
+  if (kind === "pending-time-off") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><rect x="4" y="5" width="16" height="15" rx="1.5" stroke="currentColor" stroke-width="1.75"/><path d="M8 3v4M16 3v4M4 10h16M12 14v3M12 14l2 1" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>`;
+  }
+  if (kind === "pending-invites") {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M4 6h16v12H4zM4 7l8 6 8-6" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>`;
+  }
   return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 

@@ -97,6 +97,46 @@ export function buildTasksOpenAlert(
   };
 }
 
+export function buildPendingTimeOffAlert(
+  count: number,
+  generatedAt: string,
+): TeamAlert | null {
+  if (count <= 0) return null;
+  return {
+    id: TEAM_ALERT_IDS.pendingTimeOff,
+    kind: TEAM_ALERT_IDS.pendingTimeOff,
+    title: "Time off",
+    message:
+      count === 1
+        ? "1 request waiting for approval"
+        : `${count} requests waiting for approval`,
+    count,
+    href: "/events",
+    severity: "warning",
+    generatedAt,
+  };
+}
+
+export function buildPendingInvitesAlert(
+  count: number,
+  generatedAt: string,
+): TeamAlert | null {
+  if (count <= 0) return null;
+  return {
+    id: TEAM_ALERT_IDS.pendingInvites,
+    kind: TEAM_ALERT_IDS.pendingInvites,
+    title: "Invites",
+    message:
+      count === 1
+        ? "1 invite still pending"
+        : `${count} invites still pending`,
+    count,
+    href: "/manage/employees",
+    severity: "info",
+    generatedAt,
+  };
+}
+
 /** Build the v1 alert list from aggregated metrics (count > 0 only). */
 export function buildTeamAlerts(metrics: TeamAlertMetrics): TeamAlert[] {
   // Waitlist belongs to Book and low stock to Stock; skip those alerts while
@@ -109,6 +149,8 @@ export function buildTeamAlerts(metrics: TeamAlertMetrics): TeamAlert[] {
       ? buildLowStockAlert(metrics.lowStock, metrics.generatedAt)
       : null,
     buildTasksOpenAlert(metrics),
+    buildPendingTimeOffAlert(metrics.pendingTimeOff, metrics.generatedAt),
+    buildPendingInvitesAlert(metrics.pendingInvites, metrics.generatedAt),
   ].filter((alert): alert is TeamAlert => alert != null);
 
   return sortAlerts(alerts);
