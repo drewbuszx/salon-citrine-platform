@@ -154,6 +154,54 @@ with behavioral coverage in `packages/db/tests/0034_identity_public_privacy.sql`
 
 ## Waves 5–8 (tasks 21–40) — not built in this session
 
+Waves 5–8 are net-new employee-management feature work. They are intentionally **not**
+committed as scaffolding (see `00-40-task-program.md` "Waves 5–8 status"). They must be
+implemented in follow-up waves — each with migration/API/UI/permissions/states/
+accessibility/tests/docs and an Agent 10 review — before they can be marked complete.
+Partial precursors already in the app (employee UI, `0029_salon_routines`, documents,
+calendar, dashboard, `approval_status`/`manager_notes`) should be audited and hardened
+rather than rebuilt.
+
+## What remains unproven (deployment blockers)
+
+1. Disposable Postgres/Supabase replay + pgTAP (`0030`, `0034` suites).
+2. Credentialed authenticated role-matrix E2E.
+3. Public Web build/prerender against the migrated schema.
+4. Live Supabase Auth invite/reset/PKCE deep-link + Resend email delivery
+   (`apps/team/scripts/test-invite-flow-local.mjs`).
+5. The `0017_team_events_salon_tz` clean-replay seed-timestamp question.
+6. Real production migration-ledger reconciliation for the duplicate `0017`/`0027`.
+
+## Exact commands to close the deployment gate (Docker-enabled environment)
+
+```bash
+docker info
+npm ci
+npm run verify:migrations
+npm run db:test:disposable      # disposable replay + pgTAP; writes evidence on success
+npm run verify:deployment       # must print evidence-matches
+npm test
+npm run build --workspace apps/team
+# With E2E + local Supabase credentials:
+LOCAL_SUPABASE_URL=... LOCAL_SUPABASE_ANON_KEY=... LOCAL_SUPABASE_SERVICE_ROLE_KEY=... \
+  npm run test:invite:local --workspace apps/team
+TEAM_E2E_BASE_URL=... SUPABASE_URL=... SUPABASE_ANON_KEY=... <role creds...> \
+  npm run test:e2e:role-matrix
+# Only after all pass and migrations are applied to the target:
+npm run build --workspace apps/web
+```
+
+## No-deploy confirmation
+
+Nothing in this branch has been deployed. No Cloudflare deploy ran, no remote Supabase
+migration was applied, no production data was altered, and no push occurred. The
+generated `supabase/migrations` files and `migration-validation-evidence.json` are
+local/CI artifacts (gitignored) and are not production migration history. Four wave
+checkpoints (`ece7df4`, `1d34b33`, `46487d8`, `2199090`) sit on top of the preserved
+commits `21e430a`, `f08e7d7`, `9e13003`, `fab2a1a`.
+
+## Waves 5–8 (tasks 21–40) — not built in this session
+
 These are net-new employee-management feature builds and are intentionally **not**
 committed as shallow scaffolding. See `00-40-task-program.md` for the per-task list.
 They must each ship with migration/API/UI/permissions/states/accessibility/tests/docs
