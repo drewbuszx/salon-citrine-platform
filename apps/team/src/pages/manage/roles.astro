@@ -12,7 +12,8 @@ if (!staff) {
   return Astro.redirect(teamUrl("/login?error=unlinked"));
 }
 
-const isOwner = staff.role === "owner";
+// Soft deny for non-owners (page still renders an explanation — no silent redirect).
+const isOwner = staff.role !== "owner" ? false : true;
 
 const [capsResult, grantsResult] = isOwner
   ? await Promise.all([
