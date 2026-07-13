@@ -410,7 +410,32 @@ const typeFilters: { type: string; label: string }[] = [
     padding: var(--shell-main-padding-top) var(--shell-main-padding-x) var(--shell-main-padding-bottom);
   }
 
+  /* Collapse empty filter-chip toolbar so it does not leave a blank band
+     between the page header and the calendar (chips/reset start [hidden]). */
+  .events-toolbar:not(:has(:not([hidden]))) {
+    display: none;
+    margin: 0;
+  }
+
+  .events-page :global(.team-list-layout__toolbar:has(> .events-toolbar:not(:has(:not([hidden]))))) {
+    display: none;
+    margin: 0;
+  }
+
   @media (min-width: 901px) {
+    /* Tighten header → calendar spacing (desktop). Keep mobile shell rhythm. */
+    .events-page :global(.events-list-layout .page-context-header) {
+      margin-bottom: var(--space-2);
+    }
+
+    .events-page :global(.events-list-layout .team-list-layout__toolbar) {
+      margin-bottom: var(--space-2);
+    }
+
+    .events-toolbar {
+      margin-bottom: var(--space-2);
+    }
+
     .events-page :global(.events-list-layout .team-list-layout__sidebar) {
       position: sticky;
       top: var(--team-bar-height, 3.25rem);

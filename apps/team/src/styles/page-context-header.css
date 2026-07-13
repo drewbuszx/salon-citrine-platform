@@ -97,8 +97,10 @@
   font-size: var(--text-xs);
 }
 
+/* stone-100 inverts to a dark surface in dark mode — never use it for text.
+   stone-800 inverts to cream (#f3f0ea); --color-text (#ececec) is equally safe. */
 [data-theme="dark"] .page-context-header__title {
-  color: var(--color-stone-100);
+  color: var(--color-stone-800);
 }
 
 [data-theme="dark"] .page-context-header__subtitle,
