@@ -139,6 +139,8 @@ const [
   resetApi,
   confirmPage,
   inviteHardeningMigration,
+  identityMigration,
+  availabilitySource,
 ] = await Promise.all([
   read("packages/db/migrations/0030_security_reliability_hardening.sql"),
   read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
@@ -154,6 +156,8 @@ const [
   read("apps/team/src/pages/api/auth/reset-password.ts"),
   read("apps/team/src/pages/auth/confirm.astro"),
   read("packages/db/migrations/0033_wave1_invite_task_hardening.sql"),
+  read("packages/db/migrations/0034_identity_public_privacy_closure.sql"),
+  read("apps/web/src/lib/availability.ts"),
 ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
@@ -199,5 +203,18 @@ assert.doesNotMatch(confirmPage, /activateInvitedStaff/);
 assert.match(resetApi, /hasPasswordSetupContext/);
 assert.match(resetApi, /confirmStaffInvite/);
 assert.match(middleware, /hasPasswordSetupContext/);
+
+// Wave 2/3 identity + public-data closure.
+assert.match(identityMigration, /create unique index[\s\S]*supabase_user_id/);
+assert.match(identityMigration, /booking_carts/);
+assert.match(identityMigration, /public_blocked_intervals/);
+assert.doesNotMatch(identityMigration, /using \(true\)/i);
+assert.match(availabilitySource, /public_blocked_intervals/);
+assert.doesNotMatch(availabilitySource, /\.from\("blocked_times"\)/);
+
+// Wave 3 event visibility: non-managers only see team or their own events, and the
+// private reason is gated to managers/creator.
+assert.match(eventsApi, /visibility\.eq\.team,created_by_staff_id\.eq\./);
+assert.match(eventsApi, /canReadPrivate/);
 
 console.log("Security hardening regression checks passed.");

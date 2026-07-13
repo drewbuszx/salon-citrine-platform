@@ -109,13 +109,20 @@ policies; anonymous availability reads only `public_blocked_intervals` (no `reas
 pgTAP asserts deactivated-user denial, managers-only event visibility, cart lockout,
 and reason hiding. Unproven until the disposable replay executes the suite.
 
-### Wave 3 — Legacy boundary and privacy
+### Wave 3 — Legacy boundary and privacy (checkpoint committed)
 
-11. Safe public booking availability — **not started** — Agents 2, 4, 5.
-12. Complete hidden-module gating — **not started** — Agents 4, 10.
-13. Manager-only event visibility — **not started** — Agents 2, 9.
-14. Private time-off reason lifecycle — **not started** — Agents 2, 9.
-15. Nonce/hash CSP — **not started** — Agents 4, 10.
+11. Safe public booking availability — **implemented; anon /book prerender unproven pending migrated schema** — Agents 2, 4, 5.
+12. Complete hidden-module gating — **complete (behavioral unit tests)** — Agents 4, 10.
+13. Manager-only event visibility — **implemented (RLS + API + pgTAP)** — Agents 2, 9.
+14. Private time-off reason lifecycle — **implemented (trigger + RPC + API + pgTAP)** — Agents 2, 9.
+15. Nonce/hash CSP — **complete** — Agents 4, 10.
+
+`is_public_bookable_staff` keeps `staff_services`/availability public without exposing
+`public.staff`; `disabledModuleForPath` blocks `/book`, `/week`, `/block-time`,
+`/inventory`, `/clients`, `/reports` and their APIs server-side (unit-tested); event
+visibility is enforced in RLS and `api/events/index.ts`; private reasons gated via
+`get_private_event_details`; CSP is nonce-based with `script-src-attr 'none'` and no
+`unsafe-inline`/`unsafe-eval`.
 
 ### Wave 4 — Verification and release engineering
 

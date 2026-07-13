@@ -108,3 +108,25 @@ with behavioral coverage in `packages/db/tests/0034_identity_public_privacy.sql`
   availability.ts` reads the projection. pgTAP asserts no `reason` column and that
   anon cannot read `blocked_times.reason`.
 - Unproven: the pgTAP suite requires the disposable replay (Docker).
+
+## Wave 3 — Legacy boundary and privacy (tasks 11–15) — checkpoint committed
+
+- **11. Public booking availability** — `is_public_bookable_staff` backs the public
+  `staff_services` policy and `public_blocked_intervals`; `booking-data.ts` reads
+  `public_staff_profiles`, `availability.ts` reads `public_blocked_intervals`. No
+  sensitive staff columns are exposed to anon (pgTAP column assertion in 0030 test).
+  Unproven: the anon `/book` prerender only succeeds against the migrated schema.
+- **12. Hidden-module gating** — `lib/modules.ts` `disabledModuleForPath` blocks
+  `/book`, `/week`, `/block-time`, `/my-book`, `/services`, `/waitlist`, `/checkout`,
+  `/inventory`, `/clients`, `/reports` and their `/api/*` counterparts; middleware
+  returns 404 for these. Unit-tested in `test-security-hardening.mjs`.
+- **13. Manager-only event visibility** — enforced in RLS (0030/0034) and in
+  `api/events/index.ts` (non-managers filtered to team/own; private reason gated).
+  pgTAP proves manager vs non-manager visibility.
+- **14. Private time-off reason lifecycle** — `enforce_time_off_privacy` neutralizes
+  the title, clears the public description, and stores the reason in `private_reason`;
+  `get_private_event_details` returns it to manager/creator only. pgTAP covers it.
+- **15. Strict CSP** — `lib/security-headers.ts` builds a per-request nonce policy
+  (`script-src 'self' 'nonce-…'`, `script-src-attr 'none'`, no `unsafe-inline`/
+  `unsafe-eval`); all executable inline scripts carry the nonce; the lone
+  `application/json` config block is data, not script. Unit-tested.
