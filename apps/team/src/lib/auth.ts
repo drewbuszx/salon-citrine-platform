@@ -1,33 +1,14 @@
 import type { User } from "@supabase/supabase-js";
 import type { StaffProfile } from "../env.d.ts";
 import { staffPhotoSrc } from "./staff-display";
+import { hasStaffCapability, isSalonManager } from "./staff-capability";
+
+export { hasStaffCapability, isSalonManager };
 
 export function mustChangePassword(user: User | null | undefined) {
   if (!user) return false;
   const meta = user.user_metadata ?? {};
   return meta.must_change_password === true;
-}
-
-/** Owner anti-lockout floor mirrored from staff_has_capability('manage_team'). */
-export function hasStaffCapability(
-  staff: StaffProfile | null | undefined,
-  capability: string,
-) {
-  if (!staff) return false;
-  if (capability === "manage_team" && staff.role === "owner") return true;
-  if (staff.capabilities?.includes(capability)) return true;
-  // Pre-migration fallback: preserve owner/front_desk manager behavior.
-  if (!staff.capabilities && capability === "manage_team") {
-    return staff.role === "owner" || staff.role === "front_desk";
-  }
-  if (!staff.capabilities && capability === "view_activity") {
-    return staff.role === "owner" || staff.role === "front_desk";
-  }
-  return false;
-}
-
-export function isSalonManager(staff: StaffProfile | null | undefined) {
-  return hasStaffCapability(staff, "manage_team");
 }
 
 export async function loadStaffProfile(
@@ -46,10 +27,17 @@ export async function loadStaffProfile(
   }
 
   const profile = data as StaffProfile;
-  const { data: grants } = await supabase
+  const { data: grants, error: grantsError } = await supabase
     .from("role_capabilities")
     .select("capability")
     .eq("role", profile.role);
+
+  if (grantsError) {
+    // Table missing / pre-0038 / transient catalog failure: leave undefined so
+    // hasStaffCapability uses the owner|front_desk expand-contract fallback.
+    // Never assign [] here — that skips the fallback and locks out managers.
+    return profile;
+  }
 
   const capabilities = (grants ?? []).map((g) => String(g.capability));
   // Anti-lockout floor: owners always retain manage_team in the app layer too.

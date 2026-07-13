@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
+import { parseCapabilityPatchRequest } from "../../../lib/api-contract";
 import {
   CAPABILITY_ROLES,
   isKnownCapability,
@@ -59,21 +60,12 @@ export const PATCH: APIRoute = async (context) => {
     return jsonError("Invalid JSON", 400);
   }
 
-  const { role, capability, enabled } = (body ?? {}) as {
-    role?: unknown;
-    capability?: unknown;
-    enabled?: unknown;
-  };
-
-  if (typeof role !== "string" || !isKnownRole(role)) {
-    return jsonError("Unknown role", 400);
-  }
-  if (typeof capability !== "string" || !isKnownCapability(capability)) {
-    return jsonError("Unknown capability", 400);
-  }
-  if (typeof enabled !== "boolean") {
-    return jsonError("Invalid enabled flag", 400);
-  }
+  const parsed = parseCapabilityPatchRequest(body, {
+    isKnownRole,
+    isKnownCapability,
+  });
+  if (!parsed.ok) return jsonError(parsed.error, 400);
+  const { role, capability, enabled } = parsed.value;
 
   const { error } = await auth.supabase.rpc("set_role_capability", {
     p_role: role,

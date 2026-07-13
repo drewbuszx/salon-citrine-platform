@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -29,10 +29,21 @@ export async function migrationDigest() {
   for (const shim of manifest.disposableShims) {
     await hashFileInto(hash, `shim:${shim.file}`, path.join(dbRoot, shim.file));
   }
+
+  // Bind every pgTAP suite under tests/ (0030, 0034–0038, and any newer), not only 0030.
+  const testDir = path.join(dbRoot, "tests");
+  const testFiles = (await readdir(testDir))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  for (const file of testFiles) {
+    await hashFileInto(hash, `tests/${file}`, path.join(testDir, file));
+  }
+
   for (const rel of [
-    "tests/0030_security_reliability_hardening.sql",
     "scripts/stage-canonical-migrations.mjs",
     "scripts/verify-migrations.mjs",
+    "scripts/run-disposable-replay.mjs",
+    "scripts/verify-deployment-readiness.mjs",
   ]) {
     await hashFileInto(hash, rel, path.join(dbRoot, rel));
   }
@@ -48,5 +59,10 @@ export async function migrationDigest() {
 
   const canonicalFileCount =
     manifest.migrations.length + manifest.disposableShims.length;
-  return { digest: hash.digest("hex"), manifest, canonicalFileCount };
+  return {
+    digest: hash.digest("hex"),
+    manifest,
+    canonicalFileCount,
+    boundPgTapFiles: testFiles,
+  };
 }

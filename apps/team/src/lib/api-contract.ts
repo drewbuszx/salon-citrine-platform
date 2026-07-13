@@ -110,3 +110,50 @@ export function parseAccessActionRequest(value: unknown):
       : { action: action as AccessAction },
   };
 }
+
+export type CapabilityPatchRequest = {
+  role: string;
+  capability: string;
+  enabled: boolean;
+};
+
+/** Validate owner-only role capability PATCH bodies. */
+export function parseCapabilityPatchRequest(
+  value: unknown,
+  options: {
+    isKnownRole: (role: string) => boolean;
+    isKnownCapability: (capability: string) => boolean;
+  },
+): { ok: true; value: CapabilityPatchRequest } | { ok: false; error: string } {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { ok: false, error: "Request body must be an object" };
+  }
+  const input = value as Record<string, unknown>;
+  const unknown = Object.keys(input).filter(
+    (key) => key !== "role" && key !== "capability" && key !== "enabled",
+  );
+  if (unknown.length) {
+    return { ok: false, error: "Unsupported capability request field" };
+  }
+  if (typeof input.role !== "string" || !options.isKnownRole(input.role)) {
+    return { ok: false, error: "Unknown role" };
+  }
+  if (
+    typeof input.capability !== "string" ||
+    !options.isKnownCapability(input.capability)
+  ) {
+    return { ok: false, error: "Unknown capability" };
+  }
+  if (typeof input.enabled !== "boolean") {
+    return { ok: false, error: "Invalid enabled flag" };
+  }
+  return {
+    ok: true,
+    value: {
+      role: input.role,
+      capability: input.capability,
+      enabled: input.enabled,
+    },
+  };
+}
+

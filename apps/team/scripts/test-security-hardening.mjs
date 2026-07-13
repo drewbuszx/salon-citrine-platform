@@ -354,5 +354,26 @@ assert.doesNotMatch(rolesScript, /innerHTML/);
 assert.match(capabilitiesLib, /LOCKED_ON_GRANTS/);
 assert.match(authSourceReload, /hasStaffCapability/);
 assert.match(authSourceReload, /manage_team/);
+// Expand-contract: never assign [] on role_capabilities failure (locks out managers).
+assert.match(authSourceReload, /grantsError/);
+assert.match(authSourceReload, /Never assign \[\]/);
+assert.match(capabilitiesApi, /parseCapabilityPatchRequest/);
+
+const [tasksViewLib, tasksScript, evidenceDigest, capabilityHelper] = await Promise.all([
+  read("apps/team/src/lib/tasks-view.ts"),
+  read("apps/team/src/scripts/tasks.ts"),
+  read("packages/db/scripts/migration-evidence.mjs"),
+  read("apps/team/src/lib/staff-capability.ts"),
+]);
+assert.match(capabilityHelper, /Array\.isArray\(staff\.capabilities\)/);
+assert.match(tasksViewLib, /parseTaskViewFromSearch/);
+assert.match(tasksScript, /parseTaskViewFromSearch/);
+assert.match(tasksScript, /setActiveTab\(currentView\)/);
+assert.match(evidenceDigest, /boundPgTapFiles/);
+assert.match(evidenceDigest, /readdir\(testDir\)/);
+assert.doesNotMatch(
+  evidenceDigest,
+  /"tests\/0030_security_reliability_hardening\.sql"/,
+);
 
 console.log("Security hardening regression checks passed.");
