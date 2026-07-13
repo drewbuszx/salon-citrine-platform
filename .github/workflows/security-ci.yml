@@ -1,0 +1,54 @@
+name: Security CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, "fix/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  required:
+    name: Required build and security checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:migrations
+      - run: npm test
+      - run: npm run build --workspace apps/team
+
+  authenticated-role-matrix:
+    name: Optional authenticated role matrix
+    needs: required
+    if: ${{ secrets.TEAM_E2E_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TEAM_E2E_BASE_URL: ${{ secrets.TEAM_E2E_BASE_URL }}
+      SUPABASE_URL: ${{ secrets.TEAM_E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.TEAM_E2E_SUPABASE_ANON_KEY }}
+      TEAM_E2E_OWNER_EMAIL: ${{ secrets.TEAM_E2E_OWNER_EMAIL }}
+      TEAM_E2E_OWNER_PASSWORD: ${{ secrets.TEAM_E2E_OWNER_PASSWORD }}
+      TEAM_E2E_FRONT_DESK_EMAIL: ${{ secrets.TEAM_E2E_FRONT_DESK_EMAIL }}
+      TEAM_E2E_FRONT_DESK_PASSWORD: ${{ secrets.TEAM_E2E_FRONT_DESK_PASSWORD }}
+      TEAM_E2E_STYLIST_EMAIL: ${{ secrets.TEAM_E2E_STYLIST_EMAIL }}
+      TEAM_E2E_STYLIST_PASSWORD: ${{ secrets.TEAM_E2E_STYLIST_PASSWORD }}
+      TEAM_E2E_ESTHETICIAN_EMAIL: ${{ secrets.TEAM_E2E_ESTHETICIAN_EMAIL }}
+      TEAM_E2E_ESTHETICIAN_PASSWORD: ${{ secrets.TEAM_E2E_ESTHETICIAN_PASSWORD }}
+      TEAM_E2E_UNLINKED_EMAIL: ${{ secrets.TEAM_E2E_UNLINKED_EMAIL }}
+      TEAM_E2E_UNLINKED_PASSWORD: ${{ secrets.TEAM_E2E_UNLINKED_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - run: npm ci
+      - run: npm run test:e2e:role-matrix

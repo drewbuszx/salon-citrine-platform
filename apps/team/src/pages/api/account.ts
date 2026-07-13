@@ -37,6 +37,17 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
     if (emailError) {
       console.error("Email update failed", emailError);
+      const { error: compensationError } = await supabase.rpc(
+        "update_own_staff_profile",
+        {
+          p_name: staff.name,
+          p_bio: staff.bio ?? null,
+          p_phone: staff.phone ?? null,
+        },
+      );
+      if (compensationError) {
+        console.error("Staff profile compensation failed", compensationError);
+      }
       return redirect(teamUrl("/account?error=email"));
     }
 
