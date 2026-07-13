@@ -63,7 +63,7 @@ const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
   }
 
   <div class="team-list-layout__body">
-    <main
+    <div
       class:list={[
         "team-list-layout__main",
         contentWidth === "operational" && "team-list-layout__main--operational",
@@ -117,7 +117,7 @@ const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
       {hasToolbar ? <div class="team-list-layout__toolbar"><slot name="toolbar" /></div> : null}
       {hasSearchBar ? <slot name="searchBar" /> : null}
       <slot />
-    </main>
+    </div>
 
     {
       showSidebar ? (

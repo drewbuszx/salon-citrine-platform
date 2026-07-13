@@ -1,7 +1,10 @@
 import type { AstroCookies } from "astro";
 import type { StaffProfile } from "../env.d.ts";
 import { isSalonManager, loadStaffProfile } from "./auth";
-import { createSupabaseServerClient } from "./supabase-server";
+import {
+  createSupabaseServerClient,
+  getRequestUser,
+} from "./supabase-server";
 
 export function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,7 +44,7 @@ export async function requireApiAuth(
     ok: true as const,
     supabase: result.supabase,
     staff: result.staff,
-    user: (await result.supabase.auth.getUser()).data.user!,
+    user: result.user,
   };
 }
 
@@ -49,7 +52,7 @@ export async function requireTeamStaff(request: Request, cookies: AstroCookies) 
   const supabase = createSupabaseServerClient(request, cookies);
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await getRequestUser(supabase, request);
 
   if (!user) {
     return { error: jsonError("Unauthorized", 401) as Response };
@@ -60,7 +63,7 @@ export async function requireTeamStaff(request: Request, cookies: AstroCookies) 
     return { error: jsonError("Staff profile not linked", 403) as Response };
   }
 
-  return { supabase, staff };
+  return { supabase, staff, user };
 }
 
 export function canManageStaffColumn(

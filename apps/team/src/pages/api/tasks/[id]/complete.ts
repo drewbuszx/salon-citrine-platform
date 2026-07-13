@@ -1,15 +1,11 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../../lib/api-calendar";
 import {
-  isStaffAssignee,
   mapTask,
   TASK_SELECT,
   type TaskRow,
 } from "../../../../lib/api-tasks";
-
-type CompleteTaskBody = {
-  completion_notes?: string;
-};
+import { parseCompleteTaskRequest } from "../../../../lib/api-contract";
 
 export const POST: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
@@ -20,50 +16,25 @@ export const POST: APIRoute = async (context) => {
     return jsonError("Missing task id", 400);
   }
 
-  let body: CompleteTaskBody = {};
+  let body: unknown = {};
   try {
     const raw = await context.request.text();
     if (raw.trim()) {
-      body = JSON.parse(raw) as CompleteTaskBody;
+      body = JSON.parse(raw);
     }
   } catch {
     return jsonError("Invalid JSON body", 400);
   }
+  const parsed = parseCompleteTaskRequest(body);
+  if (!parsed.ok) return jsonError(parsed.error, 400);
 
   const { supabase, staff } = auth;
 
-  const { data: existing, error: loadError } = await supabase
-    .from("tasks")
-    .select(TASK_SELECT)
-    .eq("id", taskId)
-    .maybeSingle();
-
-  if (loadError || !existing) {
-    return jsonError("Task not found", 404);
-  }
-
-  const task = existing as TaskRow;
-
-  if (task.status === "done" || task.status === "cancelled") {
-    return jsonError("Task is already closed", 400);
-  }
-
-  if (!isStaffAssignee(task, staff.id)) {
-    return jsonError("You are not assigned to this task", 403);
-  }
-
-  const completionNotes = String(body.completion_notes ?? "").trim() || null;
-  const completedAt = new Date().toISOString();
-
-  const { error: updateError } = await supabase
-    .from("tasks")
-    .update({
-      status: "done",
-      completed_at: completedAt,
-      completed_by_staff_id: staff.id,
-      completion_notes: completionNotes,
-    })
-    .eq("id", taskId);
+  const completionNotes = parsed.value.completion_notes ?? null;
+  const { error: updateError } = await supabase.rpc("complete_task", {
+    p_task_id: taskId,
+    p_completion_notes: completionNotes,
+  });
 
   if (updateError) {
     console.error("task complete failed", updateError);

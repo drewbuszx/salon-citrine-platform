@@ -84,27 +84,6 @@ export const GET: APIRoute = async (context) => {
     }
   }
 
-  const { data: clientBirthdays, error: clientBirthdayError } = await supabase
-    .from("clients")
-    .select("id, first_name, last_name, birthday")
-    .not("birthday", "is", null);
-
-  if (clientBirthdayError) {
-    console.warn("client birthdays load failed", clientBirthdayError);
-  } else {
-    for (const row of clientBirthdays ?? []) {
-      if (!row.birthday) continue;
-      const first = String(row.first_name ?? "").trim();
-      if (!first) continue;
-      birthdayRows.push({
-        id: row.id,
-        name: first,
-        birthday: String(row.birthday),
-        source: "client",
-      });
-    }
-  }
-
   const birthdays = birthdaysForRange(birthdayRows, from, staff.id);
 
   return jsonOk({ events: [...events, ...birthdays], from, to });
@@ -185,14 +164,28 @@ export const POST: APIRoute = async (context) => {
     staffId = String(body.staff_id).trim() || null;
   }
 
-  const description = String(body.description ?? "").trim() || null;
+  const requestedDescription = String(body.description ?? "").trim() || null;
   const { supabase, staff } = auth;
+  let safeTitle = title;
+  let description = requestedDescription;
+  let privateReason: string | null = null;
+  if (eventType === "time_off") {
+    const { data: subject } = await supabase
+      .from("staff")
+      .select("name")
+      .eq("id", staffId!)
+      .maybeSingle();
+    safeTitle = `${String(subject?.name ?? "Team member").trim()} unavailable`;
+    description = null;
+    privateReason = requestedDescription;
+  }
 
   const { data, error } = await supabase
     .from("team_events")
     .insert({
-      title,
+      title: safeTitle,
       description,
+      private_reason: privateReason,
       event_type: eventType,
       starts_at: startsAt,
       ends_at: endsAt,

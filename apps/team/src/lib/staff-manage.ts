@@ -1,7 +1,7 @@
 import type { StaffRole } from "../env.d.ts";
 
 export const STAFF_MANAGE_SELECT =
-  "id, slug, name, role, bio, phone, photo_url, photo_crop, is_bookable, accepting_new_clients, supabase_user_id, created_at, updated_at";
+  "id, slug, name, role, bio, phone, email, photo_url, photo_crop, is_bookable, accepting_new_clients, supabase_user_id, access_status, auth_invited_at, deactivated_at, created_at, updated_at";
 
 export type StaffManageRow = {
   id: string;
@@ -10,11 +10,15 @@ export type StaffManageRow = {
   role: StaffRole;
   bio: string | null;
   phone: string | null;
+  email: string | null;
   photo_url: string | null;
   photo_crop: { x: number; y: number; scale: number } | null;
   is_bookable: boolean;
   accepting_new_clients: boolean;
   supabase_user_id: string | null;
+  access_status: "uninvited" | "invited" | "active" | "disabled";
+  auth_invited_at: string | null;
+  deactivated_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -26,11 +30,14 @@ export type StaffManageItem = {
   role: StaffRole;
   bio: string;
   phone: string;
+  email: string;
   photoUrl: string | null;
   photoCrop: StaffManageRow["photo_crop"];
   isBookable: boolean;
   acceptingNewClients: boolean;
   isLinked: boolean;
+  accessStatus: StaffManageRow["access_status"];
+  invitedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -65,11 +72,14 @@ export function mapStaffRow(row: StaffManageRow): StaffManageItem {
     role: row.role,
     bio: row.bio ?? "",
     phone: row.phone ?? "",
+    email: row.email ?? "",
     photoUrl: row.photo_url,
     photoCrop: row.photo_crop,
     isBookable: row.is_bookable,
     acceptingNewClients: row.accepting_new_clients,
     isLinked: Boolean(row.supabase_user_id),
+    accessStatus: row.access_status,
+    invitedAt: row.auth_invited_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -88,6 +98,12 @@ export function mapStaffCreateBody(body: Record<string, unknown>) {
   const slug = slugInput || slugifyStaffName(name);
   if (!slug) return { error: "Slug is required" as const };
 
+  const email =
+    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { error: "Invalid email" as const };
+  }
+
   return {
     data: {
       name,
@@ -95,6 +111,7 @@ export function mapStaffCreateBody(body: Record<string, unknown>) {
       role: role as StaffRole,
       bio: typeof body.bio === "string" ? body.bio.trim() || null : null,
       phone: typeof body.phone === "string" ? body.phone.trim() || null : null,
+      email: email || null,
       is_bookable: body.isBookable !== false,
       accepting_new_clients: body.acceptingNewClients !== false,
     },
@@ -125,6 +142,13 @@ export function mapStaffUpdateBody(body: Record<string, unknown>) {
 
   if (typeof body.bio === "string") updates.bio = body.bio.trim() || null;
   if (typeof body.phone === "string") updates.phone = body.phone.trim() || null;
+  if (typeof body.email === "string") {
+    const email = body.email.trim().toLowerCase();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return { error: "Invalid email" as const };
+    }
+    updates.email = email || null;
+  }
   if (typeof body.isBookable === "boolean") updates.is_bookable = body.isBookable;
   if (typeof body.acceptingNewClients === "boolean") {
     updates.accepting_new_clients = body.acceptingNewClients;

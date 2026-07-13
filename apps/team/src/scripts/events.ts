@@ -3,6 +3,7 @@ import { dayOfWeekInSalon } from "../lib/calendar";
 import { localDateTimeToUtc } from "../lib/datetime";
 import { staffAccentColor } from "../lib/staff-colors";
 import { showToast, friendlyError } from "../lib/toast";
+import { escapeHtml } from "../lib/safe-html";
 import {
   eventIconMarkup,
   normalizeEventType,
@@ -167,14 +168,6 @@ function formatEventRange(event: TeamEvent) {
   const sameDay = salonDateFromIso(event.startsAt) === salonDateFromIso(event.endsAt!);
   if (sameDay) return `${startFmt} – ${timeFmt.format(end)}`;
   return `${startFmt} – ${dateFmt.format(end)}, ${timeFmt.format(end)}`;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function dayKey(year: number, month: number, day: number) {

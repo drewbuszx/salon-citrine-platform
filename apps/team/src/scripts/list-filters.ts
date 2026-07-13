@@ -196,11 +196,14 @@ function renderChips(
   }
 
   if (!chipsEl) return;
-  chipsEl.innerHTML = "";
+  chipsEl.replaceChildren();
   chips.forEach((chip) => {
     const el = document.createElement("span");
     el.className = "ui-filter-chip team-list-layout__filter-chip";
-    el.innerHTML = `<span class="ui-filter-chip__label">${chip.label}</span>`;
+    const label = document.createElement("span");
+    label.className = "ui-filter-chip__label";
+    label.textContent = chip.label;
+    el.append(label);
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "ui-filter-chip__remove";

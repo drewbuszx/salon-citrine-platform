@@ -48,7 +48,7 @@ export const POST: APIRoute = async (context) => {
 
   const parsed = mapStaffCreateBody(body);
   if ("error" in parsed) {
-    return jsonError(parsed.error, 400);
+    return jsonError(parsed.error ?? "Invalid employee", 400);
   }
 
   const { data, error } = await auth.supabase

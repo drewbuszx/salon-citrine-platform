@@ -1,5 +1,9 @@
 ---
-import { createSupabaseServerClient, teamUrl } from "../../lib/supabase-server";
+import {
+  createSupabaseAdminClient,
+  createSupabaseServerClient,
+  teamUrl,
+} from "../../lib/supabase-server";
 
 const tokenHash = Astro.url.searchParams.get("token_hash");
 const type = Astro.url.searchParams.get("type");
@@ -10,6 +14,26 @@ if (code) {
     const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const staffId =
+        typeof user?.user_metadata?.staff_id === "string"
+          ? user.user_metadata.staff_id
+          : null;
+      if (user && staffId) {
+        const admin = createSupabaseAdminClient();
+        await admin
+          .from("staff")
+          .update({ access_status: "active", supabase_user_id: user.id })
+          .eq("id", staffId)
+          .eq("supabase_user_id", user.id)
+          .eq("access_status", "invited");
+        await admin.from("staff_security_audit").insert({
+          target_staff_id: staffId,
+          action: "linked",
+          after_state: { access_status: "active", supabase_user_id: user.id },
+        });
+        return Astro.redirect(teamUrl("/change-password"));
+      }
       return Astro.redirect(teamUrl("/reset-password"));
     }
   } catch {

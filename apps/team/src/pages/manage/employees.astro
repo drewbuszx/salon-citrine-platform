@@ -11,6 +11,7 @@ import {
 } from "../../lib/staff-manage";
 import { staffPhotoSrc } from "../../lib/staff-display";
 import { teamUrl } from "../../lib/supabase-server";
+import { isModuleEnabled } from "../../lib/modules";
 
 const { staff, supabase } = Astro.locals;
 
@@ -29,7 +30,9 @@ const { data, error } = await supabase
 
 const employees = (data ?? []).map((row) => mapStaffRow(row as StaffManageRow));
 const apiBase = teamUrl("/api/staff");
-const schedulesApi = teamUrl("/api/my-book/schedules");
+const schedulesApi = isModuleEnabled("book")
+  ? teamUrl("/api/my-book/schedules")
+  : "";
 ---
 
 <TeamLayout title="Employees" activeNav="manage" plain wide fullBleed>
@@ -101,7 +104,7 @@ const schedulesApi = teamUrl("/api/my-book/schedules");
                         <span class="manage-employees__meta">
                           {STAFF_ROLE_LABELS[member.role]}
                           {member.isBookable ? "" : " · Inactive"}
-                          {member.isLinked ? " · Linked" : " · Not linked"}
+                      {" · "}{member.accessStatus}
                         </span>
                       </span>
                       <span class="ui-badge ui-badge--info" hidden={member.isBookable}>
@@ -114,10 +117,10 @@ const schedulesApi = teamUrl("/api/my-book/schedules");
             }
           </div>
 
-          <dialog class="manage-employees__dialog" data-employee-dialog>
+          <dialog class="manage-employees__dialog" data-employee-dialog aria-labelledby="employee-dialog-title">
             <form class="manage-employees__form" data-employee-form>
               <header class="manage-employees__dialog-header">
-                <h2 data-employee-form-title>Edit employee</h2>
+                <h2 id="employee-dialog-title" data-employee-form-title>Edit employee</h2>
                 <button class="manage-employees__close" type="button" data-close-dialog aria-label="Close">
                   ×
                 </button>
@@ -149,6 +152,11 @@ const schedulesApi = teamUrl("/api/my-book/schedules");
                 </label>
 
                 <label class="form-label">
+                  Email
+                  <input class="form-input" name="email" type="email" autocomplete="email" />
+                </label>
+
+                <label class="form-label">
                   Phone
                   <input class="form-input" name="phone" type="tel" autocomplete="tel" />
                 </label>
@@ -169,6 +177,13 @@ const schedulesApi = teamUrl("/api/my-book/schedules");
                 </label>
 
                 <p class="label-meta" data-link-status hidden></p>
+
+                <div class="card-row" data-access-actions hidden aria-label="Employee access actions">
+                  <button class="ui-btn" type="button" data-access-action="invite">Invite</button>
+                  <button class="ui-btn" type="button" data-access-action="resend">Resend invite</button>
+                  <button class="ui-btn" type="button" data-access-action="deactivate">Deactivate</button>
+                  <button class="ui-btn" type="button" data-access-action="reactivate">Reactivate</button>
+                </div>
 
                 <section class="page-section" data-schedule-section hidden>
                   <h3>Weekly bookable hours</h3>

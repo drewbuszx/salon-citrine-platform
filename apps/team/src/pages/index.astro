@@ -38,10 +38,12 @@ const EMPTY_COUNTS: TaskSummaryCounts = {
 };
 
 let counts: TaskSummaryCounts = EMPTY_COUNTS;
+let dashboardDegraded = false;
 try {
   const summary = await loadTaskSummary(supabase, staff.id, manager);
   counts = summary.counts;
 } catch (error) {
+  dashboardDegraded = true;
   console.error("Failed to load task summary", error);
 }
 
@@ -49,6 +51,7 @@ let routines: RoutinePayload[] = [];
 try {
   routines = await loadSalonRoutines(supabase);
 } catch (error) {
+  dashboardDegraded = true;
   console.error("Failed to load salon routines", error);
 }
 
@@ -113,7 +116,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
     icon: `<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   },
   {
-    label: "Events",
+    label: "Calendar",
     href: teamUrl("/events"),
     desc: "Birthdays, time off, closures, and meetings",
     icon: `<rect x="4" y="5" width="16" height="15" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
@@ -129,6 +132,13 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
 
 <TeamLayout title="Dashboard" activeNav="dashboard" plain cream>
   <section class="dashboard">
+    {
+      dashboardDegraded ? (
+        <p class="notice notice--error" role="alert">
+          Some dashboard data could not be loaded. Counts may be incomplete; try refreshing.
+        </p>
+      ) : null
+    }
     <header class="dashboard__hero">
       <div class="dashboard__avatar-wrap">
         {
@@ -176,7 +186,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
     <section class="dashboard__upcoming" aria-labelledby="dashboard-upcoming-title">
       <div class="dashboard__upcoming-head">
         <h2 id="dashboard-upcoming-title" class="dashboard__section-title">Upcoming</h2>
-        <a class="dashboard__upcoming-link" href={teamUrl("/events")}>View events</a>
+        <a class="dashboard__upcoming-link" href={teamUrl("/events")}>View Calendar</a>
       </div>
 
       {
@@ -192,7 +202,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
             <p class="dashboard__empty-copy">
               No team events in the next two weeks. Open Events to add one.
             </p>
-            <a class="dashboard__empty-cta" href={teamUrl("/events")}>Open events</a>
+            <a class="dashboard__empty-cta" href={teamUrl("/events")}>Open Calendar</a>
           </div>
         ) : (
           <ul class="dashboard__list">

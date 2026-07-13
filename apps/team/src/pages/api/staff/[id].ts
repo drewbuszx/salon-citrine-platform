@@ -55,15 +55,14 @@ export const PATCH: APIRoute = async (context) => {
 
   const parsed = mapStaffUpdateBody(body);
   if ("error" in parsed) {
-    return jsonError(parsed.error, 400);
+    return jsonError(parsed.error ?? "Invalid employee update", 400);
   }
 
-  const { data, error } = await auth.supabase
-    .from("staff")
-    .update(parsed.data)
-    .eq("id", id)
-    .select(STAFF_MANAGE_SELECT)
-    .maybeSingle();
+  const { error } = await auth.supabase.rpc("manager_update_staff", {
+    p_staff_id: id,
+    p_updates: parsed.data,
+    p_request_id: context.request.headers.get("X-Request-Id"),
+  });
 
   if (error) {
     console.error("staff update failed", error);
@@ -73,7 +72,12 @@ export const PATCH: APIRoute = async (context) => {
     return jsonError("Failed to update employee", 500);
   }
 
-  if (!data) return jsonError("Employee not found", 404);
+  const { data, error: loadError } = await auth.supabase
+    .from("staff")
+    .select(STAFF_MANAGE_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (loadError || !data) return jsonError("Employee not found", 404);
 
   return jsonOk({ staff: mapStaffRow(data as StaffManageRow) });
 };

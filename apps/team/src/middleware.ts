@@ -4,7 +4,12 @@ import {
   loadStaffProfile,
   mustChangePassword,
 } from "./lib/auth";
-import { createSupabaseServerClient, teamUrl } from "./lib/supabase-server";
+import { disabledModuleForPath } from "./lib/modules";
+import {
+  createSupabaseServerClient,
+  getRequestUser,
+  teamUrl,
+} from "./lib/supabase-server";
 
 const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/auth/confirm"]);
 const RESET_PASSWORD_PATH = "/reset-password";
@@ -40,7 +45,7 @@ function isMissingRuntimeConfigError(error: unknown) {
   );
 }
 
-export const onRequest = defineMiddleware(async (context, next) => {
+const authorizeRequest = defineMiddleware(async (context, next) => {
   const routePath = normalizePath(context.url.pathname, import.meta.env.BASE_URL);
 
   if (isStaticAssetPath(routePath)) {
@@ -54,6 +59,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
     routePath === "/api/auth/forgot-password" ||
     routePath === "/api/auth/exchange";
 
+  const disabledModule = disabledModuleForPath(routePath);
+  if (disabledModule) {
+    const message = `Module unavailable: ${disabledModule}`;
+    return isApiRoute
+      ? new Response(JSON.stringify({ ok: false, error: message }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
+      : new Response("Not found", { status: 404 });
+  }
+
   let user = null;
   try {
     const supabase = createSupabaseServerClient(
@@ -62,7 +78,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     );
     const {
       data: { user: authUser },
-    } = await supabase.auth.getUser();
+    } = await getRequestUser(supabase, context.request);
     user = authUser;
     context.locals.supabase = supabase;
     context.locals.user = user;
@@ -144,7 +160,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (!isPublicRoute && !isApiRoute && !user) {
-    return context.redirect(teamUrl("/login"));
+    const returnTo = `${routePath}${context.url.search}`;
+    return context.redirect(
+      teamUrl(`/login?returnTo=${encodeURIComponent(returnTo)}`),
+    );
   }
 
   if (
@@ -182,3 +201,31 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   return next();
 });
+
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "worker-src 'self' blob:",
+  "upgrade-insecure-requests",
+].join("; ");
+
+function applySecurityHeaders(response: Response) {
+  response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("Permissions-Policy", "camera=(), geolocation=(), microphone=()");
+  return response;
+}
+
+export const onRequest = defineMiddleware(async (context, next) =>
+  applySecurityHeaders((await authorizeRequest(context, next)) as Response),
+);

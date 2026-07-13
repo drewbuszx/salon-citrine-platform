@@ -18,14 +18,11 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(teamUrl("/account?error=save"));
   }
 
-  const { error: staffError } = await supabase
-    .from("staff")
-    .update({
-      name,
-      bio: bio || null,
-      phone: phone || null,
-    })
-    .eq("id", staff.id);
+  const { error: staffError } = await supabase.rpc("update_own_staff_profile", {
+    p_name: name,
+    p_bio: bio || null,
+    p_phone: phone || null,
+  });
 
   if (staffError) {
     console.error("Staff profile update failed", staffError);

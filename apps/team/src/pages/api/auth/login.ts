@@ -13,9 +13,11 @@ function loginRedirect(
   error: string,
   email: string,
   redirect: (location: string, status?: number) => Response,
+  returnTo = "",
 ) {
   const params = new URLSearchParams({ error });
   if (email) params.set("email", email);
+  if (returnTo) params.set("returnTo", returnTo);
   return redirect(teamUrl(`/login?${params.toString()}`));
 }
 
@@ -24,9 +26,16 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "").trim();
   const remember = form.get("remember") === "on";
+  const requestedReturnTo = String(form.get("returnTo") ?? "").trim();
+  const returnTo =
+    requestedReturnTo.startsWith("/") &&
+    !requestedReturnTo.startsWith("//") &&
+    !requestedReturnTo.includes("\\")
+      ? requestedReturnTo
+      : "";
 
   if (!email || !password) {
-    return loginRedirect("invalid", email, redirect);
+    return loginRedirect("invalid", email, redirect, returnTo);
   }
 
   let supabase;
@@ -35,13 +44,13 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
       maxAge: remember ? REMEMBER_MAX_AGE : SESSION_MAX_AGE,
     });
   } catch {
-    return loginRedirect("config", email, redirect);
+    return loginRedirect("config", email, redirect, returnTo);
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return loginRedirect(mapSupabaseAuthError(error.message), email, redirect);
+    return loginRedirect(mapSupabaseAuthError(error.message), email, redirect, returnTo);
   }
 
   const {
@@ -49,7 +58,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return loginRedirect("connection", email, redirect);
+    return loginRedirect("connection", email, redirect, returnTo);
   }
 
   const bannedUntil =
@@ -59,7 +68,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (bannedUntil && new Date(bannedUntil) > new Date()) {
     await supabase.auth.signOut();
-    return loginRedirect("locked", email, redirect);
+    return loginRedirect("locked", email, redirect, returnTo);
   }
 
   const { data: staffRow } = await supabase
@@ -70,7 +79,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
   if (!staffRow) {
     await supabase.auth.signOut();
-    return loginRedirect("unlinked", email, redirect);
+    return loginRedirect("unlinked", email, redirect, returnTo);
   }
 
   const sessionMode = sessionModeFromRemember(remember);
@@ -87,5 +96,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     return redirect(teamUrl("/change-password"));
   }
 
-  return redirect(teamUrl("/"));
+  return redirect(teamUrl(returnTo || "/"));
 };

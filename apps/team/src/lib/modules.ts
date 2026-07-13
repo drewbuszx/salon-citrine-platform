@@ -93,3 +93,50 @@ export const ENABLED_MANAGE_SECTIONS: readonly ManageModuleId[] = SCALED_BACK
 export function isManageSectionEnabled(id: ManageModuleId): boolean {
   return ENABLED_MANAGE_SECTIONS.includes(id);
 }
+
+const DISABLED_ROUTE_PREFIXES: ReadonlyArray<{
+  module: TeamModuleId;
+  prefixes: readonly string[];
+}> = [
+  {
+    module: "book",
+    prefixes: [
+      "/my-book",
+      "/services",
+      "/my-services",
+      "/booking-policy",
+      "/waitlist",
+      "/checkout",
+      "/api/my-book",
+      "/api/services",
+      "/api/staff-services",
+      "/api/booking-policy",
+      "/api/waitlist",
+      "/api/checkout",
+      "/api/appointments",
+      "/api/blocked-times",
+      "/api/block-time",
+      "/api/calendar",
+    ],
+  },
+  { module: "stock", prefixes: ["/inventory", "/api/inventory"] },
+  { module: "clients", prefixes: ["/clients", "/api/clients"] },
+  { module: "reports", prefixes: ["/reports", "/api/reports"] },
+];
+
+function pathMatchesPrefix(path: string, prefix: string) {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+/** Returns the centrally disabled module for a page/API path, if any. */
+export function disabledModuleForPath(path: string): TeamModuleId | null {
+  for (const entry of DISABLED_ROUTE_PREFIXES) {
+    if (
+      !isModuleEnabled(entry.module) &&
+      entry.prefixes.some((prefix) => pathMatchesPrefix(path, prefix))
+    ) {
+      return entry.module;
+    }
+  }
+  return null;
+}

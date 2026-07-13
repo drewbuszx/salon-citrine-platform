@@ -1,4 +1,5 @@
 import { showToast, friendlyError } from "../lib/toast";
+import { escapeHtml } from "../lib/safe-html";
 
 type Document = {
   id: string;
@@ -184,14 +185,6 @@ function renderList() {
       `;
     })
     .join("");
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 async function apiFetch(path: string, init?: RequestInit) {

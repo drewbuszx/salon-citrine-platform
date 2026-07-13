@@ -1,6 +1,7 @@
 import { showToast, friendlyError } from "../lib/toast";
 import { tasksSkeletonHtml, errorPanelHtml } from "../lib/ui-states";
 import { runGuardedSubmit } from "../lib/submit-guard";
+import { escapeHtml } from "../lib/safe-html";
 
 type TaskAssignee = {
   staffId: string;
@@ -410,14 +411,6 @@ function renderTaskCard(task: Task) {
       </div>
     </article>
   `;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 type EmptyState = {

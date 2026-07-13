@@ -18,8 +18,9 @@ export async function loadStaffProfile(
 ): Promise<StaffProfile | null> {
   const { data, error } = await supabase
     .from("staff")
-    .select("id, slug, name, role, bio, phone, photo_url, photo_crop")
+    .select("id, slug, name, role, bio, phone, photo_url, photo_crop, access_status")
     .eq("supabase_user_id", userId)
+    .eq("access_status", "active")
     .maybeSingle();
 
   if (error || !data) {

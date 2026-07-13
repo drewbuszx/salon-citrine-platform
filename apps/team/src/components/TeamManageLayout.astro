@@ -75,7 +75,7 @@ const navItems = MANAGE_NAV.filter((item) => {
       </nav>
     </aside>
 
-    <main
+    <div
       class:list={[
         "team-manage-layout__main",
         contentWidth === "reading" && "team-main--content-reading",
@@ -101,7 +101,7 @@ const navItems = MANAGE_NAV.filter((item) => {
         ) : null
       }
       <slot />
-    </main>
+    </div>
   </div>
 </div>
 
