@@ -149,26 +149,20 @@ const actionOptions = Object.entries(AUDIT_ACTION_LABELS);
   }
 
   .manage-audit__row-main {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4rem;
+    display: grid;
+    gap: 0.2rem;
     min-width: 0;
+  }
+
+  .manage-audit__who {
+    font-size: 0.8rem;
+    color: var(--color-stone-600);
   }
 
   .manage-audit__action {
     font-weight: 600;
     color: var(--color-stone-800);
     font-size: var(--text-sm);
-  }
-
-  .manage-audit__target {
-    color: var(--color-stone-700);
-    font-size: var(--text-sm);
-  }
-
-  .manage-audit__target:empty {
-    display: none;
   }
 
   .manage-audit__detail {
@@ -185,5 +179,9 @@ const actionOptions = Object.entries(AUDIT_ACTION_LABELS);
     gap: 0.75rem;
     color: var(--color-stone-500);
     font-size: 0.8rem;
+  }
+
+  .manage-audit__time {
+    white-space: nowrap;
   }
 </style>

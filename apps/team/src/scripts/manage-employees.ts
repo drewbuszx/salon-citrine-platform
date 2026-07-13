@@ -295,18 +295,22 @@ function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>, pr
   dialog.showModal();
 }
 
-function listSkeletonHtml() {
-  return `<div class="manage-employees__skeleton" aria-hidden="true">
-    <div class="manage-employees__skeleton-row"></div>
-    <div class="manage-employees__skeleton-row"></div>
-    <div class="manage-employees__skeleton-row"></div>
-  </div>`;
+function listSkeleton() {
+  const wrap = document.createElement("div");
+  wrap.className = "manage-employees__skeleton";
+  wrap.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 3; i += 1) {
+    const row = document.createElement("div");
+    row.className = "manage-employees__skeleton-row";
+    wrap.append(row);
+  }
+  return wrap;
 }
 
 async function reloadList() {
   if (!listEl) return;
   listEl.dataset.loading = "true";
-  listEl.innerHTML = listSkeletonHtml();
+  listEl.replaceChildren(listSkeleton());
 
   const response = await fetch(apiBase);
   const body = (await response.json()) as {
@@ -315,7 +319,11 @@ async function reloadList() {
   };
   listEl.dataset.loading = "false";
   if (!response.ok || !body.ok) {
-    listEl.innerHTML = `<p class="empty-state" role="alert">Could not refresh employees.</p>`;
+    const fail = document.createElement("p");
+    fail.className = "empty-state";
+    fail.setAttribute("role", "alert");
+    fail.textContent = "Could not refresh employees.";
+    listEl.replaceChildren(fail);
     return;
   }
 
