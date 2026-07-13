@@ -25,6 +25,17 @@ Must-fix from adversarial regrade + high-leverage polish:
 
 Honest target: **81–83** if the auditor re-checks the three prior caps (broken Upload CTA, unfiltered invites, stubby Roles). Residual dings likely: still only two capabilities, Book/Stock/Clients still gated, no comments/acks/training/search.
 
+### Independent regrade (adversarial, `f02749a`)
+
+**Product/UX: 81 / 100 (B−)** — clears **≥ 80**. Accepts the low end of the follow-up claim; rejects 82–83.
+
+Verified wired: Docs empty Upload CTA; Employees `?access=invited` (SSR + client); Calendar `#pending` focus; Roles surfaces/comparison/owner floor (still 2 caps); staff “Your work” / “My time off”.
+
+Still thin (product): Roles still only two capabilities; Book/Stock/Clients gated; no
+comments/acks/training. Tasks `?view=` deep-links are **fixed** on later Eng commits
+(`parseTaskViewFromSearch` / `setActiveTab(currentView)`). See
+`04-engineering-production-pass.md` for Eng/Prod regrade notes after disposable green.
+
 ## Smoke-test
 
 1. Manager: Manage → Employees — filter by access status; Invite/Resend/Deactivate only when valid; confirm deactivate copy. Open `…/manage/employees?access=invited` from dashboard/bell and confirm Invite sent filter is active.

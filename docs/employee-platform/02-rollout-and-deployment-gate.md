@@ -10,19 +10,38 @@ plus pgTAP. Deployment stays blocked until this passes and `verify:deployment`
 confirms the evidence matches the current migration set.
 
 ```bash
-docker info                     # confirm Docker is running
+docker info                     # confirm Docker daemon is running
 npm ci
 npm run verify:migrations       # manifest + duplicate + canonical-sequence checks
-npm run db:test:disposable      # stage canonical files, supabase start, db reset,
-                                # pgTAP, then write evidence only on full success
+npm run db:test:disposable      # stage canonical files (CLI 2.109.1), supabase start,
+                                # db reset, pgTAP 0030+0034–0039, evidence on success
 npm run verify:deployment       # fails if evidence is missing/stale
 npm test                        # unit + security regression
 npm run build --workspace apps/team
+# Optional — public web against a local migrated stack:
+#   npx supabase@2.109.1 start
+#   npm run stage:migrations --workspace packages/db
+#   npx supabase@2.109.1 db reset
+#   npm run build:web:local
+#   npx supabase@2.109.1 stop --no-backup
 ```
 
 On Windows PowerShell the orchestrator (`run-disposable-replay.mjs`) already wraps
 `supabase stop --no-backup` in a finally block, so a failed run still tears down the
-local stack.
+local stack. Replay uses **pinned** `supabase@2.109.1` (same as CI) so latest-CLI
+auto-expose defaults cannot silently strip table grants.
+
+### Auditor checklist (process)
+
+- [ ] `docker info` works
+- [ ] `npm run db:test:disposable` exits 0 and prints `Wrote disposable migration evidence`
+- [ ] Evidence JSON lists `migrationCount` matching manifest (41+) and digest binds all `tests/*.sql`
+- [ ] `npm run verify:deployment` prints evidence-matches
+- [ ] CI `disposable-db-replay` is **required** on the protected branch
+- [ ] CI `authenticated-role-matrix` is **required**; secrets configured (script fails closed if not)
+- [ ] App deploy order: migrations `0030`–`0039` first, then Team Worker, then public Web
+- [ ] Never apply `packages/db/reconciliation/legacy-seed-dependencies.sql` to production
+- [ ] Expand-contract: Team app may ship before `0038` without locking out front_desk (capabilities undefined fallback)
 
 ### Why evidence is trustworthy
 
@@ -32,7 +51,8 @@ local stack.
   command is exposed. Local JSON is integrity/staleness evidence, not an unforgeable
   attestation; the required CI replay job is the authoritative deployment gate.
 - The evidence digest binds the manifest, every migration, the reconciliation shim,
-  the pgTAP suite, `supabase/config.toml`, and the staging/verify scripts.
+  **every** pgTAP file under `packages/db/tests/` (0030 and 0034–0039+),
+  `supabase/config.toml`, and the staging/verify/replay scripts.
 
 ## Production deployment order (only after the gate passes)
 
