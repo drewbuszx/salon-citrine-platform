@@ -78,6 +78,9 @@ const staffClearBtn = root.querySelector<HTMLButtonElement>("[data-staff-clear]"
 const pendingInbox = root.querySelector<HTMLElement>("[data-pending-inbox]");
 const pendingListEl = root.querySelector<HTMLElement>("[data-pending-list]");
 const pendingCountEl = root.querySelector<HTMLElement>("[data-pending-count]");
+const myTimeOffPanel = root.querySelector<HTMLElement>("[data-my-time-off]");
+const myTimeOffList = root.querySelector<HTMLElement>("[data-my-timeoff-list]");
+const myTimeOffCount = root.querySelector<HTMLElement>("[data-my-timeoff-count]");
 const dayAgenda = root.querySelector<HTMLElement>("[data-day-agenda]");
 const dayAgendaTitle = root.querySelector<HTMLElement>("[data-day-agenda-title]");
 const dayAgendaCount = root.querySelector<HTMLElement>("[data-day-agenda-count]");
@@ -847,8 +850,10 @@ function refreshViews() {
   renderCalendar();
   renderList();
   renderPendingInbox();
+  renderMyTimeOff();
   renderDayAgenda();
   syncFilterUI();
+  focusPendingInboxIfRequested();
 }
 
 async function decideTimeOff(eventId: string, decision: string, button?: HTMLButtonElement) {
@@ -912,6 +917,59 @@ function renderPendingInbox() {
         </article>`;
     })
     .join("");
+}
+
+function renderMyTimeOff() {
+  if (isManager || !myTimeOffPanel || !myTimeOffList) return;
+
+  const mine = events
+    .filter(
+      (event) =>
+        event.type === "time_off" &&
+        (event.staffId === currentStaffId || event.createdByStaffId === currentStaffId),
+    )
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+  if (mine.length === 0) {
+    myTimeOffPanel.hidden = true;
+    myTimeOffList.replaceChildren();
+    if (myTimeOffCount) myTimeOffCount.textContent = "";
+    return;
+  }
+
+  myTimeOffPanel.hidden = false;
+  if (myTimeOffCount) {
+    myTimeOffCount.textContent = `${mine.length} request${mine.length === 1 ? "" : "s"}`;
+  }
+
+  myTimeOffList.innerHTML = mine
+    .map((event) => {
+      const status = event.approvalStatus ?? "pending";
+      const range = formatEventRange(event);
+      return `
+        <button
+          class="events-inbox-card events-inbox-card--button"
+          type="button"
+          data-my-timeoff-open="${escapeHtml(event.id)}"
+        >
+          <div>
+            <p class="events-inbox-card__title">${escapeHtml(event.title)}</p>
+            <p class="events-inbox-card__meta">${escapeHtml(range)}</p>
+            <div class="events-inbox-card__badges">
+              <span class="event-badge event-badge--status status-${escapeHtml(status)}">${escapeHtml(timeOffStatusLabel(status) || status)}</span>
+            </div>
+          </div>
+        </button>`;
+    })
+    .join("");
+}
+
+function focusPendingInboxIfRequested() {
+  if (!isManager || !pendingInbox || pendingInbox.hidden) return;
+  if (window.location.hash !== "#pending") return;
+  pendingInbox.scrollIntoView({ behavior: "smooth", block: "start" });
+  pendingInbox.classList.add("events-pending--focus");
+  window.setTimeout(() => pendingInbox.classList.remove("events-pending--focus"), 1600);
 }
 
 function renderDayAgenda() {
@@ -1441,6 +1499,14 @@ pendingListEl?.addEventListener("click", async (event) => {
       events.find((item) => item.id === openBtn.dataset.inboxOpen);
     if (found) openEditModal(found);
   }
+});
+
+myTimeOffList?.addEventListener("click", (event) => {
+  const openBtn = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-my-timeoff-open]");
+  const id = openBtn?.dataset.myTimeoffOpen;
+  if (!id) return;
+  const found = events.find((item) => item.id === id);
+  if (found) openEditModal(found);
 });
 
 dayAgendaList?.addEventListener("click", (event) => {

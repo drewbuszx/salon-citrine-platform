@@ -124,6 +124,7 @@ const typeFilters: { type: string; label: string }[] = [
           <section
             class="events-pending team-panel"
             data-pending-inbox
+            id="pending"
             aria-labelledby="events-pending-heading"
             hidden
           >
@@ -138,7 +139,25 @@ const typeFilters: { type: string; label: string }[] = [
             </p>
             <div class="events-pending__list" data-pending-list />
           </section>
-        ) : null
+        ) : (
+          <section
+            class="events-pending events-pending--mine team-panel"
+            data-my-time-off
+            aria-labelledby="events-my-timeoff-heading"
+            hidden
+          >
+            <div class="events-pending__header">
+              <h3 class="team-panel__title" id="events-my-timeoff-heading">
+                My time off
+              </h3>
+              <span class="events-pending__count" data-my-timeoff-count />
+            </div>
+            <p class="events-pending__lead">
+              Status of your requests for this month — pending, approved, or declined.
+            </p>
+            <div class="events-pending__list" data-my-timeoff-list />
+          </section>
+        )
       }
 
       <section class="events-calendar-panel" aria-label="Month calendar">
@@ -1282,6 +1301,11 @@ const typeFilters: { type: string; label: string }[] = [
 
   .events-pending {
     margin-bottom: 1rem;
+    border-left: 3px solid color-mix(in srgb, var(--color-citrine, #c4a35a) 70%, transparent);
+  }
+
+  .events-pending--mine {
+    border-left-color: color-mix(in srgb, var(--color-stone-400) 80%, transparent);
   }
 
   .events-pending__lead {
@@ -1300,6 +1324,10 @@ const typeFilters: { type: string; label: string }[] = [
   .events-day-agenda__list {
     display: grid;
     gap: 0.5rem;
+  }
+
+  .events-day-agenda.team-panel {
+    border-left: 3px solid color-mix(in srgb, var(--color-stone-400) 55%, transparent);
   }
 
   .events-inbox-card {
@@ -1338,6 +1366,20 @@ const typeFilters: { type: string; label: string }[] = [
 
   .events-inbox-card__actions .ui-btn {
     min-height: 2.75rem;
+  }
+
+  .events-inbox-card--button {
+    width: 100%;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+  }
+
+  .events-inbox-card--button:focus-visible,
+  .events-pending--focus {
+    outline: 2px solid var(--color-citrine, #c4a35a);
+    outline-offset: 2px;
   }
 
   .events-agenda-item {

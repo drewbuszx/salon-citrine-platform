@@ -16,7 +16,7 @@ export const PAGE_CONTEXT = {
   tasks: {
     nav: "Tasks",
     title: "Team Tasks & Checklists",
-    subtitle: "Assign work, claim open tasks, and track salon checklists.",
+    subtitle: "Your assignments, open claims, and salon checklists.",
     primaryAction: "Create task",
   },
   stock: {
@@ -40,7 +40,7 @@ export const PAGE_CONTEXT = {
   events: {
     nav: "Calendar",
     title: "Team Calendar",
-    subtitle: "Birthdays, time off, closures, meetings, and salon announcements.",
+    subtitle: "Birthdays, your time off, closures, meetings, and salon announcements.",
     primaryAction: "Add event",
   },
   reports: {

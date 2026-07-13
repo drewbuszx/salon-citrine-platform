@@ -37,11 +37,48 @@ const grantSet = new Set(
 const roles: StaffRole[] = ["owner", "stylist", "esthetician", "front_desk"];
 const apiBase = teamUrl("/api/staff/capabilities");
 
-const CAP_HELP: Record<string, string> = {
-  manage_team:
-    "Invite employees, edit profiles, and change login access. Owners always keep this.",
-  view_activity: "Open the Activity Log of invites, role changes, and access actions.",
+type CapSurface = {
+  summary: string;
+  surfaces: { label: string; href: string; detail: string }[];
 };
+
+const CAP_SURFACES: Record<string, CapSurface> = {
+  manage_team: {
+    summary:
+      "Invite employees, edit profiles, and change login access. Owners always keep this.",
+    surfaces: [
+      {
+        label: "Employees",
+        href: teamUrl("/manage/employees"),
+        detail: "Invite, resend, deactivate, and reactivate login access",
+      },
+      {
+        label: "Manage hub",
+        href: teamUrl("/manage"),
+        detail: "People, roles, and access settings in one place",
+      },
+      {
+        label: "Calendar approvals",
+        href: teamUrl("/events#pending"),
+        detail: "Approve or decline pending time-off requests",
+      },
+    ],
+  },
+  view_activity: {
+    summary: "Open the Activity Log of invites, role changes, and access actions.",
+    surfaces: [
+      {
+        label: "Activity Log",
+        href: teamUrl("/manage/audit"),
+        detail: "Scan invites, access changes, and permission edits",
+      },
+    ],
+  },
+};
+
+function roleHasCap(role: StaffRole, capKey: string) {
+  return grantSet.has(`${role}:${capKey}`) || isLockedOnGrant(role, capKey);
+}
 ---
 
 <TeamLayout title="Roles & permissions" activeNav="manage" plain wide fullBleed>
@@ -56,68 +93,191 @@ const CAP_HELP: Record<string, string> = {
     {
       !isOwner ? (
         <div class="manage-roles__denied" role="status">
-          <h2 class="manage-roles__denied-title">Owner access only</h2>
+          <p class="manage-roles__denied-eyebrow">Owner only</p>
+          <h2 class="manage-roles__denied-title">You can’t change role permissions</h2>
           <p class="manage-roles__denied-copy">
-            Role permissions can only be changed by an owner. You can still manage day-to-day
-            employee profiles from Employees if you have Manage team access.
+            Only an owner can grant or revoke <strong>Manage team</strong> and
+            <strong> View activity</strong>. This page is read-only for your role so
+            accidental lockouts don’t happen from the floor.
           </p>
-          <a class="ui-btn ui-btn--secondary" href={teamUrl("/manage/employees")}>Go to Employees</a>
+          <ul class="manage-roles__denied-list">
+            <li>
+              <strong>Manage team</strong> — Employees invites/access and manager time-off
+              approvals
+            </li>
+            <li>
+              <strong>View activity</strong> — Activity Log of invites and access changes
+            </li>
+          </ul>
+          <p class="manage-roles__denied-note">
+            If you already have Manage team, you can still handle day-to-day employee
+            profiles without editing these toggles.
+          </p>
+          <div class="manage-roles__denied-actions">
+            <a class="ui-btn ui-btn--secondary" href={teamUrl("/manage/employees")}>Go to Employees</a>
+            <a class="ui-btn ui-btn--ghost" href={teamUrl("/manage")}>Back to Manage</a>
+          </div>
         </div>
       ) : (
         <>
           <p class="manage-page__lead">
-            <strong>Manage team</strong> covers invites and employee access.
-            <strong> View activity</strong> covers the Activity Log. Changes apply immediately
-            and are enforced by the database. Owners always keep Manage team.
+            Two real capabilities today — not a placeholder matrix. Changes apply
+            immediately and are enforced by the database.
           </p>
+
+          <aside class="manage-roles__floor" role="note">
+            <h2 class="manage-roles__floor-title">Owner floor</h2>
+            <p class="manage-roles__floor-copy">
+              Owners always keep <strong>Manage team</strong>. The database refuses to
+              remove it, and the toggle below stays locked so the salon can’t lock every
+              owner out.
+            </p>
+          </aside>
 
           {
             loadError ? (
-              <p class="notice notice--error" role="alert">
-                Failed to load permissions. Refresh the page or try again shortly.
-              </p>
+              <div class="manage-roles__state manage-roles__state--error" role="alert">
+                <h2 class="manage-roles__state-title">Couldn’t load permissions</h2>
+                <p class="manage-roles__state-copy">
+                  Refresh the page or try again shortly. Nothing was changed.
+                </p>
+              </div>
             ) : capabilities.length === 0 ? (
-              <p class="empty-state">
-                No capabilities are defined yet. Ask a developer to seed role permissions.
-              </p>
+              <div class="manage-roles__state" role="status">
+                <h2 class="manage-roles__state-title">No capabilities defined yet</h2>
+                <p class="manage-roles__state-copy">
+                  Ask a developer to seed role permissions before editing grants here.
+                </p>
+              </div>
             ) : (
               <section class="manage-roles" data-manage-roles data-api-base={apiBase}>
                 <p class="notice notice--success" data-roles-success hidden role="status">Saved.</p>
                 <p class="notice notice--error" data-roles-error hidden role="alert"></p>
 
                 <div class="manage-roles__list">
-                  {capabilities.map((cap) => (
-                    <article class="manage-roles__cap">
-                      <div class="manage-roles__cap-head">
-                        <h2 class="manage-roles__cap-title">{cap.label}</h2>
-                        <p class="manage-roles__cap-desc">
-                          {CAP_HELP[cap.key] ?? cap.description}
-                        </p>
-                      </div>
-                      <fieldset class="manage-roles__roles">
-                        <legend class="manage-roles__legend">Roles with this capability</legend>
-                        {roles.map((role) => {
-                          const locked = isLockedOnGrant(role, cap.key);
-                          const granted = grantSet.has(`${role}:${cap.key}`) || locked;
-                          return (
-                            <label class="manage-roles__toggle">
-                              <input
-                                type="checkbox"
-                                data-role-toggle
-                                data-role={role}
-                                data-capability={cap.key}
-                                checked={granted}
-                                disabled={locked}
-                              />
-                              <span class="manage-roles__toggle-label">{STAFF_ROLE_LABELS[role]}</span>
-                              {locked ? <span class="ui-badge ui-badge--info">Always on</span> : null}
-                            </label>
-                          );
-                        })}
-                      </fieldset>
-                    </article>
-                  ))}
+                  {capabilities.map((cap) => {
+                    const surface = CAP_SURFACES[cap.key];
+                    return (
+                      <article class="manage-roles__cap">
+                        <div class="manage-roles__cap-head">
+                          <h2 class="manage-roles__cap-title">{cap.label}</h2>
+                          <p class="manage-roles__cap-desc">
+                            {surface?.summary ?? cap.description}
+                          </p>
+                        </div>
+
+                        {surface ? (
+                          <ul class="manage-roles__surfaces">
+                            {surface.surfaces.map((item) => (
+                              <li>
+                                <a class="manage-roles__surface-link" href={item.href}>
+                                  {item.label}
+                                </a>
+                                <span class="manage-roles__surface-detail">{item.detail}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+
+                        <fieldset class="manage-roles__roles">
+                          <legend class="manage-roles__legend">Roles with this capability</legend>
+                          {roles.map((role) => {
+                            const locked = isLockedOnGrant(role, cap.key);
+                            const granted = grantSet.has(`${role}:${cap.key}`) || locked;
+                            return (
+                              <label class="manage-roles__toggle">
+                                <input
+                                  type="checkbox"
+                                  data-role-toggle
+                                  data-role={role}
+                                  data-capability={cap.key}
+                                  checked={granted}
+                                  disabled={locked}
+                                />
+                                <span class="manage-roles__toggle-label">{STAFF_ROLE_LABELS[role]}</span>
+                                {locked ? <span class="ui-badge ui-badge--info">Always on</span> : null}
+                              </label>
+                            );
+                          })}
+                        </fieldset>
+                      </article>
+                    );
+                  })}
                 </div>
+
+                <section class="manage-roles__compare" aria-labelledby="roles-compare-heading">
+                  <h2 class="manage-roles__section-title" id="roles-compare-heading">
+                    Capability comparison
+                  </h2>
+                  <p class="manage-roles__section-lead">
+                    At-a-glance view of which roles currently have each capability.
+                  </p>
+                  <div class="manage-roles__table-wrap">
+                    <table class="manage-roles__table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Role</th>
+                          {capabilities.map((cap) => (
+                            <th scope="col">{cap.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {roles.map((role) => (
+                          <tr>
+                            <th scope="row">{STAFF_ROLE_LABELS[role]}</th>
+                            {capabilities.map((cap) => {
+                              const on = roleHasCap(role, cap.key);
+                              const locked = isLockedOnGrant(role, cap.key);
+                              return (
+                                <td>
+                                  <span
+                                    class:list={[
+                                      "manage-roles__cell",
+                                      on ? "manage-roles__cell--on" : "manage-roles__cell--off",
+                                    ]}
+                                  >
+                                    {on ? (locked ? "Always on" : "On") : "Off"}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section class="manage-roles__summaries" aria-labelledby="roles-summary-heading">
+                  <h2 class="manage-roles__section-title" id="roles-summary-heading">
+                    Per-role summary
+                  </h2>
+                  <div class="manage-roles__summary-grid">
+                    {roles.map((role) => {
+                      const grantedCaps = capabilities.filter((cap) => roleHasCap(role, cap.key));
+                      return (
+                        <article class="manage-roles__summary">
+                          <h3 class="manage-roles__summary-title">{STAFF_ROLE_LABELS[role]}</h3>
+                          {grantedCaps.length === 0 ? (
+                            <p class="manage-roles__summary-empty">
+                              No manage/activity capabilities — day-to-day Tasks, Calendar, and Docs still work.
+                            </p>
+                          ) : (
+                            <ul class="manage-roles__summary-list">
+                              {grantedCaps.map((cap) => (
+                                <li>
+                                  <strong>{cap.label}</strong>
+                                  {isLockedOnGrant(role, cap.key) ? " (owner floor)" : ""}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
 
                 <script src="../../scripts/manage-roles.ts"></script>
               </section>
@@ -137,25 +297,96 @@ const CAP_HELP: Record<string, string> = {
     color: var(--color-stone-500);
   }
 
+  .manage-roles__floor {
+    margin: 0 0 1.25rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--color-citrine, #c4a35a) 45%, var(--color-stone-200));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-citrine, #c4a35a) 10%, var(--color-bg));
+  }
+
+  .manage-roles__floor-title {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .manage-roles__floor-copy {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--color-stone-600);
+  }
+
   .manage-roles__denied {
     display: grid;
     gap: 0.75rem;
-    max-width: 28rem;
+    max-width: 34rem;
     padding: 1.25rem;
     border: 1px solid var(--color-stone-200);
     border-radius: var(--radius-sm);
     background: var(--color-stone-50);
   }
 
+  .manage-roles__denied-eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
   .manage-roles__denied-title {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 600;
   }
 
-  .manage-roles__denied-copy {
+  .manage-roles__denied-copy,
+  .manage-roles__denied-note {
     margin: 0;
     font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--color-stone-600);
+  }
+
+  .manage-roles__denied-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--color-stone-600);
+  }
+
+  .manage-roles__denied-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .manage-roles__state {
+    padding: 1.1rem 1.2rem;
+    border: 1px dashed var(--color-stone-300);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .manage-roles__state--error {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--color-danger, #b42318) 35%, var(--color-stone-200));
+    background: color-mix(in srgb, var(--color-danger, #b42318) 6%, var(--color-bg));
+  }
+
+  .manage-roles__state-title {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .manage-roles__state-copy {
+    margin: 0;
+    font-size: 0.875rem;
     line-height: 1.45;
     color: var(--color-stone-600);
   }
@@ -181,6 +412,35 @@ const CAP_HELP: Record<string, string> = {
   .manage-roles__cap-desc {
     margin: 0;
     font-size: 0.85rem;
+    color: var(--color-stone-500);
+  }
+
+  .manage-roles__surfaces {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .manage-roles__surfaces li {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .manage-roles__surface-link {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-stone-800);
+    text-decoration: underline;
+    text-underline-offset: 0.12em;
+  }
+
+  .manage-roles__surface-detail {
+    font-size: 0.8rem;
     color: var(--color-stone-500);
   }
 
@@ -211,5 +471,94 @@ const CAP_HELP: Record<string, string> = {
 
   .manage-roles__toggle-label {
     font-size: 0.9rem;
+  }
+
+  .manage-roles__section-title {
+    margin: 1.5rem 0 0.35rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .manage-roles__section-lead {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--color-stone-500);
+  }
+
+  .manage-roles__table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+  }
+
+  .manage-roles__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .manage-roles__table th,
+  .manage-roles__table td {
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-stone-200);
+    vertical-align: middle;
+  }
+
+  .manage-roles__table thead th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+    background: var(--color-stone-50);
+  }
+
+  .manage-roles__table tbody tr:last-child th,
+  .manage-roles__table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .manage-roles__cell--on {
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .manage-roles__cell--off {
+    color: var(--color-stone-400);
+  }
+
+  .manage-roles__summary-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+
+  .manage-roles__summary {
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+
+  .manage-roles__summary-title {
+    margin: 0 0 0.45rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .manage-roles__summary-list {
+    margin: 0;
+    padding-left: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--color-stone-600);
+  }
+
+  .manage-roles__summary-empty {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--color-stone-500);
   }
 </style>
