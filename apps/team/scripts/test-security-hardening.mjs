@@ -376,4 +376,30 @@ assert.doesNotMatch(
   /"tests\/0030_security_reliability_hardening\.sql"/,
 );
 
+const stageCanonical = await read("packages/db/scripts/stage-canonical-migrations.mjs");
+assert.match(stageCanonical, /schema_bootstrap/);
+assert.match(stageCanonical, /Supabase would skip/);
+
+// Client scripts must never pull cloudflare:workers (via supabase-server / staff-access-admin).
+const { readdirSync } = await import("node:fs");
+const clientScriptsDir = path.join(root, "apps/team/src/scripts");
+for (const name of readdirSync(clientScriptsDir).filter((n) => n.endsWith(".ts"))) {
+  const source = await read(`apps/team/src/scripts/${name}`);
+  assert.doesNotMatch(
+    source,
+    /cloudflare:workers/,
+    `${name} must not import cloudflare:workers`,
+  );
+  assert.doesNotMatch(
+    source,
+    /supabase-server/,
+    `${name} must not import supabase-server`,
+  );
+  assert.doesNotMatch(
+    source,
+    /staff-access-admin/,
+    `${name} must not import staff-access-admin`,
+  );
+}
+
 console.log("Security hardening regression checks passed.");

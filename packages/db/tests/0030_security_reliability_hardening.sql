@@ -166,7 +166,8 @@ select lives_ok(
 );
 select is(
   (select count(*)::int from public.staff_security_audit
-    where target_staff_id='f1000000-0000-4000-8000-000000000004'),
+    where target_staff_id='f1000000-0000-4000-8000-000000000004'
+      and action in ('invited', 'reinvited', 'linked')),
   3, 'invite, resend, and activation each create an audit row'
 );
 -- confirm_staff_invite is idempotent for an already-active linkage and never

@@ -53,10 +53,21 @@ for (const [index, file] of manifest.migrations.entries()) {
       `Canonical mapping drift for ${file}: expected sequence ${generated}, got ${canonicalVersion}`,
     );
   }
-  const suffix = file.replace(/^\d{4}_/, "");
+  // Supabase CLI skips any migration filename containing "init" (reserved). Rewrite
+  // the staged suffix so disposable replay actually applies 0001_init.sql.
+  let suffix = file.replace(/^\d{4}_/, "");
+  if (/\binit\b/i.test(suffix) || /(^|_)init(\.|_)/i.test(suffix)) {
+    suffix = suffix.replace(/init/gi, "schema_bootstrap");
+  }
+  const stagedName = `${canonicalVersion}_${suffix}`;
+  if (/init/i.test(stagedName)) {
+    throw new Error(
+      `Staged migration name still contains "init" (Supabase would skip it): ${stagedName}`,
+    );
+  }
   await cp(
     path.join(dbRoot, "migrations", file),
-    path.join(output, `${canonicalVersion}_${suffix}`),
+    path.join(output, stagedName),
   );
   const shim = shimsByAfter.get(file);
   if (shim) {

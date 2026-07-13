@@ -17,12 +17,14 @@ function run(command, args, { allowFailure = false } = {}) {
 }
 
 function detectSupabaseCliVersion() {
-  const result = spawnSync("npx", ["--yes", "supabase", "--version"], {
+  const result = spawnSync("npx", ["--yes", "supabase@2.109.1", "--version"], {
     encoding: "utf8",
     shell: true,
   });
   return (result.stdout ?? "").trim() || "unknown";
 }
+
+const SUPABASE = ["--yes", "supabase@2.109.1"];
 
 let started = false;
 try {
@@ -30,10 +32,10 @@ try {
   run("node", ["scripts/verify-migrations.mjs"]);
 
   const cliVersion = detectSupabaseCliVersion();
-  run("npx", ["--yes", "supabase", "start"]);
+  run("npx", [...SUPABASE, "start"]);
   started = true;
-  run("npx", ["--yes", "supabase", "db", "reset"]);
-  run("npx", ["--yes", "supabase", "test", "db", "tests"]);
+  run("npx", [...SUPABASE, "db", "reset"]);
+  run("npx", [...SUPABASE, "test", "db", "tests"]);
 
   const { digest, manifest, canonicalFileCount } = await migrationDigest();
   const evidence = {
@@ -51,7 +53,7 @@ try {
   console.log(`\nWrote disposable migration evidence: ${evidencePath}`);
 } finally {
   if (started) {
-    run("npx", ["--yes", "supabase", "stop", "--no-backup"], {
+    run("npx", [...SUPABASE, "stop", "--no-backup"], {
       allowFailure: true,
     });
   }

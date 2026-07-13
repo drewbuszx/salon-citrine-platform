@@ -6,6 +6,9 @@ port = 54321
 schemas = ["public", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 max_rows = 1000
+# Keep legacy auto-grants so historical migrations match production Data API exposure.
+# Pair with 0039_explicit_api_grants.sql so replay stays green when this default flips off.
+auto_expose_new_tables = true
 
 [db]
 port = 54322

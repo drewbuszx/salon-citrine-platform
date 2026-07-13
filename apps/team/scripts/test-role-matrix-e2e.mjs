@@ -3,9 +3,23 @@ import { request } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 
 const baseURL = process.env.TEAM_E2E_BASE_URL?.replace(/\/$/, "");
+const allowSkip =
+  process.env.TEAM_E2E_ALLOW_SKIP === "1" ||
+  process.env.TEAM_E2E_ALLOW_SKIP === "true";
+
 if (!baseURL) {
-  console.log("SKIP role-matrix E2E: TEAM_E2E_BASE_URL is not configured.");
-  process.exit(0);
+  if (allowSkip) {
+    console.log(
+      "SKIP role-matrix E2E: TEAM_E2E_BASE_URL unset and TEAM_E2E_ALLOW_SKIP=1.",
+    );
+    process.exit(0);
+  }
+  console.error(
+    "FAIL role-matrix E2E: TEAM_E2E_BASE_URL is not configured.\n" +
+      "Configure E2E secrets (or a local preview + credentials), or set TEAM_E2E_ALLOW_SKIP=1 for an explicit local skip.\n" +
+      "CI must never set TEAM_E2E_ALLOW_SKIP — the authenticated-role-matrix job is fail-closed.",
+  );
+  process.exit(1);
 }
 
 const supabaseUrl = process.env.SUPABASE_URL;

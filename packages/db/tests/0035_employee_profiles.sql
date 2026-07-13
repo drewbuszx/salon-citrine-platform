@@ -56,7 +56,11 @@ select is(
 
 -- Managers may set the new team-visible start_date via the superseded RPC.
 select lives_ok(
-  $select public.manager_update_staff('d1000000-0000-4000-8000-000000000002','{"start_date":"2020-01-15"}'::jsonb,'test')$,
+  $mgr$select public.manager_update_staff(
+    'd1000000-0000-4000-8000-000000000002',
+    '{"start_date":"2020-01-15"}'::jsonb,
+    'test'
+  )$mgr$,
   'manager can set start_date'
 );
 select is(
@@ -64,7 +68,11 @@ select is(
   '2020-01-15', 'start_date is persisted by manager update'
 );
 select throws_ok(
-  $select public.manager_update_staff('d1000000-0000-4000-8000-000000000002','{"ssn":"x"}'::jsonb,'test')$,
+  $mgr$select public.manager_update_staff(
+    'd1000000-0000-4000-8000-000000000002',
+    '{"ssn":"x"}'::jsonb,
+    'test'
+  )$mgr$,
   '22023', null, 'manager update rejects unknown fields'
 );
 

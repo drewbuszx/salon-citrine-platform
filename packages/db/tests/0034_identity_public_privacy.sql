@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(12);
+select plan(11);
 
 insert into auth.users (instance_id,id,aud,role,email,created_at,updated_at)
 values
@@ -26,9 +26,10 @@ values ('e3000000-0000-4000-8000-000000000001','Manager planning','event',now(),
 insert into public.team_events (id,title,event_type,starts_at,created_by_staff_id,staff_id,description)
 values ('e3000000-0000-4000-8000-000000000002','Original','time_off',now(),
         'e1000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','Surgery recovery');
-select like(
-  (select title from public.team_events where id='e3000000-0000-4000-8000-000000000002'),
-  '%unavailable', 'time-off title is neutralized'
+select ok(
+  (select title from public.team_events where id='e3000000-0000-4000-8000-000000000002')
+    like '%unavailable',
+  'time-off title is neutralized'
 );
 select is(
   (select description from public.team_events where id='e3000000-0000-4000-8000-000000000002'),

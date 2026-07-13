@@ -33,6 +33,7 @@ where event_type = 'time_off' and approval_status = 'not_required';
 -- on every non-manager write, and seeds the lifecycle on insert instead.
 create or replace function public.enforce_time_off_privacy()
 returns trigger language plpgsql
+security definer
 set search_path = pg_catalog
 as $$
 declare v_name text;
@@ -64,6 +65,7 @@ $$;
 -- trigger (alphabetical order) so decision metadata is stamped consistently.
 create or replace function public.enforce_time_off_approval_transition()
 returns trigger language plpgsql
+security definer
 set search_path = pg_catalog
 as $$
 begin

@@ -92,6 +92,7 @@
     "0035_wave5_employee_profiles.sql",
     "0036_time_off_workflow.sql",
     "0037_staff_audit_read.sql",
-    "0038_role_capabilities.sql"
+    "0038_role_capabilities.sql",
+    "0039_explicit_api_grants.sql"
   ]
 }
