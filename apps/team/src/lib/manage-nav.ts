@@ -7,7 +7,8 @@ export type ManageSection =
   | "booking-policy"
   | "staff"
   | "tags"
-  | "business";
+  | "business"
+  | "activity";
 
 export type ManageNavItem = {
   id: ManageSection;
@@ -23,6 +24,7 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
   { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
+  { id: "activity", label: "Activity Log", href: teamUrl("/manage/audit") },
 ];
 
 export type ManageHubItem = {
@@ -76,5 +78,12 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     description: "Salon name, locations, and contact information.",
     href: teamUrl("/manage/business"),
     actionLabel: "Configure",
+  },
+  {
+    id: "activity",
+    title: "Activity Log",
+    description: "Employee, role, and access changes recorded for review.",
+    href: teamUrl("/manage/audit"),
+    actionLabel: "Open",
   },
 ];

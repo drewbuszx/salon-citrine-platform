@@ -168,7 +168,7 @@ Web build and `astro check` diagnostics are documented deployment/backlog items.
 36. Training tracking — **not started** — Agents 2, 6, 8.
 37. Accessible mobile agenda — **not started** — Agents 9, 10.
 38. Role-tailored real-data dashboard — **not started** — Agents 6, 7, 8, 9.
-39. Durable activity/audit UI — **not started** — Agents 2, 6.
+39. Durable activity/audit UI — **code-complete (this session)** — Agents 2, 6.
 40. Permission-safe cross-platform search — **not started** — Agents 2, 4, 9.
 
 ## Waves 5–8 status (tasks 21–40) — NOT implemented in the current session
@@ -249,15 +249,22 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **22 Deactivation/reactivation preserving history — code-complete (pre-existing).**
   Auth ban/unban + audited status transitions in the same endpoint; history
   preserved in `staff_security_audit`.
-- **23 Employee profiles — data layer done this session (see above); API/UI remaining.**
+- **23 Employee profiles — code-complete (this session).** Data layer
+  (`staff_private_details`, `start_date`, superseded `manager_update_staff`)
+  plus self-service API (`api/account.ts`) and manager API (`api/staff/[id].ts`)
+  upsert emergency contacts; account + manage/employees dialogs edit start date
+  and emergency contact. pgTAP `0035` + 14 regression assertions.
 - **24 Role/permission editor — NOT built.** Only a `staff.role` string and
   `is_salon_manager()` exist today. A capability model + editor + server/RLS
   enforcement + descriptions is net-new design work.
-- **25 Time-off workflow — partial (pre-existing) / approval workflow NOT built.**
-  `time_off` events exist with privacy neutralization (title neutralized,
-  public description cleared, reason moved to `private_reason`) and self/manager
-  RLS. Missing: submit/approve/decline/cancel **status** lifecycle (no status
-  column/endpoints/UI yet).
+- **25 Time-off workflow — code-complete (this session).** Extends the existing
+  `approval_status` column (`0036`) with a `cancelled` state plus
+  `decided_by_staff_id`/`decided_at`, seeds status via the superseded
+  `enforce_time_off_privacy` trigger, and enforces manager-gated transitions
+  (employees may only cancel their own) in a new
+  `enforce_time_off_approval_transition` trigger. API (`api/events/[id].ts`),
+  privacy-safe shared labels (`timeOffStatusLabel`), modal actions/badges in
+  `events.astro`/`events.ts`. pgTAP `0036` + unit + regression assertions.
 - **26 Private manager notes — NOT built** (no notes table; `team_events`
   managers-only visibility exists as a related primitive).
 - **27 Recurring tasks — NOT built** (no recurrence columns on `tasks`;
@@ -284,22 +291,31 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **38 Role-tailored dashboard — partial (pre-existing).** `dashboard.astro` +
   `api/tasks/summary` exist; manager compliance/overdue/ack widgets are net-new
   and must use real data only.
-- **39 Activity/audit log UI — data exists, UI NOT built.** `staff_security_audit`
-  is populated; no read-only manager UI yet.
+- **39 Activity/audit log UI — code-complete (this session).** `0037` adds the
+  missing `grant select on staff_security_audit to authenticated` (RLS stays
+  manager-only). New manager API (`api/staff/audit.ts`) with action/employee/date
+  filters, an `activity` Manage section, `/manage/audit` page with
+  loading/empty/error states, and a template-clone (XSS-safe) client renderer.
+  pgTAP `0037` proves non-managers see zero rows and managers can read; 10
+  regression assertions.
 - **40 Cross-platform search — NOT built.**
 
 ### Honest status
-Tasks 21 and 22 are code-complete from prior waves; task 23's data layer landed
-this session with a passing behavioral test; the remaining tasks (24, 25 approval
-workflow, and 26–40) are net-new feature builds that were **not** implemented.
-They are not marked done. The editor tooling (Write/StrReplace) was unavailable
-for most of this session due to an infrastructure timeout, so new files were
-created via the shell; large multi-file UI feature work was deferred rather than
-partially/unsafely applied to the security branch.
+Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 25, and 39 are
+code-complete as of this session (implementation + migration + API + UI +
+permissions/RLS + loading/empty/error states + pgTAP/unit/regression tests),
+pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 24
+and 26–40 remain net-new feature builds that are **not** implemented and are not
+marked done. Editor tooling (Write/StrReplace) intermittently timed out this
+session, so files were created/edited via a shell-driven Node editor with match
+assertions; each landed feature is complete rather than partially applied.
 
 ### Remaining pre-deploy verification (unchanged + new)
 - Docker-enabled disposable replay + pgTAP is still the required deployment gate:
-  `npm run db:test:disposable` (runs `run-disposable-replay.mjs`), which now also
-  executes `packages/db/tests/0035_employee_profiles.sql`.
+  `npm run db:test:disposable` (runs `run-disposable-replay.mjs`, which executes
+  `supabase test db tests` over the whole suite, now including
+  `0035_employee_profiles.sql`, `0036_time_off_workflow.sql`, and
+  `0037_staff_audit_read.sql`).
 - Everything under the earlier "What remains unproven (deployment blockers)"
-  section still applies; `0035` adds one more migration + test to that replay.
+  section still applies; migrations `0035`, `0036`, and `0037` add three
+  migrations + three pgTAP tests to that replay.

@@ -67,7 +67,8 @@ export type ManageModuleId =
   | "booking-policy"
   | "staff"
   | "tags"
-  | "business";
+  | "business"
+  | "activity";
 
 /** Full set of Manage sections (used when not scaled back). */
 const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
@@ -77,6 +78,7 @@ const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
   "staff",
   "tags",
   "business",
+  "activity",
 ];
 
 /**
@@ -84,7 +86,7 @@ const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
  * administration only. Services/Products/Booking Policy serve booking &
  * retail, and Tags serves the client directory, so they are hidden here.
  */
-const EMPLOYEE_MANAGEMENT_MANAGE: ManageModuleId[] = ["staff", "business"];
+const EMPLOYEE_MANAGEMENT_MANAGE: ManageModuleId[] = ["staff", "business", "activity"];
 
 export const ENABLED_MANAGE_SECTIONS: readonly ManageModuleId[] = SCALED_BACK
   ? EMPLOYEE_MANAGEMENT_MANAGE

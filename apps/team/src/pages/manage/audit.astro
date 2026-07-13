@@ -1,0 +1,188 @@
+---
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamManageLayout from "../../components/TeamManageLayout.astro";
+import { isSalonManager } from "../../lib/auth";
+import { teamUrl } from "../../lib/supabase-server";
+import { AUDIT_ACTION_LABELS } from "../../lib/staff-audit";
+
+const { staff, supabase } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+if (!isSalonManager(staff)) {
+  return Astro.redirect(teamUrl("/manage"));
+}
+
+const { data: staffRows } = await supabase
+  .from("staff")
+  .select("id, name")
+  .order("name");
+const employees = (staffRows ?? []) as { id: string; name: string }[];
+const apiBase = teamUrl("/api/staff/audit");
+const actionOptions = Object.entries(AUDIT_ACTION_LABELS);
+---
+
+<TeamLayout title="Activity log" activeNav="manage" plain wide fullBleed>
+  <TeamManageLayout title="Activity log" activeSection="activity" managerView>
+    <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/manage")}>&larr; Manage</a>
+
+    <p class="manage-page__lead">
+      Employee, role, and access changes recorded for review. Newest first.
+    </p>
+
+    <section class="manage-audit" data-manage-audit data-api-base={apiBase}>
+      <form class="manage-audit__filters" data-audit-filters aria-label="Filter activity">
+        <label class="form-label">
+          Action
+          <select class="form-input" name="action" data-audit-action>
+            <option value="">All actions</option>
+            {actionOptions.map(([value, label]) => <option value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label class="form-label">
+          Employee
+          <select class="form-input" name="employee" data-audit-employee>
+            <option value="">All employees</option>
+            {employees.map((member) => <option value={member.id}>{member.name}</option>)}
+          </select>
+        </label>
+        <label class="form-label">
+          From
+          <input class="form-input" type="date" name="from" data-audit-from />
+        </label>
+        <label class="form-label">
+          To
+          <input class="form-input" type="date" name="to" data-audit-to />
+        </label>
+        <div class="manage-audit__filter-actions">
+          <button class="btn-primary" type="submit">Apply</button>
+          <button class="team-list-layout__btn-secondary" type="button" data-audit-reset>Reset</button>
+        </div>
+      </form>
+
+      <p class="notice notice--error" data-audit-error hidden role="alert"></p>
+      <p class="manage-audit__status" data-audit-loading role="status">Loading activity...</p>
+      <p class="empty-state" data-audit-empty hidden>No activity recorded for these filters.</p>
+
+      <ol class="manage-audit__list" data-audit-list hidden></ol>
+
+      <template data-audit-row-template>
+        <li class="manage-audit__row">
+          <div class="manage-audit__row-main">
+            <span class="manage-audit__action" data-row-action></span>
+            <span class="manage-audit__target" data-row-target></span>
+            <span class="manage-audit__detail" data-row-detail></span>
+          </div>
+          <div class="manage-audit__row-meta">
+            <span class="manage-audit__actor" data-row-actor></span>
+            <time class="manage-audit__time" data-row-time></time>
+          </div>
+        </li>
+      </template>
+    </section>
+
+    <script src="../../scripts/manage-audit.ts"></script>
+  </TeamManageLayout>
+</TeamLayout>
+
+<style>
+  .manage-page__lead {
+    margin: 0 0 1rem;
+    color: var(--color-stone-600);
+    font-size: var(--text-sm);
+  }
+
+  .manage-audit {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .manage-audit__filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+    padding: 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .manage-audit__filter-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .manage-audit__status {
+    margin: 0;
+    color: var(--color-stone-500);
+    font-size: var(--text-sm);
+  }
+
+  .manage-audit__list {
+    list-style: none;
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .manage-audit__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-stone-200);
+    background: var(--color-bg);
+  }
+
+  .manage-audit__row:last-child {
+    border-bottom: none;
+  }
+
+  .manage-audit__row-main {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .manage-audit__action {
+    font-weight: 600;
+    color: var(--color-stone-800);
+    font-size: var(--text-sm);
+  }
+
+  .manage-audit__target {
+    color: var(--color-stone-700);
+    font-size: var(--text-sm);
+  }
+
+  .manage-audit__target:empty {
+    display: none;
+  }
+
+  .manage-audit__detail {
+    color: var(--color-stone-500);
+    font-size: var(--text-sm);
+  }
+
+  .manage-audit__detail:empty {
+    display: none;
+  }
+
+  .manage-audit__row-meta {
+    display: flex;
+    gap: 0.75rem;
+    color: var(--color-stone-500);
+    font-size: 0.8rem;
+  }
+</style>

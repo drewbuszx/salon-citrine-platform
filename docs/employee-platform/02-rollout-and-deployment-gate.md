@@ -78,3 +78,31 @@ public.staff_private_details;` and `alter table public.staff drop column bio, dr
 column start_date;` (no dependent objects). Behavioral coverage:
 `packages/db/tests/0035_employee_profiles.sql` runs inside `npm run
 db:test:disposable`.
+
+## Addendum — task 25 time-off workflow migration (0036)
+
+`0036_time_off_workflow.sql` is additive: it widens the existing
+`team_events_approval_status_check` constraint to allow `cancelled`, adds
+`decided_by_staff_id`/`decided_at`, supersedes the `enforce_time_off_privacy`
+trigger to seed `approval_status` on insert, and adds
+`enforce_time_off_approval_transition` to gate status changes at the data layer.
+It backfills existing `time_off` rows from `not_required` to `approved`. Rollout:
+apply during the disposable replay / deployment gate. Rollback: restore the prior
+trigger bodies from `0034`/`0030`, `drop trigger
+enforce_time_off_approval_transition on public.team_events;`, and
+`alter table public.team_events drop column decided_by_staff_id, drop column
+decided_at;` (the `cancelled` enum value can remain harmlessly). Behavioral
+coverage: `packages/db/tests/0036_time_off_workflow.sql` runs inside `npm run
+db:test:disposable`.
+
+## Addendum — task 39 audit read grant (0037)
+
+`0037_staff_audit_read.sql` only adds `grant select on
+public.staff_security_audit to authenticated`; the manager-only RLS SELECT policy
+from `0030` is unchanged, so rows stay restricted to managers. This closes the
+gap where the policy existed but the table privilege was never granted, leaving
+the log unreadable through the API. Rollout: apply during the disposable replay /
+deployment gate. Rollback: `revoke select on public.staff_security_audit from
+authenticated;`. Behavioral coverage: `packages/db/tests/0037_staff_audit_read.sql`
+proves non-managers see zero rows and managers can read; runs inside `npm run
+db:test:disposable`.

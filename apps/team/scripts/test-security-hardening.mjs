@@ -179,6 +179,11 @@ const [
   apiEventsSource,
   eventIdApi,
   eventsScript,
+  auditMigration,
+  auditApi,
+  auditPage,
+  auditScript,
+  auditLib,
 ] = await Promise.all([
   read("packages/db/migrations/0030_security_reliability_hardening.sql"),
   read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
@@ -205,6 +210,11 @@ const [
   read("apps/team/src/lib/api-events.ts"),
   read("apps/team/src/pages/api/events/[id].ts"),
   read("apps/team/src/scripts/events.ts"),
+  read("packages/db/migrations/0037_staff_audit_read.sql"),
+  read("apps/team/src/pages/api/staff/audit.ts"),
+  read("apps/team/src/pages/manage/audit.astro"),
+  read("apps/team/src/scripts/manage-audit.ts"),
+  read("apps/team/src/lib/staff-audit.ts"),
 ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
@@ -296,5 +306,17 @@ assert.match(eventIdApi, /approval_status/);
 assert.match(eventIdApi, /!manager && status !== "cancelled"/);
 assert.match(eventsScript, /data-time-off-decision/);
 assert.match(eventsScript, /approval_status: decision/);
+
+// Wave 8 / task 39: manager-only activity log over staff_security_audit.
+assert.match(auditMigration, /grant select on public\.staff_security_audit to authenticated/);
+assert.match(auditApi, /isSalonManager/);
+assert.match(auditApi, /Forbidden/);
+assert.match(auditApi, /target_staff_id/);
+assert.doesNotMatch(auditApi, /service_role|SERVICE_ROLE/);
+assert.match(auditPage, /isSalonManager\(staff\)/);
+assert.match(auditPage, /data-audit-row-template/);
+assert.match(auditScript, /textContent/);
+assert.doesNotMatch(auditScript, /innerHTML/);
+assert.match(auditLib, /STAFF_AUDIT_SELECT/);
 
 console.log("Security hardening regression checks passed.");

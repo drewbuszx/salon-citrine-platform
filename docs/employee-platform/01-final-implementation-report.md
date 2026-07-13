@@ -279,17 +279,45 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
   photo editor reposition button made optional (first-time uploads work) with
   keyboard repositioning. Non-Docker checks pass: `verify:migrations`,
   `test:security`, unit tests, apps/team build.
-- **Task 23 (employee profiles) — data layer, code-complete / runtime-unproven**:
-  `packages/db/migrations/0035_wave5_employee_profiles.sql` adds team-visible
-  `staff.bio` and `staff.start_date`, and isolates sensitive emergency-contact
-  data in a dedicated `public.staff_private_details` table with strict RLS
-  (employee-self + salon-manager only; anon fully revoked). Column-safe by design:
-  emergency contacts are never exposed by the team-wide `staff` read policy.
-  Behavioral proof: `packages/db/tests/0035_employee_profiles.sql` (plan 5) asserts
-  a coworker cannot read another employee's private details, bio stays team-visible,
-  self and manager can read, and anon is denied. Registered in the migration
-  manifest (37 migrations). Runtime-unproven pending the deferred Docker pgTAP gate.
-  Remaining for full task closure: API surface + manager/self edit UI + a11y states.
+- **Task 23 (employee profiles) — code-complete / runtime-unproven**:
+  `packages/db/migrations/0035_wave5_employee_profiles.sql` adds the team-visible
+  `staff.start_date` (bio already existed since `0001`), isolates sensitive
+  emergency-contact data in a dedicated `public.staff_private_details` table with
+  strict RLS (employee-self + salon-manager only; anon fully revoked), and
+  supersedes `manager_update_staff` to whitelist `start_date`. Column-safe by
+  design: emergency contacts are never exposed by the team-wide `staff` read
+  policy. Self-service (`api/account.ts`) and manager (`api/staff/[id].ts`) APIs
+  upsert emergency contacts; the account and manage/employees dialogs edit start
+  date and emergency contact with accessible states. Behavioral proof:
+  `packages/db/tests/0035_employee_profiles.sql` (plan 8) asserts a coworker cannot
+  read another employee's private details, self/manager can read, anon is denied,
+  and manager updates persist `start_date` while rejecting unknown fields.
+  Registered in the migration manifest (39 migrations). Runtime-unproven pending
+  the deferred Docker pgTAP gate.
+- **Task 25 (time-off approval lifecycle) — code-complete / runtime-unproven**:
+  `0036_time_off_workflow.sql` extends the existing `approval_status` with
+  `cancelled`, adds `decided_by_staff_id`/`decided_at`, seeds status on insert via
+  the superseded `enforce_time_off_privacy` trigger (pending for employees,
+  approved for managers), and enforces transitions in
+  `enforce_time_off_approval_transition` (employees may only cancel their own;
+  managers may approve/decline/cancel), stamping the deciding manager. API
+  (`api/events/[id].ts`) gates `approval_status` writes; `api-events.ts` exposes
+  status + decision metadata; `timeOffStatusLabel` gives privacy-safe shared
+  labels; `events.astro`/`events.ts` render status badges and manager/self action
+  buttons with all states. Behavioral proof:
+  `packages/db/tests/0036_time_off_workflow.sql` (plan 6) plus a unit test for
+  `timeOffStatusLabel`. Runtime-unproven pending the deferred Docker pgTAP gate.
+- **Task 39 (activity/audit log UI) — code-complete / runtime-unproven**:
+  `0037_staff_audit_read.sql` grants the missing `select` on
+  `staff_security_audit` to `authenticated` (manager-only RLS unchanged), fixing a
+  policy that was previously unreachable through the API. A manager-only API
+  (`api/staff/audit.ts`) filters by action/employee/date; a new `activity` Manage
+  section and `/manage/audit` page render entries with loading/empty/error states
+  and a template-clone (XSS-safe) renderer. Behavioral proof:
+  `packages/db/tests/0037_staff_audit_read.sql` (plan 3) proves non-managers see
+  zero rows and managers can read; 10 source regression assertions in
+  `test-security-hardening.mjs`. Runtime-unproven pending the deferred Docker pgTAP
+  gate.
 
 ### Per-task disposition for tasks 21–40 (audited against the existing codebase)
 - **21 Invitations UX — code-complete (pre-existing).** `api/staff/[id]/access.ts`
@@ -300,15 +328,14 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **22 Deactivation/reactivation preserving history — code-complete (pre-existing).**
   Auth ban/unban + audited status transitions in the same endpoint; history
   preserved in `staff_security_audit`.
-- **23 Employee profiles — data layer done this session (see above); API/UI remaining.**
+- **23 Employee profiles — code-complete (this session).** Data layer plus
+  self-service/manager APIs and edit dialogs; see the detailed entry above.
 - **24 Role/permission editor — NOT built.** Only a `staff.role` string and
   `is_salon_manager()` exist today. A capability model + editor + server/RLS
   enforcement + descriptions is net-new design work.
-- **25 Time-off workflow — partial (pre-existing) / approval workflow NOT built.**
-  `time_off` events exist with privacy neutralization (title neutralized,
-  public description cleared, reason moved to `private_reason`) and self/manager
-  RLS. Missing: submit/approve/decline/cancel **status** lifecycle (no status
-  column/endpoints/UI yet).
+- **25 Time-off workflow — code-complete (this session).** Approve/decline/cancel
+  lifecycle on `approval_status` with data-layer-gated transitions and shared
+  labels; see the detailed entry above.
 - **26 Private manager notes — NOT built** (no notes table; `team_events`
   managers-only visibility exists as a related primitive).
 - **27 Recurring tasks — NOT built** (no recurrence columns on `tasks`;
@@ -335,22 +362,26 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **38 Role-tailored dashboard — partial (pre-existing).** `dashboard.astro` +
   `api/tasks/summary` exist; manager compliance/overdue/ack widgets are net-new
   and must use real data only.
-- **39 Activity/audit log UI — data exists, UI NOT built.** `staff_security_audit`
-  is populated; no read-only manager UI yet.
+- **39 Activity/audit log UI — code-complete (this session).** Read grant + manager
+  API + `/manage/audit` page with filters and states; see the detailed entry above.
 - **40 Cross-platform search — NOT built.**
 
 ### Honest status
-Tasks 21 and 22 are code-complete from prior waves; task 23's data layer landed
-this session with a passing behavioral test; the remaining tasks (24, 25 approval
-workflow, and 26–40) are net-new feature builds that were **not** implemented.
-They are not marked done. The editor tooling (Write/StrReplace) was unavailable
-for most of this session due to an infrastructure timeout, so new files were
-created via the shell; large multi-file UI feature work was deferred rather than
-partially/unsafely applied to the security branch.
+Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 25, and 39 are
+code-complete as of this session (implementation + migration + API + UI +
+permissions/RLS + loading/empty/error states + pgTAP/unit/regression tests),
+pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 24
+and 26–40 remain net-new feature builds that are **not** implemented and are not
+marked done. Editor tooling (Write/StrReplace) intermittently timed out this
+session, so files were created/edited via a shell-driven Node editor with match
+assertions; each landed feature is complete rather than partially applied.
 
 ### Remaining pre-deploy verification (unchanged + new)
 - Docker-enabled disposable replay + pgTAP is still the required deployment gate:
-  `npm run db:test:disposable` (runs `run-disposable-replay.mjs`), which now also
-  executes `packages/db/tests/0035_employee_profiles.sql`.
+  `npm run db:test:disposable` (runs `run-disposable-replay.mjs`, which executes
+  `supabase test db tests` over the whole suite, now including
+  `0035_employee_profiles.sql`, `0036_time_off_workflow.sql`, and
+  `0037_staff_audit_read.sql`).
 - Everything under the earlier "What remains unproven (deployment blockers)"
-  section still applies; `0035` adds one more migration + test to that replay.
+  section still applies; migrations `0035`, `0036`, and `0037` add three
+  migrations + three pgTAP tests to that replay.
