@@ -1,6 +1,6 @@
 /**
  * Shared shaping for the manager activity log backed by staff_security_audit.
- * RLS restricts reads to managers; this module only maps rows to a safe,
+ * RLS restricts reads to the view_activity capability; this module only maps rows to a safe,
  * display-ready shape and never exposes raw auth ids.
  */
 export const STAFF_AUDIT_SELECT =
@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = [
   "linked",
   "deactivated",
   "reactivated",
+  "capability_changed",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -28,6 +29,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   linked: "Account linked",
   deactivated: "Access deactivated",
   reactivated: "Access reactivated",
+  capability_changed: "Permission changed",
 };
 
 export function auditActionLabel(action: string): string {
@@ -76,6 +78,14 @@ function summarize(row: StaffAuditRow): string | null {
   if (row.action === "staff_created") {
     const role = row.after_state?.role;
     if (role) return `as ${String(role)}`;
+  }
+  if (row.action === "capability_changed") {
+    const role = row.after_state?.role;
+    const capability = row.after_state?.capability;
+    const enabled = row.after_state?.enabled;
+    if (role && capability) {
+      return `${String(role)} · ${String(capability)} ${enabled ? "on" : "off"}`;
+    }
   }
   return null;
 }

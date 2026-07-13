@@ -20,6 +20,8 @@ export type StaffProfile = {
   photo_url?: string | null;
   photo_crop?: PhotoCrop | null;
   access_status?: "active";
+  /** Capability keys granted to this staff member's role (owner always has manage_team). */
+  capabilities?: string[];
 };
 
 declare global {

@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { jsonError, jsonOk, requireApiAuth } from "../../../lib/api-calendar";
-import { isSalonManager } from "../../../lib/auth";
+import { hasStaffCapability } from "../../../lib/auth";
 import {
   AUDIT_ACTIONS,
   mapAuditRow,
@@ -16,7 +16,7 @@ export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
   if (!auth.ok) return auth.response;
 
-  if (!isSalonManager(auth.staff)) {
+  if (!hasStaffCapability(auth.staff, "view_activity")) {
     return jsonError("Forbidden", 403);
   }
 

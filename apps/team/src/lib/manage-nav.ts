@@ -8,7 +8,8 @@ export type ManageSection =
   | "staff"
   | "tags"
   | "business"
-  | "activity";
+  | "activity"
+  | "roles";
 
 export type ManageNavItem = {
   id: ManageSection;
@@ -25,6 +26,7 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
   { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
   { id: "activity", label: "Activity Log", href: teamUrl("/manage/audit") },
+  { id: "roles", label: "Roles & Permissions", href: teamUrl("/manage/roles") },
 ];
 
 export type ManageHubItem = {
@@ -84,6 +86,13 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     title: "Activity Log",
     description: "Employee, role, and access changes recorded for review.",
     href: teamUrl("/manage/audit"),
+    actionLabel: "Open",
+  },
+  {
+    id: "roles",
+    title: "Roles & Permissions",
+    description: "Choose which capabilities each role has. Owners always keep manage team.",
+    href: teamUrl("/manage/roles"),
     actionLabel: "Open",
   },
 ];

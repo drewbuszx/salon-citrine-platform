@@ -184,6 +184,12 @@ const [
   auditPage,
   auditScript,
   auditLib,
+  capabilityMigration,
+  capabilitiesApi,
+  rolesPage,
+  rolesScript,
+  capabilitiesLib,
+  authSourceReload,
 ] = await Promise.all([
   read("packages/db/migrations/0030_security_reliability_hardening.sql"),
   read("packages/db/migrations/0031_staff_photo_profile_rpc.sql"),
@@ -215,10 +221,17 @@ const [
   read("apps/team/src/pages/manage/audit.astro"),
   read("apps/team/src/scripts/manage-audit.ts"),
   read("apps/team/src/lib/staff-audit.ts"),
+  read("packages/db/migrations/0038_role_capabilities.sql"),
+  read("apps/team/src/pages/api/staff/capabilities.ts"),
+  read("apps/team/src/pages/manage/roles.astro"),
+  read("apps/team/src/scripts/manage-roles.ts"),
+  read("apps/team/src/lib/capabilities.ts"),
+  read("apps/team/src/lib/auth.ts"),
 ]);
 
 assert.match(migration, /drop policy if exists "Staff update own profile"/);
-assert.match(authSource, /staff\?\.role === "owner" \|\| staff\?\.role === "front_desk"/);
+assert.match(authSource, /hasStaffCapability/);
+assert.match(authSource, /manage_team/);
 assert.match(migration, /revoke update on public\.staff from authenticated/);
 assert.match(migration, /set search_path = pg_catalog/g);
 assert.match(migration, /create view public\.public_staff_profiles/);
@@ -309,14 +322,37 @@ assert.match(eventsScript, /approval_status: decision/);
 
 // Wave 8 / task 39: manager-only activity log over staff_security_audit.
 assert.match(auditMigration, /grant select on public\.staff_security_audit to authenticated/);
-assert.match(auditApi, /isSalonManager/);
+assert.match(auditApi, /hasStaffCapability/);
+assert.match(auditApi, /view_activity/);
 assert.match(auditApi, /Forbidden/);
 assert.match(auditApi, /target_staff_id/);
 assert.doesNotMatch(auditApi, /service_role|SERVICE_ROLE/);
-assert.match(auditPage, /isSalonManager\(staff\)/);
+assert.match(auditPage, /hasStaffCapability\(staff, "view_activity"\)/);
 assert.match(auditPage, /data-audit-row-template/);
 assert.match(auditScript, /textContent/);
 assert.doesNotMatch(auditScript, /innerHTML/);
 assert.match(auditLib, /STAFF_AUDIT_SELECT/);
+
+// Wave 5 / task 24: bounded role capabilities with owner anti-lockout.
+assert.match(capabilityMigration, /create table if not exists public\.capabilities/);
+assert.match(capabilityMigration, /create table if not exists public\.role_capabilities/);
+assert.match(capabilityMigration, /create or replace function public\.staff_has_capability/);
+assert.match(capabilityMigration, /create or replace function public\.is_salon_manager/);
+assert.match(capabilityMigration, /select public\.staff_has_capability\('manage_team'\)/);
+assert.match(capabilityMigration, /p_capability = 'manage_team' and s\.role = 'owner'/);
+assert.match(capabilityMigration, /owners must retain manage_team/);
+assert.match(capabilityMigration, /create or replace function public\.set_role_capability/);
+assert.match(capabilityMigration, /current_staff_role\(\) <> 'owner'/);
+assert.match(capabilityMigration, /staff_has_capability\('view_activity'\)/);
+assert.match(capabilityMigration, /capability_changed/);
+assert.match(capabilitiesApi, /staff\.role !== "owner"/);
+assert.match(capabilitiesApi, /set_role_capability/);
+assert.match(rolesPage, /staff\.role !== "owner"/);
+assert.match(rolesPage, /isLockedOnGrant/);
+assert.match(rolesScript, /textContent|JSON\.stringify/);
+assert.doesNotMatch(rolesScript, /innerHTML/);
+assert.match(capabilitiesLib, /LOCKED_ON_GRANTS/);
+assert.match(authSourceReload, /hasStaffCapability/);
+assert.match(authSourceReload, /manage_team/);
 
 console.log("Security hardening regression checks passed.");

@@ -106,3 +106,31 @@ deployment gate. Rollback: `revoke select on public.staff_security_audit from
 authenticated;`. Behavioral coverage: `packages/db/tests/0037_staff_audit_read.sql`
 proves non-managers see zero rows and managers can read; runs inside `npm run
 db:test:disposable`.
+
+## Addendum — task 24 role capabilities (0038) — HIGHEST RISK
+
+`0038_role_capabilities.sql` is the **highest-risk migration** in this program. It
+rewrites `public.is_salon_manager()`, which backs 20+ RLS policies and
+security-definer functions across tasks, events, waitlist, booking policy, staff
+services, audit, and more.
+
+What it does:
+- Adds bounded `capabilities` and `role_capabilities` catalogs (seed reproduces
+  today's owner + front_desk manager behavior).
+- Adds `staff_has_capability(text)` with a hard floor: owners always have
+  `manage_team`.
+- Rewrites `is_salon_manager()` to `staff_has_capability('manage_team')`.
+- Adds owner-only audited `set_role_capability` RPC (refuses revoking owner
+  `manage_team`; writes `capability_changed` audit rows).
+- Moves `staff_security_audit` SELECT onto `view_activity`.
+
+**Mandatory before deploy:** `npm run db:test:disposable` must pass, including
+`packages/db/tests/0038_role_capabilities.sql` (owner anti-lockout, front_desk
+toggle flips `is_salon_manager()`, `view_activity` remains independent). Do not
+apply this migration to production until that disposable replay is green.
+
+Rollback (only if not yet relied on by app code in production): restore the prior
+`is_salon_manager()` body from `0030`, drop `set_role_capability` /
+`staff_has_capability`, drop tables `role_capabilities` and `capabilities`, and
+restore the prior audit SELECT policy. Prefer forward-fix over rollback if any
+capability rows have already been customized.

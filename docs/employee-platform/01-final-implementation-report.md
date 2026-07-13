@@ -307,6 +307,17 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
   buttons with all states. Behavioral proof:
   `packages/db/tests/0036_time_off_workflow.sql` (plan 6) plus a unit test for
   `timeOffStatusLabel`. Runtime-unproven pending the deferred Docker pgTAP gate.
+- **Task 24 (role/capability editor) — code-complete / runtime-unproven (HIGHEST RISK)**:
+  `0038_role_capabilities.sql` introduces bounded `capabilities` + `role_capabilities`
+  tables, `staff_has_capability()`, rewrites `is_salon_manager()` to
+  `staff_has_capability('manage_team')` with a hard floor that `owner` is always a
+  manager, owner-only audited `set_role_capability` RPC (refuses revoking owner
+  `manage_team`), extends audit actions with `capability_changed`, and gates audit
+  log SELECT on `view_activity`. App layer: `hasStaffCapability`/`loadStaffProfile`
+  load grants; owner-only API + `/manage/roles` editor with locked-on UI for owner
+  manage_team. Behavioral proof: `packages/db/tests/0038_role_capabilities.sql`
+  (plan 9). Runtime of the rewritten manager function and 20+ dependent RLS policies
+  is **unproven until** `npm run db:test:disposable`.
 - **Task 39 (activity/audit log UI) — code-complete / runtime-unproven**:
   `0037_staff_audit_read.sql` grants the missing `select` on
   `staff_security_audit` to `authenticated` (manager-only RLS unchanged), fixing a
@@ -330,9 +341,7 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
   preserved in `staff_security_audit`.
 - **23 Employee profiles — code-complete (this session).** Data layer plus
   self-service/manager APIs and edit dialogs; see the detailed entry above.
-- **24 Role/permission editor — NOT built.** Only a `staff.role` string and
-  `is_salon_manager()` exist today. A capability model + editor + server/RLS
-  enforcement + descriptions is net-new design work.
+- **24 Role/permission editor — code-complete (this session).** See detailed entry above.
 - **25 Time-off workflow — code-complete (this session).** Approve/decline/cancel
   lifecycle on `approval_status` with data-layer-gated transitions and shared
   labels; see the detailed entry above.
@@ -367,11 +376,10 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **40 Cross-platform search — NOT built.**
 
 ### Honest status
-Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 25, and 39 are
+Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 24, 25, and 39 are
 code-complete as of this session (implementation + migration + API + UI +
 permissions/RLS + loading/empty/error states + pgTAP/unit/regression tests),
-pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 24
-and 26–40 remain net-new feature builds that are **not** implemented and are not
+pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 26–40 remain net-new feature builds that are **not** implemented and are not
 marked done. Editor tooling (Write/StrReplace) intermittently timed out this
 session, so files were created/edited via a shell-driven Node editor with match
 assertions; each landed feature is complete rather than partially applied.
@@ -383,5 +391,6 @@ assertions; each landed feature is complete rather than partially applied.
   `0035_employee_profiles.sql`, `0036_time_off_workflow.sql`, and
   `0037_staff_audit_read.sql`).
 - Everything under the earlier "What remains unproven (deployment blockers)"
-  section still applies; migrations `0035`, `0036`, and `0037` add three
-  migrations + three pgTAP tests to that replay.
+  section still applies; migrations `0035`–`0038` add four migrations + four pgTAP tests to that replay.
+  **`0038` is the highest-risk change** (rewrites `is_salon_manager()`); disposable
+  replay is mandatory before deploy.

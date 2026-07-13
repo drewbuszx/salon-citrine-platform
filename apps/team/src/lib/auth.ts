@@ -8,8 +8,26 @@ export function mustChangePassword(user: User | null | undefined) {
   return meta.must_change_password === true;
 }
 
+/** Owner anti-lockout floor mirrored from staff_has_capability('manage_team'). */
+export function hasStaffCapability(
+  staff: StaffProfile | null | undefined,
+  capability: string,
+) {
+  if (!staff) return false;
+  if (capability === "manage_team" && staff.role === "owner") return true;
+  if (staff.capabilities?.includes(capability)) return true;
+  // Pre-migration fallback: preserve owner/front_desk manager behavior.
+  if (!staff.capabilities && capability === "manage_team") {
+    return staff.role === "owner" || staff.role === "front_desk";
+  }
+  if (!staff.capabilities && capability === "view_activity") {
+    return staff.role === "owner" || staff.role === "front_desk";
+  }
+  return false;
+}
+
 export function isSalonManager(staff: StaffProfile | null | undefined) {
-  return staff?.role === "owner" || staff?.role === "front_desk";
+  return hasStaffCapability(staff, "manage_team");
 }
 
 export async function loadStaffProfile(
@@ -27,7 +45,19 @@ export async function loadStaffProfile(
     return null;
   }
 
-  return data as StaffProfile;
+  const profile = data as StaffProfile;
+  const { data: grants } = await supabase
+    .from("role_capabilities")
+    .select("capability")
+    .eq("role", profile.role);
+
+  const capabilities = (grants ?? []).map((g) => String(g.capability));
+  // Anti-lockout floor: owners always retain manage_team in the app layer too.
+  if (profile.role === "owner" && !capabilities.includes("manage_team")) {
+    capabilities.push("manage_team");
+  }
+  profile.capabilities = capabilities;
+  return profile;
 }
 
 export function staffPhotoUrl(staff: StaffProfile): string | null {

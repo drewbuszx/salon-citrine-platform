@@ -144,7 +144,7 @@ Web build and `astro check` diagnostics are documented deployment/backlog items.
 21. Invitation UX — **not started** — Agents 3, 6.
 22. Deactivation/reactivation UX — **not started** — Agents 3, 6.
 23. Protected employee profiles — **not started** — Agents 2, 6.
-24. Capability-aware role editor — **not started** — Agents 2, 4, 6.
+24. Capability-aware role editor — **code-complete (this session)** — Agents 2, 4, 6.
 25. Time-off approval workflow — **not started** — Agents 2, 6, 9.
 
 ### Wave 6 — Core operational collaboration
@@ -254,9 +254,12 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
   plus self-service API (`api/account.ts`) and manager API (`api/staff/[id].ts`)
   upsert emergency contacts; account + manage/employees dialogs edit start date
   and emergency contact. pgTAP `0035` + 14 regression assertions.
-- **24 Role/permission editor — NOT built.** Only a `staff.role` string and
-  `is_salon_manager()` exist today. A capability model + editor + server/RLS
-  enforcement + descriptions is net-new design work.
+- **24 Role/permission editor — code-complete (this session).** `0038_role_capabilities.sql`
+  adds a bounded `capabilities`/`role_capabilities` catalog, `staff_has_capability()`,
+  rewrites `is_salon_manager()` to read `manage_team` with a hard owner floor, owner-only
+  audited `set_role_capability` RPC, and moves audit-log reads onto `view_activity`.
+  Manage editor at `/manage/roles` (owner-only). pgTAP `0038` proves front_desk toggle
+  and anti-lockout. **Highest-risk migration** — runtime unproven pending Docker gate.
 - **25 Time-off workflow — code-complete (this session).** Extends the existing
   `approval_status` column (`0036`) with a `cancelled` state plus
   `decided_by_staff_id`/`decided_at`, seeds status via the superseded
@@ -301,11 +304,10 @@ force push occurred. Two commits were added on top of the Wave 1–4 checkpoints
 - **40 Cross-platform search — NOT built.**
 
 ### Honest status
-Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 25, and 39 are
+Tasks 21 and 22 are code-complete from prior waves. Tasks 23, 24, 25, and 39 are
 code-complete as of this session (implementation + migration + API + UI +
 permissions/RLS + loading/empty/error states + pgTAP/unit/regression tests),
-pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 24
-and 26–40 remain net-new feature builds that are **not** implemented and are not
+pending the Docker disposable-replay gate to prove the SQL at runtime. Tasks 26–40 remain net-new feature builds that are **not** implemented and are not
 marked done. Editor tooling (Write/StrReplace) intermittently timed out this
 session, so files were created/edited via a shell-driven Node editor with match
 assertions; each landed feature is complete rather than partially applied.
@@ -317,5 +319,6 @@ assertions; each landed feature is complete rather than partially applied.
   `0035_employee_profiles.sql`, `0036_time_off_workflow.sql`, and
   `0037_staff_audit_read.sql`).
 - Everything under the earlier "What remains unproven (deployment blockers)"
-  section still applies; migrations `0035`, `0036`, and `0037` add three
-  migrations + three pgTAP tests to that replay.
+  section still applies; migrations `0035`–`0038` add four migrations + four pgTAP tests to that replay.
+  **`0038` is the highest-risk change** (rewrites `is_salon_manager()`); disposable
+  replay is mandatory before deploy.

@@ -36,7 +36,7 @@ const showContextHeader = !hideContextHeader && Boolean(resolvedContextTitle);
 const navItems = MANAGE_NAV.filter((item) => {
   // Hide sections whose module is set aside (see lib/modules.ts).
   if (!isManageSectionEnabled(item.id)) return false;
-  if (item.id === "services" || item.id === "booking-policy" || item.id === "staff" || item.id === "business") {
+  if (item.id === "services" || item.id === "booking-policy" || item.id === "staff" || item.id === "business" || item.id === "activity" || item.id === "roles") {
     return managerView;
   }
   return true;
