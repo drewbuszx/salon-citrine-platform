@@ -403,17 +403,18 @@ const staffOptions = staffRows ?? [];
     --notebook-sketch-stars: url("data:image/svg+xml,%3Csvg viewBox='0 0 28 56' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M9 10l.6 1.8 1.8.6-1.8.6-.6 1.8-.6-1.8-1.8-.6 1.8-.6z' stroke='%23c4a5a5' stroke-width='0.55' stroke-linejoin='round' opacity='0.89'/%3E%3Cpath d='M17 30l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z' stroke='%23c4a5a5' stroke-width='0.5' stroke-linejoin='round' opacity='0.6'/%3E%3Ccircle cx='11' cy='46' r='0.75' fill='%238a7f72' opacity='1'/%3E%3Cpath d='M20 48l.4 1.2 1.2.4-1.2.4-.4 1.2-.4-1.2-1.2-.4 1.2-.4z' stroke='%23c9a227' stroke-width='0.45' opacity='0.67'/%3E%3C/svg%3E");
     --notebook-sketch-herb: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 100' xmlns='http://www.w3.org/2000/svg' fill='none'%3E%3Cpath d='M30 94c-1-20 2-38-1-58-1.3-8 .5-16 3-24' stroke='%238a7f72' stroke-width='1' stroke-linecap='round'/%3E%3Cpath d='M29 70c-6-2-11 1-14 6 5-1 10-3 14-6z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M30 68c6-3 11 0 14 5-5-1-10-2-14-5z' stroke='%238a7f72' stroke-width='0.9' stroke-linejoin='round'/%3E%3Cpath d='M27 46c-6-2-10 1-13 6 5-1 9-3 13-6z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M28 44c5-3 10 0 13 5-5-1-9-2-13-5z' stroke='%238a7f72' stroke-width='0.85' stroke-linejoin='round'/%3E%3Cpath d='M26 24c-5-2-9 1-11 5 4-1 8-2 11-5z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Cpath d='M27 22c4-3 8 0 11 4-4-1-8-1-11-4z' stroke='%238a7f72' stroke-width='0.75' stroke-linejoin='round'/%3E%3Ccircle cx='31' cy='6' r='1.4' fill='%238a7f72' opacity='0.9'/%3E%3Ccircle cx='27' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3Ccircle cx='34' cy='9' r='1.1' fill='%238a7f72' opacity='0.7'/%3E%3C/svg%3E");
     /*
-      Paper ink palette — always dark-on-cream. Do not use inverted global
-      stone tokens here; dark mode only swaps these scoped variables.
+      Paper ink palette — absolute dark-on-cream values. Never reference
+      --color-stone-* here: dark mode inverts those to light greys/tans,
+      which vanish on the cream notebook surface.
     */
-    --notebook-ink: var(--color-stone-800);
-    --notebook-ink-muted: var(--color-stone-600, var(--color-stone-500));
-    --notebook-ink-faint: var(--color-stone-500);
-    --notebook-surface: var(--color-bg);
-    --notebook-surface-muted: var(--color-stone-100);
-    --notebook-surface-hover: var(--color-stone-50);
-    --notebook-border: var(--color-stone-200);
-    --notebook-border-strong: var(--color-stone-300);
+    --notebook-ink: #2f2a28;
+    --notebook-ink-muted: #5c554e;
+    --notebook-ink-faint: #787068;
+    --notebook-surface: #fdfaf4;
+    --notebook-surface-muted: #f3f1ec;
+    --notebook-surface-hover: #faf9f7;
+    --notebook-border: #d4cfc4;
+    --notebook-border-strong: #a8a093;
   }
 
   /*
@@ -457,7 +458,7 @@ const staffOptions = staffRows ?? [];
       0 1px 0 rgba(255, 255, 255, 0.4);
   }
 
-  [data-theme="dark"] .notebook__hole {
+  :global([data-theme="dark"]) .notebook__hole {
     background: var(--notebook-paper-dark);
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
   }
@@ -488,6 +489,9 @@ const staffOptions = staffRows ?? [];
         var(--notebook-rule) var(--notebook-line)
       ),
       linear-gradient(var(--notebook-margin-line), var(--notebook-margin-line));
+    /* Force dark ink + light color-scheme so global dark text never wins. */
+    color: var(--notebook-ink);
+    color-scheme: light;
     isolation: isolate;
   }
 
@@ -521,27 +525,19 @@ const staffOptions = staffRows ?? [];
       var(--notebook-sketch-stars);
   }
 
-  [data-theme="dark"] .notebook__paper {
+  /*
+    Dark shell + cream paper island. :global() required so Astro scope does not
+    attach the data-astro attribute to [data-theme] on <html>.
+  */
+  :global([data-theme="dark"]) .notebook__paper {
     background-color: var(--notebook-paper-dark);
     --notebook-rule: rgba(90, 78, 68, 0.24);
     --notebook-margin-line: rgba(160, 72, 62, 0.44);
     --notebook-sketch-opacity: 0.08;
   }
 
-  /*
-    Dark shell + cream paper island: swap scoped ink variables only — notebook
-    entry rules below read these and never inherit inverted global stone tokens.
-  */
-  [data-theme="dark"] .tasks-page {
+  :global([data-theme="dark"]) .tasks-page {
     --notebook-paper-dark: #e8e0d2;
-    --notebook-ink: #2f2a28;
-    --notebook-ink-muted: #5c554e;
-    --notebook-ink-faint: #787068;
-    --notebook-surface: #f3f0ea;
-    --notebook-surface-muted: #f3f1ec;
-    --notebook-surface-hover: #faf9f7;
-    --notebook-border: #d4cfc4;
-    --notebook-border-strong: #a8a093;
   }
 
   .notebook__paper::after {
@@ -556,7 +552,7 @@ const staffOptions = staffRows ?? [];
     pointer-events: none;
   }
 
-  [data-theme="dark"] .notebook__paper::after {
+  :global([data-theme="dark"]) .notebook__paper::after {
     --notebook-glow-1: rgba(231, 172, 70, 0.05);
     --notebook-glow-2: rgba(141, 158, 136, 0.04);
     opacity: 0.4;
@@ -1103,6 +1099,8 @@ const staffOptions = staffRows ?? [];
     width: 2.25rem;
     height: 2.25rem;
     font-size: 1rem;
+    background: var(--notebook-surface-muted);
+    color: var(--notebook-ink-muted);
   }
 
   .tasks-page :global(.tasks-empty .ui-empty__title) {

@@ -175,3 +175,36 @@
   background: var(--color-cream);
   background-image: none;
 }
+
+/*
+ * Tasks notebook — cream paper island must keep dark ink even when global
+ * stone tokens invert for dark chrome. Absolute colors (not --color-stone-*).
+ */
+[data-theme="dark"] .tasks-page .notebook__paper,
+[data-theme="dark"] .tasks-page .notebook {
+  --notebook-ink: #2f2a28;
+  --notebook-ink-muted: #5c554e;
+  --notebook-ink-faint: #787068;
+  --notebook-surface: #fdfaf4;
+  --notebook-surface-muted: #f3f1ec;
+  --notebook-surface-hover: #faf9f7;
+  --notebook-border: #d4cfc4;
+  --notebook-border-strong: #a8a093;
+  color: #2f2a28;
+  color-scheme: light;
+}
+
+[data-theme="dark"] .tasks-page .tasks-empty .ui-empty__title {
+  color: #2f2a28;
+}
+
+[data-theme="dark"] .tasks-page .tasks-empty .ui-empty__hint,
+[data-theme="dark"] .tasks-page .notebook-empty,
+[data-theme="dark"] .tasks-page .tasks-loading {
+  color: #787068;
+}
+
+[data-theme="dark"] .tasks-page .tasks-empty .ui-empty__icon {
+  background: #f3f1ec;
+  color: #5c554e;
+}
