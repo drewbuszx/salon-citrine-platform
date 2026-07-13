@@ -42,31 +42,15 @@ export const POST: APIRoute = async (context) => {
     return jsonError("You already claimed this task", 400);
   }
 
-  const claimedAt = new Date().toISOString();
-
-  const { error: assigneeError } = await supabase.from("task_assignees").insert({
-    task_id: taskId,
-    staff_id: staff.id,
-    claimed_at: claimedAt,
+  // Claiming is an atomic, narrowly scoped RPC: it only inserts the assignee and
+  // flips status to claimed. Direct table UPDATE access has been revoked so no other
+  // task columns can be mutated during a claim.
+  const { error: claimError } = await supabase.rpc("claim_task", {
+    p_task_id: taskId,
   });
 
-  if (assigneeError) {
-    console.error("task claim assignee failed", assigneeError);
-    return jsonError("Failed to claim task", 500);
-  }
-
-  const { error: updateError } = await supabase
-    .from("tasks")
-    .update({ status: "claimed" })
-    .eq("id", taskId);
-
-  if (updateError) {
-    console.error("task claim status failed", updateError);
-    await supabase
-      .from("task_assignees")
-      .delete()
-      .eq("task_id", taskId)
-      .eq("staff_id", staff.id);
+  if (claimError) {
+    console.error("task claim failed", claimError);
     return jsonError("Failed to claim task", 500);
   }
 

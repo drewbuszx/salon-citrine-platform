@@ -5,10 +5,10 @@ type StaffRow = {
   id: string;
   slug: string;
   name: string;
-  role: Staff["role"];
+  booking_role: Staff["role"];
   bio: string | null;
   photo_url: string | null;
-  glossgenius_token: string | null;
+  booking_token: string | null;
   is_bookable: boolean;
   accepting_new_clients?: boolean | null;
 };
@@ -175,10 +175,10 @@ function mapStaff(row: StaffRow): Staff {
     id: row.id,
     slug: row.slug,
     name: row.name,
-    role: row.role,
+    role: row.booking_role,
     bio: row.bio,
     photoUrl: row.photo_url,
-    glossgeniusToken: row.glossgenius_token,
+    glossgeniusToken: row.booking_token,
     isBookable: row.is_bookable,
     acceptingNewClients: row.accepting_new_clients !== false,
   };
@@ -203,7 +203,11 @@ export async function fetchBookingCatalog(): Promise<BookingCatalog> {
   const supabase = createSupabaseClient();
 
   const [staffResult, servicesResult, staffServicesResult] = await Promise.all([
-    supabase.from("staff").select("*").eq("is_bookable", true).order("name"),
+    supabase
+      .from("public_staff_profiles")
+      .select("*")
+      .eq("is_bookable", true)
+      .order("name"),
     supabase
       .from("services")
       .select("*")
@@ -375,7 +379,7 @@ export async function getStaffBySlug(
 
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
-    .from("staff")
+    .from("public_staff_profiles")
     .select("*")
     .eq("slug", slug)
     .eq("is_bookable", true)

@@ -31,7 +31,7 @@ const typeFilters: { type: string; label: string }[] = [
 ];
 ---
 
-<TeamLayout title="Events" activeNav="events" plain wide fullBleed>
+<TeamLayout title="Calendar" activeNav="events" plain wide fullBleed>
   <div
     class="events-page"
     data-events-app
@@ -119,6 +119,47 @@ const typeFilters: { type: string; label: string }[] = [
 
       <p class="notice notice--error events-page__error" data-events-error hidden role="alert" />
 
+      {
+        managerView ? (
+          <section
+            class="events-pending team-panel"
+            data-pending-inbox
+            id="pending"
+            aria-labelledby="events-pending-heading"
+            hidden
+          >
+            <div class="events-pending__header">
+              <h3 class="team-panel__title" id="events-pending-heading">
+                Pending time off
+              </h3>
+              <span class="events-pending__count" data-pending-count />
+            </div>
+            <p class="events-pending__lead">
+              Approve or decline requests here — no need to hunt through the month grid.
+            </p>
+            <div class="events-pending__list" data-pending-list />
+          </section>
+        ) : (
+          <section
+            class="events-pending events-pending--mine team-panel"
+            data-my-time-off
+            aria-labelledby="events-my-timeoff-heading"
+            hidden
+          >
+            <div class="events-pending__header">
+              <h3 class="team-panel__title" id="events-my-timeoff-heading">
+                My time off
+              </h3>
+              <span class="events-pending__count" data-my-timeoff-count />
+            </div>
+            <p class="events-pending__lead">
+              Status of your requests for this month — pending, approved, or declined.
+            </p>
+            <div class="events-pending__list" data-my-timeoff-list />
+          </section>
+        )
+      }
+
       <section class="events-calendar-panel" aria-label="Month calendar">
         <div class="events-calendar-panel__sticky" data-events-sticky>
           <header class="events-calendar-panel__header">
@@ -163,6 +204,21 @@ const typeFilters: { type: string; label: string }[] = [
         <div class="events-calendar" data-events-calendar role="grid" aria-label="Calendar days" />
 
         <div class="events-calendar-legend" data-events-legend aria-label="Event type legend" />
+      </section>
+
+      <section
+        class="events-day-agenda team-panel"
+        data-day-agenda
+        aria-labelledby="events-day-agenda-heading"
+        hidden
+      >
+        <div class="events-day-agenda__header">
+          <h3 class="team-panel__title" id="events-day-agenda-heading" data-day-agenda-title>
+            Day agenda
+          </h3>
+          <span class="events-day-agenda__count" data-day-agenda-count />
+        </div>
+        <div class="events-day-agenda__list" data-day-agenda-list />
       </section>
 
       <section class="events-upcoming team-panel" aria-labelledby="events-list-heading">
@@ -258,9 +314,30 @@ const typeFilters: { type: string; label: string }[] = [
           <textarea class="form-input" name="description" rows="3" maxlength="2000" />
         </label>
 
+        {
+          managerView ? (
+            <label class="form-label">
+              Visibility
+              <select class="form-input" name="visibility">
+                <option value="team">Entire team</option>
+                <option value="managers">Managers only</option>
+              </select>
+            </label>
+          ) : null
+        }
+
         <p class="events-modal__privacy" data-time-off-privacy hidden>
           Time-off notes are visible only to you and managers.
         </p>
+
+        <section class="events-modal__timeoff" data-time-off-actions hidden aria-label="Time off status">
+          <p class="events-modal__timeoff-status" data-time-off-status role="status" aria-live="polite"></p>
+          <div class="events-modal__timeoff-buttons">
+            <button class="team-list-layout__btn-primary" type="button" data-time-off-decision="approved" hidden>Approve</button>
+            <button class="team-list-layout__btn-secondary" type="button" data-time-off-decision="declined" hidden>Decline</button>
+            <button class="team-list-layout__btn-secondary" type="button" data-time-off-decision="cancelled" hidden>Cancel request</button>
+          </div>
+        </section>
       </div>
 
       <footer class="events-modal__footer">
@@ -1126,6 +1203,29 @@ const typeFilters: { type: string; label: string }[] = [
     background: var(--color-stone-50);
   }
 
+  .events-modal__timeoff {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50);
+  }
+
+  .events-modal__timeoff-status {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-stone-700);
+  }
+
+  .events-modal__timeoff-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
   .events-modal__footer [data-event-delete] {
     margin-right: auto;
     border-color: var(--color-error);
@@ -1164,6 +1264,14 @@ const typeFilters: { type: string; label: string }[] = [
       display: none;
     }
 
+    .events-day-agenda {
+      display: block;
+    }
+
+    .events-upcoming {
+      display: none;
+    }
+
     .events-modal {
       width: 100%;
       max-width: none;
@@ -1175,6 +1283,146 @@ const typeFilters: { type: string; label: string }[] = [
     .events-modal__footer {
       padding-bottom: calc(var(--space-4) + var(--safe-area-bottom, env(safe-area-inset-bottom, 0px)));
     }
+  }
+
+  .events-day-agenda {
+    display: none;
+    margin-top: 1rem;
+  }
+
+  .events-day-agenda__header,
+  .events-pending__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .events-pending {
+    margin-bottom: 1rem;
+    border-left: 3px solid color-mix(in srgb, var(--color-citrine, #c4a35a) 70%, transparent);
+  }
+
+  .events-pending--mine {
+    border-left-color: color-mix(in srgb, var(--color-stone-400) 80%, transparent);
+  }
+
+  .events-pending__lead {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--color-stone-500);
+  }
+
+  .events-pending__count,
+  .events-day-agenda__count {
+    font-size: 0.8rem;
+    color: var(--color-stone-500);
+  }
+
+  .events-pending__list,
+  .events-day-agenda__list {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .events-day-agenda.team-panel {
+    border-left: 3px solid color-mix(in srgb, var(--color-stone-400) 55%, transparent);
+  }
+
+  .events-inbox-card {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+
+  .events-inbox-card__title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-stone-800);
+  }
+
+  .events-inbox-card__meta {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-stone-500);
+  }
+
+  .events-inbox-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .events-inbox-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .events-inbox-card__actions .ui-btn {
+    min-height: 2.75rem;
+  }
+
+  .events-inbox-card--button {
+    width: 100%;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+  }
+
+  .events-inbox-card--button:focus-visible,
+  .events-pending--focus {
+    outline: 2px solid var(--color-citrine, #c4a35a);
+    outline-offset: 2px;
+  }
+
+  .events-agenda-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.65rem;
+    align-items: center;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .events-agenda-item:focus-visible {
+    outline: 2px solid var(--color-citrine, #c4a35a);
+    outline-offset: 2px;
+  }
+
+  .events-agenda-item__icon {
+    display: flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--ec-accent);
+  }
+
+  .events-agenda-item__title {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .events-agenda-item__meta {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-stone-500);
   }
 
   @media (max-width: 640px) {

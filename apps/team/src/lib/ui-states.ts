@@ -28,6 +28,21 @@ export function cardSkeletonHtml(count = 3) {
     </article>`).join("")}</div>`;
 }
 
+/** Compact list-row skeletons for Manage pages. */
+export function manageListSkeletonHtml(count = 4) {
+  return `<div class="ui-skeleton-grid ui-skeleton-grid--list" aria-hidden="true">${Array.from(
+    { length: count },
+    () => `
+    <article class="ui-skeleton ui-skeleton--list-row">
+      <span class="ui-skeleton__block ui-skeleton__block--avatar"></span>
+      <span class="ui-skeleton__copy">
+        <span class="ui-skeleton__line ui-skeleton__line--medium"></span>
+        <span class="ui-skeleton__line ui-skeleton__line--short"></span>
+      </span>
+    </article>`,
+  ).join("")}</div>`;
+}
+
 export type ErrorPanelOptions = {
   title: string;
   hint?: string;

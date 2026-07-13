@@ -14,7 +14,7 @@ if (!staff || !user) {
 
 const { data: profile, error } = await supabase
   .from("staff")
-  .select("id, name, bio, phone, photo_url, photo_crop, slug")
+  .select("id, name, bio, phone, start_date, photo_url, photo_crop, slug")
   .eq("id", staff.id)
   .maybeSingle();
 
@@ -26,6 +26,12 @@ if (error || !profile) {
 const photoCrop = normalizePhotoCrop(parsePhotoCrop(profile.photo_crop));
 const photoSrc = staffPhotoSrc(profile.photo_url, profile.slug);
 const initials = staffInitials(profile.name);
+
+const { data: privateDetails } = await supabase
+  .from("staff_private_details")
+  .select("emergency_contact_name, emergency_contact_phone")
+  .eq("staff_id", staff.id)
+  .maybeSingle();
 
 const saved = Astro.url.searchParams.get("saved") === "1";
 const photoSaved = Astro.url.searchParams.get("photo") === "1";
@@ -119,12 +125,12 @@ const errorMessage =
       </div>
 
       <div class="account-photo__editor" data-photo-editor hidden>
-        <p class="account-photo__status" data-photo-status hidden></p>
-        <p class="notice notice--error account-photo__error" data-photo-error hidden></p>
+        <p class="account-photo__status" data-photo-status role="status" aria-live="polite" hidden></p>
+        <p class="notice notice--error account-photo__error" data-photo-error role="alert" hidden></p>
 
         <div class="account-photo__editor-grid">
           <div class="account-photo__editor-frame" data-editor-frame>
-            <p class="label-meta">Drag to reposition</p>
+            <p class="label-meta">Drag or use arrow keys to reposition</p>
             <div class="account-photo__avatar-ring account-photo__avatar-ring--editor">
               <StaffAvatar
                 src={photoSrc ?? ""}
@@ -229,6 +235,23 @@ const errorMessage =
           Changing email sends a confirmation link via Supabase Auth.
         </span>
       </label>
+
+      <fieldset class="account-emergency">
+        <legend>Emergency contact</legend>
+        <p class="label-meta">Only you and salon managers can see this.</p>
+        <label class="form-label">
+          Contact name
+          <input class="form-input" name="emergency_contact_name" type="text" value={privateDetails?.emergency_contact_name ?? ""} autocomplete="off" />
+        </label>
+        <label class="form-label">
+          Contact phone
+          <input class="form-input" name="emergency_contact_phone" type="tel" value={privateDetails?.emergency_contact_phone ?? ""} autocomplete="off" />
+        </label>
+      </fieldset>
+
+      {profile.start_date ? (
+        <p class="label-meta">Start date: {profile.start_date}</p>
+      ) : null}
 
       <button class="team-list-layout__btn-primary" type="submit">Save changes</button>
     </form>
@@ -399,5 +422,21 @@ const errorMessage =
 
   .account-details__form {
     padding-top: var(--space-2);
+  }
+
+  .account-emergency {
+    display: grid;
+    gap: var(--space-3);
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .account-emergency legend {
+    padding: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-700);
   }
 </style>

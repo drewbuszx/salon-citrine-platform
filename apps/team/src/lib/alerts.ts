@@ -12,6 +12,8 @@ export const TEAM_ALERT_IDS = {
   waitlistActive: "waitlist-active",
   lowStock: "low-stock",
   tasksOpen: "tasks-open",
+  pendingTimeOff: "pending-time-off",
+  pendingInvites: "pending-invites",
 } as const;
 
 export type TeamAlertKind =
@@ -56,6 +58,10 @@ export type TeamAlertMetrics = {
   openPoolTasks: number;
   /** Tasks due within attention window visible to the current staff member. */
   attentionTasks: number;
+  /** Manager-only: pending time-off requests. */
+  pendingTimeOff: number;
+  /** Manager-only: employees with invite sent. */
+  pendingInvites: number;
   scope: TeamPulseMetrics["scope"];
   generatedAt: string;
 };

@@ -4,6 +4,8 @@ import {
   defaultEventRange,
   endOfDayUtc,
   EVENT_SELECT,
+  listPendingTimeOff,
+  loadPrivateEventReason,
   mapEvent,
   parseDateInput,
   parseDateTimeLocalInput,
@@ -23,11 +25,27 @@ type CreateEventBody = {
   ends_at?: string | null;
   all_day?: boolean;
   staff_id?: string | null;
+  visibility?: "team" | "managers";
 };
 
 export const GET: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
   if (!auth.ok) return auth.response;
+
+  const { supabase, staff } = auth;
+  const pendingOnly = context.url.searchParams.get("approval_status") === "pending";
+
+  if (pendingOnly) {
+    if (!requireManager(staff)) {
+      return jsonError("Managers only", 403);
+    }
+    try {
+      const events = await listPendingTimeOff(supabase, staff);
+      return jsonOk({ events, pendingCount: events.length });
+    } catch {
+      return jsonError("Failed to load pending time off", 500);
+    }
+  }
 
   const defaults = defaultEventRange();
   const from =
@@ -36,14 +54,18 @@ export const GET: APIRoute = async (context) => {
   const to =
     String(context.url.searchParams.get("to") ?? defaults.to).trim() || defaults.to;
 
-  const { supabase, staff } = auth;
-
-  const { data, error } = await supabase
+  let query = supabase
     .from("team_events")
     .select(EVENT_SELECT)
     .eq("is_active", true)
     .lte("starts_at", to)
     .order("starts_at", { ascending: true });
+  if (!requireManager(staff)) {
+    query = query.or(
+      `visibility.eq.team,created_by_staff_id.eq.${staff.id}`,
+    );
+  }
+  const { data, error } = await query;
 
   if (error) {
     console.error("events list failed", error);
@@ -60,7 +82,17 @@ export const GET: APIRoute = async (context) => {
     return startsMs <= toMs && endsMs >= fromMs;
   });
 
-  const events = rows.map((row) => mapEvent(row as EventRow, staff));
+  const events = await Promise.all(
+    rows.map(async (rawRow) => {
+      const row = rawRow as EventRow;
+      const canReadPrivate =
+        requireManager(staff) || row.created_by_staff_id === staff.id;
+      const privateReason = canReadPrivate
+        ? await loadPrivateEventReason(supabase, row.id)
+        : null;
+      return mapEvent(row, staff, privateReason);
+    }),
+  );
 
   const birthdayRows: BirthdayRow[] = [];
 
@@ -80,27 +112,6 @@ export const GET: APIRoute = async (context) => {
         birthday: String(row.birthday),
         source: "staff",
         staffId: row.id,
-      });
-    }
-  }
-
-  const { data: clientBirthdays, error: clientBirthdayError } = await supabase
-    .from("clients")
-    .select("id, first_name, last_name, birthday")
-    .not("birthday", "is", null);
-
-  if (clientBirthdayError) {
-    console.warn("client birthdays load failed", clientBirthdayError);
-  } else {
-    for (const row of clientBirthdays ?? []) {
-      if (!row.birthday) continue;
-      const first = String(row.first_name ?? "").trim();
-      if (!first) continue;
-      birthdayRows.push({
-        id: row.id,
-        name: first,
-        birthday: String(row.birthday),
-        source: "client",
       });
     }
   }
@@ -135,6 +146,8 @@ export const POST: APIRoute = async (context) => {
   if (!manager && eventType !== "time_off") {
     return jsonError("Only managers can create this event type", 403);
   }
+  const visibility =
+    body.visibility === "managers" && manager ? "managers" : "team";
 
   const allDay = Boolean(body.all_day);
   let startsAt: string | { error: string };
@@ -185,20 +198,35 @@ export const POST: APIRoute = async (context) => {
     staffId = String(body.staff_id).trim() || null;
   }
 
-  const description = String(body.description ?? "").trim() || null;
+  const requestedDescription = String(body.description ?? "").trim() || null;
   const { supabase, staff } = auth;
+  let safeTitle = title;
+  let description = requestedDescription;
+  let privateReason: string | null = null;
+  if (eventType === "time_off") {
+    const { data: subject } = await supabase
+      .from("staff")
+      .select("name")
+      .eq("id", staffId!)
+      .maybeSingle();
+    safeTitle = `${String(subject?.name ?? "Team member").trim()} unavailable`;
+    description = null;
+    privateReason = requestedDescription;
+  }
 
   const { data, error } = await supabase
     .from("team_events")
     .insert({
-      title,
+      title: safeTitle,
       description,
+      private_reason: privateReason,
       event_type: eventType,
       starts_at: startsAt,
       ends_at: endsAt,
       all_day: allDay,
       created_by_staff_id: staff.id,
       staff_id: staffId,
+      visibility,
     })
     .select(EVENT_SELECT)
     .single();
@@ -208,5 +236,11 @@ export const POST: APIRoute = async (context) => {
     return jsonError("Failed to create event", 500);
   }
 
-  return jsonOk({ event: mapEvent(data as EventRow, staff) });
+  return jsonOk({
+    event: mapEvent(
+      data as EventRow,
+      staff,
+      eventType === "time_off" ? privateReason : null,
+    ),
+  });
 };

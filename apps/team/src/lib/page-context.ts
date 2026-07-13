@@ -16,7 +16,7 @@ export const PAGE_CONTEXT = {
   tasks: {
     nav: "Tasks",
     title: "Team Tasks & Checklists",
-    subtitle: "Assign work, claim open tasks, and track salon checklists.",
+    subtitle: "Your assignments, open claims, and salon checklists.",
     primaryAction: "Create task",
   },
   stock: {
@@ -34,13 +34,13 @@ export const PAGE_CONTEXT = {
   docs: {
     nav: "Docs",
     title: "Documents & Resources",
-    subtitle: "Store policies, training materials, forms, and salon references.",
+    subtitle: "Policies, guides, forms, and salon reference files.",
     primaryAction: "Upload document",
   },
   events: {
-    nav: "Events",
-    title: "Team Calendar & Events",
-    subtitle: "Track birthdays, time off, closures, meetings, and salon announcements.",
+    nav: "Calendar",
+    title: "Team Calendar",
+    subtitle: "Birthdays, your time off, closures, meetings, and salon announcements.",
     primaryAction: "Add event",
   },
   reports: {
@@ -50,8 +50,8 @@ export const PAGE_CONTEXT = {
   },
   manage: {
     nav: "Manage",
-    title: "Business Settings",
-    subtitle: "Manage employees and salon business details.",
+    title: "Team & Access",
+    subtitle: "Employees, roles, access, and salon business details.",
   },
 } as const;
 

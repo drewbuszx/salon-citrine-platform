@@ -9,7 +9,8 @@ export type LoginErrorCode =
   | "connection"
   | "mfa"
   | "config"
-  | "reset_expired";
+  | "reset_expired"
+  | "invite_activation";
 
 const MESSAGES: Record<LoginErrorCode, string> = {
   invalid:
@@ -32,6 +33,8 @@ const MESSAGES: Record<LoginErrorCode, string> = {
     "Staff sign-in is temporarily unavailable. Try again shortly or contact support.",
   reset_expired:
     "Your reset link expired or you were signed out. Request a new reset link or sign in again.",
+  invite_activation:
+    "Your password was saved, but we couldn’t finish activating your invite. Ask an owner to resend it.",
 };
 
 export function loginErrorMessage(code: string | null | undefined): string | null {

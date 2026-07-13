@@ -7,6 +7,7 @@ import {
   NEUTRAL_TIME_OFF_COLOR,
   normalizeEventType,
   resolveEventStyle,
+  timeOffStatusLabel,
 } from "../src/lib/event-presentation.ts";
 import { STAFF_ACCENT_COLORS, staffAccentColor } from "../src/lib/staff-colors.ts";
 
@@ -116,5 +117,15 @@ for (const type of EVENT_PRESENTATION_TYPES) {
     assert.equal(style.usesStaffColor, false, `${type} must not use staff color`);
   }
 }
+
+// --- timeOffStatusLabel (task 25) -----------------------------------------
+assert.equal(timeOffStatusLabel("pending"), "Pending");
+assert.equal(timeOffStatusLabel("approved"), "Approved");
+assert.equal(timeOffStatusLabel("declined"), "Declined");
+assert.equal(timeOffStatusLabel("cancelled"), "Cancelled");
+// not_required and unknown/empty produce no badge text.
+assert.equal(timeOffStatusLabel("not_required"), "");
+assert.equal(timeOffStatusLabel(null), "");
+assert.equal(timeOffStatusLabel("bogus"), "");
 
 console.log("event-presentation tests passed");

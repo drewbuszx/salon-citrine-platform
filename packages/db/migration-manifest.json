@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "canonicalVersionBase": "20000101000000",
+  "disposableShims": [
+    {
+      "after": "0001_init.sql",
+      "file": "reconciliation/legacy-seed-dependencies.sql",
+      "canonicalVersion": "20000101000002",
+      "productionAction": "verify_rows_exist_do_not_apply"
+    }
+  ],
+  "legacyReconciliations": [
+    {
+      "legacyVersion": "0017",
+      "status": "requires_disposable_validation",
+      "files": [
+        {
+          "file": "0017_calendar_overlap_prevention.sql",
+          "canonicalVersion": "20000101000018",
+          "requiredObjects": [
+            "blocked_times_no_staff_overlap",
+            "appointments_no_staff_overlap"
+          ]
+        },
+        {
+          "file": "0017_team_events_salon_tz.sql",
+          "canonicalVersion": "20000101000019",
+          "requiredObjects": [
+            "team_events"
+          ]
+        }
+      ]
+    },
+    {
+      "legacyVersion": "0027",
+      "status": "requires_disposable_validation",
+      "files": [
+        {
+          "file": "0027_demo_clients_seed.sql",
+          "canonicalVersion": "20000101000029",
+          "requiredObjects": [
+            "clients"
+          ]
+        },
+        {
+          "file": "0027_staff_birthday.sql",
+          "canonicalVersion": "20000101000030",
+          "requiredObjects": [
+            "staff.birthday"
+          ]
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    "0001_init.sql",
+    "0002_public_read_staff_services.sql",
+    "0003_public_read_availability.sql",
+    "0004_team_rls.sql",
+    "0005_staff_services_returning_clients.sql",
+    "0006_staff_self_update.sql",
+    "0007_team_stylist_calendar_writes.sql",
+    "0008_staff_photo_storage.sql",
+    "0009_client_referrals.sql",
+    "0010_staff_services_client_booking_block.sql",
+    "0011_staff_accepting_new_clients.sql",
+    "0012_inventory.sql",
+    "0013_tasks.sql",
+    "0014_team_documents.sql",
+    "0015_team_events.sql",
+    "0016_inventory_qr_seed.sql",
+    "0017_calendar_overlap_prevention.sql",
+    "0017_team_events_salon_tz.sql",
+    "0018_appointment_reminders.sql",
+    "0019_tasks_rls_fix.sql",
+    "0020_booking_policy_and_intake.sql",
+    "0021_product_images.sql",
+    "0022_product_images_storage.sql",
+    "0023_appointment_deposit_charges.sql",
+    "0024_boulevard_booking_parity.sql",
+    "0025_checkout_client_crm.sql",
+    "0026_client_intake_fields.sql",
+    "0027_demo_clients_seed.sql",
+    "0027_staff_birthday.sql",
+    "0028_manage_staff_and_business.sql",
+    "0029_salon_routines.sql",
+    "0030_security_reliability_hardening.sql",
+    "0031_staff_photo_profile_rpc.sql",
+    "0032_corrective_security_closure.sql",
+    "0033_wave1_invite_task_hardening.sql",
+    "0034_identity_public_privacy_closure.sql",
+    "0035_wave5_employee_profiles.sql",
+    "0036_time_off_workflow.sql",
+    "0037_staff_audit_read.sql",
+    "0038_role_capabilities.sql",
+    "0039_explicit_api_grants.sql"
+  ]
+}

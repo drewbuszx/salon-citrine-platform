@@ -57,21 +57,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     photoUrl = publicUrlData.publicUrl;
   }
 
-  const updatePayload: {
-    photo_crop: typeof photoCrop;
-    photo_url?: string;
-  } = {
-    photo_crop: photoCrop,
-  };
-
-  if (photoUrl) {
-    updatePayload.photo_url = photoUrl;
-  }
-
-  const { error: staffError } = await supabase
-    .from("staff")
-    .update(updatePayload)
-    .eq("id", staff.id);
+  const { error: staffError } = await supabase.rpc("update_own_staff_photo", {
+    p_photo_url: photoUrl ?? null,
+    p_photo_crop: photoCrop,
+  });
 
   if (staffError) {
     console.error("Staff photo metadata update failed", staffError);

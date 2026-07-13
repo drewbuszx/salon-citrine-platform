@@ -366,7 +366,7 @@ const isViewingSelf = selectedStaff.id === currentStaffId;
     </div>
   </div>
 
-  <script is:inline define:vars={{ defaultScrollTopRem }}>
+  <script is:inline nonce={Astro.locals.cspNonce} define:vars={{ defaultScrollTopRem }}>
     (function () {
       const root = document.querySelector(".week-cal");
       if (!root) return;

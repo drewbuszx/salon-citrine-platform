@@ -7,7 +7,9 @@ export type ManageSection =
   | "booking-policy"
   | "staff"
   | "tags"
-  | "business";
+  | "business"
+  | "activity"
+  | "roles";
 
 export type ManageNavItem = {
   id: ManageSection;
@@ -22,6 +24,8 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "staff", label: "Employees", href: teamUrl("/manage/employees") },
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
+  { id: "roles", label: "Roles & Permissions", href: teamUrl("/manage/roles") },
+  { id: "activity", label: "Activity Log", href: teamUrl("/manage/audit") },
   { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
 ];
 
@@ -52,7 +56,7 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
   {
     id: "staff",
     title: "Employees",
-    description: "Team members, roles, and schedules.",
+    description: "Invite teammates, set roles, and manage login access.",
     href: teamUrl("/manage/employees"),
     actionLabel: "Open",
   },
@@ -68,6 +72,20 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     title: "Tags",
     description: "Client tags for segmentation and marketing.",
     href: teamUrl("/clients"),
+    actionLabel: "Open",
+  },
+  {
+    id: "roles",
+    title: "Roles & Permissions",
+    description: "Control who can manage the team and view activity.",
+    href: teamUrl("/manage/roles"),
+    actionLabel: "Open",
+  },
+  {
+    id: "activity",
+    title: "Activity Log",
+    description: "Invites, role changes, and access actions for review.",
+    href: teamUrl("/manage/audit"),
     actionLabel: "Open",
   },
   {

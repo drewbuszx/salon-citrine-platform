@@ -1041,7 +1041,7 @@ const calendarConfig = {
       onLayout();
     })();
   </script>
-  <script is:inline>
+  <script is:inline nonce={Astro.locals.cspNonce}>
     (function () {
       const scriptEl = document.currentScript;
 

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { EVENT_SELECT, mapEvent, type EventRow } from "./api-events";
+import { countPendingTimeOff, EVENT_SELECT, mapEvent, type EventRow } from "./api-events";
 import { birthdaysForRange, type BirthdayRow } from "./api-birthdays";
 import type { StaffProfile } from "../env.d.ts";
 
@@ -21,6 +21,41 @@ export type UpcomingEventItem = {
   allDay: boolean;
   staffName: string | null;
 };
+
+export type ManagerDashboardCounts = {
+  pendingTimeOff: number;
+  pendingInvites: number;
+  needsAttention: number;
+};
+
+/** Real manager attention counts — never invent numbers. */
+export async function loadManagerDashboardCounts(
+  supabase: SupabaseClient,
+  staff: StaffProfile,
+  needsAttention: number,
+): Promise<ManagerDashboardCounts> {
+  let pendingTimeOff = 0;
+  let pendingInvites = 0;
+
+  try {
+    pendingTimeOff = await countPendingTimeOff(supabase, staff);
+  } catch (error) {
+    console.error("Failed to count pending time off", error);
+  }
+
+  try {
+    const { count, error } = await supabase
+      .from("staff")
+      .select("id", { count: "exact", head: true })
+      .eq("access_status", "invited");
+    if (error) throw error;
+    pendingInvites = count ?? 0;
+  } catch (error) {
+    console.error("Failed to count pending invites", error);
+  }
+
+  return { pendingTimeOff, pendingInvites, needsAttention };
+}
 
 /**
  * Load active team events (and staff birthdays) starting within the next

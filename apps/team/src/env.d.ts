@@ -19,6 +19,9 @@ export type StaffProfile = {
   phone?: string | null;
   photo_url?: string | null;
   photo_crop?: PhotoCrop | null;
+  access_status?: "active";
+  /** Capability keys granted to this staff member's role (owner always has manage_team). */
+  capabilities?: string[];
 };
 
 declare global {
@@ -27,6 +30,7 @@ declare global {
       supabase: SupabaseClient;
       user: User | null;
       staff: StaffProfile | null;
+      cspNonce: string;
     }
   }
 }
@@ -36,6 +40,7 @@ interface ImportMetaEnv {
   readonly SUPABASE_ANON_KEY: string;
   readonly PUBLIC_SUPABASE_URL?: string;
   readonly PUBLIC_SUPABASE_ANON_KEY?: string;
+  readonly SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
 interface ImportMeta {

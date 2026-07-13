@@ -63,7 +63,6 @@ function initPhotoEditor(root: HTMLElement) {
     !previewImg ||
     !zoomInput ||
     !changeBtn ||
-    !editBtn ||
     !cancelBtn ||
     !saveBtn
   ) {
@@ -106,8 +105,9 @@ function initPhotoEditor(root: HTMLElement) {
     }
     editor.hidden = false;
     setError(null);
-    setStatus("Drag the photo to reposition it within the circle.");
+    setStatus("Drag the photo or use the arrow keys to reposition it within the circle.");
     updateUi();
+    editorImg.focus();
   }
 
   function closeEditor(reset: boolean) {
@@ -129,11 +129,11 @@ function initPhotoEditor(root: HTMLElement) {
     fileInput.click();
   });
 
-  editBtn.addEventListener("click", () => {
-    initialCrop = { ...crop };
-    initialSrc = editorImg.src;
-    openEditor();
-  });
+  editBtn?.addEventListener("click", () => {
+      initialCrop = { ...crop };
+      initialSrc = editorImg.src;
+      openEditor();
+    });
 
   cancelBtn.addEventListener("click", () => {
     closeEditor(true);
@@ -204,6 +204,23 @@ function initPhotoEditor(root: HTMLElement) {
   editorImg.addEventListener("pointermove", onPointerMove);
   editorImg.addEventListener("pointerup", onPointerUp);
   editorImg.addEventListener("pointercancel", onPointerUp);
+  editorImg.tabIndex = 0;
+  editorImg.setAttribute("role", "img");
+  editorImg.setAttribute(
+    "aria-label",
+    "Photo crop. Use arrow keys to move the photo; hold Shift for larger steps.",
+  );
+  editorImg.addEventListener("keydown", (event) => {
+    const step = event.shiftKey ? 5 : 1;
+    if (event.key === "ArrowLeft") crop.x = clamp(crop.x - step, 0, 100);
+    else if (event.key === "ArrowRight") crop.x = clamp(crop.x + step, 0, 100);
+    else if (event.key === "ArrowUp") crop.y = clamp(crop.y - step, 0, 100);
+    else if (event.key === "ArrowDown") crop.y = clamp(crop.y + step, 0, 100);
+    else return;
+    event.preventDefault();
+    updateUi();
+    setStatus(`Photo position: ${Math.round(crop.x)}% horizontal, ${Math.round(crop.y)}% vertical.`);
+  });
 
   form.addEventListener("submit", () => {
     saveBtn.disabled = true;

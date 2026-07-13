@@ -8,7 +8,7 @@ import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { isSalonManager } from "../lib/auth";
 import { loadTaskSummary, type TaskSummaryCounts } from "../lib/api-tasks";
 import { loadSalonRoutines, type RoutinePayload } from "../lib/api-routines";
-import { loadUpcomingTeamEvents } from "../lib/team-ops";
+import { loadUpcomingTeamEvents, loadManagerDashboardCounts } from "../lib/team-ops";
 import {
   EVENT_TOKENS,
   eventIconMarkup,
@@ -38,10 +38,12 @@ const EMPTY_COUNTS: TaskSummaryCounts = {
 };
 
 let counts: TaskSummaryCounts = EMPTY_COUNTS;
+let dashboardDegraded = false;
 try {
   const summary = await loadTaskSummary(supabase, staff.id, manager);
   counts = summary.counts;
 } catch (error) {
+  dashboardDegraded = true;
   console.error("Failed to load task summary", error);
 }
 
@@ -49,10 +51,17 @@ let routines: RoutinePayload[] = [];
 try {
   routines = await loadSalonRoutines(supabase);
 } catch (error) {
+  dashboardDegraded = true;
   console.error("Failed to load salon routines", error);
 }
 
 const upcomingEvents = await loadUpcomingTeamEvents(supabase, staff, 14, 6);
+
+const managerCounts = manager
+  ? await loadManagerDashboardCounts(supabase, staff, counts.needsAttention)
+  : null;
+
+const showWelcome = Astro.url.searchParams.get("welcome") === "1";
 
 const salonHour = Number(
   new Intl.DateTimeFormat("en-US", {
@@ -109,11 +118,11 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
   {
     label: "Docs",
     href: teamUrl("/docs"),
-    desc: "Policies, training, and salon references",
+    desc: "Policies, guides, and salon references",
     icon: `<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   },
   {
-    label: "Events",
+    label: "Calendar",
     href: teamUrl("/events"),
     desc: "Birthdays, time off, closures, and meetings",
     icon: `<rect x="4" y="5" width="16" height="15" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
@@ -121,7 +130,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
   {
     label: "Manage",
     href: teamUrl("/manage"),
-    desc: "Employees and business details",
+    desc: "Employees, roles, and access",
     icon: `<circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11l2 2 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
   },
 ];
@@ -129,6 +138,20 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
 
 <TeamLayout title="Dashboard" activeNav="dashboard" plain cream>
   <section class="dashboard">
+    {
+      dashboardDegraded ? (
+        <p class="notice notice--error" role="alert">
+          Some dashboard data could not be loaded. Counts may be incomplete; try refreshing.
+        </p>
+      ) : null
+    }
+    {
+      showWelcome ? (
+        <p class="notice notice--success" role="status">
+          You’re in — welcome to the {BUSINESS.name} team app. Tasks, Calendar, and Docs are ready when you are.
+        </p>
+      ) : null
+    }
     <header class="dashboard__hero">
       <div class="dashboard__avatar-wrap">
         {
@@ -151,6 +174,49 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
       <h1 class="dashboard__name">{firstName}</h1>
       <p class="dashboard__salon">{BUSINESS.name}</p>
     </header>
+
+    {
+      manager && managerCounts ? (
+        <section class="dashboard__manager" aria-label="Manager attention">
+          <header class="dashboard__manager-head">
+            <h2 class="dashboard__manager-title">Needs your attention</h2>
+            <p class="dashboard__manager-sub">Real queues from Calendar and Manage</p>
+          </header>
+          <div class="dashboard__manager-grid">
+            <a
+              class:list={[
+                "dashboard__manager-chip",
+                managerCounts.pendingTimeOff > 0 && "dashboard__manager-chip--hot",
+              ]}
+              href={teamUrl("/events#pending")}
+            >
+              <span class="dashboard__manager-value">{managerCounts.pendingTimeOff}</span>
+              <span class="dashboard__manager-label">Pending time off</span>
+            </a>
+            <a
+              class:list={[
+                "dashboard__manager-chip",
+                managerCounts.pendingInvites > 0 && "dashboard__manager-chip--hot",
+              ]}
+              href={teamUrl("/manage/employees?access=invited")}
+            >
+              <span class="dashboard__manager-value">{managerCounts.pendingInvites}</span>
+              <span class="dashboard__manager-label">Pending invites</span>
+            </a>
+            <a
+              class:list={[
+                "dashboard__manager-chip",
+                managerCounts.needsAttention > 0 && "dashboard__manager-chip--hot",
+              ]}
+              href={teamUrl("/tasks?view=attention")}
+            >
+              <span class="dashboard__manager-value">{managerCounts.needsAttention}</span>
+              <span class="dashboard__manager-label">Tasks needing attention</span>
+            </a>
+          </div>
+        </section>
+      ) : null
+    }
 
     <div class="dashboard__ops">
       <TeamOps counts={counts} routines={routines} />
@@ -176,7 +242,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
     <section class="dashboard__upcoming" aria-labelledby="dashboard-upcoming-title">
       <div class="dashboard__upcoming-head">
         <h2 id="dashboard-upcoming-title" class="dashboard__section-title">Upcoming</h2>
-        <a class="dashboard__upcoming-link" href={teamUrl("/events")}>View events</a>
+        <a class="dashboard__upcoming-link" href={teamUrl("/events")}>View Calendar</a>
       </div>
 
       {
@@ -190,9 +256,9 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
             </span>
             <p class="dashboard__empty-title">Nothing on the calendar</p>
             <p class="dashboard__empty-copy">
-              No team events in the next two weeks. Open Events to add one.
+              No team events in the next two weeks. Open Calendar to add one.
             </p>
-            <a class="dashboard__empty-cta" href={teamUrl("/events")}>Open events</a>
+            <a class="dashboard__empty-cta" href={teamUrl("/events")}>Open Calendar</a>
           </div>
         ) : (
           <ul class="dashboard__list">
@@ -313,6 +379,90 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
 
   .dashboard__ops {
     margin-bottom: var(--space-6);
+  }
+
+  .dashboard__manager {
+    margin-bottom: var(--space-6);
+    padding: 1rem 1rem 1.1rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+  }
+
+  .dashboard__manager-head {
+    margin-bottom: 0.75rem;
+    padding: 0 0.15rem;
+  }
+
+  .dashboard__manager-title {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-stone-700);
+  }
+
+  .dashboard__manager-sub {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    color: var(--color-stone-500);
+  }
+
+  .dashboard__manager-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .dashboard__manager-chip {
+    display: grid;
+    justify-items: center;
+    gap: 0.2rem;
+    min-height: 2.75rem;
+    padding: 0.75rem 0.4rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
+    text-align: center;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .dashboard__manager-chip:hover,
+  .dashboard__manager-chip:focus-visible {
+    border-color: var(--color-citrine);
+    background: var(--color-citrine-muted);
+    outline: none;
+  }
+
+  .dashboard__manager-chip--hot {
+    border-color: rgba(196, 90, 78, 0.4);
+    background: rgba(196, 90, 78, 0.06);
+  }
+
+  .dashboard__manager-value {
+    font-family: var(--font-display);
+    font-size: 1.65rem;
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-stone-800);
+  }
+
+  .dashboard__manager-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-stone-600);
+  }
+
+  @media (max-width: 640px) {
+    .dashboard__manager-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .dashboard__links {

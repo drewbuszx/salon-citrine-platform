@@ -1,6 +1,12 @@
 import { showToast, friendlyError } from "../lib/toast";
 import { tasksSkeletonHtml, errorPanelHtml } from "../lib/ui-states";
 import { runGuardedSubmit } from "../lib/submit-guard";
+import { escapeHtml } from "../lib/safe-html";
+import {
+  isTaskView,
+  parseTaskViewFromSearch,
+  type TaskView,
+} from "../lib/tasks-view";
 
 type TaskAssignee = {
   staffId: string;
@@ -123,13 +129,27 @@ const completeModal = document.querySelector<HTMLDialogElement>("[data-complete-
 const completeForm = document.querySelector<HTMLFormElement>("[data-complete-form]");
 const completeTaskTitle = document.querySelector<HTMLElement>("[data-complete-task-title]");
 
-let currentView = "my";
+let currentView: TaskView = parseTaskViewFromSearch(window.location.search);
 let editingTaskId: string | null = null;
 let completingTaskId: string | null = null;
 let routines: Routine[] = [];
 
 function isRoutineView(view: string) {
   return view === "routine-opening" || view === "routine-closing";
+}
+
+function syncViewUrl(view: TaskView) {
+  const url = new URL(window.location.href);
+  if (view === "my") {
+    url.searchParams.delete("view");
+  } else {
+    url.searchParams.set("view", view);
+  }
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next !== current) {
+    window.history.replaceState({}, "", next);
+  }
 }
 
 function routineSlugFromView(view: string): RoutineSlug | null {
@@ -410,14 +430,6 @@ function renderTaskCard(task: Task) {
       </div>
     </article>
   `;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }
 
 type EmptyState = {
@@ -839,7 +851,9 @@ async function loadTasks() {
 }
 
 function setActiveTab(view: string) {
+  if (!isTaskView(view)) return;
   currentView = view;
+  syncViewUrl(view);
   tabButtons.forEach((button) => {
     const active = button.dataset.view === view;
     button.classList.toggle("is-active", active);
@@ -1117,6 +1131,16 @@ createChecklistBtn?.addEventListener("click", () => openCreateModal("checklist")
 
 browseOpenBtn?.addEventListener("click", () => setActiveTab("available"));
 
+root.querySelector<HTMLButtonElement>("[data-tasks-view-sheet]")?.addEventListener("click", (event) => {
+  const button = event.currentTarget as HTMLButtonElement;
+  const tabs = root.querySelector<HTMLElement>("#tasks-mobile-views");
+  if (!tabs) return;
+  tabs.scrollIntoView({ behavior: "smooth", block: "start" });
+  button.setAttribute("aria-expanded", "true");
+  const first = tabs.querySelector<HTMLButtonElement>("[data-view]");
+  first?.focus();
+});
+
 root.querySelectorAll<HTMLButtonElement>("[data-summary-view]").forEach((button) => {
   button.addEventListener("click", () => {
     const view = button.dataset.summaryView;
@@ -1144,5 +1168,6 @@ document.querySelectorAll("[data-complete-modal-close]").forEach((button) => {
   button.addEventListener("click", () => completeModal?.close());
 });
 
-void loadTasks();
+// Honor ?view= deep-links from dashboard / TeamOps (attention, available, routines, …).
+setActiveTab(currentView);
 void loadRoutines();

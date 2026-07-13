@@ -24,11 +24,18 @@ export type EventRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  visibility: "team" | "managers";
+  approval_status: string | null;
+  decided_at: string | null;
   created_by:
     | { id: string; name: string }
     | { id: string; name: string }[]
     | null;
   staff:
+    | { id: string; name: string }
+    | { id: string; name: string }[]
+    | null;
+  decided_by:
     | { id: string; name: string }
     | { id: string; name: string }[]
     | null;
@@ -47,8 +54,12 @@ export const EVENT_SELECT = `
   is_active,
   created_at,
   updated_at,
+  visibility,
+  approval_status,
+  decided_at,
   created_by:staff!team_events_created_by_staff_id_fkey ( id, name ),
-  staff:staff!team_events_staff_id_fkey ( id, name )
+  staff:staff!team_events_staff_id_fkey ( id, name ),
+  decided_by:staff!team_events_decided_by_staff_id_fkey ( id, name )
 `;
 
 function relOne<T extends { id: string; name: string }>(
@@ -158,13 +169,32 @@ export function canManageEvent(
   );
 }
 
-export function mapEvent(row: EventRow, currentStaff: StaffProfile) {
+export async function loadPrivateEventReason(
+  supabase: App.Locals["supabase"],
+  eventId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_private_event_details", {
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return typeof row?.private_reason === "string" ? row.private_reason : null;
+}
+
+export function mapEvent(
+  row: EventRow,
+  currentStaff: StaffProfile,
+  privateReason: string | null = null,
+) {
   const createdBy = relOne(row.created_by);
   const subject = relOne(row.staff);
+  const decidedBy = relOne(row.decided_by);
   return {
     id: row.id,
     title: row.title,
     description: row.description,
+    privateReason,
+    visibility: row.visibility,
     eventType: row.event_type,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
@@ -176,7 +206,61 @@ export function mapEvent(row: EventRow, currentStaff: StaffProfile) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     isActive: row.is_active,
+    approvalStatus: row.approval_status,
+    decidedAt: row.decided_at,
+    decidedByName: decidedBy?.name ?? null,
     canEdit: canManageEvent(row, currentStaff),
     canDelete: canManageEvent(row, currentStaff),
   };
+}
+
+export type MappedEvent = ReturnType<typeof mapEvent>;
+
+/** Manager-only pending time-off queue (real counts for inbox/dashboard/alerts). */
+export async function listPendingTimeOff(
+  supabase: App.Locals["supabase"],
+  staff: StaffProfile,
+): Promise<MappedEvent[]> {
+  if (!requireManager(staff)) return [];
+
+  const { data, error } = await supabase
+    .from("team_events")
+    .select(EVENT_SELECT)
+    .eq("is_active", true)
+    .eq("event_type", "time_off")
+    .eq("approval_status", "pending")
+    .order("starts_at", { ascending: true });
+
+  if (error) {
+    console.error("pending time-off list failed", error);
+    throw error;
+  }
+
+  return Promise.all(
+    (data ?? []).map(async (rawRow) => {
+      const row = rawRow as EventRow;
+      const privateReason = await loadPrivateEventReason(supabase, row.id);
+      return mapEvent(row, staff, privateReason);
+    }),
+  );
+}
+
+export async function countPendingTimeOff(
+  supabase: App.Locals["supabase"],
+  staff: StaffProfile,
+): Promise<number> {
+  if (!requireManager(staff)) return 0;
+
+  const { count, error } = await supabase
+    .from("team_events")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true)
+    .eq("event_type", "time_off")
+    .eq("approval_status", "pending");
+
+  if (error) {
+    console.error("pending time-off count failed", error);
+    throw error;
+  }
+  return count ?? 0;
 }

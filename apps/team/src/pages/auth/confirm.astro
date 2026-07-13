@@ -1,36 +1,83 @@
 ---
-import { createSupabaseServerClient, teamUrl } from "../../lib/supabase-server";
+import {
+  createSupabaseAdminClient,
+  createSupabaseServerClient,
+  teamUrl,
+} from "../../lib/supabase-server";
+import { isPendingInvite } from "../../lib/staff-access-admin";
+import { grantPasswordSetupContext } from "../../lib/password-setup-context";
 
 const tokenHash = Astro.url.searchParams.get("token_hash");
 const type = Astro.url.searchParams.get("type");
 const code = Astro.url.searchParams.get("code");
+const cspNonce = Astro.locals.cspNonce;
+
+// Recovery and invite callbacks only verify the one-time token here. Staff access is
+// NOT activated at this point; activation happens atomically after the password is
+// set (see /api/auth/reset-password). On any failure the session is cleared so a
+// partial callback cannot leave an authenticated cookie behind.
+async function completeVerifiedSession(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    await supabase.auth.signOut();
+    return null;
+  }
+  let pending = false;
+  try {
+    pending = await isPendingInvite(createSupabaseAdminClient(), user.id);
+  } catch {
+    pending = false;
+  }
+  grantPasswordSetupContext(Astro.cookies, pending ? "invite" : "recovery");
+  return pending;
+}
 
 if (code) {
   try {
     const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return Astro.redirect(teamUrl("/reset-password"));
+      const pending = await completeVerifiedSession(supabase);
+      if (pending !== null) {
+        return Astro.redirect(
+          teamUrl(pending ? "/reset-password?flow=invite" : "/reset-password"),
+        );
+      }
+    } else {
+      await supabase.auth.signOut();
     }
   } catch {
     // fall through to client hash handler / error state
   }
 }
 
-if (tokenHash && type === "recovery") {
+if (tokenHash && (type === "recovery" || type === "invite" || type === "magiclink")) {
   try {
     const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: "recovery",
-    });
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (!error) {
-      return Astro.redirect(teamUrl("/reset-password"));
+      const pending = await completeVerifiedSession(supabase);
+      if (pending !== null) {
+        return Astro.redirect(
+          teamUrl(
+            type === "recovery" && !pending
+              ? "/reset-password"
+              : "/reset-password?flow=invite",
+          ),
+        );
+      }
+    } else {
+      await supabase.auth.signOut();
     }
   } catch {
     // fall through to client hash handler / error state
   }
 }
+
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("Referrer-Policy", "no-referrer");
 ---
 
 <!doctype html>
@@ -40,7 +87,7 @@ if (tokenHash && type === "recovery") {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <title>Confirming sign-in · Salon Citrine Team</title>
-    <script is:inline>
+    <script is:inline nonce={cspNonce}>
       (function () {
         var storageKey = "theme";
         var stored = localStorage.getItem(storageKey);
@@ -87,23 +134,32 @@ if (tokenHash && type === "recovery") {
     </style>
   </head>
   <body>
-    <div class="confirm-card">
-      <p data-confirm-status="loading">Confirming your reset link…</p>
-      <p data-confirm-status="error">
+    <main class="confirm-card">
+      <h1>Confirming your secure link</h1>
+      <p data-confirm-status="loading" role="status" aria-live="polite">
+        Please wait…
+      </p>
+      <p data-confirm-status="error" role="alert" tabindex="-1">
         This reset link is invalid or has expired.
         <a href={teamUrl("/forgot-password")}>Request a new link</a>
         or <a href={teamUrl("/login")}>return to sign in</a>.
       </p>
-    </div>
+      <noscript>
+        <p role="alert">
+          JavaScript is required to confirm this link.
+          <a href={teamUrl("/forgot-password")}>Request a new link</a>.
+        </p>
+      </noscript>
+    </main>
 
-    <script define:vars={{ exchangeUrl: teamUrl("/api/auth/exchange"), resetUrl: teamUrl("/reset-password") }}>
+    <script nonce={cspNonce} define:vars={{ exchangeUrl: teamUrl("/api/auth/exchange"), resetUrl: teamUrl("/reset-password") }}>
       async function finishRecovery() {
         const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const accessToken = hash.get("access_token");
         const refreshToken = hash.get("refresh_token");
         const type = hash.get("type");
 
-        if (!accessToken || !refreshToken || type !== "recovery") {
+        if (!accessToken || !refreshToken || !["recovery", "invite", "magiclink"].includes(type ?? "")) {
           showError();
           return;
         }
@@ -122,7 +178,8 @@ if (tokenHash && type === "recovery") {
           return;
         }
 
-        window.location.replace(resetUrl);
+        const result = await response.json();
+        window.location.replace(result.redirect ?? (type === "recovery" ? resetUrl : `${resetUrl}?flow=invite`));
       }
 
       function showError() {
@@ -130,6 +187,7 @@ if (tokenHash && type === "recovery") {
         const errorEl = document.querySelector('[data-confirm-status="error"]');
         if (errorEl instanceof HTMLElement) {
           errorEl.style.display = "block";
+          errorEl.focus();
         }
       }
 

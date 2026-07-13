@@ -60,14 +60,16 @@ export function isModuleEnabled(id: TeamModuleId): boolean {
   return ENABLED_MODULES.includes(id);
 }
 
-/** Manage (Business Settings) sub-sections. Ids match `ManageSection`. */
+/** Manage sub-sections. Ids match `ManageSection`. */
 export type ManageModuleId =
   | "services"
   | "products"
   | "booking-policy"
   | "staff"
   | "tags"
-  | "business";
+  | "business"
+  | "activity"
+  | "roles";
 
 /** Full set of Manage sections (used when not scaled back). */
 const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
@@ -77,6 +79,8 @@ const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
   "staff",
   "tags",
   "business",
+  "activity",
+  "roles",
 ];
 
 /**
@@ -84,7 +88,7 @@ const ALL_MANAGE_SECTIONS: ManageModuleId[] = [
  * administration only. Services/Products/Booking Policy serve booking &
  * retail, and Tags serves the client directory, so they are hidden here.
  */
-const EMPLOYEE_MANAGEMENT_MANAGE: ManageModuleId[] = ["staff", "business"];
+const EMPLOYEE_MANAGEMENT_MANAGE: ManageModuleId[] = ["staff", "business", "activity", "roles"];
 
 export const ENABLED_MANAGE_SECTIONS: readonly ManageModuleId[] = SCALED_BACK
   ? EMPLOYEE_MANAGEMENT_MANAGE
@@ -92,4 +96,54 @@ export const ENABLED_MANAGE_SECTIONS: readonly ManageModuleId[] = SCALED_BACK
 
 export function isManageSectionEnabled(id: ManageModuleId): boolean {
   return ENABLED_MANAGE_SECTIONS.includes(id);
+}
+
+const DISABLED_ROUTE_PREFIXES: ReadonlyArray<{
+  module: TeamModuleId;
+  prefixes: readonly string[];
+}> = [
+  {
+    module: "book",
+    prefixes: [
+      "/my-book",
+      "/book",
+      "/week",
+      "/block-time",
+      "/services",
+      "/my-services",
+      "/booking-policy",
+      "/waitlist",
+      "/checkout",
+      "/api/my-book",
+      "/api/services",
+      "/api/staff-services",
+      "/api/booking-policy",
+      "/api/waitlist",
+      "/api/checkout",
+      "/api/appointments",
+      "/api/blocked-times",
+      "/api/block-time",
+      "/api/calendar",
+    ],
+  },
+  { module: "stock", prefixes: ["/inventory", "/api/inventory"] },
+  { module: "clients", prefixes: ["/clients", "/api/clients"] },
+  { module: "reports", prefixes: ["/reports", "/api/reports"] },
+];
+
+function pathMatchesPrefix(path: string, prefix: string) {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+/** Returns the centrally disabled module for a page/API path, if any. */
+export function disabledModuleForPath(path: string): TeamModuleId | null {
+  for (const entry of DISABLED_ROUTE_PREFIXES) {
+    if (
+      !isModuleEnabled(entry.module) &&
+      entry.prefixes.some((prefix) => pathMatchesPrefix(path, prefix))
+    ) {
+      return entry.module;
+    }
+  }
+  return null;
 }

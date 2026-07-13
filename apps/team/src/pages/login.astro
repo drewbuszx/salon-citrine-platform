@@ -8,6 +8,13 @@ import { teamUrl } from "../lib/supabase-server";
 const errorCode = Astro.url.searchParams.get("error");
 const message = loginErrorMessage(errorCode);
 const preservedEmail = Astro.url.searchParams.get("email") ?? "";
+const requestedReturnTo = Astro.url.searchParams.get("returnTo") ?? "";
+const returnTo =
+  requestedReturnTo.startsWith("/") &&
+  !requestedReturnTo.startsWith("//") &&
+  !requestedReturnTo.includes("\\")
+    ? requestedReturnTo
+    : "";
 
 const logoPrimarySrc = withBase("images/salon-citrine-primary-rev.png");
 const logoMobileLightSrc = withBase("images/salon-citrine-wordmark-mobile.png");
@@ -63,7 +70,7 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
           <div class="login-split__hero-copy">
             <p class="login-split__lead">Your Salon Citrine workspace</p>
             <p class="login-split__desc">
-              Appointments, clients, inventory, tasks, and team resources in one place.
+              Tasks, documents, Calendar, and employee resources in one place.
             </p>
           </div>
         </div>
@@ -102,7 +109,7 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
               <p class="login-card__kicker">Staff portal</p>
               <h1 class="login-card__title">Welcome back</h1>
               <p class="login-card__lead">
-                Sign in to view your schedule and manage your salon day.
+                Sign in to manage your team workspace.
               </p>
             </header>
 
@@ -113,6 +120,7 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
               data-login-form
               novalidate
             >
+              <input type="hidden" name="returnTo" value={returnTo} />
               <div
                 class="login-alert-slot"
                 id="login-alert-slot"
