@@ -124,13 +124,20 @@ visibility is enforced in RLS and `api/events/index.ts`; private reasons gated v
 `get_private_event_details`; CSP is nonce-based with `script-src-attr 'none'` and no
 `unsafe-inline`/`unsafe-eval`.
 
-### Wave 4 — Verification and release engineering
+### Wave 4 — Verification and release engineering (checkpoint committed)
 
-16. Expanded pgTAP behavior suite — **not started** — Agents 2, 5, 10.
-17. Mandatory authenticated role matrix — **not started** — Agents 3, 5, 10.
-18. Migrated Team/Web builds and diagnostics — **not started** — Agents 4, 5, 10.
-19. Independent security/regression gate — **not started** — Agent 10.
-20. Supported Bearer API contract — **not started** — Agents 3, 4.
+16. Expanded pgTAP behavior suite — **implemented; unproven pending disposable DB** — Agents 2, 5, 10.
+17. Mandatory authenticated role matrix — **implemented (required CI gate); unproven pending credentials** — Agents 3, 5, 10.
+18. Migrated Team/Web builds and diagnostics — **Team complete; Web build unproven pending migrated schema; astro check backlog documented** — Agents 4, 5, 10.
+19. Independent security/regression gate — **complete (per-wave Agent 10 + test:security)** — Agent 10.
+20. Supported Bearer API contract — **complete (typed validators + doc)** — Agents 3, 4.
+
+pgTAP now spans `0030` (29 assertions: profile/photo/task/claim/invite RPCs, public
+projection) and `0034` (12 assertions: deactivation, visibility, cart lockout, reason
+hiding). CI defines a required `disposable-db-replay` job and a role-matrix job that
+fails (not skips) when unconfigured. `parseAccessActionRequest`/`parseCompleteTaskRequest`
+enforce strict request bodies for the Bearer/cookie APIs (`docs/mobile-api-contract.md`).
+Web build and `astro check` diagnostics are documented deployment/backlog items.
 
 ### Wave 5 — Employee administration
 

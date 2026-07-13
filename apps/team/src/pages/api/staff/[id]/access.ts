@@ -17,8 +17,7 @@ import {
   findAuthUserByEmail,
   reusablePendingInviteError,
 } from "../../../../lib/auth-user-lookup";
-
-type AccessAction = "invite" | "resend" | "link" | "deactivate" | "reactivate";
+import { parseAccessActionRequest } from "../../../../lib/api-contract";
 
 export const POST: APIRoute = async (context) => {
   const auth = await requireApiAuth(context);
@@ -28,16 +27,16 @@ export const POST: APIRoute = async (context) => {
   const staffId = context.params.id;
   if (!staffId) return jsonError("Missing employee id", 400);
 
-  let body: { action?: AccessAction; authUserId?: string };
+  let rawBody: unknown;
   try {
-    body = (await context.request.json()) as typeof body;
+    rawBody = await context.request.json();
   } catch {
     return jsonError("Invalid JSON body", 400);
   }
-  const action = body.action;
-  if (!action || !["invite", "resend", "link", "deactivate", "reactivate"].includes(action)) {
-    return jsonError("Invalid access action", 400);
-  }
+  const parsed = parseAccessActionRequest(rawBody);
+  if (!parsed.ok) return jsonError(parsed.error, 400);
+  const { action } = parsed.value;
+  const body = parsed.value;
 
   let admin;
   try {

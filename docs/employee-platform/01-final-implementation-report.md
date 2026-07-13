@@ -130,3 +130,24 @@ with behavioral coverage in `packages/db/tests/0034_identity_public_privacy.sql`
   (`script-src 'self' 'nonce-…'`, `script-src-attr 'none'`, no `unsafe-inline`/
   `unsafe-eval`); all executable inline scripts carry the nonce; the lone
   `application/json` config block is data, not script. Unit-tested.
+
+## Wave 4 — Verification and release engineering (tasks 16–20) — checkpoint committed
+
+- **16. Expanded pgTAP** — `tests/0030_...sql` (29) and `tests/0034_...sql` (12) give
+  behavioral coverage of every new RPC/policy. Executed in the disposable gate.
+- **17. Mandatory role matrix** — `.github/workflows/security-ci.yml`
+  `authenticated-role-matrix` is a standalone required job that fails when
+  `TEAM_E2E_BASE_URL` is unset, so it cannot pass green unconfigured on a protected
+  branch. `scripts/test-role-matrix-e2e.mjs` covers owner/front-desk/stylist/
+  esthetician/unlinked.
+- **18. Builds/diagnostics** — `npm run build --workspace apps/team` passes here.
+  The public Web build requires the migrated schema (documented in the rollout gate).
+  `astro check` carries ~178 pre-existing diagnostics excluded from required CI and
+  tracked as backlog, not a security regression.
+- **19. Independent gate** — `test:security` behavioral+source regression plus a
+  per-wave adversarial Agent 10 review; unproven items must be honestly recorded.
+- **20. Bearer API contract** — `lib/api-contract.ts` `parseCompleteTaskRequest` and
+  `parseAccessActionRequest` reject unknown/mistyped fields and validate the link
+  `authUserId` as a UUID; documented in `docs/mobile-api-contract.md`. Bearer +
+  cookie auth are unified in `getRequestUser`.
+- Unproven: disposable pgTAP replay, credentialed role-matrix E2E, migrated Web build.

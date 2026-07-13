@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { escapeHtml } from "../src/lib/safe-html.ts";
-import { parseCompleteTaskRequest } from "../src/lib/api-contract.ts";
+import {
+  parseAccessActionRequest,
+  parseCompleteTaskRequest,
+} from "../src/lib/api-contract.ts";
 import { disabledModuleForPath } from "../src/lib/modules.ts";
 import { buildContentSecurityPolicy } from "../src/lib/security-headers.ts";
 import { parsePhotoCrop } from "../src/lib/staff-photo.ts";
@@ -27,6 +30,32 @@ assert.deepEqual(parseCompleteTaskRequest({ completion_notes: " done " }), {
 });
 assert.equal(parseCompleteTaskRequest({ title: "tampered" }).ok, false);
 assert.equal(parseCompleteTaskRequest({ due_at: "2099-01-01" }).ok, false);
+
+assert.deepEqual(parseAccessActionRequest({ action: "invite" }), {
+  ok: true,
+  value: { action: "invite" },
+});
+assert.equal(parseAccessActionRequest({ action: "nope" }).ok, false);
+assert.equal(parseAccessActionRequest({ action: "invite", role: "owner" }).ok, false);
+assert.equal(parseAccessActionRequest({ action: "link" }).ok, false);
+assert.equal(
+  parseAccessActionRequest({ action: "link", authUserId: "not-a-uuid" }).ok,
+  false,
+);
+assert.equal(
+  parseAccessActionRequest({
+    action: "invite",
+    authUserId: "11111111-1111-4111-8111-111111111111",
+  }).ok,
+  false,
+);
+assert.deepEqual(
+  parseAccessActionRequest({
+    action: "link",
+    authUserId: "11111111-1111-4111-8111-111111111111",
+  }),
+  { ok: true, value: { action: "link", authUserId: "11111111-1111-4111-8111-111111111111" } },
+);
 
 for (const route of [
   "/my-book",
