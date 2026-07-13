@@ -58,6 +58,50 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   front_desk: "Front desk",
 };
 
+export type AccessStatus = StaffManageRow["access_status"];
+
+export const ACCESS_STATUS_LABELS: Record<AccessStatus, string> = {
+  uninvited: "Not invited",
+  invited: "Invite sent",
+  active: "Active",
+  disabled: "Deactivated",
+};
+
+export const ACCESS_STATUS_BADGE_VARIANT: Record<
+  AccessStatus,
+  "default" | "info" | "success" | "warning" | "error"
+> = {
+  uninvited: "default",
+  invited: "warning",
+  active: "success",
+  disabled: "error",
+};
+
+export type AccessActionId = "invite" | "resend" | "deactivate" | "reactivate";
+
+/** Which access actions are valid for a given status. */
+export function accessActionsForStatus(status: AccessStatus): AccessActionId[] {
+  switch (status) {
+    case "uninvited":
+      return ["invite"];
+    case "invited":
+      return ["resend", "deactivate"];
+    case "active":
+      return ["deactivate"];
+    case "disabled":
+      return ["reactivate"];
+    default:
+      return [];
+  }
+}
+
+export function accessStatusLabel(status: string | null | undefined): string {
+  if (status && status in ACCESS_STATUS_LABELS) {
+    return ACCESS_STATUS_LABELS[status as AccessStatus];
+  }
+  return "Unknown";
+}
+
 export function slugifyStaffName(name: string): string {
   return name
     .trim()

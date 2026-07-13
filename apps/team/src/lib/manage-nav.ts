@@ -24,9 +24,9 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "staff", label: "Employees", href: teamUrl("/manage/employees") },
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
-  { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
-  { id: "activity", label: "Activity Log", href: teamUrl("/manage/audit") },
   { id: "roles", label: "Roles & Permissions", href: teamUrl("/manage/roles") },
+  { id: "activity", label: "Activity Log", href: teamUrl("/manage/audit") },
+  { id: "business", label: "Business Details", href: teamUrl("/manage/business") },
 ];
 
 export type ManageHubItem = {
@@ -56,7 +56,7 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
   {
     id: "staff",
     title: "Employees",
-    description: "Team members, roles, and schedules.",
+    description: "Invite teammates, set roles, and manage login access.",
     href: teamUrl("/manage/employees"),
     actionLabel: "Open",
   },
@@ -75,24 +75,24 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     actionLabel: "Open",
   },
   {
+    id: "roles",
+    title: "Roles & Permissions",
+    description: "Control who can manage the team and view activity.",
+    href: teamUrl("/manage/roles"),
+    actionLabel: "Open",
+  },
+  {
+    id: "activity",
+    title: "Activity Log",
+    description: "Invites, role changes, and access actions for review.",
+    href: teamUrl("/manage/audit"),
+    actionLabel: "Open",
+  },
+  {
     id: "business",
     title: "Business Details",
     description: "Salon name, locations, and contact information.",
     href: teamUrl("/manage/business"),
     actionLabel: "Configure",
-  },
-  {
-    id: "activity",
-    title: "Activity Log",
-    description: "Employee, role, and access changes recorded for review.",
-    href: teamUrl("/manage/audit"),
-    actionLabel: "Open",
-  },
-  {
-    id: "roles",
-    title: "Roles & Permissions",
-    description: "Choose which capabilities each role has. Owners always keep manage team.",
-    href: teamUrl("/manage/roles"),
-    actionLabel: "Open",
   },
 ];

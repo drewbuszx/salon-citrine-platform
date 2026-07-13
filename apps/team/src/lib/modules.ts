@@ -60,7 +60,7 @@ export function isModuleEnabled(id: TeamModuleId): boolean {
   return ENABLED_MODULES.includes(id);
 }
 
-/** Manage (Business Settings) sub-sections. Ids match `ManageSection`. */
+/** Manage sub-sections. Ids match `ManageSection`. */
 export type ManageModuleId =
   | "services"
   | "products"

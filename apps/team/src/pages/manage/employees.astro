@@ -4,9 +4,12 @@ import TeamManageLayout from "../../components/TeamManageLayout.astro";
 import StaffAvatar from "../../components/StaffAvatar.astro";
 import { isSalonManager } from "../../lib/auth";
 import {
+  ACCESS_STATUS_BADGE_VARIANT,
+  ACCESS_STATUS_LABELS,
   mapStaffRow,
   STAFF_MANAGE_SELECT,
   STAFF_ROLE_LABELS,
+  type AccessStatus,
   type StaffManageRow,
 } from "../../lib/staff-manage";
 import { staffPhotoSrc } from "../../lib/staff-display";
@@ -30,17 +33,38 @@ const { data, error } = await supabase
 
 const employees = (data ?? []).map((row) => mapStaffRow(row as StaffManageRow));
 const apiBase = teamUrl("/api/staff");
-const schedulesApi = isModuleEnabled("book")
-  ? teamUrl("/api/my-book/schedules")
-  : "";
+const bookEnabled = isModuleEnabled("book");
+const schedulesApi = bookEnabled ? teamUrl("/api/my-book/schedules") : "";
+
+const FILTERS: Array<{ id: "all" | AccessStatus; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "active", label: ACCESS_STATUS_LABELS.active },
+  { id: "invited", label: ACCESS_STATUS_LABELS.invited },
+  { id: "uninvited", label: ACCESS_STATUS_LABELS.uninvited },
+  { id: "disabled", label: ACCESS_STATUS_LABELS.disabled },
+];
+
+function badgeClass(status: AccessStatus) {
+  const variant = ACCESS_STATUS_BADGE_VARIANT[status];
+  return variant === "default" ? "ui-badge" : `ui-badge ui-badge--${variant}`;
+}
 ---
 
 <TeamLayout title="Employees" activeNav="manage" plain wide fullBleed>
-  <TeamManageLayout title="Employees" activeSection="staff" managerView>
+  <TeamManageLayout
+    title="Employees"
+    contextSubtitle="Invite teammates, set roles, and manage who can sign in."
+    activeSection="staff"
+    managerView
+  >
     <a slot="headerActions" class="team-list-layout__btn-secondary" href={teamUrl("/manage")}>← Manage</a>
 
     <p class="manage-page__lead">
-      Team profiles, roles, and weekly bookable hours. Auth account linking is managed separately from the account page.
+      {
+        bookEnabled
+          ? "Team profiles, roles, login access, and weekly bookable hours."
+          : "Team profiles, roles, and login access. Online booking controls stay hidden while Book is scaled back."
+      }
     </p>
 
     {
@@ -54,6 +78,7 @@ const schedulesApi = isModuleEnabled("book")
           data-manage-employees
           data-api-base={apiBase}
           data-schedules-api={schedulesApi}
+          data-book-enabled={bookEnabled ? "true" : "false"}
         >
           <p class="notice notice--success" data-employees-success hidden role="status">
             Saved.
@@ -61,6 +86,28 @@ const schedulesApi = isModuleEnabled("book")
           <p class="notice notice--error" data-employees-error hidden role="alert"></p>
 
           <div class="manage-employees__toolbar">
+            <div
+              class="manage-employees__filters"
+              data-access-filters
+              role="group"
+              aria-label="Filter by access status"
+            >
+              {
+                FILTERS.map((filter, index) => (
+                  <button
+                    class:list={[
+                      "manage-employees__filter",
+                      { "manage-employees__filter--active": index === 0 },
+                    ]}
+                    type="button"
+                    data-access-filter={filter.id}
+                    aria-pressed={index === 0 ? "true" : "false"}
+                  >
+                    {filter.label}
+                  </button>
+                ))
+              }
+            </div>
             <button class="btn-primary" type="button" data-add-employee>
               Add employee
             </button>
@@ -69,7 +116,7 @@ const schedulesApi = isModuleEnabled("book")
           <div class="manage-employees__list" data-employee-list>
             {
               employees.length === 0 ? (
-                <p class="empty-state">No employees yet.</p>
+                <p class="empty-state">No employees yet. Add someone to invite them to the team app.</p>
               ) : (
                 employees.map((member) => {
                   const photo = staffPhotoSrc(member.photoUrl, member.slug);
@@ -79,6 +126,7 @@ const schedulesApi = isModuleEnabled("book")
                       type="button"
                       data-employee-row
                       data-employee-id={member.id}
+                      data-access-status={member.accessStatus}
                     >
                       {
                         photo ? (
@@ -103,12 +151,10 @@ const schedulesApi = isModuleEnabled("book")
                         <span class="manage-employees__name">{member.name}</span>
                         <span class="manage-employees__meta">
                           {STAFF_ROLE_LABELS[member.role]}
-                          {member.isBookable ? "" : " · Inactive"}
-                      {" · "}{member.accessStatus}
                         </span>
                       </span>
-                      <span class="ui-badge ui-badge--info" hidden={member.isBookable}>
-                        Inactive
+                      <span class={badgeClass(member.accessStatus)}>
+                        {ACCESS_STATUS_LABELS[member.accessStatus]}
                       </span>
                     </button>
                   );
@@ -116,6 +162,9 @@ const schedulesApi = isModuleEnabled("book")
               )
             }
           </div>
+          <p class="empty-state" data-filter-empty hidden>
+            No employees match this filter.
+          </p>
 
           <dialog class="manage-employees__dialog" data-employee-dialog aria-labelledby="employee-dialog-title">
             <form class="manage-employees__form" data-employee-form>
@@ -183,32 +232,53 @@ const schedulesApi = isModuleEnabled("book")
                   </label>
                 </fieldset>
 
-                <label class="form-label form-label--checkbox">
-                  <input type="checkbox" name="isBookable" checked />
-                  Active for online booking
-                </label>
+                {
+                  bookEnabled ? (
+                    <>
+                      <label class="form-label form-label--checkbox">
+                        <input type="checkbox" name="isBookable" checked />
+                        Active for online booking
+                      </label>
 
-                <label class="form-label form-label--checkbox">
-                  <input type="checkbox" name="acceptingNewClients" checked />
-                  Accepting new clients
-                </label>
+                      <label class="form-label form-label--checkbox">
+                        <input type="checkbox" name="acceptingNewClients" checked />
+                        Accepting new clients
+                      </label>
+                    </>
+                  ) : null
+                }
 
-                <p class="label-meta" data-link-status hidden></p>
-
-                <div class="card-row" data-access-actions hidden aria-label="Employee access actions">
-                  <button class="ui-btn" type="button" data-access-action="invite">Invite</button>
-                  <button class="ui-btn" type="button" data-access-action="resend">Resend invite</button>
-                  <button class="ui-btn" type="button" data-access-action="deactivate">Deactivate</button>
-                  <button class="ui-btn" type="button" data-access-action="reactivate">Reactivate</button>
-                </div>
-
-                <section class="page-section" data-schedule-section hidden>
-                  <h3>Weekly bookable hours</h3>
-                  <p class="page-section__lead">
-                    These hours feed client availability on the booking site.
-                  </p>
-                  <div class="manage-employees__schedule" data-schedule-grid></div>
+                <section class="manage-employees__access" data-access-section hidden>
+                  <h3 class="manage-employees__access-title">Login access</h3>
+                  <p class="label-meta" data-link-status></p>
+                  <div class="card-row" data-access-actions aria-label="Employee access actions">
+                    <button class="ui-btn" type="button" data-access-action="invite" hidden>
+                      Invite
+                    </button>
+                    <button class="ui-btn" type="button" data-access-action="resend" hidden>
+                      Resend invite
+                    </button>
+                    <button class="ui-btn ui-btn--destructive" type="button" data-access-action="deactivate" hidden>
+                      Deactivate
+                    </button>
+                    <button class="ui-btn" type="button" data-access-action="reactivate" hidden>
+                      Reactivate
+                    </button>
+                  </div>
+                  <p class="manage-employees__next" data-access-next hidden></p>
                 </section>
+
+                {
+                  bookEnabled ? (
+                    <section class="page-section" data-schedule-section hidden>
+                      <h3>Weekly bookable hours</h3>
+                      <p class="page-section__lead">
+                        These hours feed client availability on the booking site.
+                      </p>
+                      <div class="manage-employees__schedule" data-schedule-grid></div>
+                    </section>
+                  ) : null
+                }
 
                 <div class="card-row card-row--1">
                   <button class="btn-primary" type="submit">Save employee</button>
@@ -224,6 +294,47 @@ const schedulesApi = isModuleEnabled("book")
   <script src="../../scripts/manage-employees.ts"></script>
 </TeamLayout>
 
+<style is:global>
+  .confirm-destructive {
+    width: min(100%, 24rem);
+    padding: 0;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .confirm-destructive::backdrop {
+    background: rgb(15 23 42 / 0.45);
+  }
+
+  .confirm-destructive__form {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1.25rem;
+  }
+
+  .confirm-destructive__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+
+  .confirm-destructive__body {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--color-stone-600);
+  }
+
+  .confirm-destructive__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+</style>
+
 <style>
   .manage-page__lead {
     margin: 0 0 1.25rem;
@@ -234,8 +345,42 @@ const schedulesApi = isModuleEnabled("book")
 
   .manage-employees__toolbar {
     display: flex;
-    justify-content: flex-end;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     margin-bottom: 1rem;
+  }
+
+  .manage-employees__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .manage-employees__filter {
+    min-height: 2.75rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    color: var(--color-stone-600);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .manage-employees__filter--active,
+  .manage-employees__filter[aria-pressed="true"] {
+    border-color: var(--color-citrine, #c4a35a);
+    background: var(--color-citrine-muted, #f7f1e4);
+    color: var(--color-stone-800);
+    font-weight: 600;
+  }
+
+  .manage-employees__filter:focus-visible {
+    outline: 2px solid var(--color-citrine, #c4a35a);
+    outline-offset: 2px;
   }
 
   .manage-employees__list {
@@ -252,6 +397,7 @@ const schedulesApi = isModuleEnabled("book")
     align-items: center;
     gap: 0.75rem;
     width: 100%;
+    min-height: 2.75rem;
     padding: 0.75rem 1rem;
     border: 0;
     border-bottom: 1px solid var(--color-stone-200);
@@ -270,6 +416,10 @@ const schedulesApi = isModuleEnabled("book")
   .manage-employees__row:focus-visible {
     background: var(--color-citrine-muted);
     outline: none;
+  }
+
+  .manage-employees__row[hidden] {
+    display: none;
   }
 
   .manage-employees__initials {
@@ -300,6 +450,28 @@ const schedulesApi = isModuleEnabled("book")
   .manage-employees__meta {
     font-size: 0.8rem;
     color: var(--color-stone-500);
+  }
+
+  .manage-employees__access {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem;
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-sm);
+    background: var(--color-stone-50, #fafaf9);
+  }
+
+  .manage-employees__access-title {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .manage-employees__next {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--color-stone-600);
   }
 
   .manage-employees__dialog {
@@ -405,5 +577,29 @@ const schedulesApi = isModuleEnabled("book")
 
   .manage-employees__day-times[hidden] {
     display: none;
+  }
+
+  .manage-employees__skeleton {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .manage-employees__skeleton-row {
+    height: 3rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+      90deg,
+      var(--color-stone-100) 0%,
+      var(--color-stone-50) 50%,
+      var(--color-stone-100) 100%
+    );
+    background-size: 200% 100%;
+    animation: manage-employees-shimmer 1.2s ease-in-out infinite;
+  }
+
+  @keyframes manage-employees-shimmer {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
   }
 </style>

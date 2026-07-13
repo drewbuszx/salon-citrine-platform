@@ -38,9 +38,9 @@ export const PAGE_CONTEXT = {
     primaryAction: "Upload document",
   },
   events: {
-    nav: "Events",
-    title: "Team Calendar & Events",
-    subtitle: "Track birthdays, time off, closures, meetings, and salon announcements.",
+    nav: "Calendar",
+    title: "Team Calendar",
+    subtitle: "Birthdays, time off, closures, meetings, and salon announcements.",
     primaryAction: "Add event",
   },
   reports: {
@@ -50,8 +50,8 @@ export const PAGE_CONTEXT = {
   },
   manage: {
     nav: "Manage",
-    title: "Business Settings",
-    subtitle: "Manage employees and salon business details.",
+    title: "Team & Access",
+    subtitle: "Employees, roles, access, and salon business details.",
   },
 } as const;
 

@@ -1,3 +1,14 @@
+import { confirmDestructive } from "../lib/confirm-destructive";
+import {
+  ACCESS_STATUS_BADGE_VARIANT,
+  ACCESS_STATUS_LABELS,
+  accessActionsForStatus,
+  accessStatusLabel,
+  STAFF_ROLE_LABELS,
+  type AccessActionId,
+  type AccessStatus,
+} from "../lib/staff-manage";
+
 const DAY_LABELS = [
   "Sunday",
   "Monday",
@@ -13,8 +24,10 @@ export {};
 const root = document.querySelector<HTMLElement>("[data-manage-employees]");
 const apiBase = root?.dataset.apiBase ?? "";
 const schedulesApi = root?.dataset.schedulesApi ?? "";
-const schedulesEnabled = Boolean(schedulesApi);
+const bookEnabled = root?.dataset.bookEnabled === "true";
+const schedulesEnabled = Boolean(schedulesApi) && bookEnabled;
 const listEl = root?.querySelector<HTMLElement>("[data-employee-list]");
+const filterEmptyEl = root?.querySelector<HTMLElement>("[data-filter-empty]");
 const dialog = root?.querySelector<HTMLDialogElement>("[data-employee-dialog]");
 const form = root?.querySelector<HTMLFormElement>("[data-employee-form]");
 const successEl = root?.querySelector<HTMLElement>("[data-employees-success]");
@@ -24,11 +37,18 @@ const closeButton = root?.querySelector<HTMLButtonElement>("[data-close-dialog]"
 const formTitle = root?.querySelector<HTMLElement>("[data-employee-form-title]");
 const idInput = root?.querySelector<HTMLInputElement>("[data-employee-id]");
 const linkStatus = root?.querySelector<HTMLElement>("[data-link-status]");
+const accessSection = root?.querySelector<HTMLElement>("[data-access-section]");
+const accessNext = root?.querySelector<HTMLElement>("[data-access-next]");
 const scheduleSection = root?.querySelector<HTMLElement>("[data-schedule-section]");
 const scheduleGrid = root?.querySelector<HTMLElement>("[data-schedule-grid]");
 const accessActions = root?.querySelector<HTMLElement>("[data-access-actions]");
+const filterRoot = root?.querySelector<HTMLElement>("[data-access-filters]");
 
 let editingId: string | null = null;
+let currentAccessStatus: AccessStatus = "uninvited";
+let activeFilter: "all" | AccessStatus = "all";
+
+const ROLE_LABELS = STAFF_ROLE_LABELS as Record<string, string>;
 
 function showSuccess(message = "Saved.") {
   if (successEl) {
@@ -52,6 +72,75 @@ function slugifyName(name: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function isAccessStatus(value: string): value is AccessStatus {
+  return value in ACCESS_STATUS_LABELS;
+}
+
+function badgeClassFor(status: AccessStatus) {
+  const variant = ACCESS_STATUS_BADGE_VARIANT[status];
+  return variant === "default" ? "ui-badge" : `ui-badge ui-badge--${variant}`;
+}
+
+function nextStepsCopy(status: AccessStatus): string {
+  switch (status) {
+    case "uninvited":
+      return "Add an email, then send an invite. They’ll get a link to set a password and sign in.";
+    case "invited":
+      return "Invite sent. They’ll set a password from the email link, then land on the team dashboard. You can resend if needed.";
+    case "active":
+      return "This person can sign in to the team app with their password.";
+    case "disabled":
+      return "Access is off. They can’t sign in until you reactivate them.";
+    default:
+      return "";
+  }
+}
+
+function syncAccessUi(status: AccessStatus) {
+  currentAccessStatus = status;
+  if (linkStatus) {
+    linkStatus.hidden = false;
+    linkStatus.textContent = `Access: ${accessStatusLabel(status)}.`;
+  }
+  if (accessNext) {
+    const copy = nextStepsCopy(status);
+    accessNext.hidden = !copy;
+    accessNext.textContent = copy;
+  }
+  const allowed = new Set(accessActionsForStatus(status));
+  accessActions?.querySelectorAll<HTMLButtonElement>("[data-access-action]").forEach((button) => {
+    const action = button.dataset.accessAction as AccessActionId | undefined;
+    button.hidden = !action || !allowed.has(action);
+  });
+}
+
+function applyFilter() {
+  if (!listEl) return;
+  const rows = listEl.querySelectorAll<HTMLElement>("[data-employee-row]");
+  let visible = 0;
+  rows.forEach((row) => {
+    const status = row.dataset.accessStatus ?? "uninvited";
+    const show = activeFilter === "all" || status === activeFilter;
+    row.hidden = !show;
+    if (show) visible += 1;
+  });
+  const hasRows = rows.length > 0;
+  if (filterEmptyEl) {
+    filterEmptyEl.hidden = !hasRows || visible > 0;
+  }
+}
+
+function setFilter(next: "all" | AccessStatus) {
+  activeFilter = next;
+  filterRoot?.querySelectorAll<HTMLButtonElement>("[data-access-filter]").forEach((button) => {
+    const id = button.dataset.accessFilter ?? "all";
+    const active = id === next;
+    button.classList.toggle("manage-employees__filter--active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+  applyFilter();
 }
 
 function renderScheduleGrid(schedules: Array<{ day_of_week: number; start_time: string; end_time: string }>) {
@@ -172,9 +261,12 @@ function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>, pr
     (form.elements.namedItem("phone") as HTMLInputElement).value = String(staff.phone ?? "");
     (form.elements.namedItem("email") as HTMLInputElement).value = String(staff.email ?? "");
     (form.elements.namedItem("bio") as HTMLTextAreaElement).value = String(staff.bio ?? "");
-    (form.elements.namedItem("isBookable") as HTMLInputElement).checked = staff.isBookable !== false;
-    (form.elements.namedItem("acceptingNewClients") as HTMLInputElement).checked =
-      staff.acceptingNewClients !== false;
+    if (bookEnabled) {
+      const isBookable = form.elements.namedItem("isBookable") as HTMLInputElement | null;
+      const accepting = form.elements.namedItem("acceptingNewClients") as HTMLInputElement | null;
+      if (isBookable) isBookable.checked = staff.isBookable !== false;
+      if (accepting) accepting.checked = staff.acceptingNewClients !== false;
+    }
     (form.elements.namedItem("startDate") as HTMLInputElement).value = String(staff.startDate ?? "");
     (form.elements.namedItem("emergencyContactName") as HTMLInputElement).value = String(
       privateDetails?.emergency_contact_name ?? "",
@@ -183,52 +275,72 @@ function openDialog(mode: "create" | "edit", staff?: Record<string, unknown>, pr
       privateDetails?.emergency_contact_phone ?? "",
     );
     if (idInput) idInput.value = String(staff.id ?? "");
-    if (linkStatus) {
-      linkStatus.hidden = false;
-      linkStatus.textContent = `Access status: ${String(staff.accessStatus ?? "uninvited")}.`;
-    }
+    const statusRaw = String(staff.accessStatus ?? "uninvited");
+    const status = isAccessStatus(statusRaw) ? statusRaw : "uninvited";
+    if (accessSection) accessSection.hidden = false;
+    syncAccessUi(status);
     if (scheduleSection) scheduleSection.hidden = !schedulesEnabled;
-    if (accessActions) accessActions.hidden = false;
     if (schedulesEnabled) {
       void loadSchedules(String(staff.id)).catch(() => renderScheduleGrid([]));
     }
   } else {
     if (idInput) idInput.value = "";
+    if (accessSection) accessSection.hidden = true;
     if (linkStatus) linkStatus.hidden = true;
+    if (accessNext) accessNext.hidden = true;
     if (scheduleSection) scheduleSection.hidden = true;
-    if (accessActions) accessActions.hidden = true;
     renderScheduleGrid([]);
   }
 
   dialog.showModal();
 }
 
+function listSkeletonHtml() {
+  return `<div class="manage-employees__skeleton" aria-hidden="true">
+    <div class="manage-employees__skeleton-row"></div>
+    <div class="manage-employees__skeleton-row"></div>
+    <div class="manage-employees__skeleton-row"></div>
+  </div>`;
+}
+
 async function reloadList() {
+  if (!listEl) return;
+  listEl.dataset.loading = "true";
+  listEl.innerHTML = listSkeletonHtml();
+
   const response = await fetch(apiBase);
   const body = (await response.json()) as {
     ok?: boolean;
     staff?: Array<Record<string, unknown>>;
   };
-  if (!response.ok || !body.ok || !listEl) return;
+  listEl.dataset.loading = "false";
+  if (!response.ok || !body.ok) {
+    listEl.innerHTML = `<p class="empty-state" role="alert">Could not refresh employees.</p>`;
+    return;
+  }
 
   const staff = body.staff ?? [];
   if (staff.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = "No employees yet.";
+    empty.textContent = "No employees yet. Add someone to invite them to the team app.";
     listEl.replaceChildren(empty);
+    if (filterEmptyEl) filterEmptyEl.hidden = true;
     return;
   }
 
   const rows = staff.map((member) => {
-    const inactive = member.isBookable === false;
+    const statusRaw = String(member.accessStatus ?? "uninvited");
+    const status = isAccessStatus(statusRaw) ? statusRaw : "uninvited";
     const button = document.createElement("button");
     button.className = "manage-employees__row";
     button.type = "button";
     button.dataset.employeeRow = "";
     button.dataset.employeeId = String(member.id ?? "");
+    button.dataset.accessStatus = status;
     const initials = document.createElement("span");
     initials.className = "manage-employees__initials";
+    initials.setAttribute("aria-hidden", "true");
     initials.textContent = String(member.name ?? "").split(/\s+/)
       .map((part) => part[0] ?? "").join("").slice(0, 2).toUpperCase();
     const copy = document.createElement("span");
@@ -238,20 +350,18 @@ async function reloadList() {
     name.textContent = String(member.name ?? "");
     const meta = document.createElement("span");
     meta.className = "manage-employees__meta";
-    meta.textContent = `${String(member.role ?? "")}${inactive ? " · Inactive" : ""} · ${String(member.accessStatus ?? "uninvited")}`;
+    const role = String(member.role ?? "");
+    meta.textContent = ROLE_LABELS[role] ?? role;
     copy.append(name, meta);
-    button.append(initials, copy);
-    if (inactive) {
-      const badge = document.createElement("span");
-      badge.className = "ui-badge ui-badge--info";
-      badge.textContent = "Inactive";
-      button.append(badge);
-    }
+    const badge = document.createElement("span");
+    badge.className = badgeClassFor(status);
+    badge.textContent = ACCESS_STATUS_LABELS[status];
+    button.append(initials, copy, badge);
     return button;
   });
   listEl.replaceChildren(...rows);
-
   bindRowClicks();
+  applyFilter();
 }
 
 function bindRowClicks() {
@@ -259,20 +369,32 @@ function bindRowClicks() {
     button.addEventListener("click", async () => {
       const id = button.dataset.employeeId;
       if (!id) return;
-      const response = await fetch(`${apiBase}/${id}`);
-      const body = (await response.json()) as {
-        ok?: boolean;
-        staff?: Record<string, unknown>;
-        privateDetails?: Record<string, unknown> | null;
-      };
-      if (!response.ok || !body.ok || !body.staff) {
-        showError("Could not load employee");
-        return;
+      button.disabled = true;
+      try {
+        const response = await fetch(`${apiBase}/${id}`);
+        const body = (await response.json()) as {
+          ok?: boolean;
+          staff?: Record<string, unknown>;
+          privateDetails?: Record<string, unknown> | null;
+        };
+        if (!response.ok || !body.ok || !body.staff) {
+          showError("Could not load employee");
+          return;
+        }
+        openDialog("edit", body.staff, body.privateDetails ?? null);
+      } finally {
+        button.disabled = false;
       }
-      openDialog("edit", body.staff, body.privateDetails ?? null);
     });
   });
 }
+
+filterRoot?.addEventListener("click", (event) => {
+  const button = (event.target as Element).closest<HTMLButtonElement>("[data-access-filter]");
+  if (!button) return;
+  const id = button.dataset.accessFilter ?? "all";
+  setFilter(id === "all" || isAccessStatus(id) ? id : "all");
+});
 
 addButton?.addEventListener("click", () => openDialog("create"));
 closeButton?.addEventListener("click", () => dialog?.close());
@@ -294,15 +416,13 @@ form?.addEventListener("submit", async (event) => {
   const submitButton = form.querySelector<HTMLButtonElement>('button[type="submit"]');
   submitButton?.setAttribute("disabled", "true");
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     name: String((form.elements.namedItem("name") as HTMLInputElement).value).trim(),
     slug: String((form.elements.namedItem("slug") as HTMLInputElement).value).trim(),
     role: String((form.elements.namedItem("role") as HTMLSelectElement).value),
     phone: String((form.elements.namedItem("phone") as HTMLInputElement).value).trim(),
     email: String((form.elements.namedItem("email") as HTMLInputElement).value).trim(),
     bio: String((form.elements.namedItem("bio") as HTMLTextAreaElement).value).trim(),
-    isBookable: (form.elements.namedItem("isBookable") as HTMLInputElement).checked,
-    acceptingNewClients: (form.elements.namedItem("acceptingNewClients") as HTMLInputElement).checked,
     startDate: String((form.elements.namedItem("startDate") as HTMLInputElement).value).trim(),
     emergencyContactName: String(
       (form.elements.namedItem("emergencyContactName") as HTMLInputElement).value,
@@ -311,6 +431,13 @@ form?.addEventListener("submit", async (event) => {
       (form.elements.namedItem("emergencyContactPhone") as HTMLInputElement).value,
     ).trim(),
   };
+
+  if (bookEnabled) {
+    payload.isBookable = (form.elements.namedItem("isBookable") as HTMLInputElement).checked;
+    payload.acceptingNewClients = (
+      form.elements.namedItem("acceptingNewClients") as HTMLInputElement
+    ).checked;
+  }
 
   try {
     const response = await fetch(editingId ? `${apiBase}/${editingId}` : apiBase, {
@@ -342,10 +469,29 @@ bindRowClicks();
 
 accessActions?.addEventListener("click", async (event) => {
   const button = (event.target as Element).closest<HTMLButtonElement>("[data-access-action]");
-  const action = button?.dataset.accessAction;
-  if (!button || !action || !editingId) return;
+  const action = button?.dataset.accessAction as AccessActionId | undefined;
+  if (!button || !action || !editingId || button.hidden) return;
+
+  if (action === "deactivate") {
+    const confirmed = await confirmDestructive({
+      title: "Deactivate this employee?",
+      body: "They will lose access to the team app immediately and can’t sign in until you reactivate them. Their profile stays on file.",
+      confirmLabel: "Deactivate",
+      cancelLabel: "Keep access",
+    });
+    if (!confirmed) return;
+  }
+
   button.disabled = true;
-  showSuccess(`${action === "deactivate" ? "Deactivating" : "Updating"} access…`);
+  const pendingLabel =
+    action === "invite"
+      ? "Sending invite…"
+      : action === "resend"
+        ? "Resending invite…"
+        : action === "deactivate"
+          ? "Deactivating…"
+          : "Updating access…";
+  showSuccess(pendingLabel);
   try {
     const response = await fetch(`${apiBase}/${editingId}/access`, {
       method: "POST",
@@ -354,8 +500,20 @@ accessActions?.addEventListener("click", async (event) => {
     });
     const body = (await response.json()) as { ok?: boolean; error?: string; accessStatus?: string };
     if (!response.ok || !body.ok) throw new Error(body.error ?? "Could not update access");
-    if (linkStatus) linkStatus.textContent = `Access status: ${body.accessStatus ?? "updated"}.`;
-    showSuccess("Employee access updated.");
+    const nextStatusRaw = String(body.accessStatus ?? currentAccessStatus);
+    const nextStatus = isAccessStatus(nextStatusRaw) ? nextStatusRaw : currentAccessStatus;
+    syncAccessUi(nextStatus);
+    if (action === "invite" || action === "resend") {
+      showSuccess(
+        action === "invite"
+          ? "Invite sent. They’ll receive an email to set a password."
+          : "Invite resent. Ask them to check their inbox (and spam).",
+      );
+    } else if (action === "deactivate") {
+      showSuccess("Employee deactivated. They can no longer sign in.");
+    } else {
+      showSuccess("Employee reactivated.");
+    }
     await reloadList();
   } catch (error) {
     showError(error instanceof Error ? error.message : "Could not update access");
