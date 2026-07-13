@@ -30,15 +30,19 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const form = await request.formData();
   const newPassword = String(form.get("new_password") ?? "");
   const confirmPassword = String(form.get("confirm_password") ?? "");
+  const flow = String(form.get("flow") ?? "");
+  const flowQuery = flow === "invite" ? "?flow=invite" : "";
+  const errorRedirect = (code: string) =>
+    redirect(teamUrl(`/reset-password${flowQuery}${flowQuery ? "&" : "?"}error=${code}`));
 
   if (!newPassword || !confirmPassword) {
-    return redirect(teamUrl("/reset-password?error=invalid"));
+    return errorRedirect("invalid");
   }
   if (newPassword.length < 8) {
-    return redirect(teamUrl("/reset-password?error=weak"));
+    return errorRedirect("weak");
   }
   if (newPassword !== confirmPassword) {
-    return redirect(teamUrl("/reset-password?error=mismatch"));
+    return errorRedirect("mismatch");
   }
 
   const { error } = await supabase.auth.updateUser({
@@ -47,7 +51,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   });
 
   if (error) {
-    return redirect(teamUrl("/reset-password?error=update"));
+    return errorRedirect("update");
   }
 
   // Password is established. Now activate a pending invited staff row atomically,
@@ -66,5 +70,5 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   }
 
   clearPasswordSetupContext(cookies);
-  return redirect(teamUrl("/"));
+  return redirect(teamUrl(flow === "invite" ? "/?welcome=1" : "/"));
 };

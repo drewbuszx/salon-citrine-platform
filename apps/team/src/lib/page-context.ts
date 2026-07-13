@@ -34,7 +34,7 @@ export const PAGE_CONTEXT = {
   docs: {
     nav: "Docs",
     title: "Documents & Resources",
-    subtitle: "Store policies, training materials, forms, and salon references.",
+    subtitle: "Policies, guides, forms, and salon reference files.",
     primaryAction: "Upload document",
   },
   events: {

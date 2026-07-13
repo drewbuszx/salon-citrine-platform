@@ -111,10 +111,13 @@ function renderEmptyState() {
     const action = isManager
       ? `<div class="ui-empty__actions"><button class="ui-btn ui-btn--primary ui-btn--compact" type="button" data-doc-upload-open-inline">Upload document</button></div>`
       : "";
+    const hint = isManager
+      ? "Upload policies, reference guides, and forms for the team."
+      : "Ask a manager to upload policies, guides, and forms. Categories here are folders for files — not a training tracker.";
     return `<div class="ui-empty ui-empty--compact docs-empty" role="status">
       <span class="ui-empty__icon" aria-hidden="true">📄</span>
       <p class="ui-empty__title">No documents yet</p>
-      <p class="ui-empty__hint">Salon resources and handbooks will appear here.</p>
+      <p class="ui-empty__hint">${hint}</p>
       ${action}
     </div>`;
   }

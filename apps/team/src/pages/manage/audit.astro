@@ -63,20 +63,21 @@ const actionOptions = Object.entries(AUDIT_ACTION_LABELS);
       </form>
 
       <p class="notice notice--error" data-audit-error hidden role="alert"></p>
-      <p class="manage-audit__status" data-audit-loading role="status">Loading activity...</p>
-      <p class="empty-state" data-audit-empty hidden>No activity recorded for these filters.</p>
+      <p class="manage-audit__status" data-audit-loading role="status">Loading activity…</p>
+      <p class="empty-state" data-audit-empty hidden>
+        Invites, role changes, and access actions will show up here as your team uses Manage.
+      </p>
 
       <ol class="manage-audit__list" data-audit-list hidden></ol>
 
       <template data-audit-row-template>
         <li class="manage-audit__row">
           <div class="manage-audit__row-main">
+            <span class="manage-audit__who" data-row-who></span>
             <span class="manage-audit__action" data-row-action></span>
-            <span class="manage-audit__target" data-row-target></span>
             <span class="manage-audit__detail" data-row-detail></span>
           </div>
           <div class="manage-audit__row-meta">
-            <span class="manage-audit__actor" data-row-actor></span>
             <time class="manage-audit__time" data-row-time></time>
           </div>
         </li>

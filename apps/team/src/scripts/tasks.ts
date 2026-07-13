@@ -1110,6 +1110,16 @@ createChecklistBtn?.addEventListener("click", () => openCreateModal("checklist")
 
 browseOpenBtn?.addEventListener("click", () => setActiveTab("available"));
 
+root.querySelector<HTMLButtonElement>("[data-tasks-view-sheet]")?.addEventListener("click", (event) => {
+  const button = event.currentTarget as HTMLButtonElement;
+  const tabs = root.querySelector<HTMLElement>("#tasks-mobile-views");
+  if (!tabs) return;
+  tabs.scrollIntoView({ behavior: "smooth", block: "start" });
+  button.setAttribute("aria-expanded", "true");
+  const first = tabs.querySelector<HTMLButtonElement>("[data-view]");
+  first?.focus();
+});
+
 root.querySelectorAll<HTMLButtonElement>("[data-summary-view]").forEach((button) => {
   button.addEventListener("click", () => {
     const view = button.dataset.summaryView;

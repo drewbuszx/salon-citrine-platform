@@ -42,8 +42,7 @@ const staffOptions = staffRows ?? [];
       {
         managerView ? (
           <button slot="headerActions" class="team-list-layout__btn-primary" type="button" data-task-create>
-            <span class="tasks-page__action-long">Create task</span>
-            <span class="tasks-page__action-short">+ New entry</span>
+            Create task
           </button>
         ) : null
       }
@@ -58,6 +57,15 @@ const staffOptions = staffRows ?? [];
         }
         <button class="team-list-layout__btn-secondary" type="button" data-task-browse-open>
           Browse open tasks
+        </button>
+        <button
+          class="team-list-layout__btn-secondary tasks-page__view-sheet-btn"
+          type="button"
+          data-tasks-view-sheet
+          aria-expanded="false"
+          aria-controls="tasks-mobile-views"
+        >
+          Change view
         </button>
       </div>
 
@@ -160,7 +168,8 @@ const staffOptions = staffRows ?? [];
             </button>
           </div>
 
-          <div class="tasks-tabs" data-tasks-nav>
+          <div class="tasks-tabs" id="tasks-mobile-views" data-tasks-nav>
+            <p class="tasks-tabs__caption">Choose a view</p>
             <UiScrollRow label="Task views">
               <button class="tasks-tabs__btn is-active" type="button" data-view="my" aria-selected="true">
                 <span class="tasks-tabs__long">Assigned to me</span>
@@ -964,6 +973,19 @@ const staffOptions = staffRows ?? [];
     min-width: 0;
   }
 
+  .tasks-tabs__caption {
+    margin: 0 0 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-stone-500);
+  }
+
+  .tasks-page__view-sheet-btn {
+    display: none;
+  }
+
   .tasks-tabs__btn {
     display: inline-flex;
     flex: 0 0 auto;
@@ -1517,6 +1539,20 @@ const staffOptions = staffRows ?? [];
   /* Mobile: compact tab row replaces sidebar nav. */
   @media (max-width: 900px) {
     .tasks-tabs {
+      display: block;
+    }
+
+    .tasks-page__view-sheet-btn {
+      display: inline-flex;
+    }
+
+    .tasks-page__toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .tasks-page :global(.team-list-layout__toolbar) {
       display: block;
     }
 

@@ -1,3 +1,5 @@
+import { confirmDestructive } from "../lib/confirm-destructive";
+
 const root = document.querySelector<HTMLElement>("[data-manage-roles]");
 
 if (root) {
@@ -17,6 +19,19 @@ if (root) {
       const capability = input.dataset.capability ?? "";
       const enabled = input.checked;
 
+      if (!enabled) {
+        const confirmed = await confirmDestructive({
+          title: "Remove this permission?",
+          body: `People with the ${role.replaceAll("_", " ")} role will lose “${capability.replaceAll("_", " ")}” immediately.`,
+          confirmLabel: "Remove permission",
+          cancelLabel: "Keep permission",
+        });
+        if (!confirmed) {
+          input.checked = true;
+          return;
+        }
+      }
+
       input.disabled = true;
       show(successEl, false);
       show(errorEl, false);
@@ -34,6 +49,9 @@ if (root) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) {
           throw new Error(data?.error || `Request failed (${res.status})`);
+        }
+        if (successEl) {
+          successEl.textContent = enabled ? "Permission granted." : "Permission removed.";
         }
         show(successEl, true);
       } catch (err) {

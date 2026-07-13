@@ -29,9 +29,29 @@ if (root) {
     timeZone: "America/Indiana/Indianapolis",
   });
 
+  const relativeFmt = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  function formatRelativeTime(iso: string) {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return "";
+    const diffSec = Math.round((then - Date.now()) / 1000);
+    const abs = Math.abs(diffSec);
+    if (abs < 60) return "just now";
+    if (abs < 3600) return relativeFmt.format(Math.round(diffSec / 60), "minute");
+    if (abs < 86400) return relativeFmt.format(Math.round(diffSec / 3600), "hour");
+    if (abs < 86400 * 14) return relativeFmt.format(Math.round(diffSec / 86400), "day");
+    return dateFmt.format(new Date(iso));
+  }
+
   const show = (el: HTMLElement | null, visible: boolean) => {
     if (el) el.hidden = !visible;
   };
+
+  function filtersActive() {
+    return Boolean(
+      actionEl?.value || employeeEl?.value || fromEl?.value || toEl?.value,
+    );
+  }
 
   let reqId = 0;
 
@@ -65,6 +85,11 @@ if (root) {
       list.replaceChildren();
 
       if (entries.length === 0) {
+        if (emptyEl) {
+          emptyEl.textContent = filtersActive()
+            ? "No activity matches these filters. Try widening the date range or clearing filters."
+            : "Invites, role changes, and access actions will show up here as your team uses Manage.";
+        }
         show(loadingEl, false);
         show(emptyEl, true);
         return;
@@ -79,14 +104,16 @@ if (root) {
           const el = node.querySelector<HTMLElement>(selector);
           if (el) el.textContent = text;
         };
+        const actor = entry.actorName ?? "System";
+        const target = entry.targetName ?? "someone";
         set("[data-row-action]", entry.actionLabel);
-        set("[data-row-target]", entry.targetName ? `- ${entry.targetName}` : "");
+        set("[data-row-who]", `${actor} → ${target}`);
         set("[data-row-detail]", entry.detail ?? "");
-        set("[data-row-actor]", entry.actorName ? `by ${entry.actorName}` : "System");
         const timeEl = node.querySelector<HTMLTimeElement>("[data-row-time]");
         if (timeEl) {
           timeEl.dateTime = entry.createdAt;
-          timeEl.textContent = dateFmt.format(new Date(entry.createdAt));
+          timeEl.textContent = formatRelativeTime(entry.createdAt);
+          timeEl.title = dateFmt.format(new Date(entry.createdAt));
         }
         list.appendChild(node);
       }
