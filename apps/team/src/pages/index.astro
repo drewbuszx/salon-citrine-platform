@@ -118,7 +118,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
   {
     label: "Docs",
     href: teamUrl("/docs"),
-    desc: "Policies, training, and salon references",
+    desc: "Policies, guides, and salon references",
     icon: `<path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 3v5h5M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   },
   {
@@ -188,7 +188,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
                 "dashboard__manager-chip",
                 managerCounts.pendingTimeOff > 0 && "dashboard__manager-chip--hot",
               ]}
-              href={teamUrl("/events")}
+              href={teamUrl("/events#pending")}
             >
               <span class="dashboard__manager-value">{managerCounts.pendingTimeOff}</span>
               <span class="dashboard__manager-label">Pending time off</span>
@@ -198,7 +198,7 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
                 "dashboard__manager-chip",
                 managerCounts.pendingInvites > 0 && "dashboard__manager-chip--hot",
               ]}
-              href={teamUrl("/manage/employees")}
+              href={teamUrl("/manage/employees?access=invited")}
             >
               <span class="dashboard__manager-value">{managerCounts.pendingInvites}</span>
               <span class="dashboard__manager-label">Pending invites</span>

@@ -88,11 +88,11 @@ function nextStepsCopy(status: AccessStatus): string {
     case "uninvited":
       return "Add an email, then send an invite. They’ll get a link to set a password and sign in.";
     case "invited":
-      return "Invite sent. They’ll set a password from the email link, then land on the team dashboard. You can resend if needed.";
+      return "Invite sent — waiting for them to set a password from the email link. Status stays Invite sent until they finish. You can resend if needed.";
     case "active":
       return "This person can sign in to the team app with their password.";
     case "disabled":
-      return "Access is off. They can’t sign in until you reactivate them.";
+      return "Access is off. They can’t sign in. Reactivate restores their existing password — no new invite required.";
     default:
       return "";
   }
@@ -132,6 +132,13 @@ function applyFilter() {
   }
 }
 
+function syncFilterUrl(next: "all" | AccessStatus) {
+  const url = new URL(window.location.href);
+  if (next === "all") url.searchParams.delete("access");
+  else url.searchParams.set("access", next);
+  history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 function setFilter(next: "all" | AccessStatus) {
   activeFilter = next;
   filterRoot?.querySelectorAll<HTMLButtonElement>("[data-access-filter]").forEach((button) => {
@@ -141,6 +148,13 @@ function setFilter(next: "all" | AccessStatus) {
     button.setAttribute("aria-pressed", active ? "true" : "false");
   });
   applyFilter();
+  syncFilterUrl(next);
+}
+
+function readAccessFilterFromUrl(): "all" | AccessStatus {
+  const value = new URLSearchParams(window.location.search).get("access");
+  if (value === "all" || (value && isAccessStatus(value))) return value;
+  return "all";
 }
 
 function renderScheduleGrid(schedules: Array<{ day_of_week: number; start_time: string; end_time: string }>) {
@@ -473,6 +487,7 @@ form?.addEventListener("submit", async (event) => {
   }
 });
 
+setFilter(readAccessFilterFromUrl());
 bindRowClicks();
 
 accessActions?.addEventListener("click", async (event) => {
@@ -514,13 +529,13 @@ accessActions?.addEventListener("click", async (event) => {
     if (action === "invite" || action === "resend") {
       showSuccess(
         action === "invite"
-          ? "Invite sent. They’ll receive an email to set a password."
-          : "Invite resent. Ask them to check their inbox (and spam).",
+          ? "Invite sent. They’ll receive an email to set a password. Status stays Invite sent until they finish."
+          : "Invite resent. Ask them to check their inbox (and spam). Status stays Invite sent until they finish.",
       );
     } else if (action === "deactivate") {
       showSuccess("Employee deactivated. They can no longer sign in.");
     } else {
-      showSuccess("Employee reactivated.");
+      showSuccess("Employee reactivated. They can sign in again with their existing password.");
     }
     await reloadList();
   } catch (error) {
@@ -529,3 +544,4 @@ accessActions?.addEventListener("click", async (event) => {
     button.disabled = false;
   }
 });
+

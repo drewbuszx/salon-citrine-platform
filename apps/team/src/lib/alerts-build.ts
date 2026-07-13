@@ -111,7 +111,7 @@ export function buildPendingTimeOffAlert(
         ? "1 request waiting for approval"
         : `${count} requests waiting for approval`,
     count,
-    href: "/events",
+    href: "/events#pending",
     severity: "warning",
     generatedAt,
   };
@@ -131,7 +131,7 @@ export function buildPendingInvitesAlert(
         ? "1 invite still pending"
         : `${count} invites still pending`,
     count,
-    href: "/manage/employees",
+    href: "/manage/employees?access=invited",
     severity: "info",
     generatedAt,
   };

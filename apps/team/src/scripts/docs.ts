@@ -109,7 +109,7 @@ function renderEmptyState() {
 
   if (documents.length === 0) {
     const action = isManager
-      ? `<div class="ui-empty__actions"><button class="ui-btn ui-btn--primary ui-btn--compact" type="button" data-doc-upload-open-inline">Upload document</button></div>`
+      ? `<div class="ui-empty__actions"><button class="ui-btn ui-btn--primary ui-btn--compact" type="button" data-doc-upload-open-inline>Upload document</button></div>`
       : "";
     const hint = isManager
       ? "Upload policies, reference guides, and forms for the team."
@@ -277,6 +277,10 @@ closeButtons.forEach((button) => button.addEventListener("click", closeModal));
 
 listEl?.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
+  if (target.closest("[data-doc-upload-open-inline]")) {
+    openModal();
+    return;
+  }
   const downloadId = target.closest<HTMLElement>("[data-doc-download]")?.dataset.docDownload;
   if (downloadId) {
     void downloadDocument(downloadId);

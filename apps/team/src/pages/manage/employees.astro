@@ -44,6 +44,13 @@ const FILTERS: Array<{ id: "all" | AccessStatus; label: string }> = [
   { id: "disabled", label: ACCESS_STATUS_LABELS.disabled },
 ];
 
+const accessParam = Astro.url.searchParams.get("access");
+const initialFilter: "all" | AccessStatus =
+  accessParam === "all" ||
+  (accessParam !== null && accessParam in ACCESS_STATUS_LABELS)
+    ? (accessParam as "all" | AccessStatus)
+    : "all";
+
 function badgeClass(status: AccessStatus) {
   const variant = ACCESS_STATUS_BADGE_VARIANT[status];
   return variant === "default" ? "ui-badge" : `ui-badge ui-badge--${variant}`;
@@ -63,7 +70,7 @@ function badgeClass(status: AccessStatus) {
       {
         bookEnabled
           ? "Team profiles, roles, login access, and weekly bookable hours."
-          : "Team profiles, roles, and login access. Online booking controls stay hidden while Book is scaled back."
+          : "Team profiles, roles, and login access."
       }
     </p>
 
@@ -93,15 +100,15 @@ function badgeClass(status: AccessStatus) {
               aria-label="Filter by access status"
             >
               {
-                FILTERS.map((filter, index) => (
+                FILTERS.map((filter) => (
                   <button
                     class:list={[
                       "manage-employees__filter",
-                      { "manage-employees__filter--active": index === 0 },
+                      { "manage-employees__filter--active": filter.id === initialFilter },
                     ]}
                     type="button"
                     data-access-filter={filter.id}
-                    aria-pressed={index === 0 ? "true" : "false"}
+                    aria-pressed={filter.id === initialFilter ? "true" : "false"}
                   >
                     {filter.label}
                   </button>
