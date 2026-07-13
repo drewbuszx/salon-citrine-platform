@@ -24,6 +24,7 @@ export type EventRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  visibility: "team" | "managers";
   created_by:
     | { id: string; name: string }
     | { id: string; name: string }[]
@@ -47,6 +48,7 @@ export const EVENT_SELECT = `
   is_active,
   created_at,
   updated_at,
+  visibility,
   created_by:staff!team_events_created_by_staff_id_fkey ( id, name ),
   staff:staff!team_events_staff_id_fkey ( id, name )
 `;
@@ -158,13 +160,31 @@ export function canManageEvent(
   );
 }
 
-export function mapEvent(row: EventRow, currentStaff: StaffProfile) {
+export async function loadPrivateEventReason(
+  supabase: App.Locals["supabase"],
+  eventId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("get_private_event_details", {
+    p_event_id: eventId,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return typeof row?.private_reason === "string" ? row.private_reason : null;
+}
+
+export function mapEvent(
+  row: EventRow,
+  currentStaff: StaffProfile,
+  privateReason: string | null = null,
+) {
   const createdBy = relOne(row.created_by);
   const subject = relOne(row.staff);
   return {
     id: row.id,
     title: row.title,
     description: row.description,
+    privateReason,
+    visibility: row.visibility,
     eventType: row.event_type,
     startsAt: row.starts_at,
     endsAt: row.ends_at,

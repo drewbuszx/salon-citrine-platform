@@ -258,6 +258,18 @@ const typeFilters: { type: string; label: string }[] = [
           <textarea class="form-input" name="description" rows="3" maxlength="2000" />
         </label>
 
+        {
+          managerView ? (
+            <label class="form-label">
+              Visibility
+              <select class="form-input" name="visibility">
+                <option value="team">Entire team</option>
+                <option value="managers">Managers only</option>
+              </select>
+            </label>
+          ) : null
+        }
+
         <p class="events-modal__privacy" data-time-off-privacy hidden>
           Time-off notes are visible only to you and managers.
         </p>

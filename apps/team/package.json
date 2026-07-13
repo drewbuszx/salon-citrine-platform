@@ -11,6 +11,7 @@
     "preview": "astro preview",
     "test": "node --experimental-strip-types scripts/test-report-range.mjs && node --experimental-strip-types scripts/test-event-presentation.mjs && node scripts/test-calendar-grid.mjs && node --experimental-strip-types scripts/test-security-hardening.mjs",
     "test:security": "node --experimental-strip-types scripts/test-security-hardening.mjs",
+    "test:invite:local": "node scripts/test-invite-flow-local.mjs",
     "test:e2e:role-matrix": "node scripts/test-role-matrix-e2e.mjs",
     "test:report-range": "node --experimental-strip-types scripts/test-report-range.mjs",
     "test:event-presentation": "node --experimental-strip-types scripts/test-event-presentation.mjs",

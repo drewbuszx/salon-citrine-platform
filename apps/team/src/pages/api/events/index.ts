@@ -4,6 +4,7 @@ import {
   defaultEventRange,
   endOfDayUtc,
   EVENT_SELECT,
+  loadPrivateEventReason,
   mapEvent,
   parseDateInput,
   parseDateTimeLocalInput,
@@ -23,6 +24,7 @@ type CreateEventBody = {
   ends_at?: string | null;
   all_day?: boolean;
   staff_id?: string | null;
+  visibility?: "team" | "managers";
 };
 
 export const GET: APIRoute = async (context) => {
@@ -38,12 +40,18 @@ export const GET: APIRoute = async (context) => {
 
   const { supabase, staff } = auth;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("team_events")
     .select(EVENT_SELECT)
     .eq("is_active", true)
     .lte("starts_at", to)
     .order("starts_at", { ascending: true });
+  if (!requireManager(staff)) {
+    query = query.or(
+      `visibility.eq.team,created_by_staff_id.eq.${staff.id}`,
+    );
+  }
+  const { data, error } = await query;
 
   if (error) {
     console.error("events list failed", error);
@@ -60,7 +68,17 @@ export const GET: APIRoute = async (context) => {
     return startsMs <= toMs && endsMs >= fromMs;
   });
 
-  const events = rows.map((row) => mapEvent(row as EventRow, staff));
+  const events = await Promise.all(
+    rows.map(async (rawRow) => {
+      const row = rawRow as EventRow;
+      const canReadPrivate =
+        requireManager(staff) || row.created_by_staff_id === staff.id;
+      const privateReason = canReadPrivate
+        ? await loadPrivateEventReason(supabase, row.id)
+        : null;
+      return mapEvent(row, staff, privateReason);
+    }),
+  );
 
   const birthdayRows: BirthdayRow[] = [];
 
@@ -114,6 +132,8 @@ export const POST: APIRoute = async (context) => {
   if (!manager && eventType !== "time_off") {
     return jsonError("Only managers can create this event type", 403);
   }
+  const visibility =
+    body.visibility === "managers" && manager ? "managers" : "team";
 
   const allDay = Boolean(body.all_day);
   let startsAt: string | { error: string };
@@ -192,6 +212,7 @@ export const POST: APIRoute = async (context) => {
       all_day: allDay,
       created_by_staff_id: staff.id,
       staff_id: staffId,
+      visibility,
     })
     .select(EVENT_SELECT)
     .single();
@@ -201,5 +222,11 @@ export const POST: APIRoute = async (context) => {
     return jsonError("Failed to create event", 500);
   }
 
-  return jsonOk({ event: mapEvent(data as EventRow, staff) });
+  return jsonOk({
+    event: mapEvent(
+      data as EventRow,
+      staff,
+      eventType === "time_off" ? privateReason : null,
+    ),
+  });
 };

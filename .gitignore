@@ -35,3 +35,6 @@ packages/db/seed/tmp-*
 packages/db/seed/_*
 packages/db/seed/mcp-args-*.json
 packages/db/seed/out-batch-*.txt
+supabase/.temp/
+supabase/migrations/
+packages/db/migration-validation-evidence.json

@@ -6,6 +6,10 @@
   "description": "Supabase schema migrations and seed data for Salon Citrine",
   "scripts": {
     "verify:migrations": "node scripts/verify-migrations.mjs",
+    "stage:migrations": "node scripts/stage-canonical-migrations.mjs",
+    "write:migration-evidence": "node scripts/write-migration-evidence.mjs",
+    "replay:disposable": "node scripts/run-disposable-replay.mjs",
+    "verify:deployment": "node scripts/verify-deployment-readiness.mjs",
     "test:security:db": "supabase test db tests/0030_security_reliability_hardening.sql",
     "generate-seed": "node scripts/generate-seed.mjs",
     "sync-staff-services": "node scripts/sync-staff-services-from-glossgenius.mjs",

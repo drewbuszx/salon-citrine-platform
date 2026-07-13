@@ -4,6 +4,7 @@ import {
   canManageEvent,
   endOfDayUtc,
   EVENT_SELECT,
+  loadPrivateEventReason,
   mapEvent,
   parseDateInput,
   parseDateTimeLocalInput,
@@ -23,6 +24,7 @@ type PatchBody = {
   all_day?: boolean;
   staff_id?: string | null;
   is_active?: boolean;
+  visibility?: "team" | "managers";
 };
 
 export const PATCH: APIRoute = async (context) => {
@@ -70,7 +72,13 @@ export const PATCH: APIRoute = async (context) => {
   }
 
   if (body.description !== undefined) {
-    updates.description = String(body.description ?? "").trim() || null;
+    const description = String(body.description ?? "").trim() || null;
+    if (existing.event_type === "time_off") {
+      updates.private_reason = description;
+      updates.description = null;
+    } else {
+      updates.description = description;
+    }
   }
 
   if (body.event_type !== undefined) {
@@ -149,6 +157,12 @@ export const PATCH: APIRoute = async (context) => {
     }
     updates.is_active = Boolean(body.is_active);
   }
+  if (body.visibility !== undefined) {
+    if (!manager || !["team", "managers"].includes(body.visibility)) {
+      return jsonError("Forbidden", 403);
+    }
+    updates.visibility = body.visibility;
+  }
 
   if (Object.keys(updates).length === 0) {
     return jsonError("No updates provided", 400);
@@ -166,7 +180,11 @@ export const PATCH: APIRoute = async (context) => {
     return jsonError("Failed to update event", 500);
   }
 
-  return jsonOk({ event: mapEvent(data as EventRow, staff) });
+  const privateReason =
+    manager || data.created_by_staff_id === staff.id
+      ? await loadPrivateEventReason(supabase, eventId)
+      : null;
+  return jsonOk({ event: mapEvent(data as EventRow, staff, privateReason) });
 };
 
 export const DELETE: APIRoute = async (context) => {

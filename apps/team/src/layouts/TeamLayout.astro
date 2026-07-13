@@ -28,6 +28,7 @@ const {
   loginPage = false,
 } = Astro.props;
 const { staff, user } = Astro.locals;
+const cspNonce = Astro.locals.cspNonce;
 const isAuthenticated = Boolean(user && staff);
 ---
 
@@ -40,7 +41,7 @@ const isAuthenticated = Boolean(user && staff);
     <link rel="icon" type="image/png" href={faviconUrl} />
     <link rel="apple-touch-icon" href={faviconUrl} />
     <title>{title} · Team · {BUSINESS.name}</title>
-    <script is:inline>
+    <script is:inline nonce={cspNonce}>
       (function () {
         var storageKey = "theme";
 

@@ -9,6 +9,14 @@ import {
   createSupabaseAdminClient,
   teamAbsoluteUrl,
 } from "../../../../lib/supabase-server";
+import {
+  sendStaffInviteEmail,
+  transitionStaffAccess,
+} from "../../../../lib/staff-access-admin";
+import {
+  findAuthUserByEmail,
+  reusablePendingInviteError,
+} from "../../../../lib/auth-user-lookup";
 
 type AccessAction = "invite" | "resend" | "link" | "deactivate" | "reactivate";
 
@@ -41,25 +49,13 @@ export const POST: APIRoute = async (context) => {
 
   const { data: target, error: targetError } = await admin
     .from("staff")
-    .select("id, email, supabase_user_id, access_status")
+    .select("id, name, email, supabase_user_id, access_status")
     .eq("id", staffId)
     .maybeSingle();
   if (targetError || !target) return jsonError("Employee not found", 404);
 
   const email = String(target.email ?? "").trim().toLowerCase();
-  const audit = async (
-    auditAction: "invited" | "reinvited" | "linked" | "deactivated" | "reactivated",
-    before: Record<string, unknown>,
-    after: Record<string, unknown>,
-  ) =>
-    admin.from("staff_security_audit").insert({
-      actor_staff_id: auth.staff.id,
-      target_staff_id: staffId,
-      action: auditAction,
-      before_state: before,
-      after_state: after,
-      request_id: context.request.headers.get("X-Request-Id"),
-    });
+  const requestId = context.request.headers.get("X-Request-Id");
 
   if (action === "invite" || action === "resend") {
     if (!email) return jsonError("Add an employee email before inviting", 400);
@@ -70,37 +66,136 @@ export const POST: APIRoute = async (context) => {
       return jsonError("Employee already has a linked Auth account", 409);
     }
 
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: teamAbsoluteUrl("/auth/confirm", context.request),
-      data: { staff_id: staffId, must_change_password: true },
+    let existingUser = null;
+    if (action === "resend") {
+      if (!target.supabase_user_id || target.access_status !== "invited") {
+        return jsonError("Only pending invitations can be resent", 409);
+      }
+      const { data, error } = await admin.auth.admin.getUserById(
+        target.supabase_user_id,
+      );
+      if (error || !data.user) return jsonError("Pending Auth user not found", 409);
+      if (data.user.email?.trim().toLowerCase() !== email) {
+        return jsonError("Pending Auth user email does not match employee email", 409);
+      }
+      if (data.user.last_sign_in_at) {
+        return jsonError("This employee has already used the invitation", 409);
+      }
+      existingUser = data.user;
+    } else {
+      try {
+        existingUser = await findAuthUserByEmail(admin, email);
+      } catch (lookupError) {
+        console.error("invite Auth user lookup failed", lookupError);
+        return jsonError("Could not safely verify existing Auth users", 502);
+      }
+      if (existingUser) {
+        const pendingError = reusablePendingInviteError(existingUser, staffId);
+        if (pendingError === "existing_account") {
+          return jsonError(
+            "An existing Auth account uses this email. Verify it and use the explicit link action.",
+            409,
+          );
+        }
+        if (pendingError === "different_employee") {
+          return jsonError("Pending Auth invitation belongs to another employee", 409);
+        }
+        const { data: conflict, error: conflictError } = await admin
+          .from("staff")
+          .select("id")
+          .eq("supabase_user_id", existingUser.id)
+          .neq("id", staffId)
+          .maybeSingle();
+        if (conflictError) {
+          return jsonError("Could not verify pending Auth user ownership", 500);
+        }
+        if (conflict) {
+          return jsonError("Pending Auth user is linked to another employee", 409);
+        }
+      }
+    }
+
+    const redirectTo = teamAbsoluteUrl("/auth/confirm?flow=invite", context.request);
+    if (existingUser) {
+      const { error: metadataError } = await admin.auth.admin.updateUserById(
+        existingUser.id,
+        {
+          user_metadata: {
+            ...existingUser.user_metadata,
+            staff_id: staffId,
+            invited_by_staff_id: auth.staff.id,
+            must_change_password: true,
+          },
+        },
+      );
+      if (metadataError) {
+        return jsonError("Could not prepare the pending Auth invitation", 502);
+      }
+    }
+    const linkType = existingUser ? "magiclink" : "invite";
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: linkType,
+      email,
+      options: {
+        redirectTo,
+        data: {
+          staff_id: staffId,
+          invited_by_staff_id: auth.staff.id,
+          must_change_password: true,
+        },
+      },
     });
-    if (error || !data.user) {
-      const conflict = /already|registered|exists/i.test(error?.message ?? "");
+    const generatedUser = data?.user ?? existingUser;
+    const actionLink = data?.properties?.action_link;
+    if (error || !generatedUser || !actionLink) {
+      if (!existingUser && data?.user) {
+        const { error: rollbackError } = await admin.auth.admin.deleteUser(
+          data.user.id,
+          true,
+        );
+        if (rollbackError) {
+          console.error("failed generated invite cleanup", rollbackError);
+        }
+      }
       return jsonError(
-        conflict
-          ? "An Auth user already exists for this email. Verify it and use the explicit link action."
-          : "Could not send employee invitation",
-        conflict ? 409 : 502,
+        "Could not generate employee invitation",
+        502,
       );
     }
 
-    const { error: updateError } = await admin
-      .from("staff")
-      .update({
-        supabase_user_id: data.user.id,
-        access_status: "invited",
-        auth_invited_at: new Date().toISOString(),
-        deactivated_at: null,
-      })
-      .eq("id", staffId);
-    if (updateError) {
-      await admin.auth.admin.deleteUser(data.user.id, true);
-      return jsonError("Invitation could not be linked; Auth invite was rolled back", 500);
+    try {
+      await transitionStaffAccess(admin, {
+        actorStaffId: auth.staff.id,
+        targetStaffId: staffId,
+        action: action === "invite" ? "invited" : "reinvited",
+        authUserId: generatedUser.id,
+        accessStatus: "invited",
+        requestId,
+      });
+    } catch (transitionError) {
+      if (!existingUser) {
+        const { error: rollbackError } = await admin.auth.admin.deleteUser(
+          generatedUser.id,
+          true,
+        );
+        if (rollbackError) console.error("invite Auth rollback failed", rollbackError);
+      }
+      console.error("invite staff transition failed", transitionError);
+      return jsonError("Invitation could not be linked", 500);
     }
-    await audit(action === "invite" ? "invited" : "reinvited", target, {
-      access_status: "invited",
-      supabase_user_id: data.user.id,
-    });
+    try {
+      await sendStaffInviteEmail({
+        to: email,
+        employeeName: String(target.name),
+        actionLink,
+      });
+    } catch (deliveryError) {
+      console.error("invite email failed", deliveryError);
+      return jsonError(
+        "Invitation was created but email delivery failed. Fix email configuration and resend.",
+        502,
+      );
+    }
     return jsonOk({ accessStatus: "invited" });
   }
 
@@ -112,18 +207,27 @@ export const POST: APIRoute = async (context) => {
     if (data.user.email?.trim().toLowerCase() !== email) {
       return jsonError("Auth user email does not match employee email", 409);
     }
-    const { data: conflict } = await admin
+    const { data: conflict, error: conflictError } = await admin
       .from("staff")
       .select("id")
       .eq("supabase_user_id", authUserId)
       .neq("id", staffId)
       .maybeSingle();
+    if (conflictError) return jsonError("Could not verify Auth link uniqueness", 500);
     if (conflict) return jsonError("Auth user is already linked to another employee", 409);
-    await admin
-      .from("staff")
-      .update({ supabase_user_id: authUserId, access_status: "active", deactivated_at: null })
-      .eq("id", staffId);
-    await audit("linked", target, { access_status: "active", supabase_user_id: authUserId });
+    try {
+      await transitionStaffAccess(admin, {
+        actorStaffId: auth.staff.id,
+        targetStaffId: staffId,
+        action: "linked",
+        authUserId,
+        accessStatus: "active",
+        requestId,
+      });
+    } catch (error) {
+      console.error("staff link transition failed", error);
+      return jsonError("Could not link employee access", 500);
+    }
     return jsonOk({ accessStatus: "active" });
   }
 
@@ -135,11 +239,24 @@ export const POST: APIRoute = async (context) => {
       });
       if (error) return jsonError("Could not revoke Auth access", 502);
     }
-    await admin
-      .from("staff")
-      .update({ access_status: "disabled", deactivated_at: new Date().toISOString() })
-      .eq("id", staffId);
-    await audit("deactivated", target, { access_status: "disabled" });
+    try {
+      await transitionStaffAccess(admin, {
+        actorStaffId: auth.staff.id,
+        targetStaffId: staffId,
+        action: "deactivated",
+        authUserId: target.supabase_user_id,
+        accessStatus: "disabled",
+        requestId,
+      });
+    } catch (error) {
+      if (target.supabase_user_id) {
+        await admin.auth.admin.updateUserById(target.supabase_user_id, {
+          ban_duration: "none",
+        });
+      }
+      console.error("staff deactivate transition failed", error);
+      return jsonError("Could not persist deactivation", 500);
+    }
     return jsonOk({ accessStatus: "disabled" });
   }
 
@@ -150,10 +267,23 @@ export const POST: APIRoute = async (context) => {
     if (error) return jsonError("Could not reactivate Auth access", 502);
   }
   const accessStatus = target.supabase_user_id ? "active" : "uninvited";
-  await admin
-    .from("staff")
-    .update({ access_status: accessStatus, deactivated_at: null })
-    .eq("id", staffId);
-  await audit("reactivated", target, { access_status: accessStatus });
+  try {
+    await transitionStaffAccess(admin, {
+      actorStaffId: auth.staff.id,
+      targetStaffId: staffId,
+      action: "reactivated",
+      authUserId: target.supabase_user_id,
+      accessStatus,
+      requestId,
+    });
+  } catch (error) {
+    if (target.supabase_user_id) {
+      await admin.auth.admin.updateUserById(target.supabase_user_id, {
+        ban_duration: "876000h",
+      });
+    }
+    console.error("staff reactivate transition failed", error);
+    return jsonError("Could not persist reactivation", 500);
+  }
   return jsonOk({ accessStatus });
 };

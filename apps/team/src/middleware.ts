@@ -6,10 +6,15 @@ import {
 } from "./lib/auth";
 import { disabledModuleForPath } from "./lib/modules";
 import {
+  buildContentSecurityPolicy,
+  createCspNonce,
+} from "./lib/security-headers";
+import {
   createSupabaseServerClient,
   getRequestUser,
   teamUrl,
 } from "./lib/supabase-server";
+import { hasPasswordSetupContext } from "./lib/password-setup-context";
 
 const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/auth/confirm"]);
 const RESET_PASSWORD_PATH = "/reset-password";
@@ -46,6 +51,7 @@ function isMissingRuntimeConfigError(error: unknown) {
 }
 
 const authorizeRequest = defineMiddleware(async (context, next) => {
+  context.locals.cspNonce = createCspNonce();
   const routePath = normalizePath(context.url.pathname, import.meta.env.BASE_URL);
 
   if (isStaticAssetPath(routePath)) {
@@ -120,7 +126,9 @@ const authorizeRequest = defineMiddleware(async (context, next) => {
   }
 
   if (routePath === RESET_PASSWORD_PATH) {
-    if (!user) {
+    // The password-setup form is reachable only inside a verified recovery/invite
+    // context, never from an ordinary authenticated session.
+    if (!user || !hasPasswordSetupContext(context.cookies)) {
       return context.redirect(teamUrl("/login?error=reset_expired"));
     }
     return next();
@@ -131,7 +139,9 @@ const authorizeRequest = defineMiddleware(async (context, next) => {
     needsPasswordChange &&
     routePath !== CHANGE_PASSWORD_PATH &&
     routePath !== "/api/auth/change-password" &&
-    routePath !== "/api/auth/logout"
+    routePath !== "/api/auth/logout" &&
+    // Invited employees set their first password through the recovery/invite form.
+    !(routePath === "/api/auth/reset-password" && hasPasswordSetupContext(context.cookies))
   ) {
     return context.redirect(teamUrl(CHANGE_PASSWORD_PATH));
   }
@@ -202,23 +212,11 @@ const authorizeRequest = defineMiddleware(async (context, next) => {
   return next();
 });
 
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-  "worker-src 'self' blob:",
-  "upgrade-insecure-requests",
-].join("; ");
-
-function applySecurityHeaders(response: Response) {
-  response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+function applySecurityHeaders(response: Response, nonce: string) {
+  response.headers.set(
+    "Content-Security-Policy",
+    buildContentSecurityPolicy(nonce),
+  );
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
@@ -227,5 +225,8 @@ function applySecurityHeaders(response: Response) {
 }
 
 export const onRequest = defineMiddleware(async (context, next) =>
-  applySecurityHeaders((await authorizeRequest(context, next)) as Response),
+  applySecurityHeaders(
+    (await authorizeRequest(context, next)) as Response,
+    context.locals.cspNonce,
+  ),
 );

@@ -27,6 +27,8 @@ type TeamEvent = {
   id: string;
   title: string;
   description: string | null;
+  privateReason: string | null;
+  visibility: "team" | "managers";
   eventType: RawEventType;
   startsAt: string;
   endsAt: string | null;
@@ -665,8 +667,8 @@ function renderEventCard(event: StyledEvent, opts: { grouped?: boolean } = {}): 
   const notes =
     event.description && event.type !== "time_off"
       ? `<p class="event-card__notes">${escapeHtml(event.description)}</p>`
-      : event.description && event.type === "time_off" && event.canEdit
-        ? `<p class="event-card__notes event-card__notes--private">${escapeHtml(event.description)} <span class="event-card__private-tag">private</span></p>`
+    : event.privateReason && event.type === "time_off" && event.canEdit
+        ? `<p class="event-card__notes event-card__notes--private">${escapeHtml(event.privateReason)} <span class="event-card__private-tag">private</span></p>`
         : "";
 
   return `
@@ -962,7 +964,12 @@ function openEditModal(event: StyledEvent) {
   if (deleteBtn) deleteBtn.hidden = !event.canDelete;
 
   (form.elements.namedItem("title") as HTMLInputElement).value = event.title;
-  (form.elements.namedItem("description") as HTMLTextAreaElement).value = event.description ?? "";
+  (form.elements.namedItem("description") as HTMLTextAreaElement).value =
+    event.eventType === "time_off"
+      ? event.privateReason ?? ""
+      : event.description ?? "";
+  const visibility = form.elements.namedItem("visibility");
+  if (visibility instanceof HTMLSelectElement) visibility.value = event.visibility;
   if (typeSelect) typeSelect.value = event.eventType;
   if (allDayInput) allDayInput.checked = event.allDay;
   updateFormMode();
@@ -1186,6 +1193,9 @@ form?.addEventListener("submit", async (event) => {
     starts_at: String(formData.get("starts_at") ?? ""),
     ends_at: String(formData.get("ends_at") ?? "") || null,
   };
+  if (isManager) {
+    payload.visibility = String(formData.get("visibility") ?? "team");
+  }
 
   if (isManager && payload.event_type === "time_off") {
     payload.staff_id = String(formData.get("staff_id") ?? currentStaffId);

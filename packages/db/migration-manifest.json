@@ -1,6 +1,48 @@
 {
   "version": 1,
-  "historicalDuplicatePrefixes": ["0017", "0027"],
+  "canonicalVersionBase": "20000101000000",
+  "disposableShims": [
+    {
+      "after": "0001_init.sql",
+      "file": "reconciliation/legacy-seed-dependencies.sql",
+      "canonicalVersion": "20000101000002",
+      "productionAction": "verify_rows_exist_do_not_apply"
+    }
+  ],
+  "legacyReconciliations": [
+    {
+      "legacyVersion": "0017",
+      "status": "requires_disposable_validation",
+      "files": [
+        {
+          "file": "0017_calendar_overlap_prevention.sql",
+          "canonicalVersion": "20000101000018",
+          "requiredObjects": ["blocked_times_no_staff_overlap", "appointments_no_staff_overlap"]
+        },
+        {
+          "file": "0017_team_events_salon_tz.sql",
+          "canonicalVersion": "20000101000019",
+          "requiredObjects": ["team_events"]
+        }
+      ]
+    },
+    {
+      "legacyVersion": "0027",
+      "status": "requires_disposable_validation",
+      "files": [
+        {
+          "file": "0027_demo_clients_seed.sql",
+          "canonicalVersion": "20000101000029",
+          "requiredObjects": ["clients"]
+        },
+        {
+          "file": "0027_staff_birthday.sql",
+          "canonicalVersion": "20000101000030",
+          "requiredObjects": ["staff.birthday"]
+        }
+      ]
+    }
+  ],
   "migrations": [
     "0001_init.sql",
     "0002_public_read_staff_services.sql",
@@ -34,6 +76,8 @@
     "0028_manage_staff_and_business.sql",
     "0029_salon_routines.sql",
     "0030_security_reliability_hardening.sql",
-    "0031_staff_photo_profile_rpc.sql"
+    "0031_staff_photo_profile_rpc.sql",
+    "0032_corrective_security_closure.sql",
+    "0033_wave1_invite_task_hardening.sql"
   ]
 }

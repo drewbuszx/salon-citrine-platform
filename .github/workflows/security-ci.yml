@@ -21,13 +21,45 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify:migrations
+      - run: npm run stage:migrations --workspace packages/db
       - run: npm test
       - run: npm run build --workspace apps/team
 
-  authenticated-role-matrix:
-    name: Optional authenticated role matrix
+  # Docker-dependent gate. Runs on protected branches / PRs where GitHub-hosted
+  # runners provide Docker. It performs a real disposable Postgres replay + pgTAP,
+  # then writes and verifies deployment evidence. It must never be skipped-green on a
+  # protected branch: branch protection should mark this job Required.
+  disposable-db-replay:
+    name: Disposable migration replay and pgTAP (required on protected branches)
     needs: required
-    if: ${{ secrets.TEAM_E2E_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: npm ci
+      - run: npm run verify:migrations
+      - run: npm run db:test:disposable
+      - run: npm run verify:deployment
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: migration-evidence-${{ github.sha }}
+          path: packages/db/migration-validation-evidence.json
+          if-no-files-found: warn
+
+  # Credentialed behavioral gate. Required on protected branches once the E2E secrets
+  # are configured. The step fails (not skips) if configuration is missing on a
+  # protected branch, preventing a false-green pass.
+  authenticated-role-matrix:
+    name: Authenticated role matrix (required on protected branches)
+    needs: required
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -51,4 +83,10 @@ jobs:
           node-version: 22.12.0
           cache: npm
       - run: npm ci
+      - name: Guard against skip-green on protected branches
+        run: |
+          if [ -z "$TEAM_E2E_BASE_URL" ]; then
+            echo "TEAM_E2E_BASE_URL is not configured. Configure E2E secrets to satisfy this required gate."
+            exit 1
+          fi
       - run: npm run test:e2e:role-matrix

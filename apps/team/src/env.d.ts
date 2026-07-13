@@ -28,6 +28,7 @@ declare global {
       supabase: SupabaseClient;
       user: User | null;
       staff: StaffProfile | null;
+      cspNonce: string;
     }
   }
 }

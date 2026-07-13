@@ -102,6 +102,9 @@ const DISABLED_ROUTE_PREFIXES: ReadonlyArray<{
     module: "book",
     prefixes: [
       "/my-book",
+      "/book",
+      "/week",
+      "/block-time",
       "/services",
       "/my-services",
       "/booking-policy",

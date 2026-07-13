@@ -1,0 +1,29 @@
+project_id = "salon-citrine-platform-hardening"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:4322/team"
+additional_redirect_urls = ["http://127.0.0.1:4322/team/auth/confirm"]
+jwt_expiry = 3600
+enable_signup = true

@@ -19,6 +19,8 @@
     "test:security": "npm run test:security --workspace apps/team",
     "test:e2e:role-matrix": "npm run test:e2e:role-matrix --workspace apps/team",
     "verify:migrations": "npm run verify:migrations --workspace packages/db",
+    "verify:deployment": "npm run verify:deployment --workspace packages/db",
+    "db:test:disposable": "npm run replay:disposable --workspace packages/db",
     "db:generate-seed": "npm run generate-seed --workspace packages/db",
     "db:sync-staff-services": "npm run sync-staff-services --workspace packages/db",
     "db:create-dev-admin": "npm run create-dev-admin --workspace packages/db",
