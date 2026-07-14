@@ -3,8 +3,15 @@ import TeamLayout from "../layouts/TeamLayout.astro";
 import TeamListLayout from "../components/TeamListLayout.astro";
 import StaffAvatar from "../components/StaffAvatar.astro";
 import { staffInitials, staffPhotoSrc } from "../lib/staff-display";
+import {
+  bioEditorValue,
+  bioStatusLabel,
+  normalizeBioStatus,
+} from "../lib/staff-bio";
+import { STAFF_ROLE_LABELS } from "../lib/staff-manage";
 import { normalizePhotoCrop, parsePhotoCrop } from "../lib/staff-photo";
 import { teamUrl } from "../lib/supabase-server";
+import type { StaffRole } from "../env.d.ts";
 
 const { supabase, staff, user } = Astro.locals;
 
@@ -14,7 +21,9 @@ if (!staff || !user) {
 
 const { data: profile, error } = await supabase
   .from("staff")
-  .select("id, name, bio, phone, start_date, photo_url, photo_crop, slug")
+  .select(
+    "id, name, role, bio, bio_pending, bio_status, bio_submitted_at, bio_reviewed_at, bio_review_note, phone, start_date, photo_url, photo_crop, slug",
+  )
   .eq("id", staff.id)
   .maybeSingle();
 
@@ -26,6 +35,14 @@ if (error || !profile) {
 const photoCrop = normalizePhotoCrop(parsePhotoCrop(profile.photo_crop));
 const photoSrc = staffPhotoSrc(profile.photo_url, profile.slug);
 const initials = staffInitials(profile.name);
+const roleLabel =
+  STAFF_ROLE_LABELS[profile.role as StaffRole] ?? String(profile.role);
+const bioStatus = normalizeBioStatus(profile.bio_status);
+const bioValue = bioEditorValue({
+  bio: profile.bio,
+  bio_pending: profile.bio_pending,
+  bio_status: bioStatus,
+});
 
 const { data: privateDetails } = await supabase
   .from("staff_private_details")
@@ -35,6 +52,7 @@ const { data: privateDetails } = await supabase
 
 const saved = Astro.url.searchParams.get("saved") === "1";
 const photoSaved = Astro.url.searchParams.get("photo") === "1";
+const bioPendingNotice = Astro.url.searchParams.get("bio") === "pending";
 const emailPending = Astro.url.searchParams.get("email") === "pending";
 const errorCode = Astro.url.searchParams.get("error");
 const errorMessage =
@@ -42,23 +60,43 @@ const errorMessage =
     ? "Could not save your profile. Try again."
     : errorCode === "email"
       ? "Could not update email. Check the address and try again."
-      : errorCode === "photo_type"
-        ? "Use a JPEG, PNG, or WebP image for your profile photo."
-        : errorCode === "photo_size"
-          ? "Profile photo must be 2 MB or smaller."
-          : errorCode === "photo_upload"
-            ? "Could not upload your photo. Try again."
-            : errorCode === "photo_save"
-              ? "Photo uploaded but framing could not be saved. Try again."
-              : null;
+      : errorCode === "bio"
+        ? "Could not submit your bio. Add a short bio (max 2,000 characters) and try again."
+        : errorCode === "photo_type"
+          ? "Use a JPEG, PNG, or WebP image for your profile photo."
+          : errorCode === "photo_size"
+            ? "Profile photo must be 2 MB or smaller."
+            : errorCode === "photo_upload"
+              ? "Could not upload your photo. Try again."
+              : errorCode === "photo_save"
+                ? "Photo uploaded but framing could not be saved. Try again."
+                : null;
+
+const startDateLabel = profile.start_date
+  ? new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(`${profile.start_date}T12:00:00`))
+  : null;
 ---
 
 <TeamLayout title="Account" activeNav="account" plain wide fullBleed>
-  <TeamListLayout title="Account" mainTitle="Your profile" sidebarTitle="Sections">
+  <TeamListLayout
+    title="Account"
+    contextTitle="Account"
+    contextSubtitle="Your photo, profile details, and sign-in settings."
+    contextEyebrow="You"
+    mainTitle=""
+    sidebarTitle="Sections"
+    contentWidth="reading"
+  >
     <nav slot="sidebarFilters" class="team-list-layout__sidebar-nav" aria-label="Account sections">
-      <a class="team-list-layout__sidebar-link" href="#account-photo">Profile photo</a>
-      <a class="team-list-layout__sidebar-link" href="#account-details">Contact details</a>
-      <a class="team-list-layout__sidebar-link" href={teamUrl("/change-password")}>Password</a>
+      <a class="team-list-layout__sidebar-link" href="#account-profile">Profile</a>
+      <a class="team-list-layout__sidebar-link" href="#account-photo">Photo</a>
+      <a class="team-list-layout__sidebar-link" href="#account-bio">Bio</a>
+      <a class="team-list-layout__sidebar-link" href="#account-contact">Contact</a>
+      <a class="team-list-layout__sidebar-link" href="#account-security">Password</a>
     </nav>
 
     <form slot="sidebarFooter" class="team-list-layout__sidebar-logout" method="post" action={teamUrl("/api/auth/logout")}>
@@ -67,221 +105,307 @@ const errorMessage =
       </button>
     </form>
 
-    <Fragment slot="mainLead">Update your staff profile and contact information.</Fragment>
+    <div class="account-page">
+      {
+        saved ? (
+          <p class="notice notice--success" role="status">
+            {photoSaved
+              ? "Profile photo saved."
+              : bioPendingNotice
+                ? "Bio submitted for management approval."
+                : "Profile saved."}
+          </p>
+        ) : null
+      }
+      {
+        emailPending ? (
+          <p class="notice notice--success" role="status">
+            Check your inbox to confirm your new email address.
+          </p>
+        ) : null
+      }
+      {errorMessage ? <p class="notice notice--error" role="alert">{errorMessage}</p> : null}
 
-  <section class="form-stack form-stack--medium">
-    {saved ? (
-      <p class="notice notice--success" role="status">
-        {photoSaved ? "Profile photo saved." : "Profile saved."}
-      </p>
-    ) : null}
-    {
-      emailPending ? (
-        <p class="notice notice--success" role="status">
-          Check your inbox to confirm your new email address.
+      <section class="account-section" id="account-profile" aria-labelledby="account-profile-heading">
+        <header class="account-section__head">
+          <h2 class="account-section__title" id="account-profile-heading">Profile</h2>
+          <p class="account-section__lead">How you appear across the team app.</p>
+        </header>
+
+        <div class="account-identity">
+          <div class="account-identity__avatar">
+            {
+              photoSrc ? (
+                <div class="account-photo__avatar-ring">
+                  <StaffAvatar src={photoSrc} crop={photoCrop} size="preview" alt="" />
+                </div>
+              ) : (
+                <span class="staff-avatar-frame staff-avatar-frame--preview staff-avatar-frame--initials">
+                  {initials}
+                </span>
+              )
+            }
+          </div>
+          <div class="account-identity__copy">
+            <p class="account-identity__name">{profile.name}</p>
+            <p class="account-identity__meta">
+              <span class="account-pill">{roleLabel}</span>
+              {startDateLabel ? <span class="account-identity__tenure">Started {startDateLabel}</span> : null}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="account-section account-photo"
+        id="account-photo"
+        aria-labelledby="account-photo-heading"
+        data-account-photo
+        data-crop-x={photoCrop.x}
+        data-crop-y={photoCrop.y}
+        data-crop-scale={photoCrop.scale}
+      >
+        <header class="account-section__head">
+          <h2 class="account-section__title" id="account-photo-heading">Profile photo</h2>
+          <p class="account-section__lead">
+            Shown in the team header and calendar. Zoom in, then drag to frame your face.
+          </p>
+        </header>
+
+        <div class="account-photo__current">
+          <div class="account-photo__actions">
+            <button class="team-list-layout__btn-secondary" type="button" data-change-photo>
+              Change photo
+            </button>
+            {
+              photoSrc ? (
+                <button class="team-list-layout__btn-secondary" type="button" data-edit-position>
+                  Edit position
+                </button>
+              ) : null
+            }
+          </div>
+        </div>
+
+        <div class="account-photo__editor" data-photo-editor hidden>
+          <p class="account-photo__status" data-photo-status role="status" aria-live="polite" hidden></p>
+          <p class="notice notice--error account-photo__error" data-photo-error role="alert" hidden></p>
+
+          <div class="account-photo__editor-grid">
+            <div class="account-photo__editor-frame" data-editor-frame>
+              <p class="label-meta" id="crop-hint">Drag or use arrow keys to reposition</p>
+              <div class="account-photo__avatar-ring account-photo__avatar-ring--editor">
+                <StaffAvatar
+                  src={photoSrc ?? ""}
+                  crop={photoCrop}
+                  size="editor"
+                  class="account-photo__editor-target"
+                  cropSurface
+                  alt="Crop preview"
+                />
+              </div>
+            </div>
+
+            <div class="account-photo__editor-preview" data-preview-frame>
+              <p class="label-meta">Header preview</p>
+              <div class="account-photo__avatar-ring account-photo__avatar-ring--header">
+                <StaffAvatar src={photoSrc ?? ""} crop={photoCrop} size="header" alt="" />
+              </div>
+            </div>
+          </div>
+
+          <label class="form-label account-photo__zoom">
+            Zoom
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.01"
+              value={photoCrop.scale}
+              data-zoom-input
+              aria-valuemin="1"
+              aria-valuemax="3"
+              aria-valuenow={photoCrop.scale}
+            />
+          </label>
+
+          <form
+            class="account-photo__form"
+            method="post"
+            action={teamUrl("/api/account/photo")}
+            enctype="multipart/form-data"
+            data-photo-form
+          >
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden data-photo-input />
+            <input type="hidden" name="crop_x" value={photoCrop.x} />
+            <input type="hidden" name="crop_y" value={photoCrop.y} />
+            <input type="hidden" name="crop_scale" value={photoCrop.scale} />
+
+            <div class="account-photo__form-actions">
+              <button class="team-list-layout__btn-primary" type="submit" data-save-photo>Save photo</button>
+              <button class="team-list-layout__btn-secondary" type="button" data-cancel-editor>Cancel</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="account-section" id="account-bio" aria-labelledby="account-bio-heading">
+        <header class="account-section__head">
+          <h2 class="account-section__title" id="account-bio-heading">Public bio</h2>
+          <p class="account-section__lead">
+            Submit a bio for the marketing site. Management reviews it first — it is not published automatically.
+          </p>
+        </header>
+
+        <p class={`account-bio-status account-bio-status--${bioStatus}`} role="status">
+          {bioStatusLabel(bioStatus)}
         </p>
-      ) : null
-    }
-    {errorMessage ? <p class="notice notice--error" role="alert">{errorMessage}</p> : null}
 
-    <section
-      class="account-photo"
-      id="account-photo"
-      aria-label="Profile photo"
-      data-account-photo
-      data-crop-x={photoCrop.x}
-      data-crop-y={photoCrop.y}
-      data-crop-scale={photoCrop.scale}
-    >
-      <h2 class="account-photo__title">Profile photo</h2>
-      <p class="account-photo__lead">
-        This photo appears in the team header and calendar. Drag to reposition after uploading.
-      </p>
+        {
+          bioStatus === "declined" && profile.bio_review_note ? (
+            <p class="notice notice--error" role="status">
+              Manager note: {profile.bio_review_note}
+            </p>
+          ) : null
+        }
 
-      <div class="account-photo__current">
-        <div class="account-photo__avatar-ring">
-          {
-            photoSrc ? (
-              <StaffAvatar src={photoSrc} crop={photoCrop} size="preview" />
-            ) : (
-              <span class="staff-avatar-frame staff-avatar-frame--preview staff-avatar-frame--initials">
-                {initials}
-              </span>
-            )
-          }
-        </div>
-        <div class="account-photo__actions">
-          <button class="team-list-layout__btn-secondary" type="button" data-change-photo>
-            Change photo
+        {
+          profile.bio ? (
+            <div class="account-bio-approved">
+              <p class="label-meta">Approved bio (live on marketing site once managers update it)</p>
+              <blockquote class="account-bio-quote">{profile.bio}</blockquote>
+            </div>
+          ) : null
+        }
+
+        <form class="form-stack account-bio-form" method="post" action={teamUrl("/api/account/bio")}>
+          <label class="form-label">
+            {bioStatus === "pending" ? "Pending submission" : "Your bio"}
+            <textarea
+              class="form-input form-input--textarea"
+              name="bio"
+              rows="5"
+              maxlength="2000"
+              required
+              placeholder="A short bio for the Salon Citrine team page"
+            >{bioValue}</textarea>
+            <span class="label-meta">Max 2,000 characters. Saving submits for approval — it will not go live immediately.</span>
+          </label>
+          <button class="team-list-layout__btn-primary" type="submit">
+            {bioStatus === "pending" ? "Resubmit for approval" : "Submit for approval"}
           </button>
-          {
-            photoSrc ? (
-              <button class="team-list-layout__btn-secondary" type="button" data-edit-position>
-                Edit position
-              </button>
-            ) : null
-          }
-        </div>
-      </div>
-
-      <div class="account-photo__editor" data-photo-editor hidden>
-        <p class="account-photo__status" data-photo-status role="status" aria-live="polite" hidden></p>
-        <p class="notice notice--error account-photo__error" data-photo-error role="alert" hidden></p>
-
-        <div class="account-photo__editor-grid">
-          <div class="account-photo__editor-frame" data-editor-frame>
-            <p class="label-meta">Drag or use arrow keys to reposition</p>
-            <div class="account-photo__avatar-ring account-photo__avatar-ring--editor">
-              <StaffAvatar
-                src={photoSrc ?? ""}
-                crop={photoCrop}
-                size="editor"
-                class="account-photo__editor-target"
-              />
-            </div>
-          </div>
-
-          <div class="account-photo__editor-preview" data-preview-frame>
-            <p class="label-meta">Header preview</p>
-            <div class="account-photo__avatar-ring account-photo__avatar-ring--header">
-              <StaffAvatar src={photoSrc ?? ""} crop={photoCrop} size="header" />
-            </div>
-          </div>
-        </div>
-
-        <label class="form-label account-photo__zoom">
-          Zoom
-          <input
-            type="range"
-            min="1"
-            max="3"
-            step="0.01"
-            value={photoCrop.scale}
-            data-zoom-input
-          />
-        </label>
-
-        <form
-          class="account-photo__form"
-          method="post"
-          action={teamUrl("/api/account/photo")}
-          enctype="multipart/form-data"
-          data-photo-form
-        >
-          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden data-photo-input />
-          <input type="hidden" name="crop_x" value={photoCrop.x} />
-          <input type="hidden" name="crop_y" value={photoCrop.y} />
-          <input type="hidden" name="crop_scale" value={photoCrop.scale} />
-
-          <div class="account-photo__form-actions">
-            <button class="team-list-layout__btn-primary" type="submit" data-save-photo>Save photo</button>
-            <button class="team-list-layout__btn-secondary" type="button" data-cancel-editor>Cancel</button>
-          </div>
         </form>
-      </div>
-    </section>
+      </section>
 
-    <section class="account-details" id="account-details" aria-labelledby="account-details-heading">
-      <h2 class="account-details__title" id="account-details-heading">Contact details</h2>
-      <p class="account-details__lead">
-        Name, bio, and contact info shown on the team site and used for salon communications.
-      </p>
+      <section class="account-section" id="account-contact" aria-labelledby="account-contact-heading">
+        <header class="account-section__head">
+          <h2 class="account-section__title" id="account-contact-heading">Contact &amp; details</h2>
+          <p class="account-section__lead">Name, phone, email, and emergency contact.</p>
+        </header>
 
-    <form class="form-stack account-details__form" method="post" action={teamUrl("/api/account")}>
-      <label class="form-label">
-        Display name
-        <input
-          class="form-input"
-          name="name"
-          type="text"
-          value={profile.name}
-          autocomplete="name"
-          required
-        />
-      </label>
+        <form class="form-stack account-details__form" method="post" action={teamUrl("/api/account")}>
+          <label class="form-label">
+            Display name
+            <input
+              class="form-input"
+              name="name"
+              type="text"
+              value={profile.name}
+              autocomplete="name"
+              required
+            />
+          </label>
 
-      <label class="form-label">
-        Bio
-        <textarea
-          class="form-input form-input--textarea"
-          name="bio"
-          rows="5"
-          placeholder="Short bio for the marketing site team page">{profile.bio ?? ""}</textarea
-        >
-      </label>
+          <label class="form-label">
+            Phone
+            <input
+              class="form-input"
+              name="phone"
+              type="tel"
+              value={profile.phone ?? ""}
+              autocomplete="tel"
+            />
+          </label>
 
-      <label class="form-label">
-        Phone
-        <input
-          class="form-input"
-          name="phone"
-          type="tel"
-          value={profile.phone ?? ""}
-          autocomplete="tel"
-        />
-      </label>
+          <label class="form-label">
+            Email
+            <input
+              class="form-input"
+              name="email"
+              type="email"
+              value={user.email ?? ""}
+              autocomplete="email"
+              required
+            />
+            <span class="label-meta">
+              Changing email sends a confirmation link via Supabase Auth.
+            </span>
+          </label>
 
-      <label class="form-label">
-        Email
-        <input
-          class="form-input"
-          name="email"
-          type="email"
-          value={user.email ?? ""}
-          autocomplete="email"
-          required
-        />
-        <span class="label-meta">
-          Changing email sends a confirmation link via Supabase Auth.
-        </span>
-      </label>
+          <fieldset class="account-emergency">
+            <legend>Emergency contact</legend>
+            <p class="label-meta">Only you and salon managers can see this.</p>
+            <label class="form-label">
+              Contact name
+              <input class="form-input" name="emergency_contact_name" type="text" value={privateDetails?.emergency_contact_name ?? ""} autocomplete="off" />
+            </label>
+            <label class="form-label">
+              Contact phone
+              <input class="form-input" name="emergency_contact_phone" type="tel" value={privateDetails?.emergency_contact_phone ?? ""} autocomplete="off" />
+            </label>
+          </fieldset>
 
-      <fieldset class="account-emergency">
-        <legend>Emergency contact</legend>
-        <p class="label-meta">Only you and salon managers can see this.</p>
-        <label class="form-label">
-          Contact name
-          <input class="form-input" name="emergency_contact_name" type="text" value={privateDetails?.emergency_contact_name ?? ""} autocomplete="off" />
-        </label>
-        <label class="form-label">
-          Contact phone
-          <input class="form-input" name="emergency_contact_phone" type="tel" value={privateDetails?.emergency_contact_phone ?? ""} autocomplete="off" />
-        </label>
-      </fieldset>
+          <button class="team-list-layout__btn-primary" type="submit">Save changes</button>
+        </form>
+      </section>
 
-      {profile.start_date ? (
-        <p class="label-meta">Start date: {profile.start_date}</p>
-      ) : null}
+      <section class="account-section" id="account-security" aria-labelledby="account-security-heading">
+        <header class="account-section__head">
+          <h2 class="account-section__title" id="account-security-heading">Password &amp; session</h2>
+          <p class="account-section__lead">Change your password or sign out on this device.</p>
+        </header>
 
-      <button class="team-list-layout__btn-primary" type="submit">Save changes</button>
-    </form>
-    </section>
-  </section>
+        <div class="account-security-actions">
+          <a class="team-list-layout__btn-secondary account-security-actions__link" href={teamUrl("/change-password")}>
+            Change password
+          </a>
+          <form method="post" action={teamUrl("/api/auth/logout")}>
+            <button class="account-logout-btn" type="submit">Log out</button>
+          </form>
+        </div>
+      </section>
+    </div>
   </TeamListLayout>
 </TeamLayout>
 
 <script src="../scripts/account-photo-editor.ts"></script>
 
 <style>
-  :global(.team-list-layout__main-title) {
-    font-family: var(--font-display);
-    font-size: var(--text-xl);
-    font-weight: 500;
-    letter-spacing: 0.01em;
-    line-height: var(--leading-tight);
-    color: var(--color-stone-800);
+  .account-page {
+    display: grid;
+    gap: var(--space-6);
+    padding-bottom: var(--space-8);
   }
 
-  .account-photo {
+  .account-section {
     display: grid;
     gap: var(--space-3);
-    padding: var(--space-4) 0 var(--space-5);
+    padding-bottom: var(--space-5);
     border-bottom: 1px solid var(--color-stone-200);
     scroll-margin-top: var(--space-4);
   }
 
-  .account-photo__title,
-  .account-details__title {
+  .account-section:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .account-section__head {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .account-section__title {
     margin: 0;
     font-family: var(--font-display);
     font-size: var(--text-lg);
@@ -290,13 +414,57 @@ const errorMessage =
     color: var(--color-stone-800);
   }
 
-  .account-photo__lead,
-  .account-details__lead {
+  .account-section__lead {
     margin: 0;
     font-family: var(--font-body);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
     color: var(--color-stone-500);
+  }
+
+  .account-identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .account-identity__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 500;
+    color: var(--color-stone-800);
+  }
+
+  .account-identity__meta {
+    margin: var(--space-1) 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .account-identity__tenure {
+    font-family: var(--font-body);
+  }
+
+  .account-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0.15rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-stone-200);
+    background: var(--color-stone-50);
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-stone-700);
   }
 
   .account-photo__avatar-ring {
@@ -318,17 +486,14 @@ const errorMessage =
     box-shadow: inset 0 0 0 2px var(--color-cream);
   }
 
-  .account-photo__current {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
   .account-photo__actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
+  }
+
+  .account-photo__actions :global(button) {
+    min-height: 2.75rem;
   }
 
   .account-photo__editor {
@@ -360,15 +525,6 @@ const errorMessage =
     justify-items: start;
   }
 
-  .account-photo__editor-target :global(.staff-avatar-frame__img) {
-    cursor: grab;
-    touch-action: none;
-  }
-
-  .account-photo__editor-target :global(.staff-avatar-frame__img:active) {
-    cursor: grabbing;
-  }
-
   .account-photo__zoom {
     display: grid;
     gap: var(--space-2);
@@ -377,22 +533,10 @@ const errorMessage =
 
   .account-photo__zoom input[type="range"] {
     width: 100%;
-    height: 0.35rem;
+    height: 2.75rem;
     margin: 0;
     accent-color: var(--color-citrine);
     cursor: pointer;
-  }
-
-  .account-photo__zoom input[type="range"]:focus-visible {
-    outline: none;
-  }
-
-  .account-photo__zoom input[type="range"]:focus-visible::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px var(--color-focus-ring);
-  }
-
-  .account-photo__zoom input[type="range"]:focus-visible::-moz-range-thumb {
-    box-shadow: 0 0 0 3px var(--color-focus-ring);
   }
 
   .account-photo__form-actions {
@@ -400,6 +544,10 @@ const errorMessage =
     flex-wrap: wrap;
     gap: var(--space-2);
     padding-top: var(--space-1);
+  }
+
+  .account-photo__form-actions :global(button) {
+    min-height: 2.75rem;
   }
 
   .account-photo__status {
@@ -413,15 +561,43 @@ const errorMessage =
     margin: 0;
   }
 
-  .account-details {
-    display: grid;
-    gap: var(--space-3);
-    padding: var(--space-5) 0 0;
-    scroll-margin-top: var(--space-4);
+  .account-bio-status {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-700);
   }
 
-  .account-details__form {
-    padding-top: var(--space-2);
+  .account-bio-status--pending {
+    color: var(--color-citrine-dark);
+  }
+
+  .account-bio-status--declined {
+    color: var(--color-danger, #9b2c2c);
+  }
+
+  .account-bio-approved {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .account-bio-quote {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--color-citrine);
+    background: var(--color-stone-50);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-700);
+    white-space: pre-wrap;
+  }
+
+  .account-bio-form :global(button),
+  .account-details__form :global(button) {
+    min-height: 2.75rem;
+    width: fit-content;
   }
 
   .account-emergency {
@@ -438,5 +614,67 @@ const errorMessage =
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--color-stone-700);
+  }
+
+  .account-security-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .account-security-actions__link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    text-decoration: none;
+  }
+
+  .account-logout-btn {
+    min-height: 2.75rem;
+    padding: 0.55rem 1.1rem;
+    border: 1px solid color-mix(in srgb, var(--color-danger, #9b2c2c) 35%, var(--color-stone-200));
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-danger, #9b2c2c);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .account-logout-btn:hover,
+  .account-logout-btn:focus-visible {
+    background: color-mix(in srgb, var(--color-danger, #9b2c2c) 8%, transparent);
+  }
+
+  /* Dark mode: keep titles readable — never use inverted stone-100 as ink. */
+  :global([data-theme="dark"]) .account-section__title,
+  :global([data-theme="dark"]) .account-identity__name {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .account-section__lead,
+  :global([data-theme="dark"]) .account-identity__meta,
+  :global([data-theme="dark"]) .account-photo__status {
+    color: var(--color-stone-400);
+  }
+
+  :global([data-theme="dark"]) .account-pill,
+  :global([data-theme="dark"]) .account-photo__editor,
+  :global([data-theme="dark"]) .account-bio-quote {
+    background: var(--color-stone-100);
+    border-color: var(--color-stone-200);
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .account-emergency legend,
+  :global([data-theme="dark"]) .account-bio-status {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .account-section {
+    border-bottom-color: var(--color-stone-200);
   }
 </style>

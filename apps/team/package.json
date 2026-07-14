@@ -9,7 +9,7 @@
     "check": "astro check",
     "build:alt": "astro build --outDir dist-build",
     "preview": "astro preview",
-    "test": "node --experimental-strip-types scripts/test-report-range.mjs && node --experimental-strip-types scripts/test-event-presentation.mjs && node scripts/test-calendar-grid.mjs && node --experimental-strip-types scripts/test-security-hardening.mjs && node --experimental-strip-types scripts/test-manage-security-helpers.mjs",
+    "test": "node --experimental-strip-types scripts/test-report-range.mjs && node --experimental-strip-types scripts/test-event-presentation.mjs && node scripts/test-calendar-grid.mjs && node --experimental-strip-types scripts/test-security-hardening.mjs && node --experimental-strip-types scripts/test-manage-security-helpers.mjs && node --experimental-strip-types scripts/test-staff-bio-photo.mjs",
     "test:security": "node --experimental-strip-types scripts/test-security-hardening.mjs && node --experimental-strip-types scripts/test-manage-security-helpers.mjs",
     "test:invite:local": "node scripts/test-invite-flow-local.mjs",
     "test:e2e:role-matrix": "node scripts/test-role-matrix-e2e.mjs",

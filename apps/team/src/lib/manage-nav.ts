@@ -6,6 +6,7 @@ export type ManageSection =
   | "products"
   | "booking-policy"
   | "staff"
+  | "bios"
   | "tags"
   | "business"
   | "activity"
@@ -22,6 +23,7 @@ export const MANAGE_NAV: ManageNavItem[] = [
   { id: "services", label: "Services", href: teamUrl("/services") },
   { id: "products", label: "Products", href: teamUrl("/inventory") },
   { id: "staff", label: "Employees", href: teamUrl("/manage/employees") },
+  { id: "bios", label: "Bio approvals", href: teamUrl("/manage/bios") },
   { id: "booking-policy", label: "Booking Policy", href: teamUrl("/booking-policy") },
   { id: "tags", label: "Tags", href: teamUrl("/clients") },
   { id: "roles", label: "Roles & Permissions", href: teamUrl("/manage/roles") },
@@ -59,6 +61,13 @@ export const MANAGE_HUB_ITEMS: ManageHubItem[] = [
     description: "Invite teammates, set roles, and manage login access.",
     href: teamUrl("/manage/employees"),
     actionLabel: "Open",
+  },
+  {
+    id: "bios",
+    title: "Bio approvals",
+    description: "Review staff bios, then update saloncitrineindy.com manually.",
+    href: teamUrl("/manage/bios"),
+    actionLabel: "Review",
   },
   {
     id: "booking-policy",

@@ -259,6 +259,19 @@ assert.match(photoMigration, /returns void/);
 assert.doesNotMatch(photoMigration, /returns public\.staff/);
 assert.match(photoMigration, /jsonb_typeof\(p_photo_crop->'x'\)/);
 
+const bioMigration = await read(
+  "packages/db/migrations/0040_staff_bio_approval.sql",
+);
+const bioSubmitApi = await read("apps/team/src/pages/api/account/bio.ts");
+const bioReviewApi = await read("apps/team/src/pages/api/manage/bios.ts");
+assert.match(bioMigration, /create or replace function public\.submit_own_staff_bio/);
+assert.match(bioMigration, /create or replace function public\.review_staff_bio/);
+assert.match(bioMigration, /bio_status/);
+assert.doesNotMatch(accountApi, /p_bio:\s*bio/);
+assert.match(bioSubmitApi, /\.rpc\("submit_own_staff_bio"/);
+assert.match(bioReviewApi, /\.rpc\("review_staff_bio"/);
+assert.match(bioReviewApi, /isSalonManager/);
+
 // Task claim is an atomic RPC; the broad direct-UPDATE claim policy is removed.
 assert.match(claimApi, /\.rpc\("claim_task"/);
 assert.doesNotMatch(claimApi, /\.from\("tasks"\)[\s\S]*\.update\(/);
