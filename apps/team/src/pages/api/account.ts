@@ -10,7 +10,6 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   const form = await request.formData();
   const name = String(form.get("name") ?? "").trim();
-  const bio = String(form.get("bio") ?? "").trim();
   const phone = String(form.get("phone") ?? "").trim();
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const emergencyName = String(form.get("emergency_contact_name") ?? "").trim();
@@ -20,9 +19,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(teamUrl("/account?error=save"));
   }
 
+  // Bio is submitted separately via /api/account/bio (approval workflow).
   const { error: staffError } = await supabase.rpc("update_own_staff_profile", {
     p_name: name,
-    p_bio: bio || null,
+    p_bio: null,
     p_phone: phone || null,
   });
 
@@ -59,7 +59,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
         "update_own_staff_profile",
         {
           p_name: staff.name,
-          p_bio: staff.bio ?? null,
+          p_bio: null,
           p_phone: staff.phone ?? null,
         },
       );

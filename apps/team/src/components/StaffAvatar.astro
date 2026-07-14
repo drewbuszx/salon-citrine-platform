@@ -8,6 +8,8 @@ interface Props {
   crop?: PhotoCrop | null;
   size?: "header" | "preview" | "editor" | "hero";
   class?: string;
+  /** Marks the frame as the pan/zoom hit target for the account photo editor. */
+  cropSurface?: boolean;
 }
 
 const {
@@ -16,6 +18,7 @@ const {
   crop = null,
   size = "header",
   class: className = "",
+  cropSurface = false,
 } = Astro.props;
 
 const sizeClass =
@@ -28,7 +31,10 @@ const sizeClass =
         : "staff-avatar-frame--header";
 ---
 
-<div class:list={["staff-avatar-frame", sizeClass, className]}>
+<div
+  class:list={["staff-avatar-frame", sizeClass, className]}
+  data-crop-surface={cropSurface ? "" : undefined}
+>
   <img
     class="staff-avatar-frame__img"
     src={src}

@@ -206,6 +206,16 @@ const quickLinks: { label: string; href: string; desc: string; icon: string }[] 
             <a
               class:list={[
                 "dashboard__manager-chip",
+                managerCounts.pendingBios > 0 && "dashboard__manager-chip--hot",
+              ]}
+              href={teamUrl("/manage/bios")}
+            >
+              <span class="dashboard__manager-value">{managerCounts.pendingBios}</span>
+              <span class="dashboard__manager-label">Pending bios</span>
+            </a>
+            <a
+              class:list={[
+                "dashboard__manager-chip",
                 managerCounts.needsAttention > 0 && "dashboard__manager-chip--hot",
               ]}
               href={teamUrl("/tasks?view=attention")}

@@ -25,6 +25,7 @@ export type UpcomingEventItem = {
 export type ManagerDashboardCounts = {
   pendingTimeOff: number;
   pendingInvites: number;
+  pendingBios: number;
   needsAttention: number;
 };
 
@@ -36,6 +37,7 @@ export async function loadManagerDashboardCounts(
 ): Promise<ManagerDashboardCounts> {
   let pendingTimeOff = 0;
   let pendingInvites = 0;
+  let pendingBios = 0;
 
   try {
     pendingTimeOff = await countPendingTimeOff(supabase, staff);
@@ -54,7 +56,18 @@ export async function loadManagerDashboardCounts(
     console.error("Failed to count pending invites", error);
   }
 
-  return { pendingTimeOff, pendingInvites, needsAttention };
+  try {
+    const { count, error } = await supabase
+      .from("staff")
+      .select("id", { count: "exact", head: true })
+      .eq("bio_status", "pending");
+    if (error) throw error;
+    pendingBios = count ?? 0;
+  } catch (error) {
+    console.error("Failed to count pending bios", error);
+  }
+
+  return { pendingTimeOff, pendingInvites, pendingBios, needsAttention };
 }
 
 /**

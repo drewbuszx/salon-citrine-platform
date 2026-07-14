@@ -1,0 +1,387 @@
+---
+import TeamLayout from "../../layouts/TeamLayout.astro";
+import TeamManageLayout from "../../components/TeamManageLayout.astro";
+import { isSalonManager } from "../../lib/auth";
+import { STAFF_ROLE_LABELS } from "../../lib/staff-manage";
+import { teamUrl } from "../../lib/supabase-server";
+import type { StaffRole } from "../../env.d.ts";
+
+const { supabase, staff } = Astro.locals;
+
+if (!staff) {
+  return Astro.redirect(teamUrl("/login?error=unlinked"));
+}
+
+if (!isSalonManager(staff)) {
+  return Astro.redirect(teamUrl("/manage"));
+}
+
+const { data: pendingRows, error: pendingError } = await supabase
+  .from("staff")
+  .select("id, name, role, slug, bio, bio_pending, bio_submitted_at, bio_status")
+  .eq("bio_status", "pending")
+  .order("bio_submitted_at", { ascending: true });
+
+if (pendingError) {
+  console.error("Failed to load pending bios", pendingError);
+}
+
+const { data: approvedRows, error: approvedError } = await supabase
+  .from("staff")
+  .select("id, name, role, slug, bio, bio_reviewed_at, bio_status")
+  .eq("bio_status", "approved")
+  .not("bio", "is", null)
+  .order("name", { ascending: true });
+
+if (approvedError) {
+  console.error("Failed to load approved bios", approvedError);
+}
+
+const pending = pendingRows ?? [];
+const approved = approvedRows ?? [];
+
+const reviewed = Astro.url.searchParams.get("reviewed") === "1";
+const reviewAction = Astro.url.searchParams.get("action");
+const errorCode = Astro.url.searchParams.get("error");
+const notice =
+  reviewed && reviewAction === "approve"
+    ? "Bio approved. Copy it below and update saloncitrineindy.com manually."
+    : reviewed && reviewAction === "decline"
+      ? "Bio declined. The teammate can edit and resubmit."
+      : errorCode === "review"
+        ? "Could not complete that review. Try again."
+        : null;
+const noticeKind = errorCode === "review" ? "error" : "success";
+
+function formatSubmitted(value: string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+---
+
+<TeamLayout title="Bio approvals" activeNav="manage" plain wide fullBleed>
+  <TeamManageLayout
+    title="Bio approvals"
+    contextTitle="Bio approvals"
+    contextSubtitle="Review submissions, then paste approved bios onto saloncitrineindy.com. Nothing is auto-published."
+    contextEyebrow="Manage"
+    activeSection="bios"
+    managerView={true}
+    contentWidth="reading"
+  >
+    <div class="bios-page">
+      {
+        notice ? (
+          <p class={`notice notice--${noticeKind}`} role="status">
+            {notice}
+          </p>
+        ) : null
+      }
+
+      <section class="bios-section" aria-labelledby="bios-pending-heading">
+        <header class="bios-section__head">
+          <h2 class="bios-section__title" id="bios-pending-heading">
+            Pending review
+            <span class="bios-count">{pending.length}</span>
+          </h2>
+          <p class="bios-section__lead">
+            Approve to set the published bio in the team app. Then copy it into the marketing site staff profile.
+          </p>
+        </header>
+
+        {
+          pending.length === 0 ? (
+            <p class="bios-empty">No bios waiting for review.</p>
+          ) : (
+            <ul class="bios-list">
+              {pending.map((row) => (
+                <li class="bios-card">
+                  <div class="bios-card__head">
+                    <div>
+                      <h3 class="bios-card__name">{row.name}</h3>
+                      <p class="bios-card__meta">
+                        {STAFF_ROLE_LABELS[row.role as StaffRole] ?? row.role}
+                        {" · "}
+                        Submitted {formatSubmitted(row.bio_submitted_at)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {
+                    row.bio ? (
+                      <div class="bios-compare">
+                        <p class="label-meta">Currently approved</p>
+                        <p class="bios-text bios-text--muted">{row.bio}</p>
+                      </div>
+                    ) : null
+                  }
+
+                  <div class="bios-compare">
+                    <p class="label-meta">Proposed</p>
+                    <p class="bios-text">{row.bio_pending}</p>
+                  </div>
+
+                  <form class="bios-review" method="post" action={teamUrl("/api/manage/bios")}>
+                    <input type="hidden" name="staff_id" value={row.id} />
+                    <label class="form-label">
+                      Note (optional)
+                      <input class="form-input" type="text" name="note" maxlength="500" placeholder="Visible to the teammate if declined" />
+                    </label>
+                    <div class="bios-review__actions">
+                      <button class="team-list-layout__btn-primary" type="submit" name="action" value="approve">
+                        Approve
+                      </button>
+                      <button class="team-list-layout__btn-secondary" type="submit" name="action" value="decline">
+                        Decline
+                      </button>
+                    </div>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+
+      <section class="bios-section" aria-labelledby="bios-approved-heading">
+        <header class="bios-section__head">
+          <h2 class="bios-section__title" id="bios-approved-heading">
+            Approved bios
+            <span class="bios-count">{approved.length}</span>
+          </h2>
+          <p class="bios-section__lead">
+            Copy these into <code>src/data/site.ts</code> on saloncitrineindy.com (team member <code>bio</code> field). Do not expect automatic CMS sync.
+          </p>
+        </header>
+
+        {
+          approved.length === 0 ? (
+            <p class="bios-empty">No approved bios yet.</p>
+          ) : (
+            <ul class="bios-list">
+              {approved.map((row) => (
+                <li class="bios-card bios-card--approved">
+                  <div class="bios-card__head">
+                    <div>
+                      <h3 class="bios-card__name">{row.name}</h3>
+                      <p class="bios-card__meta">
+                        {STAFF_ROLE_LABELS[row.role as StaffRole] ?? row.role}
+                        {row.slug ? ` · /team/${row.slug}` : ""}
+                      </p>
+                    </div>
+                    <button
+                      class="team-list-layout__btn-secondary bios-copy"
+                      type="button"
+                      data-copy-bio={row.bio ?? ""}
+                      data-copy-label={`Copy bio for ${row.name}`}
+                    >
+                      Copy bio
+                    </button>
+                  </div>
+                  <pre class="bios-pre" tabindex="0">{row.bio}</pre>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+    </div>
+  </TeamManageLayout>
+</TeamLayout>
+
+<script>
+  function bootCopyBios() {
+    document.querySelectorAll<HTMLButtonElement>("[data-copy-bio]").forEach((btn) => {
+      if (btn.dataset.copyReady === "1") return;
+      btn.dataset.copyReady = "1";
+      const original = btn.textContent ?? "Copy bio";
+      btn.addEventListener("click", async () => {
+        const text = btn.dataset.copyBio ?? "";
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = "Copied";
+          window.setTimeout(() => {
+            btn.textContent = original;
+          }, 1600);
+        } catch {
+          btn.textContent = "Copy failed";
+          window.setTimeout(() => {
+            btn.textContent = original;
+          }, 1600);
+        }
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootCopyBios);
+  } else {
+    bootCopyBios();
+  }
+  document.addEventListener("astro:page-load", bootCopyBios);
+</script>
+
+<style>
+  .bios-page {
+    display: grid;
+    gap: var(--space-6);
+    padding-bottom: var(--space-8);
+  }
+
+  .bios-section {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .bios-section__head {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .bios-section__title {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--color-stone-800);
+  }
+
+  .bios-count {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-stone-500);
+  }
+
+  .bios-section__lead {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-500);
+  }
+
+  .bios-section__lead code {
+    font-size: 0.9em;
+  }
+
+  .bios-empty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .bios-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .bios-card {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border: 1px solid var(--color-stone-200);
+    border-radius: var(--radius-md);
+    background: var(--color-stone-50);
+  }
+
+  .bios-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .bios-card__name {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-md, 1.125rem);
+    font-weight: 500;
+    color: var(--color-stone-800);
+  }
+
+  .bios-card__meta {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+    color: var(--color-stone-500);
+  }
+
+  .bios-compare {
+    display: grid;
+    gap: var(--space-1);
+  }
+
+  .bios-text {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    color: var(--color-stone-800);
+    white-space: pre-wrap;
+  }
+
+  .bios-text--muted {
+    color: var(--color-stone-500);
+  }
+
+  .bios-pre {
+    margin: 0;
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-cream, #faf7f2);
+    border: 1px solid var(--color-stone-200);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    white-space: pre-wrap;
+    color: var(--color-stone-800);
+    overflow-wrap: anywhere;
+  }
+
+  .bios-review {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .bios-review__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .bios-review__actions :global(button),
+  .bios-copy {
+    min-height: 2.75rem;
+  }
+
+  :global([data-theme="dark"]) .bios-section__title,
+  :global([data-theme="dark"]) .bios-card__name,
+  :global([data-theme="dark"]) .bios-text,
+  :global([data-theme="dark"]) .bios-pre {
+    color: var(--color-stone-800);
+  }
+
+  :global([data-theme="dark"]) .bios-section__lead,
+  :global([data-theme="dark"]) .bios-empty,
+  :global([data-theme="dark"]) .bios-card__meta,
+  :global([data-theme="dark"]) .bios-count {
+    color: var(--color-stone-400);
+  }
+
+  :global([data-theme="dark"]) .bios-card,
+  :global([data-theme="dark"]) .bios-pre {
+    background: var(--color-stone-100);
+    border-color: var(--color-stone-200);
+  }
+</style>

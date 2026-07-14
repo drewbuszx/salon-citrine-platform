@@ -524,16 +524,26 @@ textarea {
 }
 
 .staff-avatar-frame {
+  position: relative;
   overflow: hidden;
   border-radius: 50%;
   display: inline-flex;
+  flex-shrink: 0;
+  /* Override global `img { height: auto }` so crop box stays circular. */
+  align-items: stretch;
 }
 
 .staff-avatar-frame__img {
-  width: 100%;
-  height: 100%;
+  /* Beat global `img { max-width:100%; height:auto }` — required for crop. */
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
   display: block;
   object-fit: cover;
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: auto;
 }
 
 .staff-avatar-frame--header {
@@ -549,6 +559,18 @@ textarea {
 .staff-avatar-frame--editor {
   width: 10rem;
   height: 10rem;
+}
+
+/* Crop surface: frame receives pan gestures (scoped Astro CSS missed the img). */
+.staff-avatar-frame--editor[data-crop-surface],
+.staff-avatar-frame--editor[data-crop-surface] .staff-avatar-frame__img {
+  cursor: grab;
+  touch-action: none;
+}
+
+.staff-avatar-frame--editor[data-crop-surface].is-dragging,
+.staff-avatar-frame--editor[data-crop-surface].is-dragging .staff-avatar-frame__img {
+  cursor: grabbing;
 }
 
 .staff-avatar-frame--hero {

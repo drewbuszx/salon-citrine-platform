@@ -1,9 +1,13 @@
+import { staffPhotoStyle, type PhotoCrop } from "../lib/staff-photo";
+
 const MAX_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MIN_SCALE = 1;
 const MAX_SCALE = 3;
+/** Square avatars need zoom before object-position pan is visible. */
+const DRAG_MIN_SCALE = 1.2;
 
-type Crop = { x: number; y: number; scale: number };
+type Crop = PhotoCrop;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -11,17 +15,14 @@ function clamp(value: number, min: number, max: number) {
 
 function parseCrop(root: HTMLElement): Crop {
   return {
-    x: Number(root.dataset.cropX ?? "50"),
-    y: Number(root.dataset.cropY ?? "50"),
-    scale: Number(root.dataset.cropScale ?? "1"),
+    x: clamp(Number(root.dataset.cropX ?? "50"), 0, 100),
+    y: clamp(Number(root.dataset.cropY ?? "50"), 0, 100),
+    scale: clamp(Number(root.dataset.cropScale ?? "1"), MIN_SCALE, MAX_SCALE),
   };
 }
 
 function applyCrop(img: HTMLImageElement, crop: Crop) {
-  img.style.objectFit = "cover";
-  img.style.objectPosition = `${crop.x}% ${crop.y}%`;
-  img.style.transform = `scale(${crop.scale})`;
-  img.style.transformOrigin = "center center";
+  img.setAttribute("style", staffPhotoStyle(crop));
 }
 
 function syncCropFields(form: HTMLFormElement, crop: Crop) {
@@ -36,15 +37,23 @@ function syncCropFields(form: HTMLFormElement, crop: Crop) {
 }
 
 function initPhotoEditor(root: HTMLElement) {
+  if (root.dataset.photoEditorReady === "1") return;
+  root.dataset.photoEditorReady = "1";
+
   const form = root.querySelector<HTMLFormElement>("[data-photo-form]");
   const fileInput = root.querySelector<HTMLInputElement>("[data-photo-input]");
   const editor = root.querySelector<HTMLElement>("[data-photo-editor]");
+  const cropSurface = root.querySelector<HTMLElement>("[data-crop-surface]");
   const editorFrame = root.querySelector<HTMLElement>("[data-editor-frame]");
   const previewFrame = root.querySelector<HTMLElement>("[data-preview-frame]");
-  const editorImg = editorFrame?.querySelector<HTMLImageElement>(
+  const currentFrame = root.querySelector<HTMLElement>("[data-current-frame]");
+  const editorImg =
+    cropSurface?.querySelector<HTMLImageElement>(".staff-avatar-frame__img") ??
+    editorFrame?.querySelector<HTMLImageElement>(".staff-avatar-frame__img");
+  const previewImg = previewFrame?.querySelector<HTMLImageElement>(
     ".staff-avatar-frame__img",
   );
-  const previewImg = previewFrame?.querySelector<HTMLImageElement>(
+  const currentImg = currentFrame?.querySelector<HTMLImageElement>(
     ".staff-avatar-frame__img",
   );
   const zoomInput = root.querySelector<HTMLInputElement>("[data-zoom-input]");
@@ -59,6 +68,7 @@ function initPhotoEditor(root: HTMLElement) {
     !form ||
     !fileInput ||
     !editor ||
+    !cropSurface ||
     !editorImg ||
     !previewImg ||
     !zoomInput ||
@@ -66,6 +76,7 @@ function initPhotoEditor(root: HTMLElement) {
     !cancelBtn ||
     !saveBtn
   ) {
+    root.dataset.photoEditorReady = "0";
     return;
   }
 
@@ -73,11 +84,13 @@ function initPhotoEditor(root: HTMLElement) {
   let initialCrop = { ...crop };
   let initialSrc = editorImg.src;
   let pendingFile: File | null = null;
+  let pendingObjectUrl: string | null = null;
   let dragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let dragCropX = crop.x;
   let dragCropY = crop.y;
+  let activePointerId: number | null = null;
 
   function setError(message: string | null) {
     if (!errorEl) return;
@@ -94,8 +107,20 @@ function initPhotoEditor(root: HTMLElement) {
   function updateUi() {
     applyCrop(editorImg, crop);
     applyCrop(previewImg, crop);
+    if (currentImg) applyCrop(currentImg, crop);
     zoomInput.value = String(crop.scale);
+    zoomInput.setAttribute("aria-valuenow", String(crop.scale));
     syncCropFields(form, crop);
+    root.dataset.cropX = String(crop.x);
+    root.dataset.cropY = String(crop.y);
+    root.dataset.cropScale = String(crop.scale);
+  }
+
+  function revokePendingUrl() {
+    if (pendingObjectUrl) {
+      URL.revokeObjectURL(pendingObjectUrl);
+      pendingObjectUrl = null;
+    }
   }
 
   function openEditor(source?: string) {
@@ -105,9 +130,13 @@ function initPhotoEditor(root: HTMLElement) {
     }
     editor.hidden = false;
     setError(null);
-    setStatus("Drag the photo or use the arrow keys to reposition it within the circle.");
+    setStatus(
+      crop.scale <= 1
+        ? "Zoom in, then drag to reposition. Arrow keys also move the photo."
+        : "Drag the photo or use arrow keys to reposition it within the circle.",
+    );
     updateUi();
-    editorImg.focus();
+    cropSurface.focus({ preventScroll: true });
   }
 
   function closeEditor(reset: boolean) {
@@ -116,8 +145,12 @@ function initPhotoEditor(root: HTMLElement) {
     setStatus(null);
     pendingFile = null;
     fileInput.value = "";
+    cropSurface.classList.remove("is-dragging");
+    dragging = false;
+    activePointerId = null;
 
     if (reset) {
+      revokePendingUrl();
       crop = { ...initialCrop };
       editorImg.src = initialSrc;
       previewImg.src = initialSrc;
@@ -130,10 +163,10 @@ function initPhotoEditor(root: HTMLElement) {
   });
 
   editBtn?.addEventListener("click", () => {
-      initialCrop = { ...crop };
-      initialSrc = editorImg.src;
-      openEditor();
-    });
+    initialCrop = { ...crop };
+    initialSrc = editorImg.currentSrc || editorImg.src;
+    openEditor();
+  });
 
   cancelBtn.addEventListener("click", () => {
     closeEditor(true);
@@ -155,11 +188,13 @@ function initPhotoEditor(root: HTMLElement) {
       return;
     }
 
+    revokePendingUrl();
     pendingFile = file;
-    crop = { x: 50, y: 50, scale: 1 };
+    crop = { x: 50, y: 50, scale: DRAG_MIN_SCALE };
     initialCrop = { ...crop };
 
     const objectUrl = URL.createObjectURL(file);
+    pendingObjectUrl = objectUrl;
     initialSrc = objectUrl;
     openEditor(objectUrl);
   });
@@ -167,50 +202,70 @@ function initPhotoEditor(root: HTMLElement) {
   zoomInput.addEventListener("input", () => {
     crop.scale = clamp(Number(zoomInput.value), MIN_SCALE, MAX_SCALE);
     updateUi();
+    setStatus(
+      `Zoom ${crop.scale.toFixed(2)}× — drag to frame the face in the circle.`,
+    );
   });
 
   function onPointerDown(event: PointerEvent) {
     if (editor.hidden) return;
+    if (event.button !== 0 && event.pointerType === "mouse") return;
     dragging = true;
+    activePointerId = event.pointerId;
     dragStartX = event.clientX;
     dragStartY = event.clientY;
     dragCropX = crop.x;
     dragCropY = crop.y;
-    editorImg.setPointerCapture(event.pointerId);
+    if (crop.scale < DRAG_MIN_SCALE) {
+      crop.scale = DRAG_MIN_SCALE;
+      updateUi();
+    }
+    cropSurface.classList.add("is-dragging");
+    cropSurface.setPointerCapture(event.pointerId);
     event.preventDefault();
   }
 
   function onPointerMove(event: PointerEvent) {
-    if (!dragging) return;
+    if (!dragging || activePointerId !== event.pointerId) return;
 
-    const frame = editorImg.closest(".staff-avatar-frame");
-    const frameWidth = frame?.clientWidth ?? 160;
-    const frameHeight = frame?.clientHeight ?? 160;
+    const frameWidth = cropSurface.clientWidth || 160;
+    const frameHeight = cropSurface.clientHeight || 160;
     const deltaX = event.clientX - dragStartX;
     const deltaY = event.clientY - dragStartY;
 
+    // Dragging the photo with the pointer (Instagram-style).
     crop.x = clamp(dragCropX - (deltaX / frameWidth) * 100, 0, 100);
     crop.y = clamp(dragCropY - (deltaY / frameHeight) * 100, 0, 100);
     updateUi();
   }
 
   function onPointerUp(event: PointerEvent) {
-    if (!dragging) return;
+    if (activePointerId !== event.pointerId) return;
     dragging = false;
-    editorImg.releasePointerCapture(event.pointerId);
+    activePointerId = null;
+    cropSurface.classList.remove("is-dragging");
+    if (cropSurface.hasPointerCapture(event.pointerId)) {
+      cropSurface.releasePointerCapture(event.pointerId);
+    }
+    setStatus(
+      `Photo position: ${Math.round(crop.x)}% horizontal, ${Math.round(crop.y)}% vertical.`,
+    );
   }
 
-  editorImg.addEventListener("pointerdown", onPointerDown);
-  editorImg.addEventListener("pointermove", onPointerMove);
-  editorImg.addEventListener("pointerup", onPointerUp);
-  editorImg.addEventListener("pointercancel", onPointerUp);
-  editorImg.tabIndex = 0;
-  editorImg.setAttribute("role", "img");
-  editorImg.setAttribute(
-    "aria-label",
-    "Photo crop. Use arrow keys to move the photo; hold Shift for larger steps.",
+  cropSurface.addEventListener("pointerdown", onPointerDown);
+  cropSurface.addEventListener("pointermove", onPointerMove);
+  cropSurface.addEventListener("pointerup", onPointerUp);
+  cropSurface.addEventListener("pointercancel", onPointerUp);
+  cropSurface.tabIndex = 0;
+  cropSurface.setAttribute("role", "slider");
+  cropSurface.setAttribute("aria-label", "Photo crop position");
+  cropSurface.setAttribute(
+    "aria-description",
+    "Drag to reposition. Use arrow keys to nudge; hold Shift for larger steps. Use the zoom slider to scale.",
   );
-  editorImg.addEventListener("keydown", (event) => {
+
+  cropSurface.addEventListener("keydown", (event) => {
+    if (editor.hidden) return;
     const step = event.shiftKey ? 5 : 1;
     if (event.key === "ArrowLeft") crop.x = clamp(crop.x - step, 0, 100);
     else if (event.key === "ArrowRight") crop.x = clamp(crop.x + step, 0, 100);
@@ -218,14 +273,18 @@ function initPhotoEditor(root: HTMLElement) {
     else if (event.key === "ArrowDown") crop.y = clamp(crop.y + step, 0, 100);
     else return;
     event.preventDefault();
+    if (crop.scale < DRAG_MIN_SCALE) crop.scale = DRAG_MIN_SCALE;
     updateUi();
-    setStatus(`Photo position: ${Math.round(crop.x)}% horizontal, ${Math.round(crop.y)}% vertical.`);
+    setStatus(
+      `Photo position: ${Math.round(crop.x)}% horizontal, ${Math.round(crop.y)}% vertical.`,
+    );
   });
 
   form.addEventListener("submit", () => {
     saveBtn.disabled = true;
     saveBtn.textContent = "Saving…";
     setError(null);
+    syncCropFields(form, crop);
 
     if (pendingFile) {
       const transfer = new DataTransfer();
@@ -237,4 +296,17 @@ function initPhotoEditor(root: HTMLElement) {
   updateUi();
 }
 
-document.querySelectorAll<HTMLElement>("[data-account-photo]").forEach(initPhotoEditor);
+function bootPhotoEditors() {
+  document
+    .querySelectorAll<HTMLElement>("[data-account-photo]")
+    .forEach(initPhotoEditor);
+}
+
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootPhotoEditors);
+  } else {
+    bootPhotoEditors();
+  }
+  document.addEventListener("astro:page-load", bootPhotoEditors);
+}
