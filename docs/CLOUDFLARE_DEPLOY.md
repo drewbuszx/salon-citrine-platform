@@ -110,9 +110,14 @@ npx wrangler deploy    # or: npm run deploy
 | Team | `https://salon-citrine-team.<account>.workers.dev/team/login` | `https://team.saloncitrineindy.com/team/login` |
 | Book | `https://salon-citrine-book.<account>.workers.dev/book/` | `https://book.saloncitrineindy.com/book/` |
 
+Home-screen / PWA install (Team): see [TEAM_PWA_INSTALL.md](./TEAM_PWA_INSTALL.md). Live install page (use workers.dev while custom DNS is broken):
+
+`https://salon-citrine-team.dbuszx.workers.dev/team/install`
+
 Smoke checks:
 
 - Team: `/team/login` loads (200); sign-in redirects to calendar.
+- Team PWA: `/team/manifest.webmanifest` returns JSON with `display: "standalone"`; `/team/icons/icon-192.png` and `/team/icons/icon-512.png` 200; `/team/install` public 200.
 - Book: `/book/` loads; `/book/api/health/notifications` returns JSON.
 
 ## Troubleshooting

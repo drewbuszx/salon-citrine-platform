@@ -1,0 +1,35 @@
+{
+  "name": "Salon Citrine Team",
+  "short_name": "Citrine Team",
+  "description": "Salon Citrine employee workspace — tasks, calendar, docs, and team tools.",
+  "id": "/team/",
+  "start_url": "/team/login",
+  "scope": "/team/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "en-US",
+  "dir": "ltr",
+  "theme_color": "#e7ac46",
+  "background_color": "#faf9f7",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/team/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/team/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/team/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -235,6 +235,9 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
               </svg>
               Authorized Salon Citrine staff only
             </p>
+            <a class="login-help-link" href={teamUrl("/install")}>
+              Add Team to your phone home screen
+            </a>
             <a class="login-help-link" href={helpUrl}>Need help signing in?</a>
           </div>
         </div>
@@ -243,6 +246,7 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
       <footer class="login-footer">
         <nav class="login-footer__nav" aria-label="Login footer">
           <a class="login-footer__link" href={privacyUrl}>Privacy</a>
+          <a class="login-footer__link" href={teamUrl("/install")}>Install app</a>
           <span class="login-footer__brand">{BUSINESS.name}</span>
           <span class="login-footer__version" title="Application version">v{appVersion}</span>
         </nav>

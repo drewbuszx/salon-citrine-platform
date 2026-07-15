@@ -1,0 +1,237 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { BUSINESS } from "@saloncitrine/shared";
+import { withBase } from "../lib/paths";
+import { TEAM_INSTALL_URL, TEAM_WORKERS_ORIGIN } from "../lib/pwa-install";
+import { teamUrl } from "../lib/supabase-server";
+
+const qrSrc = withBase("icons/install-qr.svg");
+const iconSrc = withBase("icons/icon-192.png");
+const loginHref = teamUrl("/login");
+---
+
+<TeamLayout title="Install app" loginPage plain>
+  <section class="install-page">
+    <div class="install-page__inner">
+      <header class="install-page__header">
+        <img
+          class="install-page__mark"
+          src={iconSrc}
+          alt=""
+          width="72"
+          height="72"
+          decoding="async"
+        />
+        <p class="install-page__kicker">Salon Citrine Team</p>
+        <h1 class="install-page__title">Add to home screen</h1>
+        <p class="install-page__lead">
+          Scan the code, then pin the workspace so it opens in its own shell with
+          the crystal icon — not a browser tab.
+        </p>
+      </header>
+
+      <figure class="install-page__qr">
+        <img
+          class="install-page__qr-img"
+          src={qrSrc}
+          alt={`QR code linking to ${TEAM_INSTALL_URL}`}
+          width="240"
+          height="240"
+          decoding="async"
+        />
+        <figcaption class="install-page__qr-caption">
+          <a class="install-page__url" href={TEAM_INSTALL_URL}>{TEAM_INSTALL_URL}</a>
+        </figcaption>
+      </figure>
+
+      <ol class="install-steps">
+        <li class="install-steps__item">
+          <h2 class="install-steps__title">iPhone (Safari)</h2>
+          <p class="install-steps__body">
+            Open this page in <strong>Safari</strong>, tap Share, then
+            <strong>Add to Home Screen</strong>. Confirm — the crystal mark is
+            the icon, and it launches standalone.
+          </p>
+          <p class="install-steps__note">
+            Chrome on iOS cannot fully install a home-screen web app the same
+            way; use Safari.
+          </p>
+        </li>
+        <li class="install-steps__item">
+          <h2 class="install-steps__title">Android (Chrome)</h2>
+          <p class="install-steps__body">
+            Open in <strong>Chrome</strong>, then use the menu
+            <strong>Install app</strong> or <strong>Add to Home screen</strong>.
+            If Chrome offers an install banner, use that.
+          </p>
+          <p class="install-steps__note">
+            The install prompt can take a moment to appear and varies by Chrome
+            version.
+          </p>
+        </li>
+      </ol>
+
+      <p class="install-page__foot">
+        Already installed? <a href={loginHref}>Sign in</a>
+        · Hosted at {TEAM_WORKERS_ORIGIN.replace("https://", "")}
+        · {BUSINESS.name}
+      </p>
+    </div>
+  </section>
+</TeamLayout>
+
+<style>
+  .install-page {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 2rem 1.25rem 3rem;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(231, 172, 70, 0.18), transparent 55%),
+      linear-gradient(165deg, #faf9f7 0%, #f3f1ec 48%, #ebe6dc 100%);
+    color: var(--color-stone-900, #1a1816);
+  }
+
+  .install-page__inner {
+    width: min(28rem, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .install-page__header {
+    text-align: center;
+  }
+
+  .install-page__mark {
+    display: block;
+    margin: 0 auto 1rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 28px rgba(26, 24, 22, 0.08);
+  }
+
+  .install-page__kicker {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark, #c9952e);
+  }
+
+  .install-page__title {
+    margin: 0 0 0.65rem;
+    font-family: var(--font-display, var(--font-body));
+    font-size: clamp(1.65rem, 4vw, 2rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .install-page__lead {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: var(--color-stone-600, #5c554e);
+  }
+
+  .install-page__qr {
+    margin: 0;
+    padding: 1.25rem;
+    background: #faf9f7;
+    border: 1px solid rgba(26, 24, 22, 0.08);
+    border-radius: 1.25rem;
+    text-align: center;
+  }
+
+  .install-page__qr-img {
+    display: block;
+    width: min(240px, 70vw);
+    height: auto;
+    margin: 0 auto;
+  }
+
+  .install-page__qr-caption {
+    margin: 0.85rem 0 0;
+  }
+
+  .install-page__url {
+    font-size: 0.72rem;
+    word-break: break-all;
+    color: var(--color-link, #8a7044);
+    text-decoration: none;
+  }
+
+  .install-page__url:hover,
+  .install-page__url:focus-visible {
+    text-decoration: underline;
+  }
+
+  .install-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .install-steps__item {
+    padding: 1rem 1.1rem;
+    border-left: 3px solid var(--color-citrine, #e7ac46);
+    background: rgba(255, 255, 255, 0.55);
+  }
+
+  .install-steps__title {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    font-weight: 650;
+  }
+
+  .install-steps__body,
+  .install-steps__note {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--color-stone-600, #5c554e);
+  }
+
+  .install-steps__note {
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+    opacity: 0.92;
+  }
+
+  .install-page__foot {
+    margin: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--color-stone-500, #787068);
+  }
+
+  .install-page__foot a {
+    color: var(--color-link, #8a7044);
+  }
+
+  :global([data-theme="dark"]) .install-page {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(231, 172, 70, 0.12), transparent 55%),
+      linear-gradient(165deg, #1a1816 0%, #2f2a28 100%);
+    color: #f3f1ec;
+  }
+
+  :global([data-theme="dark"]) .install-page__lead,
+  :global([data-theme="dark"]) .install-steps__body,
+  :global([data-theme="dark"]) .install-steps__note,
+  :global([data-theme="dark"]) .install-page__foot {
+    color: #d4cfc4;
+  }
+
+  :global([data-theme="dark"]) .install-page__qr,
+  :global([data-theme="dark"]) .install-steps__item {
+    background: rgba(47, 42, 40, 0.7);
+    border-color: rgba(243, 241, 236, 0.08);
+  }
+</style>

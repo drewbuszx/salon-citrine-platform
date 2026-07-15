@@ -7,6 +7,9 @@ import TeamSiteHeader, {
 import { withBase } from "../lib/paths";
 
 const faviconUrl = withBase("favicon.png");
+const appleTouchIconUrl = withBase("icons/apple-touch-icon.png");
+const manifestUrl = withBase("manifest.webmanifest");
+const swUrl = withBase("sw.js");
 
 interface Props {
   title: string;
@@ -38,8 +41,14 @@ const isAuthenticated = Boolean(user && staff);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#e7ac46" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Citrine Team" />
+    <link rel="manifest" href={manifestUrl} />
     <link rel="icon" type="image/png" href={faviconUrl} />
-    <link rel="apple-touch-icon" href={faviconUrl} />
+    <link rel="apple-touch-icon" href={appleTouchIconUrl} sizes="180x180" />
     <title>{title} · Team · {BUSINESS.name}</title>
     <script is:inline nonce={cspNonce}>
       (function () {
@@ -55,6 +64,15 @@ const isAuthenticated = Boolean(user && staff);
 
         document.documentElement.setAttribute("data-theme", resolveTheme());
       })();
+    </script>
+    <script is:inline nonce={cspNonce} define:vars={{ swUrl }}>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register(swUrl, { scope: "/team/" }).catch(function () {
+            /* Installability helpers only — ignore SW failures offline/dev. */
+          });
+        });
+      }
     </script>
   </head>
   <body class:list={[loginPage && "body--login"]}>

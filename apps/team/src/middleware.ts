@@ -16,7 +16,12 @@ import {
 } from "./lib/supabase-server";
 import { hasPasswordSetupContext } from "./lib/password-setup-context";
 
-const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/auth/confirm"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/forgot-password",
+  "/auth/confirm",
+  "/install",
+]);
 const RESET_PASSWORD_PATH = "/reset-password";
 const CHANGE_PASSWORD_PATH = "/change-password";
 
@@ -33,10 +38,17 @@ function isStaticAssetPath(routePath: string) {
     routePath.startsWith("/_astro/") ||
     routePath.startsWith("/fonts/") ||
     routePath.startsWith("/images/") ||
+    routePath.startsWith("/icons/") ||
+    routePath === "/manifest.webmanifest" ||
+    routePath === "/sw.js" ||
+    routePath === "/favicon.png" ||
     routePath.endsWith(".css") ||
     routePath.endsWith(".js") ||
     routePath.endsWith(".woff2") ||
-    routePath.endsWith(".ico")
+    routePath.endsWith(".ico") ||
+    routePath.endsWith(".webmanifest") ||
+    routePath.endsWith(".svg") ||
+    routePath.endsWith(".png")
   );
 }
 
