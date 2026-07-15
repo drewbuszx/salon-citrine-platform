@@ -9,7 +9,6 @@ import { withBase } from "../lib/paths";
 const faviconUrl = withBase("favicon.png");
 const appleTouchIconUrl = withBase("icons/apple-touch-icon.png");
 const manifestUrl = withBase("manifest.webmanifest");
-const swUrl = withBase("sw.js");
 
 interface Props {
   title: string;
@@ -65,12 +64,15 @@ const isAuthenticated = Boolean(user && staff);
         document.documentElement.setAttribute("data-theme", resolveTheme());
       })();
     </script>
-    <script is:inline nonce={cspNonce} define:vars={{ swUrl }}>
+    {/* Keep SW register as plain is:inline+nonce — define:vars drops the nonce and CSP blocks it. */}
+    <script is:inline nonce={cspNonce}>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register(swUrl, { scope: "/team/" }).catch(function () {
-            /* Installability helpers only — ignore SW failures offline/dev. */
-          });
+          navigator.serviceWorker
+            .register("/team/sw.js", { scope: "/team/" })
+            .catch(function () {
+              /* Installability helper only — ignore SW failures. */
+            });
         });
       }
     </script>
