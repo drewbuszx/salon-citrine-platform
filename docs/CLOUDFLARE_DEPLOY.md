@@ -48,6 +48,12 @@ In the Cloudflare dashboard:
 
 6. Custom domain: **Worker → Settings → Domains & Routes → Add → Custom domain** → `team.saloncitrineindy.com`.
 
+   Source of truth in repo: `apps/team/wrangler.toml` already lists
+
+   `routes = [{ pattern = "team.saloncitrineindy.com", custom_domain = true }]`
+
+   so `npx wrangler deploy` (re)attaches the hostname. Confirmed resolving as of soft-ship 2026-07-14.
+
 **Bindings:** `apps/team/wrangler.toml` already declares the `SESSION` KV namespace (real ID) and the `IMAGES` binding; the build adds the `ASSETS` binding. `wrangler deploy` applies all of them — **no dashboard binding setup is needed**. Verify after deploy under **Worker → Settings → Bindings**.
 
 **URL:** the Worker serves at `https://salon-citrine-team.<account-subdomain>.workers.dev`. The app uses `base: '/team'`, so the login page is `/team/login`.

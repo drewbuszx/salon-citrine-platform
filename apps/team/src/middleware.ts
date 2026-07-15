@@ -21,6 +21,7 @@ const PUBLIC_PATHS = new Set([
   "/forgot-password",
   "/auth/confirm",
   "/install",
+  "/staff-guide",
 ]);
 const RESET_PASSWORD_PATH = "/reset-password";
 const CHANGE_PASSWORD_PATH = "/change-password";

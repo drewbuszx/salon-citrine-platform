@@ -2,12 +2,13 @@
 import TeamLayout from "../layouts/TeamLayout.astro";
 import { BUSINESS } from "@saloncitrine/shared";
 import { withBase } from "../lib/paths";
-import { TEAM_INSTALL_URL, TEAM_WORKERS_ORIGIN } from "../lib/pwa-install";
+import { TEAM_INSTALL_URL, TEAM_CUSTOM_ORIGIN } from "../lib/pwa-install";
 import { teamUrl } from "../lib/supabase-server";
 
 const qrSrc = withBase("icons/install-qr.svg");
 const iconSrc = withBase("icons/icon-192.png");
 const loginHref = teamUrl("/login");
+const guideHref = teamUrl("/staff-guide");
 ---
 
 <TeamLayout title="Install app" loginPage plain>
@@ -73,7 +74,8 @@ const loginHref = teamUrl("/login");
 
       <p class="install-page__foot">
         Already installed? <a href={loginHref}>Sign in</a>
-        · Hosted at {TEAM_WORKERS_ORIGIN.replace("https://", "")}
+        · <a href={guideHref}>Staff quick start</a>
+        · Hosted at {TEAM_CUSTOM_ORIGIN.replace("https://", "")}
         · {BUSINESS.name}
       </p>
     </div>

@@ -1,0 +1,188 @@
+---
+import TeamLayout from "../layouts/TeamLayout.astro";
+import { BUSINESS } from "@saloncitrine/shared";
+import { withBase } from "../lib/paths";
+import { TEAM_INSTALL_URL, TEAM_CUSTOM_ORIGIN } from "../lib/pwa-install";
+import { teamUrl } from "../lib/supabase-server";
+
+const iconSrc = withBase("icons/icon-192.png");
+const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-in%20help`;
+const loginHref = teamUrl("/login");
+const installHref = teamUrl("/install");
+---
+
+<TeamLayout title="Staff quick start" loginPage plain>
+  <section class="staff-guide">
+    <div class="staff-guide__inner">
+      <header class="staff-guide__header">
+        <img
+          class="staff-guide__mark"
+          src={iconSrc}
+          alt=""
+          width="56"
+          height="56"
+          decoding="async"
+        />
+        <p class="staff-guide__kicker">Salon Citrine Team</p>
+        <h1 class="staff-guide__title">Quick start</h1>
+        <p class="staff-guide__lead">
+          Install the app, sign in, and know who to ping if something’s stuck.
+        </p>
+      </header>
+
+      <ol class="staff-guide__list">
+        <li class="staff-guide__item">
+          <h2 class="staff-guide__h">Install URL</h2>
+          <p class="staff-guide__body">
+            Open or scan:
+            <a class="staff-guide__url" href={TEAM_INSTALL_URL}>{TEAM_INSTALL_URL}</a>
+          </p>
+          <p class="staff-guide__note">
+            Same steps live on the
+            <a href={installHref}>install page</a> (QR + screenshots guidance).
+          </p>
+        </li>
+        <li class="staff-guide__item">
+          <h2 class="staff-guide__h">iPhone — use Safari</h2>
+          <p class="staff-guide__body">
+            In <strong>Safari</strong>: Share → <strong>Add to Home Screen</strong>.
+            Chrome on iPhone is not a full install path.
+          </p>
+        </li>
+        <li class="staff-guide__item">
+          <h2 class="staff-guide__h">Android — use Chrome</h2>
+          <p class="staff-guide__body">
+            Menu → <strong>Install app</strong> or <strong>Add to Home screen</strong>.
+          </p>
+        </li>
+        <li class="staff-guide__item">
+          <h2 class="staff-guide__h">Sign in</h2>
+          <p class="staff-guide__body">
+            After install, open the crystal icon and sign in with your work email.
+            <a href={loginHref}>Sign-in page</a>
+          </p>
+        </li>
+        <li class="staff-guide__item">
+          <h2 class="staff-guide__h">Password / access help</h2>
+          <p class="staff-guide__body">
+            Ping <strong>Drew</strong> (or your manager) in the staff group chat, or
+            email
+            <a href={helpUrl}>{BUSINESS.email}</a>
+            with subject “Team sign-in help”.
+          </p>
+        </li>
+      </ol>
+
+      <p class="staff-guide__foot">
+        Host: {TEAM_CUSTOM_ORIGIN.replace("https://", "")}
+        · {BUSINESS.name}
+      </p>
+    </div>
+  </section>
+</TeamLayout>
+
+<style>
+  .staff-guide {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 2rem 1.25rem 3rem;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(231, 172, 70, 0.16), transparent 55%),
+      linear-gradient(165deg, #faf9f7 0%, #f3f1ec 48%, #ebe6dc 100%);
+    color: var(--color-stone-900, #1a1816);
+  }
+
+  .staff-guide__inner {
+    width: min(28rem, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .staff-guide__header {
+    text-align: center;
+  }
+
+  .staff-guide__mark {
+    display: block;
+    margin: 0 auto 0.85rem;
+    border-radius: 0.85rem;
+    box-shadow: 0 8px 24px rgba(26, 24, 22, 0.08);
+  }
+
+  .staff-guide__kicker {
+    margin: 0 0 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-citrine-dark, #c9952e);
+  }
+
+  .staff-guide__title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-display, var(--font-body));
+    font-size: clamp(1.55rem, 4vw, 1.9rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .staff-guide__lead {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--color-stone-600, #5c554e);
+  }
+
+  .staff-guide__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .staff-guide__item {
+    padding: 0.95rem 1.05rem;
+    border-left: 3px solid var(--color-citrine, #e7ac46);
+    background: rgba(255, 255, 255, 0.55);
+  }
+
+  .staff-guide__h {
+    margin: 0 0 0.35rem;
+    font-size: 0.92rem;
+    font-weight: 650;
+  }
+
+  .staff-guide__body,
+  .staff-guide__note {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--color-stone-600, #5c554e);
+  }
+
+  .staff-guide__note {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+  }
+
+  .staff-guide__url {
+    display: inline;
+    word-break: break-all;
+    color: var(--color-link, #8a7044);
+  }
+
+  .staff-guide__item a {
+    color: var(--color-link, #8a7044);
+  }
+
+  .staff-guide__foot {
+    margin: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-stone-500, #787068);
+  }
+</style>

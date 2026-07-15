@@ -15,8 +15,8 @@ const iconsDir = path.join(root, "public", "icons");
 /** High-res crystal mark (JPEG). Prefer this over public/favicon.png after PNG conversion. */
 const sourcePath = path.join(iconsDir, "crystal-source.jpg");
 
-/** Canonical origin that resolves today (custom team.* DNS is currently broken). */
-export const TEAM_INSTALL_ORIGIN = "https://salon-citrine-team.dbuszx.workers.dev";
+/** Canonical install origin (custom domain). Fallback workers.dev still deploys. */
+export const TEAM_INSTALL_ORIGIN = "https://team.saloncitrineindy.com";
 export const TEAM_INSTALL_URL = `${TEAM_INSTALL_ORIGIN}/team/install`;
 
 const BG = { r: 250, g: 249, b: 247, alpha: 1 }; // stone-50 / cream

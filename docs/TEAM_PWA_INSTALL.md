@@ -2,14 +2,15 @@
 
 Staff can pin **Salon Citrine Team** to an Android or iPhone home screen so it opens in its own shell (`display: standalone`) with the crystal brand icon.
 
-## Public install URL (use this today)
+## Public install URL
 
-**https://salon-citrine-team.dbuszx.workers.dev/team/install**
+**https://team.saloncitrineindy.com/team/install**
 
 - QR on that page encodes the same URL (generated at build time into `public/icons/install-qr.svg`).
-- Sign-in page also links to `/team/install`.
+- Sign-in page links to `/team/install` and the [staff quick start](https://team.saloncitrineindy.com/team/staff-guide).
+- One-pager doc: [employee-platform/STAFF_ONE_PAGER.md](./employee-platform/STAFF_ONE_PAGER.md).
 
-Custom domain `https://team.saloncitrineindy.com` is configured in Astro/`wrangler` docs but **DNS does not resolve today** — do not put that host on printed QR cards until it resolves again.
+**Fallback:** https://salon-citrine-team.dbuszx.workers.dev/team/install (same Worker).
 
 ## What was added
 
@@ -20,12 +21,15 @@ Custom domain `https://team.saloncitrineindy.com` is configured in Astro/`wrangl
 | Apple + theme meta | `apps/team/src/layouts/TeamLayout.astro` |
 | Minimal service worker | `apps/team/public/sw.js` (network-only; Android Chrome installability) |
 | Install + QR page | `apps/team/src/pages/install.astro` (public, no login) |
+| Staff quick start | `apps/team/src/pages/staff-guide.astro` (public) |
 
-Regenerate icons/QR after replacing the crystal source:
+Regenerate icons/QR after replacing the crystal source or changing the install origin:
 
 ```bash
 npm run generate:pwa --workspace apps/team
 ```
+
+Canonical origin is set in `apps/team/src/lib/pwa-install.ts` and `apps/team/scripts/generate-pwa-assets.mjs` (`team.saloncitrineindy.com`).
 
 ## Phone caveats
 
@@ -41,3 +45,5 @@ After merging to `master`:
 npm run build --workspace apps/team
 cd apps/team && npx wrangler deploy
 ```
+
+Custom domain is declared in `apps/team/wrangler.toml` (`routes` + `custom_domain = true` for `team.saloncitrineindy.com`).

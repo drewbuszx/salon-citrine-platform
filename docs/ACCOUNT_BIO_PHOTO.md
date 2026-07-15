@@ -43,7 +43,7 @@ There is **no** auto-push to the CMS.
 
 ## Migration
 
-Apply `packages/db/migrations/0040_staff_bio_approval.sql` to the production Supabase project before relying on bio submit/review in production.
+`packages/db/migrations/0040_staff_bio_approval.sql` is applied on production Supabase (recorded as `staff_bio_approval`). Staff bio columns (`bio`, `bio_pending`, `bio_status`, …) are live.
 
 ## Smoke checklist
 

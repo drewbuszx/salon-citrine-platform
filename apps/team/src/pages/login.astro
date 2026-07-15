@@ -238,6 +238,9 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
             <a class="login-help-link" href={teamUrl("/install")}>
               Add Team to your phone home screen
             </a>
+            <a class="login-help-link" href={teamUrl("/staff-guide")}>
+              Staff quick start (install + help)
+            </a>
             <a class="login-help-link" href={helpUrl}>Need help signing in?</a>
           </div>
         </div>
@@ -247,6 +250,7 @@ const helpUrl = `mailto:${BUSINESS.email}?subject=Salon%20Citrine%20Team%20sign-
         <nav class="login-footer__nav" aria-label="Login footer">
           <a class="login-footer__link" href={privacyUrl}>Privacy</a>
           <a class="login-footer__link" href={teamUrl("/install")}>Install app</a>
+          <a class="login-footer__link" href={teamUrl("/staff-guide")}>Quick start</a>
           <span class="login-footer__brand">{BUSINESS.name}</span>
           <span class="login-footer__version" title="Application version">v{appVersion}</span>
         </nav>
